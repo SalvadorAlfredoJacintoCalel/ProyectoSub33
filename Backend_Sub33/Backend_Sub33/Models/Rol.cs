@@ -10,7 +10,7 @@ public class Rol
 {
     [Key]
     [Column("rol_id")]
-    public Guid RolId { get; set; }
+    public string RolId { get; set; } = string.Empty;
 
     [Column("nombre")]
     public string Nombre { get; set; } = string.Empty;

@@ -11,6 +11,8 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<Usuario> Usuarios { get; set; }
+    public DbSet<Personal> Personal { get; set; }
+    public DbSet<UsuarioRol> UsuarioRoles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,7 +20,15 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Usuario>(entity =>
         {
-            // ... configuración existente de Usuario
+            entity.HasOne(u => u.Personal)
+                  .WithMany()
+                  .HasForeignKey(u => u.PersonalId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Personal>(entity =>
+        {
+            entity.HasIndex(e => e.Dpi).IsUnique();
         });
 
         modelBuilder.Entity<RolPermiso>(entity =>

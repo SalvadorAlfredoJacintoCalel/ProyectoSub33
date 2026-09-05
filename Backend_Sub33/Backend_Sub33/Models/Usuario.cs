@@ -12,13 +12,16 @@ public class Usuario
     [Column("usuario_id")]
     public Guid UsuarioId { get; set; }
 
+    [Column("personal_id")]
+    public Guid? PersonalId { get; set; }
+
     [Column("username")]
     public string Username { get; set; } = string.Empty;
 
     [Column("password_hash")]
     public string PasswordHash { get; set; } = string.Empty;
 
-    [Column("nombre_completo")]
+    [NotMapped]
     public string NombreCompleto { get; set; } = string.Empty;
 
     [Column("estado")]
@@ -32,6 +35,9 @@ public class Usuario
 
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; }
+
+    [ForeignKey("PersonalId")]
+    public virtual Personal? Personal { get; set; }
 
     public ICollection<UsuarioRol> UsuarioRoles { get; set; } = new List<UsuarioRol>();
 }

@@ -8,7 +8,7 @@ namespace Backend_Sub33.Models;
 public class RolPermiso
 {
     [Column("rol_id")]
-    public Guid RolId { get; set; }
+    public string RolId { get; set; } = string.Empty;
 
     [Column("permiso_id")]
     public Guid PermisoId { get; set; }

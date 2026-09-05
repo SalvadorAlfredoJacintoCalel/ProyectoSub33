@@ -143,8 +143,6 @@ function validateForm(f: FormState, credOpen: boolean, isEditing: boolean): Reco
   if (!f.primerApellido.trim()) e.primerApellido = "Primer apellido requerido";
   const dpiDigits = f.dpi.replace(/\D/g, "");
   if (dpiDigits.length !== 13) e.dpi = "DPI debe tener exactamente 13 dígitos";
-  if (!f.codigo.trim()) e.codigo = "Código interno requerido";
-  if (!f.fechaIngreso) e.fechaIngreso = "Fecha de ingreso requerida";
   if (!f.telefono.trim()) e.telefono = "Teléfono requerido";
   if (!f.contactoEmergencia.trim()) e.contactoEmergencia = "Nombre del contacto requerido";
   if (!f.telEmergencia.trim()) e.telEmergencia = "Teléfono de emergencia requerido";
@@ -274,15 +272,55 @@ export function PersonalPage() {
   function handleSubmit() {
     const errs = validateForm(form, credOpen, editingId !== null);
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
-    const data = formToMiembro(form);
-    if (editingId) {
-      setMembers((prev) => prev.map((m) => (m.id === editingId ? { ...data, id: editingId } : m)));
-      showToast("Miembro actualizado exitosamente");
-    } else {
-      setMembers((prev) => [...prev, { ...data, id: String(Date.now()) }]);
-      showToast("Miembro registrado exitosamente");
-    }
-    closeModal();
+
+    const esEstadoActivo = true;
+    const fechaIngreso = new Date().toISOString().split('T')[0];
+    const tieneAcceso = Boolean(form.usuario && form.contrasena);
+
+    const payload = {
+      primerNombre: form.primerNombre,
+      segundoNombre: form.segundoNombre || null,
+      primerApellido: form.primerApellido,
+      segundoApellido: form.segundoApellido || null,
+      dpi: form.dpi,
+      fechaNacimiento: form.fechaNacimiento ? new Date(form.fechaNacimiento).toISOString().split('T')[0] : null,
+      rango: form.rango,
+      fechaIngreso: new Date().toISOString().split('T')[0],
+      telefono: form.telefono,
+      estado: true,
+      contactoEmergenciaNombre: form.contactoEmergencia,
+      contactoEmergenciaTelefono: form.telEmergencia,
+      accesoSistema: tieneAcceso ? {
+        username: form.usuario,
+        password: form.contrasena,
+        rolId: form.rolSistema || "Administrador"
+      } : null
+    };
+
+    console.log("Enviando a API...", payload);
+
+    fetch("http://localhost:5196/api/personal", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then((response) => {
+        if (response.ok) {
+          alert("¡Miembro registrado exitosamente!");
+          closeModal();
+          setForm(emptyFormState());
+          setErrors({});
+        } else {
+          response.text().then((errText) => {
+            alert("Error Backend:\n" + errText);
+          });
+        }
+      })
+      .catch(() => {
+        showToast("Error de conexión");
+      });
   }
 
   function handleDelete() {
@@ -659,20 +697,6 @@ export function PersonalPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Código Interno <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="B-3311"
-                    value={form.codigo}
-                    onChange={(e) => setField("codigo", e.target.value)}
-                    style={{ ...inputStyle(!!errors.codigo), fontFamily: "monospace" }}
-                  />
-                  {errors.codigo && <p className="mt-0.5 text-xs text-red-600">{errors.codigo}</p>}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
                     Rango <span style={{ color: RED }}>*</span>
                   </label>
                   <select
@@ -682,19 +706,6 @@ export function PersonalPage() {
                   >
                     {RANGOS.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Fecha de Ingreso <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.fechaIngreso}
-                    onChange={(e) => setField("fechaIngreso", e.target.value)}
-                    style={inputStyle(!!errors.fechaIngreso)}
-                  />
-                  {errors.fechaIngreso && <p className="mt-0.5 text-xs text-red-600">{errors.fechaIngreso}</p>}
                 </div>
 
                 <div>
@@ -709,30 +720,7 @@ export function PersonalPage() {
                     style={inputStyle(!!errors.telefono)}
                   />
                   {errors.telefono && <p className="mt-0.5 text-xs text-red-600">{errors.telefono}</p>}
-                </div>
-
-                <div className="col-span-2">
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Estado
-                  </label>
-                  <div className="flex overflow-hidden rounded-lg border" style={{ borderColor: "var(--border)" }}>
-                    {(["Activo", "Inactivo"] as Estado[]).map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setField("estado", s)}
-                        className="flex-1 py-2 text-sm font-medium transition-colors"
-                        style={
-                          form.estado === s
-                            ? { background: s === "Activo" ? "#16a34a" : "#6b7280", color: "#fff" }
-                            : { background: "var(--bg-input)", color: "var(--text-2)" }
-                        }
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+</div>
               </div>
 
               {/* ── Contacto de Emergencia ── */}

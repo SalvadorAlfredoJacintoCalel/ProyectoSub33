@@ -42,6 +42,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Configuración de zona horaria PostgreSQL para evitar choques con TIMESTAMP WITH TIME ZONE
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 // Pipeline HTTP
 if (app.Environment.IsDevelopment())
 {
