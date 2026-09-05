@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Lock, Phone, User, MapPin, X, ChevronDown, Truck, Heart, Activity } from "lucide-react";
 
 interface Props {
@@ -118,6 +118,24 @@ export function RegisterServicePage({
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [numeroIncidente, setNumeroIncidente] = useState<string>("INC-2026-016");
+  const [fecha, setFecha] = useState(() => new Date().toISOString().split('T')[0]);
+  const [domicilio, setDomicilio] = useState("");
+  const [horaToma, setHoraToma] = useState(() => new Date().toTimeString().slice(0, 5));
+
+  // Obtener correlativo de incidente al montar
+  useEffect(() => {
+    fetch("http://localhost:5196/api/emergencias/siguiente-incidente")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data && data.numeroIncidente) {
+          setNumeroIncidente(data.numeroIncidente);
+        }
+      })
+      .catch((err) => {
+        console.error("Error al obtener correlativo:", err);
+      });
+  }, []); 
 
   function toggleTipoAsistencia(tipo: string) {
     setTiposAsistencia((prev) =>
@@ -144,8 +162,92 @@ export function RegisterServicePage({
       return;
     }
 
-    setSubmitted(true);
-    setShowError(false);
+    const payload = {
+      numeroIncidente: numeroIncidente,
+      fecha: fecha,
+      horaSalida: tiempoSalida || null,
+      horaEntrada: tiempoLlegada || null,
+      solicitudTipo: tipoSolicitud || "Telefónica",
+      paciente: nombrePaciente,
+      edad: edad ? parseInt(edad) : null,
+      genero: genero || "No especificado",
+      solicitante: solicitante || null,
+      acompanante: acompanante || null,
+      domicilio: domicilio || null,
+      fallecio: Boolean(fallecido),
+      ubicacion: ubicacion,
+      hospitalDestinoNombre: hospital || null,
+      estadoEntrega: estadoEntrega || null,
+      unidadAsignadaNombre: unidad || null,
+      creadoPorNombre: currentUser || "Bombero",
+      resumen: null,
+      tiposAsistencia: Array.isArray(tiposAsistencia) ? tiposAsistencia : [],
+      personalAsignado: personalSeleccionado ? personalSeleccionado.map((p: any) => ({
+        nombrePersonal: typeof p === 'string' ? p : (p.nombrePersonal || p.nombre || ''),
+        rolEnServicio: p.rolEnServicio || p.rol || 'Socorrista'
+      })) : [],
+      signosVitales: {
+        presionArterial: presionArterial || null,
+        frecuenciaCardiaca: frecuenciaCardiaca ? parseInt(frecuenciaCardiaca) : null,
+        frecuenciaRespiratoria: frecuenciaRespiratoria ? parseInt(frecuenciaRespiratoria) : null,
+        saturacionOxigeno: saturacion ? parseInt(saturacion) : null,
+        horaToma: horaToma || null
+      }
+    };
+
+    // Conexion Backend APi
+    fetch("http://localhost:5196/api/emergencias", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then((response) => {
+        if (response.ok) {
+          alert("¡Servicio registrado exitosamente!");
+          setSubmitted(true);
+          setShowError(false);
+          // Reset form state
+          setTipoSolicitud("Telefónica");
+          setTiempoSalida("");
+          setTiempoLlegada("");
+          setTiposAsistencia([]);
+          setUbicacion("");
+          setHospital("");
+          setNombrePaciente("");
+          setEdad("");
+          setGenero("No especificado");
+          setSolicitante("");
+          setAcompanante("");
+          setFallecido(false);
+          setPresionArterial("");
+          setFrecuenciaCardiaca("");
+          setFrecuenciaRespiratoria("");
+          setSaturacion("");
+          setEstadoEntrega("");
+          setUnidad("");
+          setPersonalSeleccionado([]);
+          setFecha(new Date().toISOString().split('T')[0]);
+          setDomicilio("");
+          setHoraToma(new Date().toTimeString().slice(0, 5));
+          // Actualizar número de incidente para el siguiente registro
+          fetch("http://localhost:5196/api/emergencias/siguiente-incidente")
+            .then((res) => res.json())
+            .then((data) => setNumeroIncidente(data.numeroIncidente))
+            .catch((err) => {
+              console.error("Error al actualizar número de incidente:", err);
+              setNumeroIncidente("INC-2026-017");
+            });
+        } else {
+          response.text().then((errText) => {
+            alert("Error Backend:\n" + errText);
+          });
+        }
+      })
+      .catch(() => {
+        alert("Error de conexión");
+      });
   }
 
   // ── Success state ──────────────────────────────────────────────────────────
@@ -213,7 +315,7 @@ export function RegisterServicePage({
               fontFamily: "monospace",
             }}
           >
-            {nextId}
+{numeroIncidente}
           </div>
           <button
             onClick={onClose}
@@ -328,7 +430,7 @@ export function RegisterServicePage({
             />
             <input
               readOnly
-              value={nextId}
+              value={numeroIncidente}
               style={{
                 ...inputBase,
                 paddingLeft: 32,
