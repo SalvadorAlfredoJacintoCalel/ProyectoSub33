@@ -7,4 +7,7 @@ public class AuthResponseDto
     public string NombreCompleto { get; set; } = string.Empty;
     public List<string> Permisos { get; set; } = new();
     public List<string> Roles { get; set; } = new();
+    public bool Exito { get; set; }
+    public string Mensaje { get; set; } = string.Empty;
+    public Guid UsuarioId { get; set; }
 }

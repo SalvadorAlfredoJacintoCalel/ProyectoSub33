@@ -162,7 +162,10 @@ function QuickCard({ Icon, label, sub, onClick }: { Icon: React.ElementType; lab
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(true);
+  const [loggedIn, setLoggedIn] = useState(() => {
+    const user = localStorage.getItem("user");
+    return user ? true : false;
+  });
   const [userRole, setUserRole] = useState<UserRole>("admin");
   const [activeNav, setActiveNav] = useState("bienvenida");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -794,7 +797,7 @@ export default function App() {
                 style={{ borderColor: C.border, color: C.textSecond, background: C.cardBg, fontFamily: "Inter, sans-serif" }}>
                 Cancelar
               </button>
-              <button onClick={() => { setLogoutOpen(false); setLoggedIn(false); }} className="flex-1 py-2.5 rounded-xl text-white text-[13px] font-bold transition-opacity hover:opacity-90"
+              <button onClick={() => { setLogoutOpen(false); setLoggedIn(false); localStorage.removeItem("user"); }} className="flex-1 py-2.5 rounded-xl text-white text-[13px] font-bold transition-opacity hover:opacity-90"
                 style={{ background: C.red, fontFamily: "Inter, sans-serif" }}>
                 Confirmar
               </button>

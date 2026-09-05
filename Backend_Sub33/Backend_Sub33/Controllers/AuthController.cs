@@ -7,7 +7,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.IdentityModel.Tokens;
+using BCrypt.Net;
+using Dapper;
 
 namespace Backend_Sub33.Controllers;
 
@@ -32,52 +33,68 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        // 1. Buscar usuario por Username únicamente
-        var usuario = await _context.Usuarios
-            .FirstOrDefaultAsync(u => u.Username.ToLower() == loginDto.Username.ToLower());
+        // 1. Consulta exacta contra la tabla usuarios utilizando username
+        var sqlUsuario = @"
+            SELECT usuario_id, personal_id, username, password_hash, estado 
+            FROM usuarios 
+            WHERE LOWER(username) = LOWER(@Username) AND estado = true 
+            LIMIT 1;";
 
-        // USUARIO NO ENCONTRADO
-        if (usuario == null)
+        using var connection = _context.Database.GetDbConnection();
+        connection.Open();
+        var transaction = connection.BeginTransaction();
+
+        try
         {
-            return Unauthorized(new { mensaje = "Usuario no encontrado" });
+            var usuarioDb = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                sqlUsuario,
+                new { Username = loginDto.Username },
+                transaction);
+
+            // Si no existe o no está activo, bloquear acceso de inmediato
+            if (usuarioDb == null)
+            {
+                return Unauthorized(new AuthResponseDto
+                {
+                    Exito = false,
+                    Mensaje = "Las credenciales ingresadas son incorrectas o la cuenta está desactivada."
+                });
+            }
+
+            // Validación con BCrypt
+            bool esValida = BCrypt.Net.BCrypt.Verify(loginDto.Password, (string)usuarioDb.password_hash);
+            if (!esValida)
+            {
+                return Unauthorized(new AuthResponseDto
+                {
+                    Exito = false,
+                    Mensaje = "Las credenciales ingresadas son incorrectas o la cuenta está desactivada."
+                });
+            }
+
+            // Actualizar último login
+            await connection.ExecuteAsync(
+                "UPDATE usuarios SET ultimo_login = CURRENT_TIMESTAMP WHERE usuario_id = @UsuarioId;",
+                new { UsuarioId = (Guid)usuarioDb.usuario_id }, transaction);
+
+            transaction.Commit();
+
+            return Ok(new AuthResponseDto
+            {
+                Exito = true,
+                Mensaje = "Inicio de sesión exitoso",
+                UsuarioId = (Guid)usuarioDb.usuario_id,
+                Username = usuarioDb.username
+            });
         }
-
-        // 2. Comparar contraseña directamente (texto plano)
-        if (usuario.PasswordHash != loginDto.Password)
+        catch
         {
-            return Unauthorized(new { mensaje = "Credenciales inválidas" });
+            transaction.Rollback();
+            throw;
         }
-
-        // 3. Simplificado: Comentamos temporalmente la lectura de UsuarioRoles y Permisos
-        // var permisos = usuario?.UsuarioRoles
-        //     .SelectMany(ur => ur.Rol?.RolPermisos?.Select(rp => rp.Permiso?.Codigo))
-        //     .Distinct().ToList() ?? new List<string>();
-        //
-        // var roles = usuario?.UsuarioRoles
-        //     .Select(ur => ur.Rol?.Nombre)
-        //     .Distinct().ToList() ?? new List<string>();
-
-        // 4. Generar el token JWT solo con el claim del nombre de usuario
-        var claims = new[]
+        finally
         {
-            new Claim(ClaimTypes.Name, usuario.Username)
-        };
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(8),
-            signingCredentials: creds
-        );
-
-        return Ok(new
-        {
-            Token = new JwtSecurityTokenHandler().WriteToken(token),
-            Username = usuario.Username
-        });
+            connection.Close();
+        }
     }
 }

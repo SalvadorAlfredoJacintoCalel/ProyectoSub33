@@ -7,6 +7,7 @@ import {
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
 import imgCrossBadge from "@/imports/DashboardPrincipalDesktop/39b842ab5db9edc3f36b77dcb333e6063de137a7.png";
 import imgCvbLogo from "@/imports/DashboardPrincipalDesktop/382ba90f17ab58630c2735b72b71bff037f7ba87.png";
+import { useToast } from "@/components/ui/use-toast";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -419,11 +420,34 @@ export function LoginPage({ onLogin }: Props) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loginError, setLoginError] = useState(""); // ERROR: mensaje de login fallido
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    // Bypass: autenticación local inmediata - llama al callback prop en lugar de authService
-    onLogin();
+    fetch("http://localhost:5196/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        }
+        throw new Error("Credenciales incorrectas");
+      })
+      .then((data) => {
+        // Guardar sesión en localStorage
+        localStorage.setItem("user", JSON.stringify(data));
+        // Invocar función global de inicio de sesión para entrar al sistema
+        if (onLogin) onLogin();
+      })
+      .catch((error) => {
+        // Mostrar error estilizado y regresar al paso de login
+        setLoginError("Problemas al iniciar sesión: Usuario o contraseña incorrectos");
+        setStep("login");
+      });
   }
 
   return (
@@ -461,6 +485,10 @@ export function LoginPage({ onLogin }: Props) {
                 Inicia sesión para continuar
               </p>
             </div>
+
+            <p className="text-center mb-4 text-sm" style={{ fontFamily: "Inter, sans-serif", color: "#dc2626" }}>
+{loginError}
+</p>
 
             {/* Login form */}
             <form onSubmit={handleLogin} className="flex flex-col gap-4">
