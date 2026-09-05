@@ -205,7 +205,6 @@ export function RegisterServicePage({
     })
       .then((response) => {
         if (response.ok) {
-          alert("¡Servicio registrado exitosamente!");
           setSubmitted(true);
           setShowError(false);
           // Reset form state
@@ -317,22 +316,56 @@ export function RegisterServicePage({
           >
 {numeroIncidente}
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              marginTop: 8,
-              background: "var(--red)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              padding: "10px 28px",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            Cerrar
+<button
+              onClick={() => {
+                setSubmitted(false);
+                setTipoSolicitud("Telefónica");
+                setTiempoSalida("");
+                setTiempoLlegada("");
+                setTiposAsistencia([]);
+                setUbicacion("");
+                setHospital("");
+                setNombrePaciente("");
+                setEdad("");
+                setGenero("No especificado");
+                setSolicitante("");
+                setAcompanante("");
+                setFallecido(false);
+                setPresionArterial("");
+                setFrecuenciaCardiaca("");
+                setFrecuenciaRespiratoria("");
+                setSaturacion("");
+                setEstadoEntrega("");
+                setUnidad("");
+                setPersonalSeleccionado([]);
+                setFecha(new Date().toISOString().split('T')[0]);
+                setDomicilio("");
+                setHoraToma(new Date().toTimeString().slice(0, 5));
+                // Refrescar correlativo de incidente
+                fetch("http://localhost:5196/api/emergencias/siguiente-incidente")
+                  .then((res) => res.json())
+                  .then((data) => setNumeroIncidente(data.numeroIncidente))
+                  .catch((err) => {
+                    console.error("Error al actualizar correlativo:", err);
+                    setNumeroIncidente("INC-2026-016");
+                  });
+                // Propagate original onClose if provided
+                if (onClose) onClose();
+              }}
+              style={{
+                marginTop: 8,
+                background: "var(--red)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                padding: "10px 28px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Cerrar
           </button>
         </div>
       </div>
