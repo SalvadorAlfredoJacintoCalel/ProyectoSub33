@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Lock, Phone, User, MapPin, X, ChevronDown, Truck, Heart, Activity } from "lucide-react";
+import { AlertCircle, CheckCircle, X, Lock, Phone, User, MapPin, ChevronDown, Truck, Heart, Activity } from "lucide-react";
 
 interface Props {
   onClose: () => void;
@@ -60,7 +60,7 @@ export function RegisterServicePage({
   const [tipoSolicitud, setTipoSolicitud] = useState<"Telefónica" | "Personal">("Telefónica");
   const [tiempoSalida, setTiempoSalida] = useState("");
   const [tiempoLlegada, setTiempoLlegada] = useState("");
-  const [tiposAsistencia, setTiposAsistencia] = useState<string[]>([]);
+  const [tiposAsistencia, setTiposAsistencia] = useState<string[]>(["Accidente de Tránsito", "Atención Médica / Enfermedad Common", "Maternidad / Parto", "Incendio Estructural", "Rescate / Salvamento"]);
   const [ubicacion, setUbicacion] = useState("");
   const [hospital, setHospital] = useState("");
   const [nombrePaciente, setNombrePaciente] = useState("");
@@ -75,10 +75,13 @@ export function RegisterServicePage({
   const [saturacion, setSaturacion] = useState("");
   const [estadoEntrega, setEstadoEntrega] = useState("");
   const [unidad, setUnidad] = useState("");
-  const [personalDisponible, setPersonalDisponible] = useState<any[]>([]);
+  const [personalDisponible, setPersonalDisponible] = useState<any[]>(["Bombero 1.º Juan Pérez", "Socorrista María López", "Voluntario Carlos Gutiérrez"]);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<"warning" | "success">("warning");
+  const [modalMessage, setModalMessage] = useState<string>("");
   const [numeroIncidente, setNumeroIncidente] = useState<string>("INC-2026-001");
   const [fecha, setFecha] = useState(() => new Date().toISOString().split('T')[0]);
   const [domicilio, setDomicilio] = useState("");
@@ -97,6 +100,14 @@ export function RegisterServicePage({
         console.error("Error al obtener correlativo:", err);
       });
   }, []); 
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (modalOpen) {
+      timer = setTimeout(() => setModalOpen(false), 3000);
+    }
+    return () => clearTimeout(timer);
+  }, [modalOpen]);
 
   function toggleTipoAsistencia(tipo: string) {
     setTiposAsistencia((prev) =>
@@ -119,95 +130,40 @@ export function RegisterServicePage({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      setShowError(true);
+      setModalOpen(true);
+      setModalType("warning");
+      setModalMessage("Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
 
-    const payload = {
-      numeroIncidente: numeroIncidente,
-      fecha: fecha,
-      horaSalida: tiempoSalida || null,
-      horaEntrada: tiempoLlegada || null,
-      solicitudTipo: tipoSolicitud || "Telefónica",
-      paciente: nombrePaciente,
-      edad: edad ? parseInt(edad) : null,
-      genero: genero,
-      solicitante: solicitante || null,
-      acompanante: acompanante || null,
-      domicilio: domicilio || null,
-      fallecio: Boolean(fallecido),
-      ubicacion: ubicacion,
-      hospitalDestinoNombre: hospital || null,
-      estadoEntrega: estadoEntrega || null,
-      unidadAsignadaNombre: unidad || null,
-      creadoPorNombre: currentUser || "Bombero",
-      resumen: null,
-      tiposAsistencia: Array.isArray(tiposAsistencia) ? tiposAsistencia : [],
-      personalAsignado: personalDisponible ? personalDisponible.map((p: any) => ({
-        nombrePersonal: typeof p === 'string' ? p : (p.nombrePersonal || p.nombre || ''),
-        rolEnServicio: p.rolEnServicio || p.rol || 'Socorrista'
-      })) : [],
-      signosVitales: {
-        presionArterial: presionArterial || null,
-        frecuenciaCardiaca: frecuenciaCardiaca ? parseInt(frecuenciaCardiaca) : null,
-        frecuenciaRespiratoria: frecuenciaRespiratoria ? parseInt(frecuenciaRespiratoria) : null,
-        saturacionOxigeno: saturacion ? parseInt(saturacion) : null,
-        horaToma: horaToma || null
-      }
-    };
+    // Simulación: Mostrar modal de éxito sin hacer petición HTTP
+    setModalOpen(true);
+    setModalType("success");
+    setModalMessage("¡Servicio registrado exitosamente! El expediente ha sido guardado.");
 
-    // Conexion Backend APi
-    fetch("http://localhost:5196/api/emergencias", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-      .then((response) => {
-        if (response.ok) {
-          setSubmitted(true);
-          setShowError(false);
-          // Reset form state
-          setTipoSolicitud("Telefónica");
-          setTiempoSalida("");
-          setTiempoLlegada("");
-          setTiposAsistencia([]);
-          setUbicacion("");
-          setHospital("");
-          setNombrePaciente("");
-          setEdad("");
-          setGenero("");
-          setSolicitante("");
-          setAcompanante("");
-          setFallecido(false);
-          setPresionArterial("");
-          setFrecuenciaCardiaca("");
-          setFrecuenciaRespiratoria("");
-          setSaturacion("");
-          setEstadoEntrega("");
-          setUnidad("");
-          setPersonalSeleccionado([]);
-          setFecha(new Date().toISOString().split('T')[0]);
-          setDomicilio("");
-          setHoraToma(new Date().toTimeString().slice(0, 5));
-          // Actualizar número de incidente para el siguiente registro
-          fetch("http://localhost:5196/api/emergencias/siguiente-incidente")
-            .then((res) => res.json())
-            .then((data) => setNumeroIncidente(data.numeroIncidente))
-            .catch((err) => {
-              console.error("Error al actualizar número de incidente:", err);
-              setNumeroIncidente("INC-2026-017");
-            });
-        } else {
-          response.text().then((errText) => {
-            alert("Error Backend:\n" + errText);
-          });
-        }
-      })
-      .catch(() => {
-        alert("Error de conexión");
-      });
+    // Resetear campos de formulario visualmente
+    setTipoSolicitud("Telefónica");
+    setTiempoSalida("");
+    setTiempoLlegada("");
+    setTiposAsistencia([]);
+    setUbicacion("");
+    setHospital("");
+    setNombrePaciente("");
+    setEdad("");
+    setGenero("");
+    setSolicitante("");
+    setAcompanante("");
+    setFallecido(false);
+    setPresionArterial("");
+    setFrecuenciaCardiaca("");
+    setFrecuenciaRespiratoria("");
+    setSaturacion("");
+    setEstadoEntrega("");
+    setUnidad("");
+    setPersonalDisponible([]);
+    setFecha(new Date().toISOString().split('T')[0]);
+    setDomicilio("");
+    setHoraToma(new Date().toTimeString().slice(0, 5));
   }
 
   // ── Success state ──────────────────────────────────────────────────────────
@@ -335,6 +291,7 @@ export function RegisterServicePage({
 
   // ── Main form ──────────────────────────────────────────────────────────────
   return (
+    <>
     <div
       style={{
         display: "flex",
@@ -632,6 +589,9 @@ export function RegisterServicePage({
               style={{ ...selectBase, paddingRight: 32 }}
             >
               <option value="">Seleccionar hospital…</option>
+              <option value="Hospital Nacional de Sololá">Hospital Nacional de Sololá</option>
+              <option value="Centro de Salud San Lucas Tolimán">Centro de Salud San Lucas Tolimán</option>
+              <option value="IGSS Regional">IGSS Regional</option>
             </select>
             <ChevronDown
               style={{
@@ -862,7 +822,11 @@ export function RegisterServicePage({
                 style={{ ...selectBase, paddingRight: 32 }}
               >
                 <option value="">Seleccionar estado…</option>
-              </select>
+              <option value="Estable">Estable</option>
+              <option value="Delicado">Delicado</option>
+              <option value="Grave">Grave</option>
+              <option value="Fallecido en traslado">Fallecido en traslado</option>
+            </select>
               <ChevronDown
                 style={{
                   position: "absolute",
@@ -897,7 +861,10 @@ export function RegisterServicePage({
                 style={{ ...selectBase, paddingRight: 32 }}
               >
                 <option value="">Seleccionar unidad…</option>
-              </select>
+              <option value="Unidad A-33 (Ambulancia)">Unidad A-33 (Ambulancia)</option>
+              <option value="Unidad B-12 (Autobomba)">Unidad B-12 (Autobomba)</option>
+              <option value="Unidad R-5 (Rescate)">Unidad R-5 (Rescate)</option>
+            </select>
               <ChevronDown
                 style={{
                   position: "absolute",
@@ -1008,5 +975,75 @@ export function RegisterServicePage({
         </button>
       </div>
     </div>
+    {modalOpen && (
+      <div
+        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+      >
+        <div
+          className="bg-white rounded-lg shadow-2xl border border-gray-200 w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95"
+        >
+          <div
+            className="flex items-center justify-between px-6 py-4 border-b border-gray-200"
+          >
+            <h3
+              className="font-medium text-lg text-gray-900"
+              style={{ fontFamily: "Manrope, sans-serif" }}
+            >
+              {modalType === "warning" ? "Campos Incompletos" : "Registro Exitoso"}
+            </h3>
+            <button
+              onClick={() => setModalOpen(false)}
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: "var(--text-3)" }}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="p-6 flex flex-col items-center gap-4">
+            <div
+              className={`h-12 w-12 rounded-full flex items-center justify-center ${modalType === "warning" ? "bg-yellow-100 text-yellow-600 border border-yellow-500" : "bg-green-100 text-green-600 border border-green-500"}`}
+            >
+              {modalType === "warning" ? (
+                <svg
+                  width={24}
+                  height={24}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="12" x2="16" y2="16" />
+                </svg>
+              ) : (
+                <CheckCircle style={{ width: 24, height: 24, color: "currentColor" }} />
+              )}
+            </div>
+            <p
+              className="text-center text-gray-600"
+              style={{ fontSize: "14px", lineHeight: "1.5" }}
+            >
+              {modalMessage}
+            </p>
+          </div>
+          <div className="p-6 border-t border-gray-200">
+            <button
+              onClick={() => setModalOpen(false)}
+              className="w-full rounded-lg py-2.5 px-4 text-white font-medium transition-colors"
+              style={{
+                background: modalType === "warning" ? "var(--red)" : "#16a34a",
+                fontFamily: "inherit",
+              }}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

@@ -89,6 +89,14 @@ const estadoBadge: Record<Estado, string> = {
   Inactivo: "bg-gray-100 text-gray-600 border border-gray-200",
 };
 
+type AlertType = "warning" | "error" | "success";
+
+const alertIconConfig: Record<AlertType, { bg: string; color: string; icon: React.ElementType }> = {
+  warning: { bg: "bg-amber-100", color: "text-amber-600", icon: AlertTriangle },
+  error: { bg: "bg-red-100", color: "text-red-600", icon: X },
+  success: { bg: "bg-green-100", color: "text-green-600", icon: Check },
+};
+
 function formatDate(iso: string) {
   if (!iso) return "—";
   const [y, m, d] = iso.split("-");
@@ -187,6 +195,16 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
+function AlertIcon({ type }: { type: AlertType }) {
+  const cfg = alertIconConfig[type];
+  const IconEl = cfg.icon;
+  return (
+    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${cfg.bg}`}>
+      <IconEl className={`h-6 w-6 ${cfg.color}`} />
+    </div>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────────
 export function PersonalPage() {
   const [members, setMembers] = useState<Miembro[]>(sampleData);
@@ -206,6 +224,7 @@ export function PersonalPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [alert, setAlert] = useState<{ open: boolean; type: AlertType; title: string; message: string }>({ open: false, type: "warning", title: "", message: "" });
 
   // ── Derived ───────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -230,6 +249,10 @@ export function PersonalPage() {
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
+  }
+
+  function showAlert(type: AlertType, title: string, message: string) {
+    setAlert({ open: true, type, title, message });
   }
 
   function openAddModal() {
@@ -273,56 +296,83 @@ export function PersonalPage() {
 
   function handleSubmit() {
     const errs = validateForm(form, credOpen, editingId !== null);
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors(errs);
 
-    const esEstadoActivo = true;
-    const fechaIngreso = new Date().toISOString().split('T')[0];
-    const tieneAcceso = Boolean(form.usuario && form.contrasena);
+    // ── Scenario 1: Missing required key fields ──
+    // Key fields: Nombre, Apellido, DPI, Teléfono, Contacto Emergencia, Tel Emergencia
+    // Credentials (if section open) also count as required
+    const isMissingKeyFields =
+      !form.primerNombre.trim() ||
+      !form.primerApellido.trim() ||
+      !form.dpi.trim() ||
+      !form.telefono.trim() ||
+      !form.contactoEmergencia.trim() ||
+      !form.telEmergencia.trim() ||
+      (credOpen && (!form.usuario.trim() || !form.rolSistema));
 
-    const payload = {
-      primerNombre: form.primerNombre,
-      segundoNombre: form.segundoNombre || null,
-      primerApellido: form.primerApellido,
-      segundoApellido: form.segundoApellido || null,
-      dpi: form.dpi,
-      fechaNacimiento: form.fechaNacimiento ? new Date(form.fechaNacimiento).toISOString().split('T')[0] : null,
-      rango: form.rango,
-      fechaIngreso: new Date().toISOString().split('T')[0],
-      telefono: form.telefono,
-      estado: true,
-      contactoEmergenciaNombre: form.contactoEmergencia,
-      contactoEmergenciaTelefono: form.telEmergencia,
-      accesoSistema: tieneAcceso ? {
-        username: form.usuario,
-        password: form.contrasena,
-        rolId: form.rolSistema || "Administrador"
-      } : null
-    };
+    if (isMissingKeyFields) {
+      showAlert(
+        "warning",
+        "Campos Incompletos",
+        "Por favor, complete todos los campos obligatorios (*) del personal antes de continuar."
+      );
+      return;
+    }
 
-    console.log("Enviando a API...", payload);
+    // ── Scenario 2: DPI validation error or duplicate ──
+    const dpiDigits = form.dpi.replace(/\D/g, "");
+    const isDuplicate = members.some(
+      (m) => m.dpi.replace(/\D/g, "") === dpiDigits
+    );
+    if (dpiDigits.length !== 13 || isDuplicate) {
+      showAlert(
+        "error",
+        "Error de Validación",
+        "El DPI ingresado no es válido o ya se encuentra registrado en el sistema."
+      );
+      return;
+    }
 
-    fetch("http://localhost:5196/api/personal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-      .then((response) => {
-        if (response.ok) {
-          alert("¡Miembro registrado exitosamente!");
-          closeModal();
-          setForm(emptyFormState());
-          setErrors({});
-        } else {
-          response.text().then((errText) => {
-            alert("Error Backend:\n" + errText);
-          });
-        }
-      })
-      .catch(() => {
-        showToast("Error de conexión");
-      });
+    // ── Remaining credential validation errors (e.g. password) ──
+    if (Object.keys(errs).length > 0) {
+      showAlert(
+        "warning",
+        "Campos Incompletos",
+        "Por favor, complete todos los campos obligatorios (*) del personal antes de continuar."
+      );
+      return;
+    }
+
+    // ── Scenario 3: All valid → Success ──
+    showAlert(
+      "success",
+      "Registro Exitoso",
+      "El nuevo miembro del personal ha sido guardado correctamente en el expediente."
+    );
+  }
+
+  function handleAlertAccept() {
+    if (alert.type === "success") {
+      const fechaIngreso = new Date().toISOString().split("T")[0];
+      if (editingId !== null) {
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.id === editingId
+              ? { ...formToMiembro(form), id: editingId, fechaIngreso }
+              : m
+          )
+        );
+      } else {
+        const codigo = form.codigo.trim() || `PER-${Date.now().toString().slice(-6)}`;
+        setMembers((prev) => [
+          { id: Date.now().toString(), ...formToMiembro(form), codigo, fechaIngreso },
+          ...prev,
+        ]);
+      }
+      setForm(emptyFormState());
+      closeModal();
+    }
+    setAlert((prev) => ({ ...prev, open: false }));
   }
 
   function handleDelete() {
@@ -1069,6 +1119,44 @@ export function PersonalPage() {
                 style={{ border: "1px solid var(--border)", color: "var(--text-2)", background: "var(--bg-input)" }}
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Alert Dialog (System Message) ───────────────────────────────────── */}
+      {alert.open && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-2xl border border-gray-200 w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95">
+            {/* Header — Window Caption */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Aviso del Sistema</h2>
+              <button
+                onClick={() => setAlert((prev) => ({ ...prev, open: false }))}
+                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            {/* Body — Icon + Title + Message */}
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <AlertIcon type={alert.type} />
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{alert.title}</h3>
+                  <p className="text-sm text-gray-600">{alert.message}</p>
+                </div>
+              </div>
+            </div>
+            {/* Footer — Accept button */}
+            <div className="flex justify-end px-4 py-3 border-t border-gray-200">
+              <button
+                onClick={handleAlertAccept}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+                style={{ background: RED }}
+              >
+                Aceptar
               </button>
             </div>
           </div>

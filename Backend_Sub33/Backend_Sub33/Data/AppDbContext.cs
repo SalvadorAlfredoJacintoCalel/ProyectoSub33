@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Backend_Sub33.Models;
+using Backend_Sub33.Models.Entities;
 
 namespace Backend_Sub33.Data;
 
@@ -11,6 +12,11 @@ public class AppDbContext : DbContext
     public DbSet<Usuario> Usuarios { get; set; }
     public DbSet<Personal> Personal { get; set; }
     public DbSet<UsuarioRol> UsuarioRoles { get; set; }
+
+    public DbSet<ConfiguracionListaMaestra> ConfiguracionListasMaestras { get; set; }
+    public DbSet<CatRango> CatRangos { get; set; }
+    public DbSet<CatTipoEmergencia> CatTiposEmergencia { get; set; }
+    public DbSet<CatHospital> CatHospitales { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
