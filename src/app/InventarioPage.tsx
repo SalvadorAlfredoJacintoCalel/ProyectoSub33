@@ -13,6 +13,7 @@ import {
   Package,
   ExternalLink,
 } from "lucide-react";
+import { AlertDialog } from "./components/AlertDialog";
 
 // ─── Shared Visual Tokens ─────────────────────────────────────────────────────
 
@@ -318,7 +319,6 @@ function InsumoModal({
 }) {
   const [form, setForm] = useState<InsumoFormState>(initial);
   const [errors, setErrors] = useState<Partial<Record<keyof InsumoFormState, string>>>({});
-  const [globalError, setGlobalError] = useState(false);
   const [apliVencimiento, setApliVencimiento] = useState(
     () => initial.vencimiento !== "" && initial.vencimiento !== "N/A"
   );
@@ -328,7 +328,6 @@ function InsumoModal({
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setForm((p) => ({ ...p, [k]: e.target.value }));
       setErrors((p) => ({ ...p, [k]: undefined }));
-      setGlobalError(false);
     };
 
   const required: (keyof InsumoFormState)[] = [
@@ -350,7 +349,6 @@ function InsumoModal({
     }
     if (bad) {
       setErrors(errs);
-      setGlobalError(true);
       return;
     }
     onSave(form);
@@ -443,12 +441,6 @@ function InsumoModal({
             </div>
           ) : (
             <div className="space-y-4 px-6 py-5" style={{ fontFamily: "Inter, sans-serif" }}>
-              {globalError && (
-                <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  <AlertTriangle size={16} />
-                  Completa todos los campos obligatorios
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -713,6 +705,12 @@ function InsumosTab({
     item?: InsumoItem;
   }>(null);
   const [deleteTarget, setDeleteTarget] = useState<InsumoItem | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    type: "success" | "warning" | "error";
+    title: string;
+    message: string;
+  }>({ isOpen: false, type: "warning", title: "", message: "" });
 
   const filtered = useMemo(() => {
     return items.filter((it) => {
@@ -740,6 +738,20 @@ function InsumosTab({
   };
 
   const handleSave = (form: InsumoFormState) => {
+    // Validar campos obligatorios
+    const requiredFields = ["codigo", "categoria", "descripcion", "cantidad", "unidad", "origen"] as const;
+    const missingFields = requiredFields.filter((field) => !form[field] || String(form[field]).trim() === "");
+
+    if (missingFields.length > 0) {
+      setAlertModal({
+        isOpen: true,
+        type: "warning",
+        title: "Campos Incompletos",
+        message: "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.",
+      });
+      return;
+    }
+
     if (modal?.mode === "add") {
       const next: InsumoItem = {
         id: Date.now(),
@@ -754,6 +766,12 @@ function InsumosTab({
       };
       setItems((p) => [...p, next]);
       showToast("Insumo registrado exitosamente");
+      setAlertModal({
+        isOpen: true,
+        type: "success",
+        title: "Registro Exitoso",
+        message: "El nuevo ítem ha sido registrado correctamente en el inventario.",
+      });
     } else if (modal?.mode === "edit" && modal.item) {
       setItems((p) =>
         p.map((it) =>
@@ -773,6 +791,12 @@ function InsumosTab({
         )
       );
       showToast("Registro actualizado exitosamente");
+      setAlertModal({
+        isOpen: true,
+        type: "success",
+        title: "Registro Exitoso",
+        message: "El nuevo ítem ha sido registrado correctamente en el inventario.",
+      });
     }
     setModal(null);
   };
@@ -942,6 +966,14 @@ function InsumosTab({
           onConfirm={handleDelete}
         />
       )}
+
+      <AlertDialog
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }
