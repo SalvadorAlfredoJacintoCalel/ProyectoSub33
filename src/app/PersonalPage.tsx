@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Pencil,
   Trash2,
@@ -18,6 +18,8 @@ import {
   KeyRound,
   EyeOff,
 } from "lucide-react";
+import { getRangos as getRangosConfig } from "../services/configuracionService";
+import { registrarPersonal, type CrearPersonalDto } from "../services/personalService";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Rango =
@@ -225,6 +227,8 @@ export function PersonalPage() {
   const [viewId, setViewId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [alert, setAlert] = useState<{ open: boolean; type: AlertType; title: string; message: string }>({ open: false, type: "warning", title: "", message: "" });
+  const [rangos, setRangos] = useState<string[]>([]);
+  const [isLoadingRangos, setIsLoadingRangos] = useState(true);
 
   // ── Derived ───────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -244,6 +248,22 @@ export function PersonalPage() {
   const totalEfectivos = members.length;
   const activos = members.filter((m) => m.estado === "Activo").length;
   const inactivos = members.filter((m) => m.estado === "Inactivo").length;
+
+  // Load rangos from backend on mount
+  useEffect(() => {
+    const loadRangos = async () => {
+      try {
+        setIsLoadingRangos(true);
+        const data = await getRangosConfig();
+        setRangos(data);
+      } catch (error) {
+        console.error("Error loading rangos:", error);
+      } finally {
+        setIsLoadingRangos(false);
+      }
+    };
+    loadRangos();
+  }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   function showToast(msg: string) {
@@ -343,12 +363,50 @@ export function PersonalPage() {
       return;
     }
 
-    // ── Scenario 3: All valid → Success ──
-    showAlert(
-      "success",
-      "Registro Exitoso",
-      "El nuevo miembro del personal ha sido guardado correctamente en el expediente."
-    );
+    // ── Build payload for API ──
+    const payload: CrearPersonalDto = {
+      primerNombre: form.primerNombre,
+      segundoNombre: form.segundoNombre,
+      primerApellido: form.primerApellido,
+      segundoApellido: form.segundoApellido,
+      dpi: form.dpi,
+      fechaNacimiento: form.fechaNacimiento,
+      codigo: form.codigo,
+      rango: form.rango,
+      fechaIngreso: form.fechaIngreso,
+      telefono: form.telefono,
+      estado: form.estado,
+      contactoEmergencia: form.contactoEmergencia,
+      telEmergencia: form.telEmergencia,
+    };
+
+    if (credOpen) {
+      payload.accesoSistema = {
+        usuario: form.usuario,
+        correo: form.correo,
+        contrasena: form.contrasena,
+        confirmarContrasena: form.confirmarContrasena,
+        rolSistema: form.rolSistema,
+      };
+    }
+
+    // ── Call API to register personal ──
+    registrarPersonal(payload)
+      .then(() => {
+        showAlert(
+          "success",
+          "Registro Exitoso",
+          "El nuevo miembro del personal ha sido guardado correctamente en el expediente."
+        );
+      })
+      .catch((error) => {
+        console.error("Error registrando personal:", error);
+        showAlert(
+          "error",
+          "Error al Registrar",
+          "No se pudo registrar el miembro. Verifique la conexión e intente nuevamente."
+        );
+      });
   }
 
   function handleAlertAccept() {
@@ -481,7 +539,7 @@ export function PersonalPage() {
             className="w-auto"
           >
             <option value="">Todos los Rangos</option>
-            {RANGOS.map((r) => <option key={r} value={r}>{r}</option>)}
+            {rangos.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
           <select
             value={filterEstado}
@@ -757,6 +815,11 @@ export function PersonalPage() {
                     style={inputStyle(false)}
                   >
                     <option value="">Seleccionar rango...</option>
+                    {(isLoadingRangos ? [] : rangos).map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

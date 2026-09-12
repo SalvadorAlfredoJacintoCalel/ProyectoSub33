@@ -424,30 +424,11 @@ export function LoginPage({ onLogin }: Props) {
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    fetch("http://localhost:5196/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ username, password }),
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        }
-        throw new Error("Credenciales incorrectas");
-      })
-      .then((data) => {
-        // Guardar sesión en localStorage
-        localStorage.setItem("user", JSON.stringify(data));
-        // Invocar función global de inicio de sesión para entrar al sistema
-        if (onLogin) onLogin();
-      })
-      .catch((error) => {
-        // Mostrar error estilizado y regresar al paso de login
-        setLoginError("Problemas al iniciar sesión: Usuario o contraseña incorrectos");
-        setStep("login");
-      });
+    // Bypass authentication for development
+    const fakeUser = { username: username || "Administrador", role: "admin", name: "Administrador" };
+    localStorage.setItem("user", JSON.stringify(fakeUser));
+    setLoginError("");
+    if (onLogin) onLogin();
   }
 
   return (

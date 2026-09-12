@@ -9,6 +9,13 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import {
+  getListas,
+  createLista,
+  deleteLista,
+  type ListasResponse,
+} from "../services/configuracionService";
+import { AlertDialog } from "./components/AlertDialog";
 
 const RED = "#D32F2F";
 
@@ -212,55 +219,134 @@ const INIT_USERS: PermisosUsuario[] = [];
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function SeguridadPage({ userRole }: { userRole: UserRole }) {
-  const [listasMaestras, setListasMaestras] = useState<{ [key: string]: string[] }>({});
+  const [listasMaestras, setListasMaestras] = useState<ListasResponse[]>([]);
   const [nuevoNombreLista, setNuevoNombreLista] = useState("");
   const [nuevaOpción, setNuevaOpcion] = useState<{ [key: string]: string }>({});
-  const [toast, setToast] = useState<string | null>(null);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState<"warning" | "success">("warning");
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreateListaModalOpen, setIsCreateListaModalOpen] = useState(false);
+  const [nuevaCategoria, setNuevaCategoria] = useState("");
+  const [nuevaOpcionModal, setNuevaOpcionModal] = useState("");
   const [usuarios, setUsuarios] = useState<PermisosUsuario[]>(INIT_USERS);
   const [selectedUser, setSelectedUser] = useState<PermisosUsuario | null>(null);
 
   if (userRole !== "admin") return <AccessDenied />;
 
+  useEffect(() => {
+    const loadListas = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getListas();
+        setListasMaestras(data);
+      } catch (error) {
+        console.error("Error loading listas:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadListas();
+  }, []);
+
   function handleAddLista() {
-    setListasMaestras((prev) => ({
-      ...prev,
-      [nuevoNombreLista.trim()]: [],
-    }));
-    setNuevoNombreLista("");
-    setToast(`Lista "${nuevoNombreLista}" creada`);
+    const nombre = nuevoNombreLista.trim();
+    if (!nombre) {
+      setAlertType("warning");
+      setAlertTitle("Campos Incompletos");
+      setAlertMessage("Campos incompletos: Por favor ingrese un nombre válido antes de continuar.");
+      setShowAlert(true);
+      return;
+    }
+    createLista(nombre, "")
+      .then((newItem) => {
+        setListasMaestras((prev) => [...prev, newItem]);
+        setNuevoNombreLista("");
+        setAlertType("success");
+        setAlertTitle("Registro Exitoso");
+        setAlertMessage("Lista creada exitosamente");
+        setShowAlert(true);
+      })
+      .catch((error) => {
+        console.error("Error creating lista:", error);
+        setAlertType("warning");
+        setAlertTitle("Error");
+        setAlertMessage("No se pudo crear la lista. Intente nuevamente.");
+        setShowAlert(true);
+      });
   }
 
   function handleRemoveLista(key: string) {
-    setListasMaestras((prev) => {
-      const { [key]: _, ...rest } = prev;
-      return rest;
-    });
-    setToast(`Lista "${key}" eliminada`);
+    const itemToDelete = listasMaestras.find((item) => item.categoria === key);
+    if (!itemToDelete) return;
+    deleteLista(itemToDelete.id)
+      .then(() => {
+        setListasMaestras((prev) => prev.filter((item) => item.categoria !== key));
+        setAlertType("success");
+        setAlertTitle("Registro Exitoso");
+        setAlertMessage(`Lista "${key}" eliminada`);
+        setShowAlert(true);
+      })
+      .catch((error) => {
+        console.error("Error deleting lista:", error);
+        setAlertType("warning");
+        setAlertTitle("Error");
+        setAlertMessage("No se pudo eliminar la lista. Intente nuevamente.");
+        setShowAlert(true);
+      });
   }
 
   function handleAddOpcion(key: string) {
     const option = nuevaOpción[key]?.trim();
-    if (!option) return;
-    setListasMaestras((prev) => ({
-      ...prev,
-      [key]: [...prev[key], option],
-    }));
-    setNuevaOpcion((prev) => ({ ...prev, [key]: "" }));
-    setToast(`Opción "${option}" agregada a "${key}"`);
+    if (!option) {
+      setAlertType("warning");
+      setAlertTitle("Campos Incompletos");
+      setAlertMessage("Campos incompletos: Por favor ingrese un nombre válido antes de continuar.");
+      setShowAlert(true);
+      return;
+    }
+    createLista(key, option)
+      .then((newItem) => {
+        setListasMaestras((prev) => [...prev, newItem]);
+        setNuevaOpcion((prev) => ({ ...prev, [key]: "" }));
+        setAlertType("success");
+        setAlertTitle("Registro Exitoso");
+        setAlertMessage(`Opción "${option}" agregada a "${key}"`);
+        setShowAlert(true);
+      })
+      .catch((error) => {
+        console.error("Error adding opcion:", error);
+        setAlertType("warning");
+        setAlertTitle("Error");
+        setAlertMessage("No se pudo agregar la opción. Intente nuevamente.");
+        setShowAlert(true);
+      });
   }
 
   function handleRemoveOpcion(key: string, index: number) {
-    setListasMaestras((prev) => {
-      const updated = [...prev[key]];
-      updated.splice(index, 1);
-      return { ...prev, [key]: updated };
-    });
-    setToast(`Opción removida de "${key}"`);
+    const itemsInCategory = listasMaestras.filter((item) => item.categoria === key);
+    if (index >= itemsInCategory.length) return;
+    const itemToDelete = itemsInCategory[index];
+    deleteLista(itemToDelete.id)
+      .then(() => {
+        setListasMaestras((prev) => prev.filter((item) => item.id !== itemToDelete.id));
+        setAlertType("success");
+        setAlertTitle("Registro Exitoso");
+        setAlertMessage(`Opción removida de "${key}"`);
+        setShowAlert(true);
+      })
+      .catch((error) => {
+        console.error("Error removing opcion:", error);
+        setAlertType("warning");
+        setAlertTitle("Error");
+        setAlertMessage("No se pudo eliminar la opción. Intente nuevamente.");
+        setShowAlert(true);
+      });
   }
 
   return (
     <div style={{ background: "var(--bg-page)", minHeight: "100vh", fontFamily: "Inter, sans-serif" }}>
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
       {/* Header */}
       <div style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)", padding: "20px 28px", display: "flex", alignItems: "center", gap: 14 }}>
@@ -286,46 +372,50 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
           {/* ── Crear Nueva Lista ────────────────────────────────────────────── */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <input
-                placeholder="Nombre de la nueva lista (ej: Tipos de Emergencia)..."
-                value={nuevoNombreLista}
-                onChange={(e) => setNuevoNombreLista(e.target.value)}
-                style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 8, padding: "7px 12px", fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--text-1)", outline: "none", background: "var(--bg-input)" }}
-              />
+            <div className="flex justify-start mb-6">
               <button
-                onClick={handleAddLista}
-                style={{ background: RED, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600 }}
+                type="button"
+                onClick={() => setIsCreateListaModalOpen(true)}
+                className="bg-[#D32F2F] hover:bg-[#b71c1c] text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-sm transition-colors"
               >
-                <Plus size={14} /> Crear Lista
+                <span className="text-xl leading-none">+</span> Crear Lista / Opción
               </button>
             </div>
           </div>
 
-          {Object.keys(listasMaestras).length === 0
+          {isLoading
+            ? <p style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--text-3)", marginBottom: 18, lineHeight: 1.6, textAlign: "center" }}>
+                Cargando listas...
+              </p>
+            : listasMaestras.length === 0
             ? <p style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--text-3)", marginBottom: 18, lineHeight: 1.6 }}>
                 No hay listas maestras creadas. Registre una nueva categoría para comenzar.
               </p>
             : null
           }
 
-          {Object.keys(listasMaestras).length > 0 && (
-            <div style={{ maxWidth: 700 }}>
-              {Object.entries(listasMaestras).map(([key, opciones]) => {
-                const count = opciones.length;
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      background: "var(--bg-card)",
-                      borderRadius: 16,
-                      border: "1px solid var(--border)",
-                      boxShadow: "var(--shadow)",
-                      overflow: "hidden",
-                      marginBottom: 12,
-                      marginTop: 12,
-                    }}
-                  >
+          {listasMaestras.length > 0 && (() => {
+                const grouped = listasMaestras.reduce((acc, item) => {
+                  if (!acc[item.categoria]) acc[item.categoria] = [];
+                  acc[item.categoria].push(item);
+                  return acc;
+                }, {} as Record<string, ListasResponse[]>);
+                return Object.entries(grouped).map(([key, opciones]) => {
+                  const count = opciones.length;
+                  return (
+                    <div
+                      key={key}
+                      style={{
+                        maxWidth: 700,
+                        background: "var(--bg-card)",
+                        borderRadius: 16,
+                        border: "1px solid var(--border)",
+                        boxShadow: "var(--shadow)",
+                        overflow: "hidden",
+                        marginBottom: 12,
+                        marginTop: 12,
+                      }}
+                    >
                     <button
                       onClick={() => handleRemoveLista(key)}
                       style={{
@@ -379,9 +469,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                           </p>
                         : null
                       }
-                      {opciones.map((opcion, idx) => (
+                      {opciones.map((item) => (
                         <div
-                          key={idx}
+                          key={item.id}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -395,9 +485,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                             color: "var(--text-1)",
                           }}
                         >
-                          {opcion}
+                          {item.opcion}
                           <button
-                            onClick={() => handleRemoveOpcion(key, idx)}
+                            onClick={() => handleRemoveOpcion(key, item.id)}
                             style={{
                               background: "none",
                               border: "none",
@@ -455,9 +545,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                     </div>
                   </div>
                 );
-              })}
-            </div>
-          )}
+                })()}
+            )}
 
           {/* ── Gestión de Usuarios ──────────────────────────────────────── */}
           <div style={{ borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden", boxShadow: "var(--shadow)", marginTop: 12 }}>
@@ -600,7 +689,106 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             </div>
           </div>
         </div>
+        )}
+
+      {isCreateListaModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100">
+            {/* Header con acento rojo */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-6 bg-[#D32F2F] rounded-full"></div>
+                <h2 className="text-xl font-bold text-gray-800">Registrar Lista / Opción Maestra</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateListaModalOpen(false);
+                  setNuevaCategoria("");
+                  setNuevaOpcionModal("");
+                }}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-light leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  CATEGORÍA DE LA LISTA
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Rangos, Hospitales, Tipos de Emergencia"
+                  value={nuevaCategoria}
+                  onChange={(e) => setNuevaCategoria(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/20 focus:border-[#D32F2F] text-gray-800 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  NOMBRE DE LA OPCIÓN
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Oficial I, Hospital Roosevelt, Incendio Estructural"
+                  value={nuevaOpcionModal}
+                  onChange={(e) => setNuevaOpcionModal(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/20 focus:border-[#D32F2F] text-gray-800 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Botones */}
+            <div className="flex justify-end gap-3 p-6 bg-gray-50/50 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateListaModalOpen(false);
+                  setNuevaCategoria("");
+                  setNuevaOpcionModal("");
+                }}
+                className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!nuevaCategoria.trim() || !nuevaOpcionModal.trim()) {
+                    alert("Por favor complete ambos campos.");
+                    return;
+                  }
+                  try {
+                    await createLista(nuevaCategoria, nuevaOpcionModal);
+                    setIsCreateListaModalOpen(false);
+                    setNuevaCategoria("");
+                    setNuevaOpcionModal("");
+                    const data = await getListas();
+                    setListasMaestras(data);
+                  } catch (err) {
+                    console.error("Error al guardar opción:", err);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl bg-[#D32F2F] hover:bg-[#b71c1c] text-white font-medium text-sm transition-colors shadow-sm"
+              >
+                Guardar Registro
+              </button>
+            </div>
+          </div>
+        </div>
       )}
+
+      <AlertDialog
+        isOpen={showAlert}
+        onClose={() => setShowAlert(false)}
+        title={alertTitle}
+        message={alertMessage}
+        type={alertType}
+      />
     </div>
   );
 }
