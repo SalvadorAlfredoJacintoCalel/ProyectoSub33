@@ -4,6 +4,7 @@ import {
   AlertTriangle, ChevronLeft, ChevronRight, Fuel, Truck,
   Wrench, Info, Power,
 } from "lucide-react";
+import { AlertDialog } from "./components/AlertDialog";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const RED = "#D32F2F";
@@ -295,6 +296,12 @@ export function VehiculosPage() {
 
   // ── Toast ─────────────────────────────────────────────────────────────────
   const [toast, setToast]                       = useState<string | null>(null);
+  const [alertModal, setAlertModal]             = useState<{
+    isOpen: boolean;
+    type: "success" | "warning";
+    title: string;
+    message: string;
+  }>({ isOpen: false, type: "warning", title: "", message: "" });
 
   // ── Computed fuel fields ──────────────────────────────────────────────────
   const totalCupones = useMemo(() => {
@@ -352,7 +359,16 @@ export function VehiculosPage() {
       required.push("donante", "fechaDonacion", "noRecibo");
     }
     const errs = required.filter((k) => !vehicleForm[k]?.toString().trim());
-    if (errs.length) { setVehicleErrors(errs); return; }
+    if (errs.length) {
+      setVehicleErrors(errs);
+      setAlertModal({
+        isOpen: true,
+        type: "warning",
+        title: "Campos Incompletos",
+        message: "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.",
+      });
+      return;
+    }
     setVehicleErrors([]);
     const newVehicle: Vehicle = {
       code:   vehicleForm.code,
@@ -367,7 +383,12 @@ export function VehiculosPage() {
     };
     setVehicles((prev) => [...prev, newVehicle]);
     setShowVehicleModal(false);
-    setToast("Vehículo registrado exitosamente");
+    setAlertModal({
+      isOpen: true,
+      type: "success",
+      title: "Registro Exitoso",
+      message: "El vehículo ha sido registrado correctamente en el sistema.",
+    });
   }
 
   // ── Open maintenance modal ────────────────────────────────────────────────
@@ -427,7 +448,16 @@ export function VehiculosPage() {
 
   function handleFuelSave() {
     const errs = FUEL_REQUIRED.filter((k) => !fuelForm[k]?.toString().trim());
-    if (errs.length) { setFuelErrors(errs); return; }
+    if (errs.length) {
+      setFuelErrors(errs);
+      setAlertModal({
+        isOpen: true,
+        type: "warning",
+        title: "Campos Incompletos",
+        message: "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.",
+      });
+      return;
+    }
     setFuelErrors([]);
     const entry: FuelEntry = {
       id:             editId ?? Date.now(),
@@ -451,7 +481,12 @@ export function VehiculosPage() {
       setEntries((prev) => [entry, ...prev]);
     }
     closeFuelModal();
-    setToast("Registro guardado exitosamente");
+    setAlertModal({
+      isOpen: true,
+      type: "success",
+      title: "Registro Exitoso",
+      message: "El cupón ha sido registrado correctamente.",
+    });
   }
 
   function handleDelete(id: number) {
@@ -809,12 +844,6 @@ export function VehiculosPage() {
 
           {vehicleStep === 2 && (
             <>
-              {vehicleErrors.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
-                  <AlertTriangle size={15} color="#dc2626" />
-                  <span style={{ fontSize: 13, color: "#dc2626", fontWeight: 600 }}>Por favor complete todos los campos obligatorios.</span>
-                </div>
-              )}
               {vehicleOrigin === "donacion" && (
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
                   <Info size={16} color="#1565c0" style={{ flexShrink: 0, marginTop: 1 }} />
@@ -1038,13 +1067,6 @@ export function VehiculosPage() {
             </h3>
             <button onClick={closeFuelModal} style={closeBtn}><X size={16} /></button>
           </div>
-
-          {fuelErrors.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
-              <AlertTriangle size={15} color="#dc2626" />
-              <span style={{ fontSize: 13, color: "#dc2626", fontWeight: 600 }}>Por favor complete todos los campos obligatorios.</span>
-            </div>
-          )}
 
           {!editId && (
             <div style={{ marginBottom: 16 }}>
@@ -1392,6 +1414,13 @@ export function VehiculosPage() {
           </div>
         </div>
       )}
+      <AlertDialog
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }

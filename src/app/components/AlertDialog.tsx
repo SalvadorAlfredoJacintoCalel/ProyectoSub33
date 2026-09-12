@@ -76,7 +76,7 @@ export function AlertDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[999] flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
       <div
         className="bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 w-full max-w-sm text-center flex flex-col items-center gap-4"
       >
