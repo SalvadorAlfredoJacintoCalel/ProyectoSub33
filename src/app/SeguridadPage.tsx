@@ -12,6 +12,7 @@ import {
 import {
   getListas,
   createLista,
+  updateLista,
   deleteLista,
   type ListasResponse,
 } from "../services/configuracionService";
@@ -30,21 +31,23 @@ type SistemaSection = {
 const INITIAL_SECTIONS: SistemaSection[] = [];
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
-function Toast({ message, onClose }: { message: string; onClose: () => void }) {
+function Toast({ message, onClose, type = "success" }: { message: string; onClose: () => void; type?: "success" | "error" }) {
   useEffect(() => {
     const t = setTimeout(onClose, 3000);
     return () => clearTimeout(t);
   }, [onClose]);
 
+  const isSuccess = type === "success";
+
   return (
     <div style={{
       position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
-      background: "#16A34A", color: "#fff", padding: "12px 24px", borderRadius: 10,
+      background: isSuccess ? "#16A34A" : "#DC2626", color: "#fff", padding: "12px 24px", borderRadius: 10,
       display: "flex", alignItems: "center", gap: 10, fontFamily: "Inter, sans-serif",
       fontSize: 14, fontWeight: 500, boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
       zIndex: 9999, whiteSpace: "nowrap",
     }}>
-      <Check size={16} />
+      {isSuccess ? <Check size={16} /> : <AlertTriangle size={16} />}
       {message}
     </div>
   );
@@ -232,6 +235,13 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [nuevaOpcionModal, setNuevaOpcionModal] = useState("");
   const [usuarios, setUsuarios] = useState<PermisosUsuario[]>(INIT_USERS);
   const [selectedUser, setSelectedUser] = useState<PermisosUsuario | null>(null);
+  
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  
+  // Edit mode state
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingItem, setEditingItem] = useState<ListasResponse | null>(null);
 
   if (userRole !== "admin") return <AccessDenied />;
 
@@ -249,6 +259,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     };
     loadListas();
   }, []);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   function handleAddLista() {
     const nombre = nuevoNombreLista.trim();
@@ -345,6 +360,146 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       });
   }
 
+  // ─── Tabla Listas Maestras Registradas ──────────────────────────────────
+  function handleEditItem(item: ListasResponse) {
+    setEditingItem(item);
+    setNuevaCategoria(item.categoria);
+    setNuevaOpcionModal(item.opcion);
+    setIsEditMode(true);
+    setIsCreateListaModalOpen(true);
+  }
+
+  function handleDeleteItem(item: ListasResponse) {
+    deleteLista(item.id)
+      .then(() => {
+        setListasMaestras((prev) => prev.filter((i) => i.id !== item.id));
+        showToast("Opción eliminada", "success");
+      })
+      .catch((error) => {
+        console.error("Error deleting item:", error);
+        showToast("No se pudo eliminar la opción", "error");
+      });
+  }
+
+  function handleSaveModal() {
+    if (!nuevaCategoria.trim() || !nuevaOpcionModal.trim()) {
+      showToast("Por favor complete ambos campos", "error");
+      return;
+    }
+
+    if (isEditMode && editingItem) {
+      updateLista(editingItem.id, nuevaCategoria, nuevaOpcionModal)
+        .then((updatedItem) => {
+          setListasMaestras((prev) =>
+            prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
+          );
+          showToast("Registro actualizado", "success");
+          closeModal();
+        })
+        .catch((error) => {
+          console.error("Error updating lista:", error);
+          showToast("No se pudo actualizar el registro", "error");
+        });
+    } else {
+      createLista(nuevaCategoria, nuevaOpcionModal)
+        .then((newItem) => {
+          setListasMaestras((prev) => [...prev, newItem]);
+          showToast("Registro guardado correctamente", "success");
+          closeModal();
+        })
+        .catch((error) => {
+          console.error("Error creating lista:", error);
+          showToast("No se pudo guardar el registro", "error");
+        });
+    }
+  }
+
+  function closeModal() {
+    setIsCreateListaModalOpen(false);
+    setNuevaCategoria("");
+    setNuevaOpcionModal("");
+    setIsEditMode(false);
+    setEditingItem(null);
+  }
+
+  const renderListasMaestrasTable = () => {
+    if (isLoading) {
+      return (
+        <div style={{ textAlign: "center", padding: "40px", color: "var(--text-3)" }}>
+          Cargando listas...
+        </div>
+      );
+    }
+
+    if (listasMaestras.length === 0) {
+      return (
+        <div style={{ textAlign: "center", padding: "40px", color: "var(--text-3)" }}>
+          No hay listas maestras registradas. Cree una nueva para comenzar.
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden", boxShadow: "var(--shadow)" }}>
+        <div style={{ padding: "16px 20px", background: "var(--bg-input)", borderBottom: "1px solid var(--divider)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text-1)", fontFamily: "Manrope, sans-serif" }}>
+              Listas Maestras Registradas
+            </h3>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-3)", fontFamily: "Inter, sans-serif" }}>
+              {listasMaestras.length} registros totales
+            </p>
+          </div>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "var(--bg-page)", borderBottom: "1px solid var(--divider)" }}>
+                {["ID", "Categoría", "Opción", "Acciones"].map((h) => (
+                  <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)", fontFamily: "Inter, sans-serif" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {listasMaestras.map((item, i) => (
+                <tr
+                  key={item.id}
+                  style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-page)", borderBottom: "1px solid var(--divider)" }}
+                >
+                  <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
+                    {item.id}
+                  </td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
+                    {item.categoria}
+                  </td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
+                    {item.opcion}
+                  </td>
+                  <td style={{ padding: "12px 16px", display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => handleEditItem(item)}
+                      style={{ fontSize: 12, fontWeight: 600, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 7, padding: "5px 12px", cursor: "pointer", fontFamily: "Inter, sans-serif" }}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => handleDeleteItem(item)}
+                      style={{ fontSize: 12, fontWeight: 600, color: "var(--red)", background: "var(--red-bg)", border: "1px solid var(--red)", borderRadius: 7, padding: "5px 12px", cursor: "pointer", fontFamily: "Inter, sans-serif" }}
+                    >
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ background: "var(--bg-page)", minHeight: "100vh", fontFamily: "Inter, sans-serif" }}>
 
@@ -375,7 +530,13 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             <div className="flex justify-start mb-6">
               <button
                 type="button"
-                onClick={() => setIsCreateListaModalOpen(true)}
+                onClick={() => {
+                  setIsEditMode(false);
+                  setEditingItem(null);
+                  setNuevaCategoria("");
+                  setNuevaOpcionModal("");
+                  setIsCreateListaModalOpen(true);
+                }}
                 className="bg-[#D32F2F] hover:bg-[#b71c1c] text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-sm transition-colors"
               >
                 <span className="text-xl leading-none">+</span> Crear Lista / Opción
@@ -383,170 +544,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             </div>
           </div>
 
-          {isLoading
-            ? <p style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--text-3)", marginBottom: 18, lineHeight: 1.6, textAlign: "center" }}>
-                Cargando listas...
-              </p>
-            : listasMaestras.length === 0
-            ? <p style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--text-3)", marginBottom: 18, lineHeight: 1.6 }}>
-                No hay listas maestras creadas. Registre una nueva categoría para comenzar.
-              </p>
-            : null
-          }
-
-          {listasMaestras.length > 0 && (() => {
-                const grouped = listasMaestras.reduce((acc, item) => {
-                  if (!acc[item.categoria]) acc[item.categoria] = [];
-                  acc[item.categoria].push(item);
-                  return acc;
-                }, {} as Record<string, ListasResponse[]>);
-                return Object.entries(grouped).map(([key, opciones]) => {
-                  const count = opciones.length;
-                  return (
-                    <div
-                      key={key}
-                      style={{
-                        maxWidth: 700,
-                        background: "var(--bg-card)",
-                        borderRadius: 16,
-                        border: "1px solid var(--border)",
-                        boxShadow: "var(--shadow)",
-                        overflow: "hidden",
-                        marginBottom: 12,
-                        marginTop: 12,
-                      }}
-                    >
-                    <button
-                      onClick={() => handleRemoveLista(key)}
-                      style={{
-                        position: "absolute",
-                        right: 12,
-                        top: 12,
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "var(--text-3)",
-                        padding: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                        fontSize: 12,
-                      }}
-                      title="Eliminar lista"
-                    >
-                      <X size={18} />
-                    </button>
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "14px 20px",
-                      borderBottom: "1px solid var(--divider)",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={{ fontFamily: "Manrope, sans-serif", fontWeight: 700, fontSize: 13, color: "var(--text-2)", letterSpacing: "0.06em" }}>
-                          {key.toUpperCase()}
-                        </span>
-                        <span
-                          style={{
-                            background: count > 0 ? "var(--bg-input)" : RED,
-                            color: count > 0 ? "var(--text-3)" : "#fff",
-                            borderRadius: 99,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: "2px 9px",
-                            fontFamily: "Inter, sans-serif",
-                          }}
-                        >
-                          [{count}]
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{ padding: "0 20px 18px", borderTop: "1px solid var(--divider)" }}>
-                      {count === 0
-                        ? <p style={{ fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--text-3)", margin: "12px 0" }}>
-                            Sin opciones disponibles
-                          </p>
-                        : null
-                      }
-                      {opciones.map((item) => (
-                        <div
-                          key={item.id}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            background: "var(--bg-input)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 8,
-                            padding: "5px 10px",
-                            fontFamily: "Inter, sans-serif",
-                            fontSize: 13,
-                            color: "var(--text-1)",
-                          }}
-                        >
-                          {item.opcion}
-                          <button
-                            onClick={() => handleRemoveOpcion(key, item.id)}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              padding: 0,
-                              display: "flex",
-                              alignItems: "center",
-                              color: "var(--text-3)",
-                            }}
-                            title="Eliminar"
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                      ))}
-                      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-                        <input
-                          placeholder="+ Agregar opción a esta lista..."
-                          value={nuevaOpción[key] || ""}
-                          onChange={(e) =>
-                            setNuevaOpcion((prev) => ({ ...prev, [key]: e.target.value }))
-                          }
-                          style={{
-                            flex: 1,
-                            border: "1px solid var(--border)",
-                            borderRadius: 8,
-                            padding: "7px 12px",
-                            fontFamily: "Inter, sans-serif",
-                            fontSize: 13,
-                            color: "var(--text-1)",
-                            outline: "none",
-                            background: "var(--bg-input)",
-                          }}
-                        />
-                        <button
-                          onClick={handleAddOpcion}
-                          style={{
-                            background: RED,
-                            color: "#fff",
-                            border: "none",
-                            borderRadius: 8,
-                            padding: "7px 14px",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                            fontFamily: "Inter, sans-serif",
-                            fontSize: 13,
-                            fontWeight: 600,
-                          }}
-                        >
-                          <Plus size={14} /> Agregar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-                })()}
-            )}
+{/* ── Tabla Listas Maestras Registradas ────────────────────────────── */}
+          {renderListasMaestrasTable()}
 
           {/* ── Gestión de Usuarios ──────────────────────────────────────── */}
           <div style={{ borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden", boxShadow: "var(--shadow)", marginTop: 12 }}>
@@ -698,15 +697,13 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-6 bg-[#D32F2F] rounded-full"></div>
-                <h2 className="text-xl font-bold text-gray-800">Registrar Lista / Opción Maestra</h2>
+                <h2 className="text-xl font-bold text-gray-800">
+                  {isEditMode ? "Editar Lista / Opción Maestra" : "Registrar Lista / Opción Maestra"}
+                </h2>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setIsCreateListaModalOpen(false);
-                  setNuevaCategoria("");
-                  setNuevaOpcionModal("");
-                }}
+                onClick={closeModal}
                 className="text-gray-400 hover:text-gray-600 text-2xl font-light leading-none"
               >
                 &times;
@@ -746,40 +743,26 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             <div className="flex justify-end gap-3 p-6 bg-gray-50/50 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => {
-                  setIsCreateListaModalOpen(false);
-                  setNuevaCategoria("");
-                  setNuevaOpcionModal("");
-                }}
+                onClick={closeModal}
                 className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 text-sm transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                onClick={async () => {
-                  if (!nuevaCategoria.trim() || !nuevaOpcionModal.trim()) {
-                    alert("Por favor complete ambos campos.");
-                    return;
-                  }
-                  try {
-                    await createLista(nuevaCategoria, nuevaOpcionModal);
-                    setIsCreateListaModalOpen(false);
-                    setNuevaCategoria("");
-                    setNuevaOpcionModal("");
-                    const data = await getListas();
-                    setListasMaestras(data);
-                  } catch (err) {
-                    console.error("Error al guardar opción:", err);
-                  }
-                }}
+                onClick={handleSaveModal}
                 className="px-5 py-2.5 rounded-xl bg-[#D32F2F] hover:bg-[#b71c1c] text-white font-medium text-sm transition-colors shadow-sm"
               >
-                Guardar Registro
+                {isEditMode ? "Actualizar Registro" : "Guardar Registro"}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type} />
       )}
 
       <AlertDialog

@@ -120,6 +120,31 @@ export const deleteLista = async (id: number): Promise<void> => {
   }
 };
 
+export const updateLista = async (id: number, categoria: string, opcion: string): Promise<ListasResponse> => {
+  try {
+    const payload = {
+      categoria: categoria.trim(),
+      opcion: opcion.trim(),
+    };
+    const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error updating lista:", error);
+    throw error;
+  }
+};
+
 export const getRangos = async (): Promise<string[]> => {
   try {
     const response = await fetch(`${API_BASE_URL}/configuracion/rangos`, {
