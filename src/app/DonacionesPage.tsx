@@ -1279,8 +1279,19 @@ export function DonacionesPage() {
             >
               ✕
             </button>
-            <div className="w-12 h-12 rounded-full border-2 border-[#eab308] bg-[#fefce8] text-[#ca8a04] flex items-center justify-center text-xl">
-              ⏱
+            <div className="w-12 h-12 rounded-full border-2 border-[#eab308] bg-[#fefce8] text-[#ca8a04] flex items-center justify-center">
+              <svg
+                className="h-6 w-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
             </div>
             <h3 className="text-xl font-bold text-gray-900">
               {alertType === "warning" ? "Campos Incompletos" : "Registro Exitoso"}
