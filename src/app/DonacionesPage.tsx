@@ -446,11 +446,13 @@ function DonacionModal({
   onSave,
   onClose,
   onDelete,
+  onValidationError,
 }: {
   initial: DonacionForm | null;
   onSave: (f: DonacionForm) => void;
   onClose: () => void;
   onDelete?: () => void;
+  onValidationError?: () => void;
 }) {
   const [form, setForm] = useState<DonacionForm>(initial ?? emptyForm());
   const [errors, setErrors] = useState<FormErrors>({});
@@ -506,6 +508,7 @@ function DonacionModal({
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       setShowErrors(true);
+      onValidationError?.();
       return;
     }
     onSave(form);
@@ -551,18 +554,6 @@ function DonacionModal({
         </div>
 
         <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 18 }}>
-          {/* Error banner */}
-          {showErrors && Object.keys(errors).length > 0 && (
-            <div style={{
-              background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10,
-              padding: "12px 16px", display: "flex", alignItems: "center", gap: 8,
-              color: "#dc2626", fontSize: 13, fontFamily: "Inter, sans-serif",
-            }}>
-              <AlertTriangle size={16} />
-              Por favor corrija los errores marcados antes de continuar.
-            </div>
-          )}
-
           {/* Type toggle */}
           <div>
             <label style={labelStyle}>Tipo de Donación</label>
@@ -594,42 +585,38 @@ function DonacionModal({
             <div>
               <label style={labelStyle}>Donante <span style={{ color: RED }}>*</span></label>
               <input
-                style={errors.donante ? errorInput : inputStyle}
+                style={inputStyle}
                 value={form.donante}
                 onChange={(e) => setField("donante", e.target.value)}
                 placeholder="Nombre o razón social"
               />
-              {errors.donante && <span style={{ fontSize: 12, color: "#ef4444", fontFamily: "Inter, sans-serif" }}>{errors.donante}</span>}
             </div>
             <div>
               <label style={labelStyle}>DPI / NIT <span style={{ color: RED }}>*</span></label>
               <input
-                style={errors.dpiNit ? errorInput : inputStyle}
+                style={inputStyle}
                 value={form.dpiNit}
                 onChange={(e) => setField("dpiNit", e.target.value)}
                 placeholder="DPI o NIT del donante"
               />
-              {errors.dpiNit && <span style={{ fontSize: 12, color: "#ef4444", fontFamily: "Inter, sans-serif" }}>{errors.dpiNit}</span>}
             </div>
             <div>
               <label style={labelStyle}>Teléfono <span style={{ color: RED }}>*</span></label>
               <input
-                style={errors.telefono ? errorInput : inputStyle}
+                style={inputStyle}
                 value={form.telefono}
                 onChange={(e) => setField("telefono", e.target.value)}
                 placeholder="xxxx-xxxx"
               />
-              {errors.telefono && <span style={{ fontSize: 12, color: "#ef4444", fontFamily: "Inter, sans-serif" }}>{errors.telefono}</span>}
             </div>
             <div>
               <label style={labelStyle}>Fecha <span style={{ color: RED }}>*</span></label>
               <input
                 type="date"
-                style={errors.fecha ? errorInput : inputStyle}
+                style={inputStyle}
                 value={form.fecha}
                 onChange={(e) => setField("fecha", e.target.value)}
               />
-              {errors.fecha && <span style={{ fontSize: 12, color: "#ef4444", fontFamily: "Inter, sans-serif" }}>{errors.fecha}</span>}
             </div>
             <div>
               <label style={labelStyle}>No. Recibo</label>
@@ -658,12 +645,11 @@ function DonacionModal({
                   type="number"
                   min="0"
                   step="0.01"
-                  style={errors.monto ? errorInput : inputStyle}
+                  style={inputStyle}
                   value={form.monto}
                   onChange={(e) => setField("monto", e.target.value)}
                   placeholder="0.00"
                 />
-                {errors.monto && <span style={{ fontSize: 12, color: "#ef4444", fontFamily: "Inter, sans-serif" }}>{errors.monto}</span>}
               </div>
               <div>
                 <label style={labelStyle}>Método de Pago</label>
@@ -730,16 +716,11 @@ function DonacionModal({
                     + Añadir
                   </button>
                 </div>
-                {errors.descripcion && (
-                  <span style={{ fontSize: 12, color: "#ef4444", fontFamily: "Inter, sans-serif", display: "block", marginBottom: 6 }}>
-                    {errors.descripcion}
-                  </span>
-                )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {form.materiales.map((m, i) => (
                     <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 120px 32px", gap: 8, alignItems: "center" }}>
                       <input
-                        style={errors.descripcion && !m.descripcion.trim() ? errorInput : inputStyle}
+                        style={inputStyle}
                         value={m.descripcion}
                         onChange={(e) => setMaterialField(i, "descripcion", e.target.value)}
                         placeholder="Descripción del artículo"
@@ -879,6 +860,8 @@ export function DonacionesPage() {
 
   // Toast
   const [toast, setToast] = useState<string | null>(null);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState<"warning" | "success">("warning");
 
   useEffect(() => {
     if (toast) {
@@ -886,6 +869,13 @@ export function DonacionesPage() {
       return () => clearTimeout(t);
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (showAlert) {
+      const timer = setTimeout(() => setShowAlert(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showAlert]);
 
   // Filtering
   const filtered = data.filter((d) => {
@@ -943,7 +933,8 @@ export function DonacionesPage() {
           };
         })
       );
-      setToast("Donación actualizada exitosamente.");
+      setAlertType("success");
+      setShowAlert(true);
     } else {
       const monto =
         form.tipo === "Monetaria"
@@ -970,7 +961,8 @@ export function DonacionesPage() {
         materiales: form.tipo === "Material" ? form.materiales : undefined,
       };
       setData((prev) => [newDonacion, ...prev]);
-      setToast("Donación registrada exitosamente.");
+      setAlertType("success");
+      setShowAlert(true);
     }
     setShowForm(false);
     setEditTarget(null);
@@ -1261,6 +1253,10 @@ export function DonacionesPage() {
             setEditTarget(null);
             setToast("Donación eliminada.");
           } : undefined}
+          onValidationError={() => {
+            setAlertType("warning");
+            setShowAlert(true);
+          }}
         />
       )}
       {viewTarget && (
@@ -1272,6 +1268,36 @@ export function DonacionesPage() {
           onConfirm={handleDelete}
           onClose={() => setDeleteTarget(null)}
         />
+      )}
+
+      {showAlert && (
+        <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 w-full max-w-sm text-center flex flex-col items-center gap-4 relative">
+            <button
+              onClick={() => setShowAlert(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold"
+            >
+              ✕
+            </button>
+            <div className="w-12 h-12 rounded-full border-2 border-[#eab308] bg-[#fefce8] text-[#ca8a04] flex items-center justify-center text-xl">
+              ⏱
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">
+              {alertType === "warning" ? "Campos Incompletos" : "Registro Exitoso"}
+            </h3>
+            <p className="text-sm text-gray-600">
+              {alertType === "warning"
+                ? "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar."
+                : "La donación ha sido registrada correctamente."}
+            </p>
+            <button
+              onClick={() => setShowAlert(false)}
+              className="w-full bg-[#d92d20] text-white py-2.5 rounded-xl font-medium hover:bg-[#b92318] transition-colors"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

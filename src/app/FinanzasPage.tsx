@@ -16,6 +16,7 @@ import {
   Wallet,
   Power,
 } from "lucide-react";
+import { AlertDialog } from "./components/AlertDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,6 +105,12 @@ export function FinanzasPage() {
   const [form, setForm] = useState<FormState>(BLANK_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [toast, setToast] = useState<string | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    type: "success" | "warning";
+    title: string;
+    message: string;
+  }>({ isOpen: false, type: "warning", title: "", message: "" });
 
   function showToastMsg(msg: string) {
     setToast(msg);
@@ -234,7 +241,15 @@ export function FinanzasPage() {
   };
 
   const handleSave = () => {
-    if (!validate()) return;
+    if (!validate()) {
+      setAlertModal({
+        isOpen: true,
+        type: "warning",
+        title: "Campos Incompletos",
+        message: "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.",
+      });
+      return;
+    }
     const monto = parseFloat(form.monto);
     const lastSaldo = rows.length ? rows[rows.length - 1].saldoAcumulado : 0;
     const esEntrada = form.tipo !== "Gasto";
@@ -254,7 +269,12 @@ export function FinanzasPage() {
     };
     setRows(r => [...r, newRow]);
     setShowModal(false);
-    showToastMsg("Registro guardado exitosamente.");
+    setAlertModal({
+      isOpen: true,
+      type: "success",
+      title: "Registro Exitoso",
+      message: "La transacción ha sido registrada correctamente.",
+    });
   };
 
   const handleDelete = () => {
@@ -442,14 +462,6 @@ export function FinanzasPage() {
               <button onClick={closeModal} className="p-1 rounded hover:bg-gray-100"><X size={18} /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
-
-              {/* Error summary */}
-              {Object.keys(errors).length > 0 && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
-                  <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                  <span>Por favor corrige los campos marcados en rojo antes de continuar.</span>
-                </div>
-              )}
 
               {/* Tipo toggle */}
               <div>
@@ -796,6 +808,14 @@ export function FinanzasPage() {
           </div>
         </div>
       )}
+
+      <AlertDialog
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }
