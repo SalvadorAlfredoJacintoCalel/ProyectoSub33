@@ -310,12 +310,14 @@ function InsumoModal({
   readOnly,
   onClose,
   onSave,
+  onValidationError,
 }: {
   title: string;
   initial: InsumoFormState;
   readOnly?: boolean;
   onClose: () => void;
   onSave: (f: InsumoFormState) => void;
+  onValidationError?: () => void;
 }) {
   const [form, setForm] = useState<InsumoFormState>(initial);
   const [errors, setErrors] = useState<Partial<Record<keyof InsumoFormState, string>>>({});
@@ -347,8 +349,14 @@ function InsumoModal({
         bad = true;
       }
     }
+    // Validar que cantidad sea mayor a 0
+    if (form.cantidad && Number(form.cantidad) <= 0) {
+      errs.cantidad = "La cantidad debe ser mayor a 0";
+      bad = true;
+    }
     if (bad) {
       setErrors(errs);
+      onValidationError?.();
       return;
     }
     onSave(form);
@@ -454,9 +462,6 @@ function InsumoModal({
                     onChange={set("codigo")}
                     placeholder="Ej. MED-001"
                   />
-                  {errors.codigo && (
-                    <p className="mt-1 text-xs text-red-600">{errors.codigo}</p>
-                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)", fontSize: 12 }}>
@@ -475,9 +480,6 @@ function InsumoModal({
                       </option>
                     ))}
                   </select>
-                  {errors.categoria && (
-                    <p className="mt-1 text-xs text-red-600">{errors.categoria}</p>
-                  )}
                 </div>
               </div>
 
@@ -492,9 +494,6 @@ function InsumoModal({
                   onChange={set("descripcion")}
                   placeholder="Nombre del insumo o medicamento"
                 />
-                {errors.descripcion && (
-                  <p className="mt-1 text-xs text-red-600">{errors.descripcion}</p>
-                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -511,9 +510,6 @@ function InsumoModal({
                     onChange={set("cantidad")}
                     placeholder="0"
                   />
-                  {errors.cantidad && (
-                    <p className="mt-1 text-xs text-red-600">{errors.cantidad}</p>
-                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)", fontSize: 12 }}>
@@ -526,9 +522,6 @@ function InsumoModal({
                     onChange={set("unidad")}
                     placeholder="comprimidos, bolsas…"
                   />
-                  {errors.unidad && (
-                    <p className="mt-1 text-xs text-red-600">{errors.unidad}</p>
-                  )}
                 </div>
               </div>
 
@@ -617,9 +610,6 @@ function InsumoModal({
                   <option value="Compra Propia">Compra Propia</option>
                   <option value="Donado">Donado</option>
                 </select>
-                {errors.origen && (
-                  <p className="mt-1 text-xs text-red-600">{errors.origen}</p>
-                )}
                 {form.origen === "Donado" && (
                   <div className="mt-3 space-y-3">
                     <div>
@@ -765,7 +755,6 @@ function InsumosTab({
         estado: form.estado,
       };
       setItems((p) => [...p, next]);
-      showToast("Insumo registrado exitosamente");
       setAlertModal({
         isOpen: true,
         type: "success",
@@ -790,7 +779,6 @@ function InsumosTab({
             : it
         )
       );
-      showToast("Registro actualizado exitosamente");
       setAlertModal({
         isOpen: true,
         type: "success",
@@ -957,6 +945,14 @@ function InsumosTab({
           readOnly={modal.mode === "view"}
           onClose={() => setModal(null)}
           onSave={handleSave}
+          onValidationError={() => {
+            setAlertModal({
+              isOpen: true,
+              type: "warning",
+              title: "Campos Incompletos",
+              message: "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.",
+            });
+          }}
         />
       )}
 
