@@ -143,9 +143,9 @@ function AccordionSection({
         {open && (
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="flex flex-wrap gap-2 mb-4 mt-4">
-              {items.map((item) => (
+              {items.map((item, idx) => (
                 <div
-                  key={item.id}
+                  key={item.id ?? `chip-${categoria}-${idx}`}
                   className="flex items-center gap-1.5 bg-gray-100 border border-gray-200 rounded-full px-3 py-1 text-sm text-gray-700"
                 >
                   <span>{item.opcion}</span>
