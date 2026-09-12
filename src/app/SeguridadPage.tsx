@@ -87,23 +87,29 @@ function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onCo
 }
 
 // ─── Accordion Section ────────────────────────────────────────────────────────
-function AccordionSection({ section, onUpdate, showToast }: { section: SistemaSection; onUpdate: (key: string, items: string[]) => void; showToast: (msg: string) => void }) {
+function AccordionSection({
+  categoria,
+  items,
+  onAdd,
+  onDelete,
+  onEdit,
+  nuevaOpcion,
+  setNuevaOpcion,
+}: {
+  categoria: string;
+  items: ListasResponse[];
+  onAdd: (opcion: string) => void;
+  onDelete: (item: ListasResponse) => void;
+  onEdit: (item: ListasResponse) => void;
+  nuevaOpcion: string;
+  setNuevaOpcion: (val: string) => void;
+}) {
   const [open, setOpen] = useState(false);
-  const [newItem, setNewItem] = useState("");
-  const [confirm, setConfirm] = useState<{ item: string; index: number } | null>(null);
-
-  function handleAdd() {
-    const trimmed = newItem.trim();
-    if (!trimmed) return;
-    onUpdate(section.key, [...section.items, trimmed]);
-    setNewItem("");
-    showToast(`"${trimmed}" agregado a ${section.label}`);
-  }
+  const [confirm, setConfirm] = useState<ListasResponse | null>(null);
 
   function handleDeleteConfirm() {
     if (!confirm) return;
-    onUpdate(section.key, section.items.filter((_, i) => i !== confirm.index));
-    showToast(`"${confirm.item}" eliminado`);
+    onDelete(confirm);
     setConfirm(null);
   }
 
@@ -111,59 +117,61 @@ function AccordionSection({ section, onUpdate, showToast }: { section: SistemaSe
     <>
       {confirm && (
         <ConfirmDialog
-          message={`¿Eliminar "${confirm.item}" de ${section.label}?`}
+          message={`¿Eliminar "${confirm.opcion}" de ${categoria}?`}
           onConfirm={handleDeleteConfirm}
           onCancel={() => setConfirm(null)}
         />
       )}
-      <div style={{ background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "var(--shadow)", overflow: "hidden", marginBottom: 12 }}>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-3">
         <button
           onClick={() => setOpen((o) => !o)}
-          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontFamily: "Manrope, sans-serif", fontWeight: 700, fontSize: 13, color: "var(--text-2)", letterSpacing: "0.06em" }}>
-              {section.label}
+          <div className="flex items-center gap-3">
+            <span className="font-bold text-sm uppercase tracking-wide text-gray-700">
+              {categoria}
             </span>
-            <span style={{ background: open ? RED : "var(--bg-input)", color: open ? "#fff" : "var(--text-3)", borderRadius: 99, fontSize: 11, fontWeight: 700, padding: "2px 9px", fontFamily: "Inter, sans-serif", transition: "background 0.2s, color 0.2s" }}>
-              {section.items.length}
+            <span className="bg-red-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+              {items.length}
             </span>
           </div>
-          <div style={{ color: "var(--text-3)" }}>
+          <div className="text-gray-400">
             {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </div>
         </button>
 
         {open && (
-          <div style={{ padding: "0 20px 18px", borderTop: "1px solid var(--divider)" }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14, marginTop: 14 }}>
-              {section.items.map((item, idx) => (
+          <div className="px-4 pb-4 border-t border-gray-100">
+            <div className="flex flex-wrap gap-2 mb-4 mt-4">
+              {items.map((item) => (
                 <div
-                  key={idx}
-                  style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 8, padding: "5px 10px", fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--text-1)" }}
+                  key={item.id}
+                  className="flex items-center gap-1.5 bg-gray-100 border border-gray-200 rounded-full px-3 py-1 text-sm text-gray-700"
                 >
-                  {item}
+                  <span>{item.opcion}</span>
                   <button
-                    onClick={() => setConfirm({ item, index: idx })}
-                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", color: "var(--text-3)" }}
+                    onClick={() => setConfirm(item)}
+                    className="text-gray-400 hover:text-red-500 p-0.5"
                     title="Eliminar"
                   >
-                    <X size={13} />
+                    <X size={12} />
                   </button>
                 </div>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex gap-2">
               <input
-                value={newItem}
-                onChange={(e) => setNewItem(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                type="text"
+                value={nuevaOpcion}
+                onChange={(e) => setNuevaOpcion(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && nuevaOpcion.trim() && onAdd(nuevaOpcion.trim())}
                 placeholder="+ Agregar elemento..."
-                style={{ flex: 1, border: "1px solid var(--border)", borderRadius: 8, padding: "7px 12px", fontFamily: "Inter, sans-serif", fontSize: 13, color: "var(--text-1)", outline: "none", background: "var(--bg-input)" }}
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
               />
               <button
-                onClick={handleAdd}
-                style={{ background: RED, color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600 }}
+                onClick={() => nuevaOpcion.trim() && onAdd(nuevaOpcion.trim())}
+                disabled={!nuevaOpcion.trim()}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 <Plus size={14} />
                 Agregar
@@ -245,19 +253,20 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
   if (userRole !== "admin") return <AccessDenied />;
 
+  const cargarListas = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getListas();
+      setListasMaestras(data);
+    } catch (error) {
+      console.error("Error loading listas:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadListas = async () => {
-      try {
-        setIsLoading(true);
-        const data = await getListas();
-        setListasMaestras(data);
-      } catch (error) {
-        console.error("Error loading listas:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadListas();
+    cargarListas();
   }, []);
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
@@ -265,120 +274,72 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     setTimeout(() => setToast(null), 3000);
   };
 
-  function handleAddLista() {
-    const nombre = nuevoNombreLista.trim();
-    if (!nombre) {
-      setAlertType("warning");
-      setAlertTitle("Campos Incompletos");
-      setAlertMessage("Campos incompletos: Por favor ingrese un nombre válido antes de continuar.");
-      setShowAlert(true);
-      return;
-    }
-    createLista(nombre, "")
-      .then((newItem) => {
-        setListasMaestras((prev) => [...prev, newItem]);
-        setNuevoNombreLista("");
-        setAlertType("success");
-        setAlertTitle("Registro Exitoso");
-        setAlertMessage("Lista creada exitosamente");
-        setShowAlert(true);
-      })
-      .catch((error) => {
-        console.error("Error creating lista:", error);
-        setAlertType("warning");
-        setAlertTitle("Error");
-        setAlertMessage("No se pudo crear la lista. Intente nuevamente.");
-        setShowAlert(true);
-      });
-  }
+  // Default categories to show even when empty
+  const DEFAULT_CATEGORIES = [
+    "RANGOS",
+    "TIPOS DE EMERGENCIA",
+    "SECTORES / ALDEAS",
+    "TALLERES MECÁNICOS",
+    "CONCEPTOS DE GASTO",
+  ];
 
-  function handleRemoveLista(key: string) {
-    const itemToDelete = listasMaestras.find((item) => item.categoria === key);
-    if (!itemToDelete) return;
-    deleteLista(itemToDelete.id)
-      .then(() => {
-        setListasMaestras((prev) => prev.filter((item) => item.categoria !== key));
-        setAlertType("success");
-        setAlertTitle("Registro Exitoso");
-        setAlertMessage(`Lista "${key}" eliminada`);
-        setShowAlert(true);
-      })
-      .catch((error) => {
-        console.error("Error deleting lista:", error);
-        setAlertType("warning");
-        setAlertTitle("Error");
-        setAlertMessage("No se pudo eliminar la lista. Intente nuevamente.");
-        setShowAlert(true);
-      });
-  }
+  // Group items by category
+  const getGroupedItems = () => {
+    const grouped: Record<string, ListasResponse[]> = {};
+    
+    // Initialize with default categories
+    DEFAULT_CATEGORIES.forEach(cat => {
+      grouped[cat] = [];
+    });
+    
+    // Add items from database
+    listasMaestras.forEach(item => {
+      const cat = item.categoria.toUpperCase();
+      if (!grouped[cat]) {
+        grouped[cat] = [];
+      }
+      grouped[cat].push(item);
+    });
+    
+    return grouped;
+  };
 
-  function handleAddOpcion(key: string) {
-    const option = nuevaOpción[key]?.trim();
+  function handleAddOpcion(categoria: string) {
+    const option = nuevaOpción[categoria]?.trim();
     if (!option) {
-      setAlertType("warning");
-      setAlertTitle("Campos Incompletos");
-      setAlertMessage("Campos incompletos: Por favor ingrese un nombre válido antes de continuar.");
-      setShowAlert(true);
+      showToast("Por favor ingrese un nombre válido", "error");
       return;
     }
-    createLista(key, option)
-      .then((newItem) => {
-        setListasMaestras((prev) => [...prev, newItem]);
-        setNuevaOpcion((prev) => ({ ...prev, [key]: "" }));
-        setAlertType("success");
-        setAlertTitle("Registro Exitoso");
-        setAlertMessage(`Opción "${option}" agregada a "${key}"`);
-        setShowAlert(true);
+    createLista(categoria, option)
+      .then(() => {
+        setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
+        showToast(`"${option}" agregado a ${categoria}`, "success");
+        cargarListas();
       })
       .catch((error) => {
         console.error("Error adding opcion:", error);
-        setAlertType("warning");
-        setAlertTitle("Error");
-        setAlertMessage("No se pudo agregar la opción. Intente nuevamente.");
-        setShowAlert(true);
+        showToast("No se pudo agregar la opción. Intente nuevamente.", "error");
       });
   }
 
-  function handleRemoveOpcion(key: string, index: number) {
-    const itemsInCategory = listasMaestras.filter((item) => item.categoria === key);
-    if (index >= itemsInCategory.length) return;
-    const itemToDelete = itemsInCategory[index];
-    deleteLista(itemToDelete.id)
+  function handleDeleteOpcion(item: ListasResponse) {
+    deleteLista(item.id)
       .then(() => {
-        setListasMaestras((prev) => prev.filter((item) => item.id !== itemToDelete.id));
-        setAlertType("success");
-        setAlertTitle("Registro Exitoso");
-        setAlertMessage(`Opción removida de "${key}"`);
-        setShowAlert(true);
+        showToast(`"${item.opcion}" eliminado`, "success");
+        cargarListas();
       })
       .catch((error) => {
-        console.error("Error removing opcion:", error);
-        setAlertType("warning");
-        setAlertTitle("Error");
-        setAlertMessage("No se pudo eliminar la opción. Intente nuevamente.");
-        setShowAlert(true);
+        console.error("Error deleting item:", error);
+        showToast("No se pudo eliminar la opción", "error");
       });
   }
 
-  // ─── Tabla Listas Maestras Registradas ──────────────────────────────────
   function handleEditItem(item: ListasResponse) {
     setEditingItem(item);
     setNuevaCategoria(item.categoria);
     setNuevaOpcionModal(item.opcion);
     setIsEditMode(true);
     setIsCreateListaModalOpen(true);
-  }
-
-  function handleDeleteItem(item: ListasResponse) {
-    deleteLista(item.id)
-      .then(() => {
-        setListasMaestras((prev) => prev.filter((i) => i.id !== item.id));
-        showToast("Opción eliminada", "success");
-      })
-      .catch((error) => {
-        console.error("Error deleting item:", error);
-        showToast("No se pudo eliminar la opción", "error");
-      });
   }
 
   function handleSaveModal() {
@@ -389,12 +350,10 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
     if (isEditMode && editingItem) {
       updateLista(editingItem.id, nuevaCategoria, nuevaOpcionModal)
-        .then((updatedItem) => {
-          setListasMaestras((prev) =>
-            prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
-          );
+        .then(() => {
           showToast("Registro actualizado", "success");
           closeModal();
+          cargarListas();
         })
         .catch((error) => {
           console.error("Error updating lista:", error);
@@ -402,10 +361,10 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         });
     } else {
       createLista(nuevaCategoria, nuevaOpcionModal)
-        .then((newItem) => {
-          setListasMaestras((prev) => [...prev, newItem]);
+        .then(() => {
           showToast("Registro guardado correctamente", "success");
           closeModal();
+          cargarListas();
         })
         .catch((error) => {
           console.error("Error creating lista:", error);
@@ -422,7 +381,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     setEditingItem(null);
   }
 
-  const renderListasMaestrasTable = () => {
+  const renderAccordionSections = () => {
     if (isLoading) {
       return (
         <div style={{ textAlign: "center", padding: "40px", color: "var(--text-3)" }}>
@@ -431,73 +390,20 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       );
     }
 
-    if (listasMaestras.length === 0) {
-      return (
-        <div style={{ textAlign: "center", padding: "40px", color: "var(--text-3)" }}>
-          No hay listas maestras registradas. Cree una nueva para comenzar.
-        </div>
-      );
-    }
-
-    return (
-      <div style={{ borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden", boxShadow: "var(--shadow)" }}>
-        <div style={{ padding: "16px 20px", background: "var(--bg-input)", borderBottom: "1px solid var(--divider)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text-1)", fontFamily: "Manrope, sans-serif" }}>
-              Listas Maestras Registradas
-            </h3>
-            <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-3)", fontFamily: "Inter, sans-serif" }}>
-              {listasMaestras.length} registros totales
-            </p>
-          </div>
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "var(--bg-page)", borderBottom: "1px solid var(--divider)" }}>
-                {["ID", "Categoría", "Opción", "Acciones"].map((h) => (
-                  <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)", fontFamily: "Inter, sans-serif" }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {listasMaestras.map((item, i) => (
-                <tr
-                  key={item.id}
-                  style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-page)", borderBottom: "1px solid var(--divider)" }}
-                >
-                  <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
-                    {item.id}
-                  </td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
-                    {item.categoria}
-                  </td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
-                    {item.opcion}
-                  </td>
-                  <td style={{ padding: "12px 16px", display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => handleEditItem(item)}
-                      style={{ fontSize: 12, fontWeight: 600, color: "#2563EB", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 7, padding: "5px 12px", cursor: "pointer", fontFamily: "Inter, sans-serif" }}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDeleteItem(item)}
-                      style={{ fontSize: 12, fontWeight: 600, color: "var(--red)", background: "var(--red-bg)", border: "1px solid var(--red)", borderRadius: 7, padding: "5px 12px", cursor: "pointer", fontFamily: "Inter, sans-serif" }}
-                    >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
+    const grouped = getGroupedItems();
+    
+    return Object.entries(grouped).map(([categoria, items]) => (
+      <AccordionSection
+        key={categoria}
+        categoria={categoria}
+        items={items}
+        onAdd={(opcion) => createLista(categoria, opcion).then(() => { showToast(`"${opcion}" agregado a ${categoria}`, "success"); cargarListas(); }).catch(() => showToast("Error al agregar", "error"))}
+        onDelete={(item) => handleDeleteOpcion(item)}
+        onEdit={handleEditItem}
+        nuevaOpcion={nuevaOpción[categoria] || ""}
+        setNuevaOpcion={(val) => setNuevaOpcion(prev => ({ ...prev, [categoria]: val }))}
+      />
+    ));
   };
 
   return (
@@ -544,8 +450,10 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             </div>
           </div>
 
-{/* ── Tabla Listas Maestras Registradas ────────────────────────────── */}
-          {renderListasMaestrasTable()}
+{/* ── Listas Maestras (Acordeones) ──────────────────────────────────────── */}
+          <div className="max-w-2xl">
+            {renderAccordionSections()}
+          </div>
 
           {/* ── Gestión de Usuarios ──────────────────────────────────────── */}
           <div style={{ borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden", boxShadow: "var(--shadow)", marginTop: 12 }}>
