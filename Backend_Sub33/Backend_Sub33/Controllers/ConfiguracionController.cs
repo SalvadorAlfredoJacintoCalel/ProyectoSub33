@@ -42,7 +42,7 @@ namespace Backend_Sub33.Controllers
             return Ok(new { exito = true, mensaje = "Lista actualizada correctamente" });
         }
 
-        [HttpDelete("listas/{id}")]
+        [HttpDelete("listas/{id:int}")]
         public async Task<ActionResult> EliminarLista(int id)
         {
             await _service.DeleteListaAsync(id);

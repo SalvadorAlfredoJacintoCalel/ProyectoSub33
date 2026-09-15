@@ -37,10 +37,22 @@ export interface CreateListaDTO {
 }
 
 export interface ListasResponse {
-  id: number;
+  id?: number;
+  listaId?: number;
+  lista_id?: number;
   categoria: string;
   opcion: string;
 }
+
+// El backend puede devolver el ID bajo la propiedad "id", "listaId" o "lista_id".
+// Este helper normaliza cualquier formato a un número.
+export const getListaId = (item: ListasResponse): number => {
+  const id = item.id ?? item.listaId ?? item.lista_id;
+  if (id === undefined || id === null) {
+    throw new Error("El registro de lista no contiene un ID válido.");
+  }
+  return Number(id);
+};
 
 const handleResponse = async (response: Response) => {
   if (!response.ok) {

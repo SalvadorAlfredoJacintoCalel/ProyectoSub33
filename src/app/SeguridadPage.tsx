@@ -15,6 +15,7 @@ import {
   updateLista,
   deleteLista,
   type ListasResponse,
+  getListaId,
 } from "../services/configuracionService";
 import { AlertDialog } from "./components/AlertDialog";
 
@@ -323,7 +324,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   }
 
   function handleDeleteOpcion(item: ListasResponse) {
-    deleteLista(item.id)
+    const id = getListaId(item);
+    deleteLista(id)
       .then(() => {
         showToast(`"${item.opcion}" eliminado`, "success");
         cargarListas();
@@ -349,7 +351,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     }
 
     if (isEditMode && editingItem) {
-      updateLista(editingItem.id, nuevaCategoria, nuevaOpcionModal)
+      updateLista(getListaId(editingItem), nuevaCategoria, nuevaOpcionModal)
         .then(() => {
           showToast("Registro actualizado", "success");
           closeModal();
