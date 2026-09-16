@@ -87,32 +87,48 @@ namespace Backend_Sub33.Services
             }
         }
 
-        public async Task<bool> CrearListaAsync(string categoria, string opcion)
+        public async Task<(bool exito, string mensaje)> CrearListaAsync(string categoria, string opcion)
         {
-            var catLimpia = categoria.Trim();
-            var opcLimpia = opcion.Trim();
+            var catNormalizada = categoria.Trim().ToUpper();
+            var opcNormalizada = opcion.Trim().ToUpper();
 
-            if (string.IsNullOrWhiteSpace(catLimpia) || string.IsNullOrWhiteSpace(opcLimpia))
+            if (string.IsNullOrWhiteSpace(catNormalizada) || string.IsNullOrWhiteSpace(opcNormalizada))
             {
                 throw new ArgumentException("La categoría y la opción son obligatorias");
             }
 
-            string sql = "INSERT INTO configuracion_listas_maestras (categoria, opcion) VALUES (@categoria, @opcion)";
+            string sqlCheck = @"
+                SELECT COUNT(1) 
+                FROM configuracion_listas_maestras 
+                WHERE UPPER(categoria) = @categoria 
+                  AND UPPER(opcion) = @opcion;";
 
-            var filasAfectadas = await _context.Database.ExecuteSqlRawAsync(
-                sql,
-                new Npgsql.NpgsqlParameter("@categoria", catLimpia),
-                new Npgsql.NpgsqlParameter("@opcion", opcLimpia)
+            var existe = await _context.Database.SqlQueryRaw<int>(
+                sqlCheck,
+                new Npgsql.NpgsqlParameter("@categoria", catNormalizada),
+                new Npgsql.NpgsqlParameter("@opcion", opcNormalizada)
+            ).FirstOrDefaultAsync();
+
+            if (existe > 0)
+            {
+                return (false, $"La opción '{opcNormalizada}' ya existe en la categoría '{catNormalizada}'.");
+            }
+
+            string sqlInsert = "INSERT INTO configuracion_listas_maestras (categoria, opcion) VALUES (@categoria, @opcion)";
+            var filas = await _context.Database.ExecuteSqlRawAsync(
+                sqlInsert,
+                new Npgsql.NpgsqlParameter("@categoria", catNormalizada),
+                new Npgsql.NpgsqlParameter("@opcion", opcNormalizada)
             );
 
-            return filasAfectadas > 0;
+            return (filas > 0, filas > 0 ? "Registro guardado exitosamente" : "No se pudo guardar el registro");
         }
 
         public async Task UpdateListaAsync(int id, UpdateListaMaestraDto dto)
         {
             try
             {
-                var opcion = NormalizarTexto(dto.Opcion);
+                var opcion = dto.Opcion.Trim().ToUpper();
 
                 if (string.IsNullOrWhiteSpace(opcion))
                 {
@@ -123,7 +139,7 @@ namespace Backend_Sub33.Services
                     SELECT COUNT(*) 
                     FROM configuracion_listas_maestras 
                     WHERE lista_id != @Id 
-                      AND LOWER(opcion) = LOWER(@Opcion)";
+                      AND UPPER(opcion) = @Opcion";
 
                 var existe = await _context.Database
                     .SqlQueryRaw<int>(checkSql, new NpgsqlParameter("@Id", id), new NpgsqlParameter("@Opcion", opcion))

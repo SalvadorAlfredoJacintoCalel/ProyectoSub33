@@ -95,8 +95,8 @@ export const getListasPorCategoria = async (categoria: string): Promise<ListasRe
 export const createLista = async (categoria: string, opcion: string): Promise<ListasResponse> => {
   try {
     const payload = {
-      categoria: categoria.trim(),
-      opcion: opcion.trim(),
+      categoria: categoria.trim().toUpperCase(),
+      opcion: opcion.trim().toUpperCase(),
     };
     const response = await axios.post(`${API_BASE_URL}/configuracion/listas`, payload, {
       headers: {
@@ -128,8 +128,8 @@ export const deleteLista = async (id: number): Promise<void> => {
 
 export const updateLista = async (id: number, categoria: string, opcion: string): Promise<ListasResponse> => {
   const payload = {
-    categoria: categoria.trim(),
-    opcion: opcion.trim(),
+    categoria: categoria.trim().toUpperCase(),
+    opcion: opcion.trim().toUpperCase(),
   };
   const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
     method: "PUT",

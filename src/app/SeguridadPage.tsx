@@ -296,10 +296,25 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       showToast("Por favor ingrese un nombre válido", "error");
       return;
     }
+
+    // Validación local: normalizar a mayúsculas y verificar duplicados
+    const opcionNormalizada = option.toUpperCase();
+    const categoriaNormalizada = categoria.toUpperCase();
+    
+    const yaExisteLocal = listasMaestras.some(
+      (item) => item.categoria.trim().toUpperCase() === categoriaNormalizada &&
+                item.opcion.trim().toUpperCase() === opcionNormalizada
+    );
+
+    if (yaExisteLocal) {
+      showToast(`La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`, "error");
+      return;
+    }
+
     createLista(categoria, option)
       .then(() => {
         setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
-        showToast(`"${option}" agregado a ${categoria}`, "success");
+        showToast(`"${opcionNormalizada}" agregado a ${categoriaNormalizada}`, "success");
         cargarListas();
       })
       .catch((error) => {
@@ -333,6 +348,22 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     if (!nuevaCategoria.trim() || !nuevaOpcionModal.trim()) {
       showToast("Por favor complete ambos campos", "error");
       return;
+    }
+
+    // Validación local para nueva creación
+    if (!isEditMode) {
+      const categoriaNormalizada = nuevaCategoria.trim().toUpperCase();
+      const opcionNormalizada = nuevaOpcionModal.trim().toUpperCase();
+      
+      const yaExisteLocal = listasMaestras.some(
+        (item) => item.categoria.trim().toUpperCase() === categoriaNormalizada &&
+                  item.opcion.trim().toUpperCase() === opcionNormalizada
+      );
+
+      if (yaExisteLocal) {
+        showToast(`La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`, "error");
+        return;
+      }
     }
 
     if (isEditMode && editingItem) {
@@ -428,7 +459,27 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         key={categoria}
         categoria={categoria}
         items={grouped[categoria]}
-        onAdd={(opcion) => createLista(categoria, opcion).then(() => { showToast(`"${opcion}" agregado a ${categoria}`, "success"); cargarListas(); }).catch(() => showToast("Error al agregar", "error"))}
+        onAdd={(opcion) => {
+          const opcionNormalizada = opcion.trim().toUpperCase();
+          const categoriaNormalizada = categoria.toUpperCase();
+          
+          const yaExisteLocal = listasMaestras.some(
+            (item) => item.categoria.trim().toUpperCase() === categoriaNormalizada &&
+                      item.opcion.trim().toUpperCase() === opcionNormalizada
+          );
+
+          if (yaExisteLocal) {
+            showToast(`La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`, "error");
+            return;
+          }
+
+          createLista(categoria, opcion)
+            .then(() => {
+              showToast(`"${opcionNormalizada}" agregado a ${categoriaNormalizada}`, "success");
+              cargarListas();
+            })
+            .catch(() => showToast("Error al agregar", "error"));
+        }}
         onDelete={(item) => handleDeleteOpcion(item)}
         onEdit={handleEditItem}
         nuevaOpcion={nuevaOpción[categoria] || ""}

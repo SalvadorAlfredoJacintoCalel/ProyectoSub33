@@ -62,12 +62,12 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                var creado = await _service.CrearListaAsync(dto.Categoria, dto.Opcion);
-                if (creado)
+                var resultado = await _service.CrearListaAsync(dto.Categoria, dto.Opcion);
+                if (resultado.exito)
                 {
-                    return Ok(new { mensaje = "Registro creado con éxito" });
+                    return Ok(new { mensaje = resultado.mensaje });
                 }
-                return BadRequest(new { mensaje = "No se pudo crear el registro" });
+                return BadRequest(new { mensaje = resultado.mensaje });
             }
             catch (ArgumentException ex)
             {
