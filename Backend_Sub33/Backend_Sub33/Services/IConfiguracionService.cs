@@ -6,8 +6,9 @@ namespace Backend_Sub33.Services
 {
     public interface IConfiguracionService
     {
-        Task<List<ListaMaestraDto>> GetAllListasAsync();
-        Task<List<ListaMaestraDto>> GetPorCategoriaAsync(string categoria);
+        Task<List<ListaItemDto>> GetAllListasAsync();
+        Task<List<ListaItemDto>> GetPorCategoriaAsync(string categoria);
+        Task<List<string>> GetCategoriasAsync();
         Task CreateListaAsync(CreateListaMaestraDto dto);
         Task UpdateListaAsync(int id, UpdateListaMaestraDto dto);
         Task DeleteListaAsync(int id);

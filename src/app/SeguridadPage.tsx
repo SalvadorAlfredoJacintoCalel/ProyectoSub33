@@ -146,7 +146,7 @@ function AccordionSection({
             <div className="flex flex-wrap gap-2 mb-4 mt-4">
               {items.map((item, idx) => (
                 <div
-                  key={item.id ?? `chip-${categoria}-${idx}`}
+                  key={getListaId(item)}
                   className="flex items-center gap-1.5 bg-gray-100 border border-gray-200 rounded-full px-3 py-1 text-sm text-gray-700"
                 >
                   <span>{item.opcion}</span>
@@ -275,27 +275,12 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Default categories to show even when empty
-  const DEFAULT_CATEGORIES = [
-    "RANGOS",
-    "TIPOS DE EMERGENCIA",
-    "SECTORES / ALDEAS",
-    "TALLERES MECÁNICOS",
-    "CONCEPTOS DE GASTO",
-  ];
-
-  // Group items by category
+  // Group items by category dynamically from backend data
   const getGroupedItems = () => {
     const grouped: Record<string, ListasResponse[]> = {};
     
-    // Initialize with default categories
-    DEFAULT_CATEGORIES.forEach(cat => {
-      grouped[cat] = [];
-    });
-    
-    // Add items from database
     listasMaestras.forEach(item => {
-      const cat = item.categoria.toUpperCase();
+      const cat = item.categoria.trim();
       if (!grouped[cat]) {
         grouped[cat] = [];
       }
@@ -393,12 +378,56 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     }
 
     const grouped = getGroupedItems();
+    const categories = Object.keys(grouped);
     
-    return Object.entries(grouped).map(([categoria, items]) => (
+    if (categories.length === 0) {
+      return (
+        <div style={{ 
+          textAlign: "center", 
+          padding: "60px 20px", 
+          color: "var(--text-3)",
+          background: "var(--bg-card)",
+          borderRadius: "16px",
+          border: "1px solid var(--border)",
+          maxWidth: "500px",
+          margin: "0 auto"
+        }}>
+          <div style={{ 
+            width: 72, height: 72, borderRadius: "50%", 
+            background: "var(--red-bg)", 
+            display: "flex", alignItems: "center", justifyContent: "center", 
+            margin: "0 auto 20px" 
+          }}>
+            <Plus size={34} color={RED} />
+          </div>
+          <h3 style={{ fontFamily: "Manrope, sans-serif", fontWeight: 700, fontSize: 18, color: "var(--text-1)", margin: "0 0 10px" }}>
+            No hay listas configuradas
+          </h3>
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: 14, color: "var(--text-2)", lineHeight: 1.6, margin: "0 0 24px" }}>
+            No se encontraron categorías en la base de datos. Crea tu primera lista u opción para comenzar.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setIsEditMode(false);
+              setEditingItem(null);
+              setNuevaCategoria("");
+              setNuevaOpcionModal("");
+              setIsCreateListaModalOpen(true);
+            }}
+            className="bg-[#D32F2F] hover:bg-[#b71c1c] text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-sm transition-colors mx-auto"
+          >
+            <span className="text-xl leading-none">+</span> Crear Lista / Opción
+          </button>
+        </div>
+      );
+    }
+    
+    return categories.map((categoria) => (
       <AccordionSection
         key={categoria}
         categoria={categoria}
-        items={items}
+        items={grouped[categoria]}
         onAdd={(opcion) => createLista(categoria, opcion).then(() => { showToast(`"${opcion}" agregado a ${categoria}`, "success"); cargarListas(); }).catch(() => showToast("Error al agregar", "error"))}
         onDelete={(item) => handleDeleteOpcion(item)}
         onEdit={handleEditItem}

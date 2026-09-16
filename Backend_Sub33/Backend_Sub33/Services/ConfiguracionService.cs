@@ -1,7 +1,8 @@
 using Backend_Sub33.DTOs.Configuracion;
 using Backend_Sub33.Models.Entities;
-using Microsoft.EntityFrameworkCore;
 using Backend_Sub33.Data;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Backend_Sub33.Services
 {
@@ -14,67 +15,120 @@ namespace Backend_Sub33.Services
             _context = context;
         }
 
-        public async Task<List<ListaMaestraDto>> GetAllListasAsync()
+        public async Task<List<ListaItemDto>> GetAllListasAsync()
         {
-            return await _context.ConfiguracionListasMaestras
-                .Where(l => l.Activo)
-                .Select(l => new ListaMaestraDto
-                {
-                    ListaId = l.ListaId,
-                    Categoria = l.Categoria,
-                    Opcion = l.Opcion,
-                    Activo = l.Activo
-                })
-                .ToListAsync();
+            try
+            {
+                var sql = @"
+                    SELECT lista_id AS ListaId, 
+                           categoria AS Categoria, 
+                           opcion AS Opcion 
+                    FROM configuracion_listas_maestras 
+                    ORDER BY categoria, opcion";
+
+                return await _context.Database
+                    .SqlQueryRaw<ListaItemDto>(sql)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener listas: {ex.Message}", ex);
+            }
         }
 
-        public async Task<List<ListaMaestraDto>> GetPorCategoriaAsync(string categoria)
+        public async Task<List<ListaItemDto>> GetPorCategoriaAsync(string categoria)
         {
-            return await _context.ConfiguracionListasMaestras
-                .Where(l => l.Categoria == categoria && l.Activo)
-                .Select(l => new ListaMaestraDto
-                {
-                    ListaId = l.ListaId,
-                    Categoria = l.Categoria,
-                    Opcion = l.Opcion,
-                    Activo = l.Activo
-                })
-                .ToListAsync();
+            try
+            {
+                var sql = @"
+                    SELECT lista_id AS ListaId, 
+                           categoria AS Categoria, 
+                           opcion AS Opcion 
+                    FROM configuracion_listas_maestras 
+                    WHERE categoria = @Categoria
+                    ORDER BY opcion";
+
+                var parameter = new NpgsqlParameter("@Categoria", categoria);
+
+                return await _context.Database
+                    .SqlQueryRaw<ListaItemDto>(sql, parameter)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener listas por categoría: {ex.Message}", ex);
+            }
         }
 
         public async Task CreateListaAsync(CreateListaMaestraDto dto)
         {
-            var entity = new ConfiguracionListaMaestra
+            try
             {
-                Categoria = dto.Categoria,
-                Opcion = dto.Opcion,
-                Activo = true
-            };
+                var sql = @"
+                    INSERT INTO configuracion_listas_maestras (categoria, opcion) 
+                    VALUES (@Categoria, @Opcion) 
+                    RETURNING lista_id";
 
-            _context.ConfiguracionListasMaestras.Add(entity);
-            await _context.SaveChangesAsync();
+                var parameters = new[]
+                {
+                    new NpgsqlParameter("@Categoria", dto.Categoria),
+                    new NpgsqlParameter("@Opcion", dto.Opcion)
+                };
+
+                await _context.Database.ExecuteSqlRawAsync(sql, parameters);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al crear la lista: {ex.Message}", ex);
+            }
         }
 
         public async Task UpdateListaAsync(int id, UpdateListaMaestraDto dto)
         {
-            var entity = await _context.ConfiguracionListasMaestras.FindAsync(id)
-                ?? throw new KeyNotFoundException("Lista no encontrada");
+            try
+            {
+                var sql = @"
+                    UPDATE configuracion_listas_maestras 
+                    SET opcion = @Opcion 
+                    WHERE lista_id = @Id";
 
-            entity.Opcion = dto.Opcion;
-            entity.Activo = dto.Activo;
+                var parameters = new[]
+                {
+                    new NpgsqlParameter("@Id", id),
+                    new NpgsqlParameter("@Opcion", dto.Opcion)
+                };
 
-            _context.ConfiguracionListasMaestras.Update(entity);
-            await _context.SaveChangesAsync();
+                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(sql, parameters);
+
+                if (rowsAffected == 0)
+                {
+                    throw new KeyNotFoundException("Lista no encontrada");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al actualizar la lista: {ex.Message}", ex);
+            }
         }
 
         public async Task DeleteListaAsync(int id)
         {
-            var entity = await _context.ConfiguracionListasMaestras.FindAsync(id)
-                ?? throw new KeyNotFoundException("Lista no encontrada");
+            try
+            {
+                var sql = "DELETE FROM configuracion_listas_maestras WHERE lista_id = @Id";
+                var parameter = new NpgsqlParameter("@Id", id);
 
-            entity.Activo = false;
-            _context.ConfiguracionListasMaestras.Update(entity);
-            await _context.SaveChangesAsync();
+                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(sql, parameter);
+
+                if (rowsAffected == 0)
+                {
+                    throw new KeyNotFoundException("Lista no encontrada");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al eliminar la lista: {ex.Message}", ex);
+            }
         }
 
         public async Task<List<CatRango>> GetRangosAsync()
@@ -90,6 +144,22 @@ namespace Backend_Sub33.Services
         public async Task<List<CatTipoEmergencia>> GetTiposEmergenciaAsync()
         {
             return await _context.CatTiposEmergencia.ToListAsync();
+        }
+
+        public async Task<List<string>> GetCategoriasAsync()
+        {
+            try
+            {
+                var sql = "SELECT DISTINCT categoria FROM configuracion_listas_maestras ORDER BY categoria";
+
+                return await _context.Database
+                    .SqlQueryRaw<string>(sql)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener categorías: {ex.Message}", ex);
+            }
         }
     }
 }

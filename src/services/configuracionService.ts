@@ -10,23 +10,8 @@ const getAuthHeader = () => {
   return {};
 };
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("authToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
 export interface ListaItem {
-  id: number;
+  listaId: number;
   categoria: string;
   opcion: string;
 }
@@ -37,15 +22,13 @@ export interface CreateListaDTO {
 }
 
 export interface ListasResponse {
-  id?: number;
   listaId?: number;
   lista_id?: number;
+  id?: number;
   categoria: string;
   opcion: string;
 }
 
-// El backend puede devolver el ID bajo la propiedad "id", "listaId" o "lista_id".
-// Este helper normaliza cualquier formato a un número.
 export const getListaId = (item: ListasResponse): number => {
   const id = item.id ?? item.listaId ?? item.lista_id;
   if (id === undefined || id === null) {
@@ -54,44 +37,59 @@ export const getListaId = (item: ListasResponse): number => {
   return Number(id);
 };
 
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Error ${response.status}`);
+const parseErrorResponse = async (response: Response): Promise<string> => {
+  const text = await response.text().catch(() => "");
+  if (!text) return `Error ${response.status}: ${response.statusText}`;
+  try {
+    const json = JSON.parse(text);
+    return json.mensaje || json.detalle || json.message || json.error || JSON.stringify(json);
+  } catch {
+    return text;
   }
-  return response.json();
 };
 
-export const getListas = async (): Promise<ListasResponse[]> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/configuracion/listas`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-    });
-    return handleResponse(response);
-  } catch (error) {
-    console.error("Error fetching listas:", error);
-    throw error;
+const handleResponse = async (response: Response) => {
+  if (!response.ok) {
+    const message = await parseErrorResponse(response);
+    console.error("Error detallado del Backend:", message);
+    throw new Error(message);
   }
+  const json = await response.json();
+  return Array.isArray(json) ? json : json?.data ?? [];
+};
+
+export const getListas = async (): Promise<ListaItem[]> => {
+  const response = await fetch(`${API_BASE_URL}/configuracion/listas`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+  });
+  if (!response.ok) {
+    const message = await parseErrorResponse(response);
+    console.error("Error detallado del Backend:", message);
+    throw new Error(message);
+  }
+  const data = await response.json();
+  return Array.isArray(data) ? data : data.data || [];
 };
 
 export const getListasPorCategoria = async (categoria: string): Promise<ListasResponse[]> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/configuracion/listas/${encodeURIComponent(categoria)}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-    });
-    return handleResponse(response);
-  } catch (error) {
-    console.error("Error fetching listas por categoria:", error);
-    throw error;
+  const response = await fetch(`${API_BASE_URL}/configuracion/listas/${encodeURIComponent(categoria)}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+  });
+  if (!response.ok) {
+    const message = await parseErrorResponse(response);
+    console.error("Error detallado del Backend:", message);
+    throw new Error(message);
   }
+  const data = await response.json();
+  return Array.isArray(data) ? data : data.data || [];
 };
 
 export const createLista = async (categoria: string, opcion: string): Promise<ListasResponse> => {
@@ -100,13 +98,13 @@ export const createLista = async (categoria: string, opcion: string): Promise<Li
       categoria: categoria.trim(),
       opcion: opcion.trim(),
     };
-    const response = await axios.post("http://localhost:5196/api/configuracion/listas", payload, {
+    const response = await axios.post(`${API_BASE_URL}/configuracion/listas`, payload, {
       headers: {
         "Content-Type": "application/json",
         ...getAuthHeader(),
       },
     });
-    return response.data;
+    return response.data?.data ?? response.data;
   } catch (error) {
     console.error("Error creating lista:", error);
     throw error;
@@ -114,47 +112,39 @@ export const createLista = async (categoria: string, opcion: string): Promise<Li
 };
 
 export const deleteLista = async (id: number): Promise<void> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Error ${response.status}`);
-    }
-  } catch (error) {
-    console.error("Error deleting lista:", error);
-    throw error;
+  const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+  });
+  if (!response.ok) {
+    const message = await parseErrorResponse(response);
+    console.error("Error detallado del Backend:", message);
+    throw new Error(message);
   }
 };
 
 export const updateLista = async (id: number, categoria: string, opcion: string): Promise<ListasResponse> => {
-  try {
-    const payload = {
-      categoria: categoria.trim(),
-      opcion: opcion.trim(),
-    };
-    const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Error ${response.status}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error("Error updating lista:", error);
-    throw error;
+  const payload = {
+    categoria: categoria.trim(),
+    opcion: opcion.trim(),
+  };
+  const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const message = await parseErrorResponse(response);
+    console.error("Error detallado del Backend:", message);
+    throw new Error(message);
   }
+  return response.json();
 };
 
 export const getRangos = async (): Promise<string[]> => {

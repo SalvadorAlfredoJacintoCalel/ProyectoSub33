@@ -20,7 +20,7 @@ namespace Backend_Sub33.Models.Entities
         [Column("opcion")]
         public string Opcion { get; set; } = string.Empty;
 
-        [Column("activo")]
-        public bool Activo { get; set; }
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
     }
 }

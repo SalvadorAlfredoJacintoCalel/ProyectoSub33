@@ -1,5 +1,4 @@
 using Backend_Sub33.DTOs.Configuracion;
-using Backend_Sub33.Models.Entities;
 using Backend_Sub33.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,54 +16,146 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpGet("listas")]
-        public async Task<ActionResult<List<ListaMaestraDto>>> GetListas()
+        public async Task<IActionResult> GetListas()
         {
-            return Ok(await _service.GetAllListasAsync());
+            try
+            {
+                var listas = await _service.GetAllListasAsync();
+                return Ok(listas);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al obtener las listas", detalle = ex.Message });
+            }
         }
 
         [HttpGet("listas/{categoria}")]
-        public async Task<ActionResult<List<ListaMaestraDto>>> GetListasPorCategoria(string categoria)
+        public async Task<IActionResult> GetListasPorCategoria(string categoria)
         {
-            return Ok(await _service.GetPorCategoriaAsync(categoria));
+            try
+            {
+                var listas = await _service.GetPorCategoriaAsync(categoria);
+                return Ok(listas);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al obtener las listas por categoría", detalle = ex.Message });
+            }
+        }
+
+        [HttpGet("categorias")]
+        public async Task<IActionResult> GetCategorias()
+        {
+            try
+            {
+                var categorias = await _service.GetCategoriasAsync();
+                return Ok(categorias);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al obtener categorías", detalle = ex.Message });
+            }
         }
 
         [HttpPost("listas")]
-        public async Task<ActionResult> CrearLista(CreateListaMaestraDto dto)
+        public async Task<IActionResult> CrearLista(CreateListaMaestraDto dto)
         {
-            await _service.CreateListaAsync(dto);
-            return Ok(new { exito = true, mensaje = "Lista creada correctamente" });
+            try
+            {
+                // Limpiar espacios en blanco de categoria y opcion
+                dto.Categoria = dto.Categoria?.Trim() ?? string.Empty;
+                dto.Opcion = dto.Opcion?.Trim() ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(dto.Categoria) || string.IsNullOrWhiteSpace(dto.Opcion))
+                {
+                    return BadRequest(new { exito = false, mensaje = "La categoría y la opción son obligatorias" });
+                }
+
+                await _service.CreateListaAsync(dto);
+                return Ok(new { exito = true, mensaje = "Lista creada correctamente" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al crear la lista", detalle = ex.Message });
+            }
         }
 
         [HttpPut("listas/{id}")]
-        public async Task<ActionResult> ActualizarLista(int id, UpdateListaMaestraDto dto)
+        public async Task<IActionResult> ActualizarLista(int id, UpdateListaMaestraDto dto)
         {
-            await _service.UpdateListaAsync(id, dto);
-            return Ok(new { exito = true, mensaje = "Lista actualizada correctamente" });
+            try
+            {
+                await _service.UpdateListaAsync(id, dto);
+                return Ok(new { exito = true, mensaje = "Lista actualizada correctamente" });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { exito = false, mensaje = "Lista no encontrada" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al actualizar la lista", detalle = ex.Message });
+            }
         }
 
         [HttpDelete("listas/{id:int}")]
-        public async Task<ActionResult> EliminarLista(int id)
+        public async Task<IActionResult> EliminarLista(int id)
         {
-            await _service.DeleteListaAsync(id);
-            return Ok(new { exito = true, mensaje = "Lista dada de baja correctamente" });
+            try
+            {
+                await _service.DeleteListaAsync(id);
+                return Ok(new { exito = true, mensaje = "Lista eliminada correctamente" });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { exito = false, mensaje = "Lista no encontrada" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al eliminar la lista", detalle = ex.Message });
+            }
         }
 
         [HttpGet("rangos")]
-        public async Task<ActionResult<List<CatRango>>> GetRangos()
+        public async Task<IActionResult> GetRangos()
         {
-            return Ok(await _service.GetRangosAsync());
+            try
+            {
+                var rangos = await _service.GetRangosAsync();
+                return Ok(rangos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al obtener rangos", detalle = ex.Message });
+            }
         }
 
         [HttpGet("hospitales")]
-        public async Task<ActionResult<List<CatHospital>>> GetHospitales()
+        public async Task<IActionResult> GetHospitales()
         {
-            return Ok(await _service.GetHospitalesAsync());
+            try
+            {
+                var hospitales = await _service.GetHospitalesAsync();
+                return Ok(hospitales);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al obtener hospitales", detalle = ex.Message });
+            }
         }
 
         [HttpGet("tipos-emergencia")]
-        public async Task<ActionResult<List<CatTipoEmergencia>>> GetTiposEmergencia()
+        public async Task<IActionResult> GetTiposEmergencia()
         {
-            return Ok(await _service.GetTiposEmergenciaAsync());
+            try
+            {
+                var tipos = await _service.GetTiposEmergenciaAsync();
+                return Ok(tipos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al obtener tipos de emergencia", detalle = ex.Message });
+            }
         }
     }
 }
