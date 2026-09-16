@@ -96,6 +96,8 @@ function AccordionSection({
   onEdit,
   nuevaOpcion,
   setNuevaOpcion,
+  isOpen,
+  onOpenChange,
 }: {
   categoria: string;
   items: ListasResponse[];
@@ -104,8 +106,9 @@ function AccordionSection({
   onEdit: (item: ListasResponse) => void;
   nuevaOpcion: string;
   setNuevaOpcion: (val: string) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<ListasResponse | null>(null);
 
   function handleDeleteConfirm() {
@@ -125,7 +128,7 @@ function AccordionSection({
       )}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-3">
         <button
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => onOpenChange(!isOpen)}
           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
         >
           <div className="flex items-center gap-3">
@@ -137,11 +140,11 @@ function AccordionSection({
             </span>
           </div>
           <div className="text-gray-400">
-            {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </div>
         </button>
 
-        {open && (
+        {isOpen && (
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="flex flex-wrap gap-2 mb-4 mt-4">
               {items.map((item, idx) => (
@@ -252,6 +255,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingItem, setEditingItem] = useState<ListasResponse | null>(null);
 
+  // Expanded category state for accordion persistence
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+
   if (userRole !== "admin") return <AccessDenied />;
 
   const cargarListas = async () => {
@@ -315,6 +321,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       .then(() => {
         setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
         showToast(`"${opcionNormalizada}" agregado a ${categoriaNormalizada}`, "success");
+        // Mantener la categoría desplegada después de guardar
+        setExpandedCategory(categoria);
         cargarListas();
       })
       .catch((error) => {
@@ -475,7 +483,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
           createLista(categoria, opcion)
             .then(() => {
+              // Limpiar input localmente tras éxito
+              setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
               showToast(`"${opcionNormalizada}" agregado a ${categoriaNormalizada}`, "success");
+              // Mantener la categoría desplegada después de guardar
+              setExpandedCategory(categoria);
               cargarListas();
             })
             .catch(() => showToast("Error al agregar", "error"));
@@ -484,6 +496,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         onEdit={handleEditItem}
         nuevaOpcion={nuevaOpción[categoria] || ""}
         setNuevaOpcion={(val) => setNuevaOpcion(prev => ({ ...prev, [categoria]: val }))}
+        isOpen={expandedCategory === categoria}
+        onOpenChange={(open) => setExpandedCategory(open ? categoria : null)}
       />
     ));
   };
