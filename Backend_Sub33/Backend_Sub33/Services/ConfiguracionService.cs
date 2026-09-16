@@ -89,39 +89,56 @@ namespace Backend_Sub33.Services
 
         public async Task<(bool exito, string mensaje)> CrearListaAsync(string categoria, string opcion)
         {
-            var catNormalizada = categoria.Trim().ToUpper();
-            var opcNormalizada = opcion.Trim().ToUpper();
+            var cat = categoria?.Trim();
+            var opc = opcion?.Trim();
 
-            if (string.IsNullOrWhiteSpace(catNormalizada) || string.IsNullOrWhiteSpace(opcNormalizada))
+            if (string.IsNullOrWhiteSpace(cat) || string.IsNullOrWhiteSpace(opc))
             {
-                throw new ArgumentException("La categoría y la opción son obligatorias");
+                return (false, "La categoría y la opción son obligatorias.");
             }
+
+            var connString = _context.Database.GetConnectionString();
+            if (string.IsNullOrEmpty(connString))
+            {
+                return (false, "No se pudo obtener la cadena de conexión.");
+            }
+
+            await using var conn = new Npgsql.NpgsqlConnection(connString);
+            await conn.OpenAsync();
 
             string sqlCheck = @"
                 SELECT COUNT(1) 
                 FROM configuracion_listas_maestras 
-                WHERE UPPER(categoria) = @categoria 
-                  AND UPPER(opcion) = @opcion;";
+                WHERE LOWER(categoria) = LOWER(@categoria) 
+                  AND LOWER(opcion) = LOWER(@opcion)";
 
-            var existe = await _context.Database.SqlQueryRaw<int>(
-                sqlCheck,
-                new Npgsql.NpgsqlParameter("@categoria", catNormalizada),
-                new Npgsql.NpgsqlParameter("@opcion", opcNormalizada)
-            ).FirstOrDefaultAsync();
-
-            if (existe > 0)
+            await using (var cmdCheck = new Npgsql.NpgsqlCommand(sqlCheck, conn))
             {
-                return (false, $"La opción '{opcNormalizada}' ya existe en la categoría '{catNormalizada}'.");
+                cmdCheck.Parameters.AddWithValue("@categoria", cat);
+                cmdCheck.Parameters.AddWithValue("@opcion", opc);
+
+                var result = await cmdCheck.ExecuteScalarAsync();
+                var existe = Convert.ToInt32(result ?? 0);
+
+                if (existe > 0)
+                {
+                    return (false, $"La opción '{opc}' ya existe dentro de '{cat}'.");
+                }
             }
 
-            string sqlInsert = "INSERT INTO configuracion_listas_maestras (categoria, opcion) VALUES (@categoria, @opcion)";
-            var filas = await _context.Database.ExecuteSqlRawAsync(
-                sqlInsert,
-                new Npgsql.NpgsqlParameter("@categoria", catNormalizada),
-                new Npgsql.NpgsqlParameter("@opcion", opcNormalizada)
-            );
+            string sqlInsert = @"
+                INSERT INTO configuracion_listas_maestras (categoria, opcion) 
+                VALUES (@categoria, @opcion)";
 
-            return (filas > 0, filas > 0 ? "Registro guardado exitosamente" : "No se pudo guardar el registro");
+            await using (var cmdInsert = new Npgsql.NpgsqlCommand(sqlInsert, conn))
+            {
+                cmdInsert.Parameters.AddWithValue("@categoria", cat);
+                cmdInsert.Parameters.AddWithValue("@opcion", opc);
+
+                await cmdInsert.ExecuteNonQueryAsync();
+            }
+
+            return (true, "Registro guardado exitosamente");
         }
 
         public async Task UpdateListaAsync(int id, UpdateListaMaestraDto dto)
@@ -200,7 +217,7 @@ namespace Backend_Sub33.Services
 
         public async Task<List<CatRango>> GetRangosAsync()
         {
-            return await _context.CatRangos.ToListAsync();
+            return await _context.CatRangos.Where(r => r.Activo).ToListAsync();
         }
 
         public async Task<List<CatHospital>> GetHospitalesAsync()

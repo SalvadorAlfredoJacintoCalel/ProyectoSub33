@@ -12,13 +12,16 @@ namespace Backend_Sub33.Models.Entities
 
         [Required]
         [MaxLength(50)]
-        [Column("nombre")]
-        public string Nombre { get; set; } = string.Empty;
+        [Column("rango")]
+        public string Rango { get; set; } = string.Empty;
 
         [Column("minimo")]
         public int Minimo { get; set; }
 
         [Column("maximo")]
         public int Maximo { get; set; }
+
+        [Column("activo")]
+        public bool Activo { get; set; } = true;
     }
 }

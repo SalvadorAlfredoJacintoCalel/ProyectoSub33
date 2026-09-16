@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Backend_Sub33.Models.Entities;
 
 namespace Backend_Sub33.Models;
 
@@ -30,10 +31,10 @@ public class Personal
     public string Dpi { get; set; } = string.Empty;
 
     [Column("fecha_nacimiento")]
-    public DateTime FechaNacimiento { get; set; }
+    public DateTime? FechaNacimiento { get; set; }
 
-    [Column("rango")]
-    public string Rango { get; set; } = string.Empty;
+    [Column("rango_id")]
+    public int? RangoId { get; set; }
 
     [Column("fecha_ingreso")]
     public DateTime FechaIngreso { get; set; }
@@ -42,11 +43,14 @@ public class Personal
     public string Telefono { get; set; } = string.Empty;
 
     [Column("estado")]
-    public bool Estado { get; set; }
+    public bool Estado { get; set; } = true;
 
     [Column("contacto_emergencia_nombre")]
     public string? ContactoEmergenciaNombre { get; set; }
 
     [Column("contacto_emergencia_telefono")]
     public string? ContactoEmergenciaTelefono { get; set; }
+
+    [ForeignKey("RangoId")]
+    public virtual CatRango? Rango { get; set; }
 }

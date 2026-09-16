@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Backend_Sub33.Data;
+using Backend_Sub33.Models.Entities;
 using Backend_Sub33.DTOs.Configuracion;
 using Backend_Sub33.Services;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Backend_Sub33.Controllers
 {
@@ -9,10 +12,12 @@ namespace Backend_Sub33.Controllers
     public class ConfiguracionController : ControllerBase
     {
         private readonly IConfiguracionService _service;
+        private readonly AppDbContext _context;
 
-        public ConfiguracionController(IConfiguracionService service)
+        public ConfiguracionController(IConfiguracionService service, AppDbContext context)
         {
             _service = service;
+            _context = context;
         }
 
         [HttpGet("listas")]
@@ -121,12 +126,15 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                var rangos = await _service.GetRangosAsync();
+                var rangos = await _context.CatRangos
+                    .Where(r => r.Activo)
+                    .Select(r => new { id = r.RangoId, nombre = r.Rango })
+                    .ToListAsync();
                 return Ok(rangos);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener rangos", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = ex.Message, detalle = ex.InnerException?.Message });
             }
         }
 

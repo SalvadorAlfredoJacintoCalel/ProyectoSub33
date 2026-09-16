@@ -18,19 +18,21 @@ import {
   KeyRound,
   EyeOff,
 } from "lucide-react";
-import { getRangos as getRangosConfig } from "../services/configuracionService";
-import { registrarPersonal, type CrearPersonalDto } from "../services/personalService";
+import {
+  getRangos,
+  getRoles,
+  getPersonal,
+  registrarPersonal,
+  actualizarPersonal,
+  eliminarPersonal,
+  type CrearPersonalDto,
+  type ActualizarPersonalDto,
+  type PersonalResponse,
+  type RangoItem,
+  type RolItem,
+} from "../services/personalService";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Rango =
-  | ""
-  | "Capitán"
-  | "Oficial de Turno"
-  | "Secretario"
-  | "Tesorero"
-  | "Socorrista"
-  | "Voluntario"
-  | "Estudiante de Bombero";
 type Estado = "Activo" | "Inactivo";
 
 interface Miembro {
@@ -38,7 +40,8 @@ interface Miembro {
   codigo: string;
   nombre: string;
   dpi: string;
-  rango: Rango;
+  rangoId: number;
+  rango: string;
   estado: Estado;
   telefono: string;
   contactoEmergencia: string;
@@ -54,7 +57,7 @@ interface FormState {
   dpi: string;
   fechaNacimiento: string;
   codigo: string;
-  rango: Rango;
+  rangoId: number;
   fechaIngreso: string;
   telefono: string;
   estado: Estado;
@@ -64,7 +67,7 @@ interface FormState {
   correo: string;
   contrasena: string;
   confirmarContrasena: string;
-  rolSistema: string;
+  rolId: number;
 }
 
 // ── Sample Data ────────────────────────────────────────────────────────────────
@@ -72,19 +75,7 @@ const sampleData: Miembro[] = [];
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const RED = "#D32F2F";
-const RANGOS: Rango[] = ["Capitán", "Oficial de Turno", "Secretario", "Tesorero", "Socorrista", "Voluntario", "Estudiante de Bombero"];
 const PAGE_SIZE = 8;
-
-const rangoBadge: Record<string, string> = {
-  "": "",
-  "Capitán": "bg-[#1e3a5f] text-white",
-  "Oficial de Turno": "bg-blue-600 text-white",
-  "Secretario": "bg-purple-600 text-white",
-  "Tesorero": "bg-amber-500 text-white",
-  "Socorrista": "bg-emerald-600 text-white",
-  "Voluntario": "bg-gray-500 text-white",
-  "Estudiante de Bombero": "bg-orange-500 text-white",
-};
 
 const estadoBadge: Record<Estado, string> = {
   Activo: "bg-green-100 text-green-800 border border-green-200",
@@ -117,9 +108,9 @@ function slugify(s: string): string {
 function emptyFormState(): FormState {
   return {
     primerNombre: "", segundoNombre: "", primerApellido: "", segundoApellido: "",
-    dpi: "", fechaNacimiento: "", codigo: "", rango: "", fechaIngreso: "",
+    dpi: "", fechaNacimiento: "", codigo: "", rangoId: 0, fechaIngreso: "",
     telefono: "", estado: "Activo", contactoEmergencia: "", telEmergencia: "",
-    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolSistema: "",
+    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
   };
 }
 
@@ -132,10 +123,10 @@ function miembroToForm(m: Miembro): FormState {
   else { primerNombre = parts[0]; segundoNombre = parts[1]; primerApellido = parts[2]; segundoApellido = parts.slice(3).join(" "); }
   return {
     primerNombre, segundoNombre, primerApellido, segundoApellido,
-    dpi: m.dpi, fechaNacimiento: "", codigo: m.codigo, rango: m.rango,
+    dpi: m.dpi, fechaNacimiento: "", codigo: m.codigo, rangoId: m.rangoId,
     fechaIngreso: m.fechaIngreso, telefono: m.telefono, estado: m.estado,
     contactoEmergencia: m.contactoEmergencia, telEmergencia: m.telEmergencia,
-    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolSistema: "",
+    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
   };
 }
 
@@ -143,7 +134,7 @@ function formToMiembro(f: FormState): Omit<Miembro, "id"> {
   const nombre = [f.primerNombre, f.segundoNombre, f.primerApellido, f.segundoApellido]
     .map((s) => s.trim()).filter(Boolean).join(" ");
   return {
-    codigo: f.codigo.trim(), nombre, dpi: f.dpi.trim(), rango: f.rango, estado: f.estado,
+    codigo: f.codigo.trim(), nombre, dpi: f.dpi.trim(), rangoId: f.rangoId, estado: f.estado,
     telefono: f.telefono.trim(), contactoEmergencia: f.contactoEmergencia.trim(),
     telEmergencia: f.telEmergencia.trim(), fechaIngreso: f.fechaIngreso,
   };
@@ -158,9 +149,10 @@ function validateForm(f: FormState, credOpen: boolean, isEditing: boolean): Reco
   if (!f.telefono.trim()) e.telefono = "Teléfono requerido";
   if (!f.contactoEmergencia.trim()) e.contactoEmergencia = "Nombre del contacto requerido";
   if (!f.telEmergencia.trim()) e.telEmergencia = "Teléfono de emergencia requerido";
+  if (f.rangoId === 0) e.rangoId = "Rango requerido";
   if (credOpen) {
     if (!f.usuario.trim()) e.usuario = "Usuario requerido";
-    if (!f.rolSistema) e.rolSistema = "Rol del sistema requerido";
+    if (f.rolId === 0) e.rolId = "Rol del sistema requerido";
     // Password: required for new members; for edits, only validate if the user typed something
     const pwEntered = f.contrasena.length > 0;
     if (!isEditing || pwEntered) {
@@ -227,8 +219,10 @@ export function PersonalPage() {
   const [viewId, setViewId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [alert, setAlert] = useState<{ open: boolean; type: AlertType; title: string; message: string }>({ open: false, type: "warning", title: "", message: "" });
-  const [rangos, setRangos] = useState<string[]>([]);
+  const [rangos, setRangos] = useState<RangoItem[]>([]);
+  const [roles, setRoles] = useState<RolItem[]>([]);
   const [isLoadingRangos, setIsLoadingRangos] = useState(true);
+  const [isLoadingRoles, setIsLoadingRoles] = useState(true);
 
   // ── Derived ───────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -249,20 +243,28 @@ export function PersonalPage() {
   const activos = members.filter((m) => m.estado === "Activo").length;
   const inactivos = members.filter((m) => m.estado === "Inactivo").length;
 
-  // Load rangos from backend on mount
+  // Load rangos, roles, and personal from backend on mount
   useEffect(() => {
-    const loadRangos = async () => {
+    const loadData = async () => {
       try {
         setIsLoadingRangos(true);
-        const data = await getRangosConfig();
-        setRangos(data);
+        setIsLoadingRoles(true);
+        const [rangosData, rolesData, personalData] = await Promise.all([
+          getRangos(),
+          getRoles(),
+          getPersonal(),
+        ]);
+        setRangos(rangosData);
+        setRoles(rolesData);
+        setMembers(personalData);
       } catch (error) {
-        console.error("Error loading rangos:", error);
+        console.error("Error loading data:", error);
       } finally {
         setIsLoadingRangos(false);
+        setIsLoadingRoles(false);
       }
     };
-    loadRangos();
+    loadData();
   }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -319,8 +321,6 @@ export function PersonalPage() {
     setErrors(errs);
 
     // ── Scenario 1: Missing required key fields ──
-    // Key fields: Nombre, Apellido, DPI, Teléfono, Contacto Emergencia, Tel Emergencia
-    // Credentials (if section open) also count as required
     const isMissingKeyFields =
       !form.primerNombre.trim() ||
       !form.primerApellido.trim() ||
@@ -328,7 +328,8 @@ export function PersonalPage() {
       !form.telefono.trim() ||
       !form.contactoEmergencia.trim() ||
       !form.telEmergencia.trim() ||
-      (credOpen && (!form.usuario.trim() || !form.rolSistema));
+      form.rangoId === 0 ||
+      (credOpen && (!form.usuario.trim() || form.rolId === 0));
 
     if (isMissingKeyFields) {
       showAlert(
@@ -364,7 +365,7 @@ export function PersonalPage() {
     }
 
     // ── Build payload for API ──
-    const payload: CrearPersonalDto = {
+    const payload: CrearPersonalDto | ActualizarPersonalDto = {
       primerNombre: form.primerNombre,
       segundoNombre: form.segundoNombre,
       primerApellido: form.primerApellido,
@@ -372,7 +373,7 @@ export function PersonalPage() {
       dpi: form.dpi,
       fechaNacimiento: form.fechaNacimiento,
       codigo: form.codigo,
-      rango: form.rango,
+      rangoId: form.rangoId,
       fechaIngreso: form.fechaIngreso,
       telefono: form.telefono,
       estado: form.estado,
@@ -386,25 +387,34 @@ export function PersonalPage() {
         correo: form.correo,
         contrasena: form.contrasena,
         confirmarContrasena: form.confirmarContrasena,
-        rolSistema: form.rolSistema,
+        rolId: form.rolId,
       };
     }
 
-    // ── Call API to register personal ──
-    registrarPersonal(payload)
+    // ── Call API to register/update personal ──
+    const apiCall = editingId !== null
+      ? actualizarPersonal(editingId, payload as ActualizarPersonalDto)
+      : registrarPersonal(payload as CrearPersonalDto);
+
+    apiCall
       .then(() => {
         showAlert(
           "success",
           "Registro Exitoso",
-          "El nuevo miembro del personal ha sido guardado correctamente en el expediente."
+          editingId !== null
+            ? "El miembro del personal ha sido actualizado correctamente."
+            : "El nuevo miembro del personal ha sido guardado correctamente en el expediente."
         );
       })
       .catch((error) => {
         console.error("Error registrando personal:", error);
+        const msg = error instanceof Error ? error.message : "Error desconocido";
         showAlert(
           "error",
           "Error al Registrar",
-          "No se pudo registrar el miembro. Verifique la conexión e intente nuevamente."
+          msg.includes("duplicate") || msg.includes("duplicado") || msg.includes("DPI") || msg.includes("username") || msg.includes("usuario")
+            ? "El DPI o usuario ya existe en el sistema."
+            : "No se pudo registrar el miembro. Verifique la conexión e intente nuevamente."
         );
       });
   }
@@ -435,9 +445,16 @@ export function PersonalPage() {
 
   function handleDelete() {
     if (!deleteId) return;
-    setMembers((prev) => prev.filter((m) => m.id !== deleteId));
-    setDeleteId(null);
-    showToast("Miembro eliminado.");
+    eliminarPersonal(deleteId)
+      .then(() => {
+        setMembers((prev) => prev.filter((m) => m.id !== deleteId));
+        setDeleteId(null);
+        showToast("Miembro eliminado.");
+      })
+      .catch((error) => {
+        console.error("Error eliminando personal:", error);
+        showToast("No se pudo eliminar el miembro.");
+      });
   }
 
   const viewMember = members.find((m) => m.id === viewId) ?? null;
@@ -591,7 +608,7 @@ export function PersonalPage() {
                     {m.dpi}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${rangoBadge[m.rango]}`}>
+                    <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">
                       {m.rango}
                     </span>
                   </td>
@@ -810,17 +827,18 @@ export function PersonalPage() {
                     Rango <span style={{ color: RED }}>*</span>
                   </label>
                   <select
-                    value={form.rango}
-                    onChange={(e) => setField("rango", e.target.value as Rango)}
-                    style={inputStyle(false)}
+                    value={form.rangoId}
+                    onChange={(e) => setField("rangoId", Number(e.target.value))}
+                    style={inputStyle(!!errors.rangoId)}
                   >
-                    <option value="">Seleccionar rango...</option>
+                    <option value={0}>Seleccionar rango...</option>
                     {(isLoadingRangos ? [] : rangos).map((r) => (
-                      <option key={r} value={r}>
-                        {r}
+                      <option key={r.id} value={r.id}>
+                        {r.nombre}
                       </option>
                     ))}
                   </select>
+                  {errors.rangoId && <p className="mt-0.5 text-xs text-red-600">{errors.rangoId}</p>}
                 </div>
 
                 <div>
@@ -951,14 +969,19 @@ export function PersonalPage() {
                         <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
                           Rol del Sistema <span style={{ color: "var(--red)" }}>*</span>
                         </label>
-<select
-                          value={form.rolSistema}
-                          onChange={(e) => setField("rolSistema", e.target.value)}
-                          style={inputStyle(!!errors.rolSistema)}
+                        <select
+                          value={form.rolId}
+                          onChange={(e) => setField("rolId", Number(e.target.value))}
+                          style={inputStyle(!!errors.rolId)}
                         >
-                          <option value="">Seleccionar rol...</option>
+                          <option value={0}>Seleccionar rol...</option>
+                          {(isLoadingRoles ? [] : roles).map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.nombre}
+                            </option>
+                          ))}
                         </select>
-                        {errors.rolSistema && <p className="mt-0.5 text-xs text-red-600">{errors.rolSistema}</p>}
+                        {errors.rolId && <p className="mt-0.5 text-xs text-red-600">{errors.rolId}</p>}
                       </div>
                     </div>
 
