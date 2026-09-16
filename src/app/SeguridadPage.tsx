@@ -462,9 +462,53 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             Configure las listas maestras utilizadas en todo el sistema. Los cambios se aplican de inmediato en todos los módulos.
           </p>
 
-          {/* ── Crear Nueva Lista ────────────────────────────────────────────── */}
-          <div style={{ marginBottom: 20 }}>
-            <div className="flex justify-start mb-6">
+          {/* ── Crear Nueva Lista (solo cuando hay datos) ────────────────────────────────────────────── */}
+          {listasMaestras.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div className="flex justify-start mb-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditMode(false);
+                    setEditingItem(null);
+                    setNuevaCategoria("");
+                    setNuevaOpcionModal("");
+                    setIsCreateListaModalOpen(true);
+                  }}
+                  className="bg-[#D32F2F] hover:bg-[#b71c1c] text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-sm transition-colors"
+                >
+                  <span className="text-xl leading-none">+</span> Crear Lista / Opción
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Empty State (solo cuando no hay datos) ────────────────────────────────────────────── */}
+          {listasMaestras.length === 0 && (
+            <div style={{ 
+              textAlign: "center", 
+              padding: "80px 20px", 
+              color: "var(--text-3)",
+              background: "var(--bg-card)",
+              borderRadius: "16px",
+              border: "1px solid var(--border)",
+              maxWidth: "500px",
+              margin: "0 auto 24px auto"
+            }}>
+              <div style={{ 
+                width: 72, height: 72, borderRadius: "50%", 
+                background: "var(--red-bg)", 
+                display: "flex", alignItems: "center", justifyContent: "center", 
+                margin: "0 auto 20px" 
+              }}>
+                <Plus size={34} color={RED} />
+              </div>
+              <h3 style={{ fontFamily: "Manrope, sans-serif", fontWeight: 700, fontSize: 18, color: "var(--text-1)", margin: "0 0 10px" }}>
+                No hay listas configuradas
+              </h3>
+              <p style={{ fontFamily: "Inter, sans-serif", fontSize: 14, color: "var(--text-2)", lineHeight: 1.6, margin: "0 0 24px" }}>
+                No se encontraron categorías en la base de datos. Crea tu primera lista u opción para comenzar.
+              </p>
               <button
                 type="button"
                 onClick={() => {
@@ -474,17 +518,19 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                   setNuevaOpcionModal("");
                   setIsCreateListaModalOpen(true);
                 }}
-                className="bg-[#D32F2F] hover:bg-[#b71c1c] text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-sm transition-colors"
+                className="bg-[#D32F2F] hover:bg-[#b71c1c] text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-sm transition-colors mx-auto"
               >
                 <span className="text-xl leading-none">+</span> Crear Lista / Opción
               </button>
             </div>
-          </div>
+          )}
 
-{/* ── Listas Maestras (Acordeones) ──────────────────────────────────────── */}
-          <div className="max-w-2xl">
-            {renderAccordionSections()}
-          </div>
+          {/* ── Listas Maestras (Acordeones) - solo cuando hay datos ──────────────────────────────────────── */}
+          {listasMaestras.length > 0 && (
+            <div className="max-w-2xl">
+              {renderAccordionSections()}
+            </div>
+          )}
 
           {/* ── Gestión de Usuarios ──────────────────────────────────────── */}
           <div style={{ borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden", boxShadow: "var(--shadow)", marginTop: 12 }}>

@@ -105,8 +105,8 @@ export const createLista = async (categoria: string, opcion: string): Promise<Li
       },
     });
     return response.data?.data ?? response.data;
-  } catch (error) {
-    console.error("Error creating lista:", error);
+  } catch (error: any) {
+    console.error("Detalle devuelto por el Backend:", error.response?.data);
     throw error;
   }
 };

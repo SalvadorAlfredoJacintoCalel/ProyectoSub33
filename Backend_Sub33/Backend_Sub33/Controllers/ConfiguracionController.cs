@@ -62,21 +62,21 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                // Limpiar espacios en blanco de categoria y opcion
-                dto.Categoria = dto.Categoria?.Trim() ?? string.Empty;
-                dto.Opcion = dto.Opcion?.Trim() ?? string.Empty;
-
-                if (string.IsNullOrWhiteSpace(dto.Categoria) || string.IsNullOrWhiteSpace(dto.Opcion))
+                var creado = await _service.CrearListaAsync(dto.Categoria, dto.Opcion);
+                if (creado)
                 {
-                    return BadRequest(new { exito = false, mensaje = "La categoría y la opción son obligatorias" });
+                    return Ok(new { mensaje = "Registro creado con éxito" });
                 }
-
-                await _service.CreateListaAsync(dto);
-                return Ok(new { exito = true, mensaje = "Lista creada correctamente" });
+                return BadRequest(new { mensaje = "No se pudo crear el registro" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { mensaje = "Error al crear la lista", detalle = ex.Message });
+                Console.WriteLine($"[ERROR] CrearListaAsync failed: {ex.ToString()}");
+                return StatusCode(500, new { mensaje = "Error en base de datos", detalle = ex.Message });
             }
         }
 

@@ -3,6 +3,7 @@ using Backend_Sub33.Models.Entities;
 using Backend_Sub33.Data;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Globalization;
 
 namespace Backend_Sub33.Services
 {
@@ -13,6 +14,26 @@ namespace Backend_Sub33.Services
         public ConfiguracionService(AppDbContext context)
         {
             _context = context;
+        }
+
+        private static string NormalizarTexto(string texto)
+        {
+            if (string.IsNullOrWhiteSpace(texto))
+                return string.Empty;
+
+            var trimmed = texto.Trim();
+            var textInfo = CultureInfo.CurrentCulture.TextInfo;
+            return textInfo.ToTitleCase(trimmed.ToLower());
+        }
+
+        private static ListaItemDto NormalizarItem(ListaItemDto item)
+        {
+            return new ListaItemDto
+            {
+                ListaId = item.ListaId,
+                Categoria = NormalizarTexto(item.Categoria),
+                Opcion = NormalizarTexto(item.Opcion)
+            };
         }
 
         public async Task<List<ListaItemDto>> GetAllListasAsync()
@@ -26,9 +47,11 @@ namespace Backend_Sub33.Services
                     FROM configuracion_listas_maestras 
                     ORDER BY categoria, opcion";
 
-                return await _context.Database
+                var items = await _context.Database
                     .SqlQueryRaw<ListaItemDto>(sql)
                     .ToListAsync();
+
+                return items.Select(NormalizarItem).ToList();
             }
             catch (Exception ex)
             {
@@ -40,19 +63,23 @@ namespace Backend_Sub33.Services
         {
             try
             {
+                var categoriaNormalizada = NormalizarTexto(categoria);
+
                 var sql = @"
                     SELECT lista_id AS ListaId, 
                            categoria AS Categoria, 
                            opcion AS Opcion 
                     FROM configuracion_listas_maestras 
-                    WHERE categoria = @Categoria
+                    WHERE LOWER(categoria) = LOWER(@Categoria)
                     ORDER BY opcion";
 
-                var parameter = new NpgsqlParameter("@Categoria", categoria);
+                var parameter = new NpgsqlParameter("@Categoria", categoriaNormalizada);
 
-                return await _context.Database
+                var items = await _context.Database
                     .SqlQueryRaw<ListaItemDto>(sql, parameter)
                     .ToListAsync();
+
+                return items.Select(NormalizarItem).ToList();
             }
             catch (Exception ex)
             {
@@ -60,33 +87,53 @@ namespace Backend_Sub33.Services
             }
         }
 
-        public async Task CreateListaAsync(CreateListaMaestraDto dto)
+        public async Task<bool> CrearListaAsync(string categoria, string opcion)
         {
-            try
-            {
-                var sql = @"
-                    INSERT INTO configuracion_listas_maestras (categoria, opcion) 
-                    VALUES (@Categoria, @Opcion) 
-                    RETURNING lista_id";
+            var catLimpia = categoria.Trim();
+            var opcLimpia = opcion.Trim();
 
-                var parameters = new[]
-                {
-                    new NpgsqlParameter("@Categoria", dto.Categoria),
-                    new NpgsqlParameter("@Opcion", dto.Opcion)
-                };
-
-                await _context.Database.ExecuteSqlRawAsync(sql, parameters);
-            }
-            catch (Exception ex)
+            if (string.IsNullOrWhiteSpace(catLimpia) || string.IsNullOrWhiteSpace(opcLimpia))
             {
-                throw new Exception($"Error al crear la lista: {ex.Message}", ex);
+                throw new ArgumentException("La categoría y la opción son obligatorias");
             }
+
+            string sql = "INSERT INTO configuracion_listas_maestras (categoria, opcion) VALUES (@categoria, @opcion)";
+
+            var filasAfectadas = await _context.Database.ExecuteSqlRawAsync(
+                sql,
+                new Npgsql.NpgsqlParameter("@categoria", catLimpia),
+                new Npgsql.NpgsqlParameter("@opcion", opcLimpia)
+            );
+
+            return filasAfectadas > 0;
         }
 
         public async Task UpdateListaAsync(int id, UpdateListaMaestraDto dto)
         {
             try
             {
+                var opcion = NormalizarTexto(dto.Opcion);
+
+                if (string.IsNullOrWhiteSpace(opcion))
+                {
+                    throw new ArgumentException("La opción es obligatoria");
+                }
+
+                var checkSql = @"
+                    SELECT COUNT(*) 
+                    FROM configuracion_listas_maestras 
+                    WHERE lista_id != @Id 
+                      AND LOWER(opcion) = LOWER(@Opcion)";
+
+                var existe = await _context.Database
+                    .SqlQueryRaw<int>(checkSql, new NpgsqlParameter("@Id", id), new NpgsqlParameter("@Opcion", opcion))
+                    .FirstOrDefaultAsync();
+
+                if (existe > 0)
+                {
+                    throw new InvalidOperationException($"La opción '{opcion}' ya existe en esta categoría.");
+                }
+
                 var sql = @"
                     UPDATE configuracion_listas_maestras 
                     SET opcion = @Opcion 
@@ -95,7 +142,7 @@ namespace Backend_Sub33.Services
                 var parameters = new[]
                 {
                     new NpgsqlParameter("@Id", id),
-                    new NpgsqlParameter("@Opcion", dto.Opcion)
+                    new NpgsqlParameter("@Opcion", opcion)
                 };
 
                 var rowsAffected = await _context.Database.ExecuteSqlRawAsync(sql, parameters);
@@ -104,6 +151,10 @@ namespace Backend_Sub33.Services
                 {
                     throw new KeyNotFoundException("Lista no encontrada");
                 }
+            }
+            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -152,9 +203,11 @@ namespace Backend_Sub33.Services
             {
                 var sql = "SELECT DISTINCT categoria FROM configuracion_listas_maestras ORDER BY categoria";
 
-                return await _context.Database
+                var categorias = await _context.Database
                     .SqlQueryRaw<string>(sql)
                     .ToListAsync();
+
+                return categorias.Select(NormalizarTexto).Distinct().OrderBy(c => c).ToList();
             }
             catch (Exception ex)
             {

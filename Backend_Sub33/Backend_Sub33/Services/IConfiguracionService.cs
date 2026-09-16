@@ -9,7 +9,7 @@ namespace Backend_Sub33.Services
         Task<List<ListaItemDto>> GetAllListasAsync();
         Task<List<ListaItemDto>> GetPorCategoriaAsync(string categoria);
         Task<List<string>> GetCategoriasAsync();
-        Task CreateListaAsync(CreateListaMaestraDto dto);
+        Task<bool> CrearListaAsync(string categoria, string opcion);
         Task UpdateListaAsync(int id, UpdateListaMaestraDto dto);
         Task DeleteListaAsync(int id);
         Task<List<CatRango>> GetRangosAsync();
