@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Backend_Sub33.Data;
 using Backend_Sub33.Models;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,12 @@ namespace Backend_Sub33.Controllers
     public class RolesController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<RolesController> _logger;
 
-        public RolesController(AppDbContext context)
+        public RolesController(AppDbContext context, ILogger<RolesController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -39,11 +42,13 @@ namespace Backend_Sub33.Controllers
                     .OrderBy(r => r.Nombre)
                     .ToListAsync();
 
+                _logger.LogInformation("Roles obtenidos exitosamente. Cantidad: {Count}", roles.Count);
                 return Ok(roles);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener roles", detalle = ex.Message });
+                _logger.LogError(ex, "Error al obtener roles. SoloActivos: {SoloActivos}", soloActivos);
+                return StatusCode(500, new { mensaje = "Error interno al obtener roles", detalle = ex.Message });
             }
         }
 
@@ -64,14 +69,17 @@ namespace Backend_Sub33.Controllers
 
                 if (rol == null)
                 {
+                    _logger.LogWarning("Rol no encontrado: {RolId}", rolId);
                     return NotFound(new { mensaje = "Rol no encontrado" });
                 }
 
+                _logger.LogInformation("Rol obtenido: {RolId}", rolId);
                 return Ok(rol);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener rol", detalle = ex.Message });
+                _logger.LogError(ex, "Error al obtener rol por ID: {RolId}", rolId);
+                return StatusCode(500, new { mensaje = "Error interno al obtener rol", detalle = ex.Message });
             }
         }
     }

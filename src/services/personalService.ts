@@ -16,6 +16,15 @@ const handleResponse = async (response: Response) => {
   return response.json();
 };
 
+// Helper to map backend ListasResponse format to frontend SelectItem format
+const mapListasToItems = (listas: Array<{ listaId?: number; lista_id?: number; id?: number; categoria?: string; opcion: string }>): Array<{ id: number; nombre: string }> => {
+  if (!Array.isArray(listas)) return [];
+  return listas.map((item) => ({
+    id: item.id ?? item.listaId ?? item.lista_id ?? 0,
+    nombre: item.opcion ?? item.nombre ?? "",
+  })).filter((item) => item.id > 0 && item.nombre);
+};
+
 // ── DTOs ────────────────────────────────────────────────────────────────────────
 
 export interface CrearPersonalDto {
@@ -103,7 +112,8 @@ export const getRangos = async (): Promise<RangoItem[]> => {
         ...getAuthHeader(),
       },
     });
-    return handleResponse(response);
+    const data = await handleResponse(response);
+    return mapListasToItems(data);
   } catch (error) {
     console.error("Error fetching rangos:", error);
     throw error;
@@ -119,7 +129,8 @@ export const getRoles = async (): Promise<RolItem[]> => {
         ...getAuthHeader(),
       },
     });
-    return handleResponse(response);
+    const data = await handleResponse(response);
+    return mapListasToItems(data);
   } catch (error) {
     console.error("Error fetching roles:", error);
     throw error;

@@ -78,7 +78,7 @@ function getIconElement(type: AlertType): React.ReactElement {
 function getIconContainerClass(type: AlertType): string {
   switch (type) {
     case "success":
-      return "w-12 h-12 rounded-full border-2 border-red-300 bg-red-50 text-red-600 flex items-center justify-center";
+      return "w-12 h-12 rounded-full border-2 border-green-300 bg-green-50 text-green-600 flex items-center justify-center";
     case "warning":
       return "w-12 h-12 rounded-full border-2 border-[#eab308] bg-[#fefce8] text-[#ca8a04] flex items-center justify-center";
     case "incomplete":
@@ -93,10 +93,12 @@ function getIconContainerClass(type: AlertType): string {
 function getButtonClass(type: AlertType): string {
   switch (type) {
     case "success":
+      return "w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-medium transition-colors";
     case "warning":
     case "incomplete":
-    case "error":
       return "w-full bg-[#d92d20] text-white py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity";
+    case "error":
+      return "w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-medium transition-colors";
     default:
       return "w-full bg-[#d92d20] text-white py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity";
   }
@@ -109,6 +111,16 @@ export function AlertDialog({
   message,
   type,
 }: AlertDialogProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    if (type === "warning" || type === "incomplete") {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, onClose, type]);
+
   if (!isOpen) return null;
 
   return (

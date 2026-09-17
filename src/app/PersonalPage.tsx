@@ -832,7 +832,7 @@ export function PersonalPage() {
                     style={inputStyle(!!errors.rangoId)}
                   >
                     <option value={0}>Seleccionar rango...</option>
-                    {(isLoadingRangos ? [] : rangos).map((r) => (
+                    {(isLoadingRangos ? [] : (rangos || [])).map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.nombre}
                       </option>
@@ -975,7 +975,7 @@ export function PersonalPage() {
                           style={inputStyle(!!errors.rolId)}
                         >
                           <option value={0}>Seleccionar rol...</option>
-                          {(isLoadingRoles ? [] : roles).map((r) => (
+                          {(isLoadingRoles ? [] : (roles || [])).map((r) => (
                             <option key={r.id} value={r.id}>
                               {r.nombre}
                             </option>
