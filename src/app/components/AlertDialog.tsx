@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 
-type AlertType = "success" | "warning";
+type AlertType = "success" | "warning" | "error" | "incomplete";
 
 interface AlertDialogProps {
   isOpen: boolean;
@@ -27,21 +27,49 @@ function ClockIcon() {
   );
 }
 
+function AlertIcon() {
+  return (
+    <svg
+      className="h-6 w-6"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      className="h-6 w-6"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 function getIconElement(type: AlertType): React.ReactElement {
   switch (type) {
     case "success":
-      return (
-        <svg
-          className="h-6 w-6 text-green-600"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-        >
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-        </svg>
-      );
+      return <CheckIcon />;
     case "warning":
+    case "incomplete":
       return <ClockIcon />;
+    case "error":
+      return <AlertIcon />;
     default:
       return <ClockIcon />;
   }
@@ -50,11 +78,27 @@ function getIconElement(type: AlertType): React.ReactElement {
 function getIconContainerClass(type: AlertType): string {
   switch (type) {
     case "success":
-      return "w-12 h-12 rounded-full border-2 border-green-300 bg-green-50 text-green-600 flex items-center justify-center";
+      return "w-12 h-12 rounded-full border-2 border-red-300 bg-red-50 text-red-600 flex items-center justify-center";
     case "warning":
       return "w-12 h-12 rounded-full border-2 border-[#eab308] bg-[#fefce8] text-[#ca8a04] flex items-center justify-center";
+    case "incomplete":
+      return "w-12 h-12 rounded-full border-2 border-[#eab308] bg-[#fefce8] text-[#ca8a04] flex items-center justify-center";
+    case "error":
+      return "w-12 h-12 rounded-full border-2 border-red-300 bg-red-50 text-red-600 flex items-center justify-center";
     default:
       return "w-12 h-12 rounded-full border-2 border-[#eab308] bg-[#fefce8] text-[#ca8a04] flex items-center justify-center";
+  }
+}
+
+function getButtonClass(type: AlertType): string {
+  switch (type) {
+    case "success":
+    case "warning":
+    case "incomplete":
+    case "error":
+      return "w-full bg-[#d92d20] text-white py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity";
+    default:
+      return "w-full bg-[#d92d20] text-white py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity";
   }
 }
 
@@ -65,14 +109,6 @@ export function AlertDialog({
   message,
   type,
 }: AlertDialogProps) {
-  useEffect(() => {
-    if (!isOpen) return;
-    const timer = setTimeout(() => {
-      onClose();
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   return (
@@ -108,7 +144,7 @@ export function AlertDialog({
         {/* Button */}
         <button
           onClick={onClose}
-          className="w-full bg-[#d92d20] text-white py-2.5 rounded-xl font-medium hover:opacity-90 transition-opacity"
+          className={getButtonClass(type)}
         >
           Aceptar
         </button>

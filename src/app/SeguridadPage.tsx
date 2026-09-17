@@ -37,29 +37,6 @@ type SistemaSection = {
 
 const INITIAL_SECTIONS: SistemaSection[] = [];
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
-function Toast({ message, onClose, type = "success" }: { message: string; onClose: () => void; type?: "success" | "error" }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 3000);
-    return () => clearTimeout(t);
-  }, [onClose]);
-
-  const isSuccess = type === "success";
-
-  return (
-    <div style={{
-      position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
-      background: isSuccess ? "#16A34A" : "#DC2626", color: "#fff", padding: "12px 24px", borderRadius: 10,
-      display: "flex", alignItems: "center", gap: 10, fontFamily: "Inter, sans-serif",
-      fontSize: 14, fontWeight: 500, boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
-      zIndex: 9999, whiteSpace: "nowrap",
-    }}>
-      {isSuccess ? <Check size={16} /> : <AlertTriangle size={16} />}
-      {message}
-    </div>
-  );
-}
-
 // ─── Confirm Dialog ───────────────────────────────────────────────────────────
 function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -215,7 +192,7 @@ function AccordionSection({
   onDeleteCategoriaConfirm,
   onCancelDeleteCategoria,
   isMobile,
-  showToast,
+  showAlert,
   cargarListas,
   setListasMaestras,
 }: {
@@ -233,7 +210,7 @@ function AccordionSection({
   onDeleteCategoriaConfirm: () => void;
   onCancelDeleteCategoria: () => void;
   isMobile: boolean;
-  showToast: (message: string, type: "success" | "error") => void;
+  showAlert: (type: "success" | "warning" | "error" | "incomplete", title: string, message: string) => void;
   cargarListas: () => Promise<void>;
   setListasMaestras: React.Dispatch<React.SetStateAction<ListasResponse[]>>;
 }) {
@@ -256,12 +233,12 @@ function AccordionSection({
           getListaId(item) === id ? { ...item, opcion: opcion.trim() } : item
         )
       );
-      showToast("Opción actualizada", "success");
+      showAlert("success", "¡Operación Exitosa!", "Opción actualizada");
       setEditingItem(null);
     } catch (error) {
       console.error("Error updating item:", error);
       const msg = error instanceof Error ? error.message : "Error al actualizar";
-      showToast(msg, "error");
+      showAlert("error", "Error al Actualizar", msg);
     } finally {
       setEditLoading(false);
     }
@@ -270,12 +247,12 @@ function AccordionSection({
   const handleEditDelete = async (id: number) => {
     try {
       await deleteListaItem(id);
-      showToast("Opción eliminada", "success");
+      showAlert("success", "¡Operación Exitosa!", "Opción eliminada");
       setConfirm(null);
       cargarListas();
     } catch (error) {
       console.error("Error deleting item:", error);
-      showToast("No se pudo eliminar la opción", "error");
+      showAlert("error", "Error al Eliminar", "No se pudo eliminar la opción");
     }
   };
 
@@ -477,8 +454,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [listasMaestras, setListasMaestras] = useState<ListasResponse[]>([]);
   const [nuevoNombreLista, setNuevoNombreLista] = useState("");
   const [nuevaOpción, setNuevaOpcion] = useState<{ [key: string]: string }>({});
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertType, setAlertType] = useState<"warning" | "success">("warning");
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertType, setAlertType] = useState<"success" | "warning" | "error" | "incomplete">("warning");
   const [alertTitle, setAlertTitle] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -487,9 +464,6 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [nuevaOpcionModal, setNuevaOpcionModal] = useState("");
   const [usuarios, setUsuarios] = useState<PermisosUsuario[]>(INIT_USERS);
   const [selectedUser, setSelectedUser] = useState<PermisosUsuario | null>(null);
-  
-  // Toast state
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);
@@ -522,9 +496,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     cargarListas();
   }, []);
 
-  const showToast = (message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+  const showAlert = (type: "success" | "warning" | "error" | "incomplete", title: string, message: string) => {
+    setAlertType(type);
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertOpen(true);
   };
 
   // Group items by category dynamically from backend data
@@ -545,7 +521,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   function handleAddOpcion(categoria: string) {
     const option = nuevaOpción[categoria]?.trim();
     if (!option) {
-      showToast("Por favor ingrese un nombre válido", "error");
+      showAlert("incomplete", "Campos Incompletos", "Por favor ingrese un nombre válido");
       return;
     }
 
@@ -559,21 +535,21 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     );
 
     if (yaExisteLocal) {
-      showToast(`La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`, "error");
+      showAlert("error", "Dato Duplicado", `La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`);
       return;
     }
 
     createLista(categoria, option)
       .then(() => {
         setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
-        showToast(`"${opcionNormalizada}" agregado a ${categoriaNormalizada}`, "success");
+        showAlert("success", "¡Operación Exitosa!", `"${opcionNormalizada}" agregado a ${categoriaNormalizada}`);
         // Mantener la categoría desplegada después de guardar
         setExpandedCategory(categoria);
         cargarListas();
       })
       .catch((error) => {
         console.error("Error adding opcion:", error);
-        showToast("No se pudo agregar la opción. Intente nuevamente.", "error");
+        showAlert("error", "Error al Guardar", "No se pudo agregar la opción. Intente nuevamente.");
       });
   }
 
@@ -581,12 +557,12 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     const id = getListaId(item);
     deleteLista(id)
       .then(() => {
-        showToast(`"${item.opcion}" eliminado`, "success");
+        showAlert("success", "¡Operación Exitosa!", `"${item.opcion}" eliminado`);
         cargarListas();
       })
       .catch((error) => {
         console.error("Error deleting item:", error);
-        showToast("No se pudo eliminar la opción", "error");
+        showAlert("error", "Error al Eliminar", "No se pudo eliminar la opción");
       });
   }
 
@@ -599,7 +575,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     const categoria = deleteCategoryConfirm;
     eliminarCategoria(categoria)
       .then(() => {
-        showToast(`Categoría "${categoria}" eliminada`, "success");
+        showAlert("success", "¡Operación Exitosa!", `Categoría "${categoria}" eliminada`);
         // Cerrar el acordeón si era el que se eliminó
         if (expandedCategory === categoria) {
           setExpandedCategory(null);
@@ -610,7 +586,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       .catch((error) => {
         console.error("Error eliminando categoría:", error);
         const msg = error instanceof Error ? error.message : "Error desconocido";
-        showToast(msg, "error");
+        showAlert("error", "Error al Eliminar", msg);
         setDeleteCategoryConfirm(null);
       });
   }
@@ -629,7 +605,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
   function handleSaveModal() {
     if (!nuevaCategoria.trim() || !nuevaOpcionModal.trim()) {
-      showToast("Por favor complete ambos campos", "error");
+      showAlert("incomplete", "Campos Incompletos", "Por favor complete ambos campos");
       return;
     }
 
@@ -644,7 +620,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       );
 
       if (yaExisteLocal) {
-        showToast(`La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`, "error");
+        showAlert("error", "Dato Duplicado", `La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`);
         return;
       }
     }
@@ -652,24 +628,24 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     if (isEditMode && editingItem) {
       updateLista(getListaId(editingItem), nuevaCategoria, nuevaOpcionModal)
         .then(() => {
-          showToast("Registro actualizado", "success");
+          showAlert("success", "¡Operación Exitosa!", "Registro actualizado");
           closeModal();
           cargarListas();
         })
         .catch((error) => {
           console.error("Error updating lista:", error);
-          showToast("No se pudo actualizar el registro", "error");
+          showAlert("error", "Error al Actualizar", "No se pudo actualizar el registro");
         });
     } else {
       createLista(nuevaCategoria, nuevaOpcionModal)
         .then(() => {
-          showToast("Registro guardado correctamente", "success");
+          showAlert("success", "¡Operación Exitosa!", "Registro guardado correctamente");
           closeModal();
           cargarListas();
         })
         .catch((error) => {
           console.error("Error creating lista:", error);
-          showToast("No se pudo guardar el registro", "error");
+          showAlert("error", "Error al Guardar", "No se pudo guardar el registro");
         });
     }
   }
@@ -752,7 +728,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
           );
 
           if (yaExisteLocal) {
-            showToast(`La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`, "error");
+            showAlert("error", "Dato Duplicado", `La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`);
             return;
           }
 
@@ -760,12 +736,12 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             .then(() => {
               // Limpiar input localmente tras éxito
               setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
-              showToast(`"${opcionNormalizada}" agregado a ${categoriaNormalizada}`, "success");
+              showAlert("success", "¡Operación Exitosa!", `"${opcionNormalizada}" agregado a ${categoriaNormalizada}`);
               // Mantener la categoría desplegada después de guardar
               setExpandedCategory(categoria);
               cargarListas();
             })
-            .catch(() => showToast("Error al agregar", "error"));
+            .catch(() => showAlert("error", "Error al Agregar", "Error al agregar"));
         }}
         onDelete={(item) => handleDeleteOpcion(item)}
         onEdit={handleEditItem}
@@ -778,7 +754,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         onDeleteCategoriaConfirm={confirmDeleteCategoria}
         onCancelDeleteCategoria={cancelDeleteCategoria}
         isMobile={isMobile}
-        showToast={showToast}
+        showAlert={showAlert}
         cargarListas={cargarListas}
         setListasMaestras={setListasMaestras}
       />
@@ -1090,21 +1066,16 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
               </button>
             </div>
           </div>
-        </div>
-      )}
+</div>
+       )}
 
-      {/* Toast Notification */}
-      {toast && (
-        <Toast message={toast.message} onClose={() => setToast(null)} type={toast.type} />
-      )}
-
-      <AlertDialog
-        isOpen={showAlert}
-        onClose={() => setShowAlert(false)}
-        title={alertTitle}
-        message={alertMessage}
-        type={alertType}
-      />
-    </div>
-  );
-}
+<AlertDialog
+          isOpen={alertOpen}
+          onClose={() => setAlertOpen(false)}
+          title={alertTitle}
+          message={alertMessage}
+          type={alertType}
+        />
+     </div>
+   );
+ }
