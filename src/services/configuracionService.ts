@@ -194,3 +194,63 @@ export const getTiposEmergencia = async (): Promise<string[]> => {
     throw error;
   }
 };
+
+export const eliminarCategoria = async (categoria: string): Promise<void> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/configuracion/listas/categoria/${encodeURIComponent(categoria)}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeader(),
+      },
+    });
+    if (!response.ok) {
+      const message = await parseErrorResponse(response);
+      console.error("Error eliminando categoría:", message);
+      throw new Error(message);
+    }
+  } catch (error) {
+    console.error("Error eliminando categoría:", error);
+    throw error;
+  }
+};
+
+export const updateListaItem = async (id: number, opcion: string): Promise<ListasResponse> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ opcion: opcion.trim().toUpperCase() }),
+    });
+    if (!response.ok) {
+      const message = await parseErrorResponse(response);
+      throw new Error(message);
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error updating lista item:", error);
+    throw error;
+  }
+};
+
+export const deleteListaItem = async (id: number): Promise<void> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeader(),
+      },
+    });
+    if (!response.ok) {
+      const message = await parseErrorResponse(response);
+      throw new Error(message);
+    }
+  } catch (error) {
+    console.error("Error deleting lista item:", error);
+    throw error;
+  }
+};

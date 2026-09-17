@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Shield,
   Lock,
@@ -8,6 +8,9 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  Trash2,
+  Edit2,
+  Pencil,
 } from "lucide-react";
 import {
   getListas,
@@ -16,6 +19,9 @@ import {
   deleteLista,
   type ListasResponse,
   getListaId,
+  eliminarCategoria,
+  updateListaItem,
+  deleteListaItem,
 } from "../services/configuracionService";
 import { AlertDialog } from "./components/AlertDialog";
 
@@ -87,35 +93,221 @@ function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onCo
   );
 }
 
-// ─── Accordion Section ────────────────────────────────────────────────────────
+// ─── Mobile Detection Hook ────────────────────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
+// ─── Edit Item Modal ──────────────────────────────────────────────────────────
+function EditItemModal({
+  isOpen,
+  onClose,
+  item,
+  onSave,
+  onDelete,
+  isLoading,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  item: ListasResponse | null;
+  onSave: (id: number, opcion: string) => void;
+  onDelete: (id: number) => void;
+  isLoading: boolean;
+}) {
+  const [editValue, setEditValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen && item) {
+      setEditValue(item.opcion);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen, item]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (item && editValue.trim()) {
+      onSave(getListaId(item), editValue.trim());
+      onClose();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.5)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col"
+        style={{ boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}>
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
+          <h2 className="text-lg font-semibold text-gray-900 font-manrope">
+            Editar opción
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            aria-label="Cerrar"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nombre de la opción
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+              placeholder="Nombre de la opción"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="pt-4 border-t border-gray-100 flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 px-4 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading || !editValue.trim()}
+              className="flex-1 py-3 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? "Guardando..." : "Guardar Cambios"}
+            </button>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function AccordionSection({
   categoria,
   items,
   onAdd,
   onDelete,
   onEdit,
+  onDeleteCategoria,
   nuevaOpcion,
   setNuevaOpcion,
   isOpen,
   onOpenChange,
+  deleteCategoryConfirm,
+  onDeleteCategoriaConfirm,
+  onCancelDeleteCategoria,
+  isMobile,
+  showToast,
+  cargarListas,
+  setListasMaestras,
 }: {
   categoria: string;
   items: ListasResponse[];
   onAdd: (opcion: string) => void;
   onDelete: (item: ListasResponse) => void;
   onEdit: (item: ListasResponse) => void;
+  onDeleteCategoria: (categoria: string) => void;
   nuevaOpcion: string;
   setNuevaOpcion: (val: string) => void;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  deleteCategoryConfirm: string | null;
+  onDeleteCategoriaConfirm: () => void;
+  onCancelDeleteCategoria: () => void;
+  isMobile: boolean;
+  showToast: (message: string, type: "success" | "error") => void;
+  cargarListas: () => Promise<void>;
+  setListasMaestras: React.Dispatch<React.SetStateAction<ListasResponse[]>>;
 }) {
   const [confirm, setConfirm] = useState<ListasResponse | null>(null);
+  const [editingItem, setEditingItem] = useState<ListasResponse | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   function handleDeleteConfirm() {
     if (!confirm) return;
     onDelete(confirm);
     setConfirm(null);
   }
+
+  const handleEditSave = async (id: number, opcion: string) => {
+    setEditLoading(true);
+    try {
+      await updateListaItem(id, opcion);
+      setListasMaestras((prev) =>
+        prev.map((item) =>
+          getListaId(item) === id ? { ...item, opcion: opcion.trim() } : item
+        )
+      );
+      showToast("Opción actualizada", "success");
+      setEditingItem(null);
+    } catch (error) {
+      console.error("Error updating item:", error);
+      const msg = error instanceof Error ? error.message : "Error al actualizar";
+      showToast(msg, "error");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleEditDelete = async (id: number) => {
+    try {
+      await deleteListaItem(id);
+      showToast("Opción eliminada", "success");
+      setConfirm(null);
+      cargarListas();
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      showToast("No se pudo eliminar la opción", "error");
+    }
+  };
+
+  const handleItemClick = (item: ListasResponse) => {
+    if (isMobile) {
+      setEditingItem(item);
+    }
+  };
+
+  const handleItemEdit = (item: ListasResponse) => {
+    setEditingItem(item);
+  };
+
+  const handleItemDelete = (item: ListasResponse) => {
+    if (isMobile) {
+      setConfirm(item);
+    } else {
+      setConfirm(item);
+    }
+  };
 
   return (
     <>
@@ -126,40 +318,90 @@ function AccordionSection({
           onCancel={() => setConfirm(null)}
         />
       )}
+      {deleteCategoryConfirm === categoria && (
+        <ConfirmDialog
+          message={`¿Estás seguro de eliminar la categoría "${categoria}" y todas sus opciones?`}
+          onConfirm={onDeleteCategoriaConfirm}
+          onCancel={onCancelDeleteCategoria}
+        />
+      )}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-3">
-        <button
-          onClick={() => onOpenChange(!isOpen)}
-          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-sm uppercase tracking-wide text-gray-700">
-              {categoria}
-            </span>
-            <span className="bg-red-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
-              {items.length}
-            </span>
-          </div>
-          <div className="text-gray-400">
-            {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </div>
-        </button>
+        {/* Header del acordeón - contenedor flex sin anidación de botones */}
+        <div className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+          {/* Trigger del acordeón - maneja open/close */}
+          <button
+            onClick={() => onOpenChange(!isOpen)}
+            className="flex-1 flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
+            style={{ background: "transparent", border: "none", cursor: "pointer" }}
+          >
+            <div className="flex items-center gap-3 flex-1">
+              <span className="font-bold text-sm uppercase tracking-wide text-gray-700">
+                {categoria}
+              </span>
+              <span className="bg-red-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                {items.length}
+              </span>
+            </div>
+            <div className="text-gray-400">
+              {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </div>
+          </button>
+          {/* Botón de eliminar - FUERA del botón trigger, para evitar validateDOMNesting */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteCategoria(categoria);
+            }}
+            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+            title="Eliminar categoría"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
 
         {isOpen && (
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="flex flex-wrap gap-2 mb-4 mt-4">
-              {items.map((item, idx) => (
+{items.map((item, idx) => (
                 <div
                   key={getListaId(item)}
-                  className="flex items-center gap-1.5 bg-gray-100 border border-gray-200 rounded-full px-3 py-1 text-sm text-gray-700"
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-full cursor-pointer transition-all text-sm font-medium text-gray-700 ${
+                    isMobile ? 'py-2.5 px-4 min-h-[44px]' : 'py-1.5 px-3 hover:bg-gray-200'
+                  }`}
+                  onClick={() => handleItemEdit(item)}
+                  style={{ cursor: 'pointer' }}
                 >
-                  <span>{item.opcion}</span>
-                  <button
-                    onClick={() => setConfirm(item)}
-                    className="text-gray-400 hover:text-red-500 p-0.5"
-                    title="Eliminar"
-                  >
-                    <X size={12} />
-                  </button>
+                  <span className="flex-1 truncate select-none">{item.opcion}</span>
+
+                  {/* Contenedor de Íconos - Siempre visible en mobile, visible en hover en desktop */}
+                  <div className="flex items-center gap-1.5 ml-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      title="Editar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleItemEdit(item);
+                      }}
+                      className="p-0.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                      aria-label="Editar opción"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      title="Eliminar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleItemDelete(item);
+                      }}
+                      className="p-0.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                      aria-label="Eliminar opción"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -184,6 +426,16 @@ function AccordionSection({
           </div>
         )}
       </div>
+      {editingItem && (
+        <EditItemModal
+          isOpen={!!editingItem}
+          onClose={() => setEditingItem(null)}
+          item={editingItem}
+          onSave={handleEditSave}
+          onDelete={handleEditDelete}
+          isLoading={editLoading}
+        />
+      )}
     </>
   );
 }
@@ -257,6 +509,12 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
   // Expanded category state for accordion persistence
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+
+  // Category delete confirmation state
+  const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<string | null>(null);
+
+  // Mobile detection
+  const isMobile = useIsMobile();
 
   if (userRole !== "admin") return <AccessDenied />;
 
@@ -342,6 +600,35 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         console.error("Error deleting item:", error);
         showToast("No se pudo eliminar la opción", "error");
       });
+  }
+
+  function handleDeleteCategoria(categoria: string) {
+    setDeleteCategoryConfirm(categoria);
+  }
+
+  function confirmDeleteCategoria() {
+    if (!deleteCategoryConfirm) return;
+    const categoria = deleteCategoryConfirm;
+    eliminarCategoria(categoria)
+      .then(() => {
+        showToast(`Categoría "${categoria}" eliminada`, "success");
+        // Cerrar el acordeón si era el que se eliminó
+        if (expandedCategory === categoria) {
+          setExpandedCategory(null);
+        }
+        setDeleteCategoryConfirm(null);
+        cargarListas();
+      })
+      .catch((error) => {
+        console.error("Error eliminando categoría:", error);
+        const msg = error instanceof Error ? error.message : "Error desconocido";
+        showToast(msg, "error");
+        setDeleteCategoryConfirm(null);
+      });
+  }
+
+  function cancelDeleteCategoria() {
+    setDeleteCategoryConfirm(null);
   }
 
   function handleEditItem(item: ListasResponse) {
@@ -494,10 +781,18 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         }}
         onDelete={(item) => handleDeleteOpcion(item)}
         onEdit={handleEditItem}
+        onDeleteCategoria={handleDeleteCategoria}
         nuevaOpcion={nuevaOpción[categoria] || ""}
         setNuevaOpcion={(val) => setNuevaOpcion(prev => ({ ...prev, [categoria]: val }))}
         isOpen={expandedCategory === categoria}
         onOpenChange={(open) => setExpandedCategory(open ? categoria : null)}
+        deleteCategoryConfirm={deleteCategoryConfirm}
+        onDeleteCategoriaConfirm={confirmDeleteCategoria}
+        onCancelDeleteCategoria={cancelDeleteCategoria}
+        isMobile={isMobile}
+        showToast={showToast}
+        cargarListas={cargarListas}
+        setListasMaestras={setListasMaestras}
       />
     ));
   };

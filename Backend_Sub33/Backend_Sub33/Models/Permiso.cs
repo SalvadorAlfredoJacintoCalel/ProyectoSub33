@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -12,8 +13,10 @@ public class Permiso
     public Guid PermisoId { get; set; }
 
     [Column("nombre")]
-    public string Codigo { get; set; } = string.Empty;  // Mapea a columna 'nombre' en PostgreSQL
+    public string Codigo { get; set; } = string.Empty;
 
     [Column("descripcion")]
     public string? Descripcion { get; set; }
+
+    public ICollection<RolPermiso> RolPermisos { get; set; } = new List<RolPermiso>();
 }

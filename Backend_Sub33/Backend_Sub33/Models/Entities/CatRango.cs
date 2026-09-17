@@ -20,8 +20,5 @@ namespace Backend_Sub33.Models.Entities
 
         [Column("maximo")]
         public int Maximo { get; set; }
-
-        [Column("activo")]
-        public bool Activo { get; set; } = true;
     }
 }

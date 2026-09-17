@@ -217,7 +217,7 @@ namespace Backend_Sub33.Services
 
         public async Task<List<CatRango>> GetRangosAsync()
         {
-            return await _context.CatRangos.Where(r => r.Activo).ToListAsync();
+            return await _context.CatRangos.ToListAsync();
         }
 
         public async Task<List<CatHospital>> GetHospitalesAsync()
