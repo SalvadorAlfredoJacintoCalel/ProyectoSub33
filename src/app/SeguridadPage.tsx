@@ -194,18 +194,6 @@ function EditItemModal({
               {isLoading ? "Guardando..." : "Guardar Cambios"}
             </button>
           </div>
-
-          <div className="pt-4 border-t border-gray-100">
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
         </form>
       </div>
     </div>
