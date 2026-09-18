@@ -17,12 +17,17 @@ const handleResponse = async (response: Response) => {
 };
 
 // Helper to map backend ListasResponse format to frontend SelectItem format
-const mapListasToItems = (listas: Array<{ listaId?: number; lista_id?: number; id?: number; categoria?: string; opcion: string }>): Array<{ id: number; nombre: string }> => {
+const mapListasToItems = (listas: Array<{ listaId?: number; lista_id?: number; id?: number; categoria?: string; opcion: string } | string>): Array<{ id: number; nombre: string }> => {
   if (!Array.isArray(listas)) return [];
-  return listas.map((item) => ({
-    id: item.id ?? item.listaId ?? item.lista_id ?? 0,
-    nombre: item.opcion ?? item.nombre ?? "",
-  })).filter((item) => item.id > 0 && item.nombre);
+  return listas.map((item, index) => {
+    if (typeof item === "string") {
+      return { id: index + 1, nombre: item };
+    }
+    return {
+      id: item.id ?? item.listaId ?? item.lista_id ?? 0,
+      nombre: item.opcion ?? item.nombre ?? "",
+    };
+  }).filter((item) => item.id > 0 && item.nombre);
 };
 
 // ── DTOs ────────────────────────────────────────────────────────────────────────

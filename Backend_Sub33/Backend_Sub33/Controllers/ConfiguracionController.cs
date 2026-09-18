@@ -231,16 +231,19 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                var rangos = await _context.CatRangos
-                    .Select(r => new { id = r.RangoId, nombre = r.Rango })
+                var rangos = await _context.ConfiguracionListasMaestras
+                    .Where(l => l.Categoria.ToLower() == "rangos")
+                    .Select(l => new { id = l.ListaId, nombre = l.Opcion })
+                    .OrderBy(r => r.nombre)
                     .ToListAsync();
+
                 _logger.LogInformation("Rangos obtenidos exitosamente. Cantidad: {Count}", rangos.Count);
                 return Ok(rangos);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al obtener rangos");
-                return StatusCode(500, new { mensaje = ex.Message, detalle = ex.InnerException?.Message });
+                return Ok(new List<object>());
             }
         }
 

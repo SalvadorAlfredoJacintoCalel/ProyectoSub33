@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Backend_Sub33.Data;
-using Backend_Sub33.Models;
+using Backend_Sub33.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend_Sub33.Controllers
@@ -21,25 +21,14 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetRoles([FromQuery] bool soloActivos = true)
+        public async Task<IActionResult> GetRoles()
         {
             try
             {
-                var query = _context.Roles.AsQueryable();
-
-                if (soloActivos)
-                {
-                    query = query.Where(r => r.Nombre != null);
-                }
-
-                var roles = await query
-                    .Select(r => new
-                    {
-                        r.RolId,
-                        r.Nombre,
-                        r.Descripcion
-                    })
-                    .OrderBy(r => r.Nombre)
+                var roles = await _context.ConfiguracionListasMaestras
+                    .Where(l => l.Categoria.ToLower() == "roles")
+                    .Select(l => new { id = l.ListaId, nombre = l.Opcion })
+                    .OrderBy(r => r.nombre)
                     .ToListAsync();
 
                 _logger.LogInformation("Roles obtenidos exitosamente. Cantidad: {Count}", roles.Count);
@@ -47,8 +36,8 @@ namespace Backend_Sub33.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al obtener roles. SoloActivos: {SoloActivos}", soloActivos);
-                return StatusCode(500, new { mensaje = "Error interno al obtener roles", detalle = ex.Message });
+                _logger.LogError(ex, "Error al obtener roles");
+                return Ok(new List<object>());
             }
         }
 

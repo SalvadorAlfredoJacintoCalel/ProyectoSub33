@@ -556,7 +556,7 @@ export function PersonalPage() {
             className="w-auto"
           >
             <option value="">Todos los Rangos</option>
-            {rangos.map((r) => <option key={r} value={r}>{r}</option>)}
+            {(rangos || []).map((r) => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
           </select>
           <select
             value={filterEstado}
