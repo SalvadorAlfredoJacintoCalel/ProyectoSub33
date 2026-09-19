@@ -115,11 +115,12 @@ export const getListasPorCategoria = async (categoria: string): Promise<ListasRe
   return Array.isArray(data) ? data : data.data || [];
 };
 
-export const createLista = async (categoria: string, opcion: string): Promise<ListasResponse> => {
+export const createLista = async (categoria_id: number | null, categoria_nombre: string, opcion: string): Promise<ListasResponse> => {
   try {
     const payload = {
-      categoria: categoria.trim().toUpperCase(),
-      opcion: opcion.trim().toUpperCase(),
+      CategoriaId: categoria_id,
+      Categoria: categoria_nombre,
+      Opcion: opcion.trim().toUpperCase(),
     };
     const response = await axios.post(`${API_BASE_URL}/configuracion/listas`, payload, {
       headers: {
@@ -129,8 +130,14 @@ export const createLista = async (categoria: string, opcion: string): Promise<Li
     });
     return response.data?.data ?? response.data;
   } catch (error: any) {
+    const serverMessage = error.response?.data?.mensaje 
+      || error.response?.data?.detalle 
+      || error.response?.data?.message 
+      || error.response?.data?.error 
+      || error.message 
+      || "Error al crear la opción";
     console.error("Detalle devuelto por el Backend:", error.response?.data);
-    throw error;
+    throw new Error(serverMessage);
   }
 };
 
@@ -149,10 +156,11 @@ export const deleteLista = async (id: number): Promise<void> => {
   }
 };
 
-export const updateLista = async (id: number, categoria: string, opcion: string): Promise<ListasResponse> => {
+export const updateLista = async (id: number, categoria_id: number, categoria_nombre: string, opcion: string): Promise<ListasResponse> => {
   const payload = {
-    categoria: categoria.trim().toUpperCase(),
-    opcion: opcion.trim().toUpperCase(),
+    CategoriaId: categoria_id,
+    Categoria: categoria_nombre,
+    Opcion: opcion.trim().toUpperCase(),
   };
   const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
     method: "PUT",

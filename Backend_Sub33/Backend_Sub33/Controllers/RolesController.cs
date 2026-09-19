@@ -25,10 +25,15 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                var roles = await _context.ConfiguracionListasMaestras
-                    .Where(l => l.Categoria.ToLower() == "roles")
-                    .Select(l => new { id = l.ListaId, nombre = l.Opcion })
-                    .OrderBy(r => r.nombre)
+                var sql = @"
+                    SELECT clm.lista_id AS id, clm.opcion AS nombre
+                    FROM configuracion_listas_maestras clm
+                    INNER JOIN cat_categorias_listas ccl ON clm.categoria_id = ccl.categoria_id
+                    WHERE ccl.codigo = 'ROLES'
+                    ORDER BY clm.opcion";
+
+                var roles = await _context.Database
+                    .SqlQueryRaw<dynamic>(sql)
                     .ToListAsync();
 
                 _logger.LogInformation("Roles obtenidos exitosamente. Cantidad: {Count}", roles.Count);
@@ -37,7 +42,7 @@ namespace Backend_Sub33.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al obtener roles");
-                return Ok(new List<object>());
+                return StatusCode(500, new { mensaje = "Error al obtener roles", detalle = ex.Message });
             }
         }
 

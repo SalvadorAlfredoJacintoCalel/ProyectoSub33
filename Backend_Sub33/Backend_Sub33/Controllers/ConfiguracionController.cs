@@ -235,9 +235,8 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                var rangos = await _context.ConfiguracionListasMaestras
-                    .Where(l => l.Categoria.ToLower() == "rangos")
-                    .Select(l => new { id = l.ListaId, nombre = l.Opcion })
+                var rangos = await _context.CatRangos
+                    .Select(r => new { id = r.RangoId, nombre = r.Rango })
                     .OrderBy(r => r.nombre)
                     .ToListAsync();
 
@@ -247,7 +246,7 @@ namespace Backend_Sub33.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al obtener rangos");
-                return Ok(new List<object>());
+                return StatusCode(500, new { mensaje = ex.Message, detalle = ex.InnerException?.Message });
             }
         }
 
