@@ -10,6 +10,12 @@ const getAuthHeader = () => {
   return {};
 };
 
+export interface Categoria {
+  categoria_id: number;
+  nombre: string;
+  codigo?: string;
+}
+
 export interface ListaItem {
   listaId: number;
   categoria: string;
@@ -35,6 +41,23 @@ export const getListaId = (item: ListasResponse): number => {
     throw new Error("El registro de lista no contiene un ID válido.");
   }
   return Number(id);
+};
+
+export const getCategorias = async (): Promise<Categoria[]> => {
+  const response = await fetch(`${API_BASE_URL}/configuracion/categorias`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(),
+    },
+  });
+  if (!response.ok) {
+    const message = await parseErrorResponse(response);
+    console.error("Error detallado del Backend:", message);
+    throw new Error(message);
+  }
+  const data = await response.json();
+  return Array.isArray(data) ? data : data.data || [];
 };
 
 const parseErrorResponse = async (response: Response): Promise<string> => {

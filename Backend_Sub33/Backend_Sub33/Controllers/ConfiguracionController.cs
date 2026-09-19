@@ -40,18 +40,18 @@ namespace Backend_Sub33.Controllers
             }
         }
 
-        [HttpGet("listas/{categoria}")]
-        public async Task<IActionResult> GetListasPorCategoria(string categoria)
+        [HttpGet("listas/categoria/{categoriaId:int}")]
+        public async Task<IActionResult> GetListasPorCategoria(int categoriaId)
         {
             try
             {
-                var listas = await _service.GetPorCategoriaAsync(categoria);
-                _logger.LogInformation("Listas por categoría '{Categoria}' obtenidas. Cantidad: {Count}", categoria, listas.Count);
+                var listas = await _service.GetPorCategoriaAsync(categoriaId);
+                _logger.LogInformation("Listas por categoría '{CategoriaId}' obtenidas. Cantidad: {Count}", categoriaId, listas.Count);
                 return Ok(listas);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al obtener listas por categoría: {Categoria}", categoria);
+                _logger.LogError(ex, "Error al obtener listas por categoría: {CategoriaId}", categoriaId);
                 return StatusCode(500, new { mensaje = "Error al obtener las listas por categoría", detalle = ex.Message });
             }
         }
@@ -77,13 +77,22 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                var resultado = await _service.CrearListaAsync(dto.Categoria, dto.Opcion);
+                var resultado = await _service.CrearListaAsync(dto);
+
                 if (resultado.exito)
                 {
-                    _logger.LogInformation("Lista creada: Categoria={Categoria}, Opcion={Opcion}", dto.Categoria, dto.Opcion);
-                    return Ok(new { mensaje = resultado.mensaje });
+                    if (resultado.item != null && resultado.mensaje.Contains("ya existe"))
+                    {
+                        _logger.LogInformation("Opción ya existente: CategoriaId={CategoriaId}, Opcion={Opcion}", resultado.item.CategoriaId, resultado.item.Opcion);
+                        return Ok(new { mensaje = resultado.mensaje, item = resultado.item });
+                    }
+
+                    _logger.LogInformation("Lista creada: CategoriaId={CategoriaId}, ListaId={ListaId}, Opcion={Opcion}", 
+                        resultado.item?.CategoriaId, resultado.item?.ListaId, dto.Opcion);
+                    return CreatedAtAction(nameof(GetListas), new { id = resultado.item?.ListaId }, new { mensaje = resultado.mensaje, item = resultado.item });
                 }
-                _logger.LogWarning("Intento de crear lista duplicada: Categoria={Categoria}, Opcion={Opcion}", dto.Categoria, dto.Opcion);
+
+                _logger.LogWarning("Error al crear lista: {Mensaje}", resultado.mensaje);
                 return BadRequest(new { mensaje = resultado.mensaje });
             }
             catch (ArgumentException ex)
@@ -93,7 +102,7 @@ namespace Backend_Sub33.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error en base de datos al crear lista: Categoria={Categoria}, Opcion={Opcion}", dto.Categoria, dto.Opcion);
+                _logger.LogError(ex, "Error en base de datos al crear lista: CategoriaId={CategoriaId}, Categoria={Categoria}, Opcion={Opcion}", dto.CategoriaId, dto.Categoria, dto.Opcion);
                 return StatusCode(500, new { mensaje = "Error en base de datos", detalle = ex.Message });
             }
         }
@@ -194,34 +203,29 @@ namespace Backend_Sub33.Controllers
             }
         }
 
-        [HttpDelete("listas/categoria/{categoria}")]
-        public async Task<IActionResult> EliminarCategoria(string categoria)
+        [HttpDelete("listas/categoria/{categoriaId:int}")]
+        public async Task<IActionResult> EliminarPorCategoria(int categoriaId)
         {
-            if (string.IsNullOrWhiteSpace(categoria))
-            {
-                return BadRequest(new { mensaje = "La categoría es obligatoria" });
-            }
-
             try
             {
-                var sql = "DELETE FROM configuracion_listas_maestras WHERE LOWER(categoria) = LOWER(@categoria)";
+                var sql = "DELETE FROM configuracion_listas_maestras WHERE categoria_id = @categoriaId";
                 var filasEliminadas = await _context.Database.ExecuteSqlRawAsync(
                     sql,
-                    new Npgsql.NpgsqlParameter("@categoria", categoria.Trim())
+                    new Npgsql.NpgsqlParameter("@categoriaId", categoriaId)
                 );
 
                 if (filasEliminadas == 0)
                 {
-                    _logger.LogWarning("Intento de eliminar categoría inexistente: Categoria={Categoria}", categoria);
-                    return NotFound(new { mensaje = $"No se encontró la categoría '{categoria}'" });
+                    _logger.LogWarning("Intento de eliminar categoría inexistente: CategoriaId={CategoriaId}", categoriaId);
+                    return NotFound(new { mensaje = $"No se encontró la categoría con ID {categoriaId}" });
                 }
 
-                _logger.LogInformation("Categoría eliminada: Categoria={Categoria}, Eliminados={Count}", categoria, filasEliminadas);
+                _logger.LogInformation("Categoría eliminada: CategoriaId={CategoriaId}, Eliminados={Count}", categoriaId, filasEliminadas);
                 return Ok(new { mensaje = "Categoría eliminada", eliminados = filasEliminadas });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al eliminar la categoría: Categoria={Categoria}", categoria);
+                _logger.LogError(ex, "Error al eliminar la categoría: CategoriaId={CategoriaId}", categoriaId);
                 return StatusCode(500, new { mensaje = "Error al eliminar la categoría", detalle = ex.Message });
             }
         }

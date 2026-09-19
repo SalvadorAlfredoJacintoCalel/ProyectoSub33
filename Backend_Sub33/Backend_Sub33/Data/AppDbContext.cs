@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Permiso> Permisos { get; set; }
 
     public DbSet<ConfiguracionListaMaestra> ConfiguracionListasMaestras { get; set; }
+    public DbSet<CatCategoriaLista> CatCategoriasListas { get; set; }
     public DbSet<CatRango> CatRangos { get; set; }
     public DbSet<CatTipoEmergencia> CatTiposEmergencia { get; set; }
     public DbSet<CatHospital> CatHospitales { get; set; }
@@ -24,17 +25,35 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // CatCategoriaLista
+        modelBuilder.Entity<CatCategoriaLista>(entity =>
+        {
+            entity.ToTable("cat_categorias_listas");
+            entity.HasKey(e => e.CategoriaId);
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Codigo).HasColumnName("codigo").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
         // ConfiguracionListaMaestra
         modelBuilder.Entity<ConfiguracionListaMaestra>(entity =>
         {
             entity.ToTable("configuracion_listas_maestras");
             entity.HasKey(e => e.ListaId);
             entity.Property(e => e.ListaId).HasColumnName("lista_id").ValueGeneratedOnAdd();
-            entity.Property(e => e.Categoria).HasColumnName("categoria").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Opcion).HasColumnName("opcion").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id").IsRequired();
+            entity.Property(e => e.Opcion).HasColumnName("opcion").IsRequired().HasMaxLength(150);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            
-            entity.HasIndex(e => new { e.Categoria, e.Opcion }).IsUnique();
+
+            entity.HasIndex(e => new { e.CategoriaId, e.Opcion }).IsUnique();
+
+            entity.HasOne(e => e.Categoria)
+                  .WithMany()
+                  .HasForeignKey(e => e.CategoriaId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_configuracion_listas_maestras_categoria");
         });
 
         // CatRango

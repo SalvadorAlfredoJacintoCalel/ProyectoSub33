@@ -11,12 +11,14 @@ namespace Backend_Sub33.Models.Entities
         public int ListaId { get; set; }
 
         [Required]
-        [MaxLength(100)]
-        [Column("categoria")]
-        public string Categoria { get; set; } = string.Empty;
+        [Column("categoria_id")]
+        public int CategoriaId { get; set; }
+
+        [ForeignKey("CategoriaId")]
+        public virtual CatCategoriaLista Categoria { get; set; } = null!;
 
         [Required]
-        [MaxLength(100)]
+        [MaxLength(150)]
         [Column("opcion")]
         public string Opcion { get; set; } = string.Empty;
 

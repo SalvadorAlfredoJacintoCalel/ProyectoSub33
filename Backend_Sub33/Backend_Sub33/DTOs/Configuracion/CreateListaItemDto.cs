@@ -2,12 +2,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Backend_Sub33.DTOs.Configuracion
 {
-    public class CreateListaMaestraDto
+    public class CreateListaItemDto
     {
-        public int? CategoriaId { get; set; }
-
+        [Required]
         [MaxLength(100)]
-        public string? Categoria { get; set; }
+        public string Categoria { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(150)]

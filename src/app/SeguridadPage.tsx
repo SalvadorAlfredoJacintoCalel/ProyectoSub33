@@ -14,12 +14,13 @@ import {
 } from "lucide-react";
 import {
   getListas,
+  getCategorias,
   createLista,
   updateLista,
   deleteLista,
   type ListasResponse,
+  type Categoria,
   getListaId,
-  eliminarCategoria,
   updateListaItem,
   deleteListaItem,
 } from "../services/configuracionService";
@@ -452,6 +453,7 @@ const INIT_USERS: PermisosUsuario[] = [];
 // ─── Main component ───────────────────────────────────────────────────────────
 export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [listasMaestras, setListasMaestras] = useState<ListasResponse[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [nuevoNombreLista, setNuevoNombreLista] = useState("");
   const [nuevaOpción, setNuevaOpcion] = useState<{ [key: string]: string }>({});
   const [alertOpen, setAlertOpen] = useState(false);
@@ -460,8 +462,19 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [alertMessage, setAlertMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateListaModalOpen, setIsCreateListaModalOpen] = useState(false);
-  const [nuevaCategoria, setNuevaCategoria] = useState("");
+  
+  // Modal mode: 'categoria' = crear nueva lista/categoría, 'opcion' = agregar opción a lista existente
+  const [modalMode, setModalMode] = useState<"categoria" | "opcion">("categoria");
+  
+  // Estados para "Crear Nueva Lista / Categoría"
+  const [nuevaCategoriaNombre, setNuevaCategoriaNombre] = useState("");
+  const [nuevaCategoriaCodigo, setNuevaCategoriaCodigo] = useState("");
+  
+  // Estados para "Agregar Opción a Lista Existente"
   const [nuevaOpcionModal, setNuevaOpcionModal] = useState("");
+  const [nuevaCategoriaId, setNuevaCategoriaId] = useState<number | "" >("");
+  
+  const [nuevaCategoria, setNuevaCategoria] = useState("");
   const [usuarios, setUsuarios] = useState<PermisosUsuario[]>(INIT_USERS);
   const [selectedUser, setSelectedUser] = useState<PermisosUsuario | null>(null);
   
@@ -483,8 +496,12 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const cargarListas = async () => {
     try {
       setIsLoading(true);
-      const data = await getListas();
-      setListasMaestras(data);
+      const [dataListas, dataCategorias] = await Promise.all([
+        getListas(),
+        getCategorias(),
+      ]);
+      setListasMaestras(dataListas);
+      setCategorias(dataCategorias);
     } catch (error) {
       console.error("Error loading listas:", error);
     } finally {
@@ -507,8 +524,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const getGroupedItems = () => {
     const grouped: Record<string, ListasResponse[]> = {};
     
-    listasMaestras.forEach(item => {
-      const cat = item.categoria.trim();
+    const listadoValido = Array.isArray(listasMaestras) ? listasMaestras.filter(Boolean) : [];
+    
+    listadoValido.forEach(item => {
+      const categoriaNombre = item?.categoria ?? item?.nombre ?? item?.nombreCategoria ?? 'Sin Categoría';
+      const cat = String(categoriaNombre).trim() || 'Sin Categoría';
       if (!grouped[cat]) {
         grouped[cat] = [];
       }
@@ -529,9 +549,13 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     const opcionNormalizada = option.toUpperCase();
     const categoriaNormalizada = categoria.toUpperCase();
     
-    const yaExisteLocal = listasMaestras.some(
-      (item) => item.categoria.trim().toUpperCase() === categoriaNormalizada &&
-                item.opcion.trim().toUpperCase() === opcionNormalizada
+    const listadoValido = Array.isArray(listasMaestras) ? listasMaestras.filter(Boolean) : [];
+    const yaExisteLocal = listadoValido.some(
+      (item) => {
+        const itemCategoria = String(item?.categoria ?? item?.nombre ?? item?.nombreCategoria ?? '').trim().toUpperCase();
+        const itemOpcion = String(item?.opcion ?? '').trim().toUpperCase();
+        return itemCategoria === categoriaNormalizada && itemOpcion === opcionNormalizada;
+      }
     );
 
     if (yaExisteLocal) {
@@ -573,10 +597,19 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   function confirmDeleteCategoria() {
     if (!deleteCategoryConfirm) return;
     const categoria = deleteCategoryConfirm;
-    eliminarCategoria(categoria)
+    
+    // Obtener todos los items de esta categoría y eliminarlos uno por uno por ID
+    const itemsDeCategoria = listasMaestras.filter(item => 
+      String(item?.categoria ?? item?.nombre ?? item?.nombreCategoria ?? '').trim().toUpperCase() === categoria.trim().toUpperCase()
+    );
+
+    const deletePromises = itemsDeCategoria.map(item => 
+      deleteLista(getListaId(item))
+    );
+
+    Promise.all(deletePromises)
       .then(() => {
-        showAlert("success", "¡Operación Exitosa!", `Categoría "${categoria}" eliminada`);
-        // Cerrar el acordeón si era el que se eliminó
+        showAlert("success", "¡Operación Exitosa!", `Categoría "${categoria}" y sus opciones eliminadas`);
         if (expandedCategory === categoria) {
           setExpandedCategory(null);
         }
@@ -597,36 +630,44 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
   function handleEditItem(item: ListasResponse) {
     setEditingItem(item);
-    setNuevaCategoria(item.categoria);
+    // Find the categoria_id for the item's category
+    const cat = categorias.find(c => c.nombre.trim().toUpperCase() === (item.categoria || "").trim().toUpperCase());
+    setNuevaCategoria(item.categoria || "");
+    setNuevaCategoriaId(cat?.categoria_id || "");
     setNuevaOpcionModal(item.opcion);
+    setModalMode("opcion");
     setIsEditMode(true);
     setIsCreateListaModalOpen(true);
   }
 
   function handleSaveModal() {
-    if (!nuevaCategoria.trim() || !nuevaOpcionModal.trim()) {
-      showAlert("incomplete", "Campos Incompletos", "Por favor complete ambos campos");
+    const categoriaTexto = nuevaCategoria.trim();
+    const opcionTexto = nuevaOpcionModal.trim();
+
+    if (!categoriaTexto || !opcionTexto) {
+      showAlert("incomplete", "Campos Incompletos", "Por favor complete la categoría y el nombre de la opción");
       return;
     }
 
-    // Validación local para nueva creación
+    // Validación duplicados (solo para creación nueva)
     if (!isEditMode) {
-      const categoriaNormalizada = nuevaCategoria.trim().toUpperCase();
-      const opcionNormalizada = nuevaOpcionModal.trim().toUpperCase();
-      
-      const yaExisteLocal = listasMaestras.some(
-        (item) => item.categoria.trim().toUpperCase() === categoriaNormalizada &&
-                  item.opcion.trim().toUpperCase() === opcionNormalizada
+      const listadoValido = Array.isArray(listasMaestras) ? listasMaestras.filter(Boolean) : [];
+      const yaExisteLocal = listadoValido.some(
+        (item) => {
+          const itemCategoria = String(item?.categoria ?? item?.nombre ?? item?.nombreCategoria ?? '').trim().toUpperCase();
+          const itemOpcion = String(item?.opcion ?? '').trim().toUpperCase();
+          return itemCategoria === categoriaTexto.toUpperCase() && itemOpcion === opcionTexto.toUpperCase();
+        }
       );
-
       if (yaExisteLocal) {
-        showAlert("error", "Dato Duplicado", `La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`);
+        showAlert("error", "Dato Duplicado", `La opción "${opcionTexto.toUpperCase()}" ya está agregada en ${categoriaTexto.toUpperCase()}.`);
         return;
       }
     }
 
     if (isEditMode && editingItem) {
-      updateLista(getListaId(editingItem), nuevaCategoria, nuevaOpcionModal)
+      // Para actualizar, enviamos categoria (string) y opcion
+      updateLista(getListaId(editingItem), categoriaTexto, opcionTexto)
         .then(() => {
           showAlert("success", "¡Operación Exitosa!", "Registro actualizado");
           closeModal();
@@ -637,7 +678,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
           showAlert("error", "Error al Actualizar", "No se pudo actualizar el registro");
         });
     } else {
-      createLista(nuevaCategoria, nuevaOpcionModal)
+      // Una sola petición POST a /api/configuracion/listas con { categoria, opcion }
+      createLista(categoriaTexto, opcionTexto)
         .then(() => {
           showAlert("success", "¡Operación Exitosa!", "Registro guardado correctamente");
           closeModal();
@@ -652,8 +694,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
   function closeModal() {
     setIsCreateListaModalOpen(false);
-    setNuevaCategoria("");
+    setNuevaCategoriaNombre("");
+    setNuevaCategoriaCodigo("");
     setNuevaOpcionModal("");
+    setNuevaCategoriaId("");
+    setModalMode("categoria");
     setIsEditMode(false);
     setEditingItem(null);
   }
@@ -701,8 +746,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             onClick={() => {
               setIsEditMode(false);
               setEditingItem(null);
-              setNuevaCategoria("");
+              setNuevaCategoriaNombre("");
+              setNuevaCategoriaCodigo("");
               setNuevaOpcionModal("");
+              setNuevaCategoriaId("");
+              setModalMode("categoria");
               setIsCreateListaModalOpen(true);
             }}
             className="bg-[#D32F2F] hover:bg-[#b71c1c] text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-sm transition-colors mx-auto"
@@ -713,52 +761,64 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       );
     }
     
-    return categories.map((categoria) => (
-      <AccordionSection
-        key={categoria}
-        categoria={categoria}
-        items={grouped[categoria]}
-        onAdd={(opcion) => {
-          const opcionNormalizada = opcion.trim().toUpperCase();
-          const categoriaNormalizada = categoria.toUpperCase();
-          
-          const yaExisteLocal = listasMaestras.some(
-            (item) => item.categoria.trim().toUpperCase() === categoriaNormalizada &&
-                      item.opcion.trim().toUpperCase() === opcionNormalizada
-          );
+    return categories.map((categoria) => {
+      const categoriaObj = categorias.find(c => c.nombre.trim().toUpperCase() === categoria.trim().toUpperCase());
+      return (
+        <AccordionSection
+          key={categoria}
+          categoria={categoria}
+          items={grouped[categoria]}
+          onAdd={(opcion) => {
+            const opcionNormalizada = opcion.trim().toUpperCase();
+            const categoriaNormalizada = categoria.toUpperCase();
+            
+            const listadoValido = Array.isArray(listasMaestras) ? listasMaestras.filter(Boolean) : [];
+            const yaExisteLocal = listadoValido.some(
+              (item) => {
+                const itemCategoria = String(item?.categoria ?? item?.nombre ?? item?.nombreCategoria ?? '').trim().toUpperCase();
+                const itemOpcion = String(item?.opcion ?? '').trim().toUpperCase();
+                return itemCategoria === categoriaNormalizada && itemOpcion === opcionNormalizada;
+              }
+            );
 
-          if (yaExisteLocal) {
-            showAlert("error", "Dato Duplicado", `La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`);
-            return;
-          }
+            if (yaExisteLocal) {
+              showAlert("error", "Dato Duplicado", `La opción "${opcionNormalizada}" ya está agregada en ${categoriaNormalizada}.`);
+              return;
+            }
 
-          createLista(categoria, opcion)
-            .then(() => {
-              // Limpiar input localmente tras éxito
-              setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
-              showAlert("success", "¡Operación Exitosa!", `"${opcionNormalizada}" agregado a ${categoriaNormalizada}`);
-              // Mantener la categoría desplegada después de guardar
-              setExpandedCategory(categoria);
-              cargarListas();
-            })
-            .catch(() => showAlert("error", "Error al Agregar", "Error al agregar"));
-        }}
-        onDelete={(item) => handleDeleteOpcion(item)}
-        onEdit={handleEditItem}
-        onDeleteCategoria={handleDeleteCategoria}
-        nuevaOpcion={nuevaOpción[categoria] || ""}
-        setNuevaOpcion={(val) => setNuevaOpcion(prev => ({ ...prev, [categoria]: val }))}
-        isOpen={expandedCategory === categoria}
-        onOpenChange={(open) => setExpandedCategory(open ? categoria : null)}
-        deleteCategoryConfirm={deleteCategoryConfirm}
-        onDeleteCategoriaConfirm={confirmDeleteCategoria}
-        onCancelDeleteCategoria={cancelDeleteCategoria}
-        isMobile={isMobile}
-        showAlert={showAlert}
-        cargarListas={cargarListas}
-        setListasMaestras={setListasMaestras}
-      />
-    ));
+            if (!categoriaObj) {
+              showAlert("error", "Error", `No se encontró la categoría "${categoria}"`);
+              return;
+            }
+
+            createLista(categoriaObj.categoria_id, opcion)
+              .then(() => {
+                // Limpiar input localmente tras éxito
+                setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
+                showAlert("success", "¡Operación Exitosa!", `"${opcionNormalizada}" agregado a ${categoriaNormalizada}`);
+                // Mantener la categoría desplegada después de guardar
+                setExpandedCategory(categoria);
+                cargarListas();
+              })
+              .catch(() => showAlert("error", "Error al Agregar", "Error al agregar"));
+          }}
+          onDelete={(item) => handleDeleteOpcion(item)}
+          onEdit={handleEditItem}
+          onDeleteCategoria={handleDeleteCategoria}
+          nuevaOpcion={nuevaOpción[categoria] || ""}
+          setNuevaOpcion={(val) => setNuevaOpcion(prev => ({ ...prev, [categoria]: val }))}
+          isOpen={expandedCategory === categoria}
+          onOpenChange={(open) => setExpandedCategory(open ? categoria : null)}
+          deleteCategoryConfirm={deleteCategoryConfirm}
+          onDeleteCategoriaConfirm={confirmDeleteCategoria}
+          onCancelDeleteCategoria={cancelDeleteCategoria}
+          isMobile={isMobile}
+          showAlert={showAlert}
+          cargarListas={cargarListas}
+          setListasMaestras={setListasMaestras}
+        />
+      );
+    });
   };
 
   return (
@@ -795,8 +855,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                   onClick={() => {
                     setIsEditMode(false);
                     setEditingItem(null);
-                    setNuevaCategoria("");
+                    setNuevaCategoriaNombre("");
+                    setNuevaCategoriaCodigo("");
                     setNuevaOpcionModal("");
+                    setNuevaCategoriaId("");
+                    setModalMode("categoria");
                     setIsCreateListaModalOpen(true);
                   }}
                   className="bg-[#D32F2F] hover:bg-[#b71c1c] text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-sm transition-colors"
@@ -838,8 +901,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                 onClick={() => {
                   setIsEditMode(false);
                   setEditingItem(null);
-                  setNuevaCategoria("");
+                  setNuevaCategoriaNombre("");
+                  setNuevaCategoriaCodigo("");
                   setNuevaOpcionModal("");
+                  setNuevaCategoriaId("");
+                  setModalMode("categoria");
                   setIsCreateListaModalOpen(true);
                 }}
                 className="bg-[#D32F2F] hover:bg-[#b71c1c] text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-sm transition-colors mx-auto"
