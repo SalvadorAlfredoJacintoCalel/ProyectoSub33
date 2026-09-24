@@ -17,7 +17,7 @@ namespace Backend_Sub33.DTOs.Configuracion
         public string Codigo { get; set; } = string.Empty;
 
         [JsonPropertyName("modulo")]
-        public string Modulo { get; set; } = "GENERAL";
+        public string Modulo { get; set; } = string.Empty;
 
         [JsonPropertyName("opcion")]
         public string Opcion { get; set; } = string.Empty;

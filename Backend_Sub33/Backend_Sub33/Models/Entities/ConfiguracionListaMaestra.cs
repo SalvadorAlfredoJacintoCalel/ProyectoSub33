@@ -22,6 +22,10 @@ namespace Backend_Sub33.Models.Entities
         [Column("opcion")]
         public string Opcion { get; set; } = string.Empty;
 
+        [MaxLength(50)]
+        [Column("modulo")]
+        public string Modulo { get; set; } = string.Empty;
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
     }

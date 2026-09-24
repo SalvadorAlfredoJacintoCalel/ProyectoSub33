@@ -21,10 +21,6 @@ namespace Backend_Sub33.Models.Entities
         [Column("nombre")]
         public string Nombre { get; set; } = string.Empty;
 
-        [MaxLength(50)]
-        [Column("modulo")]
-        public string Modulo { get; set; } = "GENERAL";
-
         [Column("descripcion")]
         public string? Descripcion { get; set; }
 

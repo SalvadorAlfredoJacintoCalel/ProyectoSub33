@@ -27,7 +27,7 @@ namespace Backend_Sub33.Services
                 CategoriaId = lista.CategoriaId,
                 Nombre = categoria?.Nombre ?? string.Empty,
                 Codigo = categoria?.Codigo ?? string.Empty,
-                Modulo = categoria?.Modulo ?? "GENERAL",
+                Modulo = lista.Modulo,
                 Opcion = lista.Opcion,
                 Categoria = categoria?.Nombre ?? string.Empty
             };
@@ -45,7 +45,7 @@ namespace Backend_Sub33.Services
                     CategoriaId = l.CategoriaId,
                     Nombre = l.Categoria!.Nombre,
                     Codigo = l.Categoria.Codigo,
-                    Modulo = l.Categoria.Modulo,
+                    Modulo = l.Modulo,
                     Opcion = l.Opcion,
                     Categoria = l.Categoria.Nombre
                 })
@@ -64,7 +64,7 @@ namespace Backend_Sub33.Services
                     CategoriaId = l.CategoriaId,
                     Nombre = l.Categoria!.Nombre,
                     Codigo = l.Categoria.Codigo,
-                    Modulo = l.Categoria.Modulo,
+                    Modulo = l.Modulo,
                     Opcion = l.Opcion,
                     Categoria = l.Categoria.Nombre
                 })
@@ -82,7 +82,6 @@ namespace Backend_Sub33.Services
                     CategoriaId = c.CategoriaId,
                     Codigo = c.Codigo,
                     Nombre = c.Nombre,
-                    Modulo = c.Modulo,
                     Descripcion = c.Descripcion,
                     Opciones = c.Opciones
                         .OrderBy(o => o.Opcion)
@@ -91,7 +90,7 @@ namespace Backend_Sub33.Services
                             ListaId = o.ListaId,
                             CategoriaId = o.CategoriaId,
                             Opcion = o.Opcion,
-                            Modulo = c.Modulo
+                            Modulo = o.Modulo
                         })
                         .ToList()
                 })
@@ -142,7 +141,6 @@ namespace Backend_Sub33.Services
                         {
                             Codigo = codigoCategoria,
                             Nombre = nombreCategoria,
-                            Modulo = string.IsNullOrWhiteSpace(dto.Modulo) ? "GENERAL" : dto.Modulo.ToUpperInvariant(),
                             Descripcion = $"Categoría creada automáticamente: {nombreCategoria}",
                             CreatedAt = DateTime.UtcNow
                         };
@@ -186,6 +184,7 @@ namespace Backend_Sub33.Services
             {
                 CategoriaId = categoriaId,
                 Opcion = opcion,
+                Modulo = dto.Modulo,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -212,9 +211,10 @@ namespace Backend_Sub33.Services
             return (true, "Registro guardado exitosamente", MapListaItem(nuevaLista, categoria));
         }
 
-        public async Task UpdateListaAsync(int id, UpdateListaMaestraDto dto)
+        public async Task<ListaItemDto> UpdateListaAsync(int id, UpdateListaMaestraDto dto)
         {
             var lista = await _context.ConfiguracionListasMaestras
+                .Include(l => l.Categoria)
                 .FirstOrDefaultAsync(l => l.ListaId == id);
 
             if (lista == null)
@@ -230,6 +230,8 @@ namespace Backend_Sub33.Services
             }
 
             lista.Opcion = opcion;
+            lista.Modulo = dto.Modulo;
+            _context.Entry(lista).State = EntityState.Modified;
 
             var duplicada = await _context.ConfiguracionListasMaestras
                 .AnyAsync(l => l.ListaId != id
@@ -241,18 +243,14 @@ namespace Backend_Sub33.Services
                 throw new InvalidOperationException($"La opción '{opcion}' ya existe en esta categoría.");
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.Categoria))
+            if (!string.IsNullOrWhiteSpace(dto.Categoria) && lista.Categoria != null)
             {
-                var categoria = await _context.CatCategoriasListas
-                    .FirstOrDefaultAsync(c => c.CategoriaId == lista.CategoriaId);
-
-                if (categoria != null)
-                {
-                    categoria.Nombre = dto.Categoria.Trim();
-                }
+                lista.Categoria.Nombre = dto.Categoria.Trim();
             }
 
             await _context.SaveChangesAsync();
+
+            return MapListaItem(lista, lista.Categoria);
         }
 
         public async Task UpdateCategoriaAsync(int id, UpdateCategoriaDto dto)
@@ -268,11 +266,6 @@ namespace Backend_Sub33.Services
             if (!string.IsNullOrWhiteSpace(dto.Nombre))
             {
                 categoria.Nombre = dto.Nombre.Trim();
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.Modulo))
-            {
-                categoria.Modulo = dto.Modulo.Trim().ToUpperInvariant();
             }
 
             await _context.SaveChangesAsync();

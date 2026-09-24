@@ -13,9 +13,6 @@ namespace Backend_Sub33.DTOs.Configuracion
         [JsonPropertyName("nombre")]
         public string Nombre { get; set; } = string.Empty;
 
-        [JsonPropertyName("modulo")]
-        public string Modulo { get; set; } = "GENERAL";
-
         [JsonPropertyName("descripcion")]
         public string? Descripcion { get; set; }
 

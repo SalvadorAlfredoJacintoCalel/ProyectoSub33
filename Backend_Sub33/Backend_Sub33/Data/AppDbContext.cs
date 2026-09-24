@@ -33,7 +33,6 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CategoriaId).HasColumnName("categoria_id").ValueGeneratedOnAdd();
             entity.Property(e => e.Codigo).HasColumnName("codigo").IsRequired().HasMaxLength(50);
             entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Modulo).HasColumnName("modulo").HasMaxLength(50).HasDefaultValue("GENERAL");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
@@ -48,6 +47,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ListaId).HasColumnName("lista_id").ValueGeneratedOnAdd();
             entity.Property(e => e.CategoriaId).HasColumnName("categoria_id").IsRequired();
             entity.Property(e => e.Opcion).HasColumnName("opcion").IsRequired().HasMaxLength(150);
+            entity.Property(e => e.Modulo).HasColumnName("modulo").HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             entity.HasIndex(e => new { e.CategoriaId, e.Opcion })

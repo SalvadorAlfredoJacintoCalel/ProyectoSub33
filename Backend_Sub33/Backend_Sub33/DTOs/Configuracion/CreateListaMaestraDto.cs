@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Backend_Sub33.DTOs.Configuracion
 {
@@ -9,7 +10,8 @@ namespace Backend_Sub33.DTOs.Configuracion
         [MaxLength(100)]
         public string? Categoria { get; set; }
 
-        public string Modulo { get; set; } = "GENERAL";
+        [JsonPropertyName("modulo")]
+        public string Modulo { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(150)]

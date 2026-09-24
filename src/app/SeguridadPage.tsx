@@ -128,7 +128,7 @@ function EditItemModal({
   useEffect(() => {
     if (isOpen && item) {
       setEditValue(item.opcion);
-      setEditModulo((item as any).modulo || "GENERAL");
+      setEditModulo((item as any).modulo || "");
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen, item]);
@@ -224,7 +224,6 @@ function EditItemModal({
 
 function AccordionSection({
   categoria,
-  modulo,
   categoriaId,
   items,
   onAdd,
@@ -244,7 +243,6 @@ function AccordionSection({
   setListasMaestras,
 }: {
   categoria: string;
-  modulo?: string;
   categoriaId?: number;
   items: ListasResponse[];
   onAdd: (opcion: string, modulo: string) => void;
@@ -277,12 +275,13 @@ function AccordionSection({
   const handleEditSave = async (id: number, opcion: string, modulo: string) => {
     setEditLoading(true);
     try {
-      await updateLista(id, { opcion: opcion.trim() });
+      const updated = await updateLista(id, { opcion: opcion.trim(), modulo });
       setListasMaestras((prev) =>
         prev.map((item) =>
-          getListaId(item) === id ? { ...item, opcion: opcion.trim(), modulo } : item
+          getListaId(item) === id ? { ...item, opcion: updated.opcion, modulo: updated.modulo } : item
         )
       );
+      await cargarListas();
       showAlert("success", "¡Operación Exitosa!", "Opción actualizada");
       setEditingItem(null);
     } catch (error) {
@@ -385,7 +384,7 @@ function AccordionSection({
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="flex flex-wrap gap-2 mb-4 mt-4">
 {items.map((item, idx) => {
-                const itemModulo = (item as any).modulo || "GENERAL";
+                const itemModulo = (item as any).modulo || "";
                 return (
                 <div
                   key={getListaId(item)}
@@ -621,34 +620,6 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     return grouped;
   };
 
-  function handleAddOpcion(categoria: string) {
-    const option = nuevaOpción[categoria]?.trim();
-    if (!option) {
-      showAlert("incomplete", "Campos Incompletos", "Por favor ingrese un nombre válido");
-      return;
-    }
-
-    const categoriaObj = categorias.find(c => c.nombre.trim().toUpperCase() === categoria.trim().toUpperCase());
-    if (!categoriaObj) {
-      showAlert("error", "Error", `No se encontró la categoría "${categoria}"`);
-      return;
-    }
-
-    const moduloCategoria = categoriaObj.modulo || "GENERAL";
-
-    createLista(categoriaObj.categoria_id, categoriaObj.nombre, option, moduloCategoria)
-      .then(() => {
-        setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
-        showAlert("success", "¡Operación Exitosa!", `"${option.trim().toUpperCase()}" agregado a ${categoria}`);
-        setExpandedCategory(categoria);
-        cargarListas();
-      })
-      .catch((error) => {
-        console.error("Error adding opcion:", error);
-        showAlert("error", "Error al Guardar", error.message);
-      });
-  }
-
   function handleDeleteOpcion(item: ListasResponse) {
     const id = getListaId(item);
     deleteLista(id)
@@ -711,7 +682,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     setNuevaCategoria(item.categoria || "");
     setNuevaCategoriaId(cat?.categoria_id || "");
     setNuevaOpcionModal(item.opcion);
-    setNuevoModulo((item as any).modulo || cat?.modulo || "GENERAL");
+    setNuevoModulo((item as any).modulo || "");
     setModalMode("opcion");
     setIsEditMode(true);
     setIsCreateListaModalOpen(true);
@@ -732,7 +703,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       const categoriaObj = categorias.find(c => c.nombre.trim().toUpperCase() === categoriaTexto.trim().toUpperCase());
       const categoriaId = categoriaObj?.categoria_id ?? 0;
       
-      updateLista(getListaId(editingItem), { opcion: opcionTexto, categoriaId })
+      updateLista(getListaId(editingItem), { opcion: opcionTexto, categoriaId, modulo: moduloSeleccionado })
         .then(() => {
           showAlert("success", "¡Operación Exitosa!", "Registro actualizado");
           closeModal();
@@ -833,13 +804,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       const categoriaObj = safeCategorias.find(c => c.nombre?.trim().toUpperCase() === categoria.trim().toUpperCase());
       // Extraer ID de forma ultra defensiva revisando todas las variantes posibles
       const categoriaId = categoriaObj?.categoria_id ?? categoriaObj?.id ?? categoriaObj?.id_categoria;
-      const moduloCategoria = categoriaObj?.modulo || "GENERAL";
       return (
         <AccordionSection
           key={categoria}
           categoria={categoria}
           categoriaId={categoriaObj?.categoria_id}
-          modulo={moduloCategoria}
           items={grouped[categoria]}
           onAdd={(opcion, modulo) => {
             if (!opcion?.trim()) return;
@@ -850,7 +819,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
               return;
             }
 
-            createLista(categoriaObj.categoria_id, categoriaObj.nombre, opcion, modulo || "GENERAL")
+            createLista(categoriaObj.categoria_id, categoriaObj.nombre, opcion, modulo)
               .then(() => {
                 setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
                 showAlert("success", "¡Operación Exitosa!", `"${opcion.trim().toUpperCase()}" agregado a ${categoria}`);

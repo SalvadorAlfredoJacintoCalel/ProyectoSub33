@@ -119,9 +119,9 @@ namespace Backend_Sub33.Controllers
 
             try
             {
-                await _service.UpdateListaAsync(id, dto);
-                _logger.LogInformation("Opción actualizada: Id={Id}, Opcion={Opcion}", id, dto.Opcion.Trim());
-                return Ok(new { mensaje = "Opción actualizada correctamente", id, opcion = dto.Opcion.Trim() });
+                var item = await _service.UpdateListaAsync(id, dto);
+                _logger.LogInformation("Opción actualizada: Id={Id}, Opcion={Opcion}, Modulo={Modulo}", id, item.Opcion, item.Modulo);
+                return Ok(new { mensaje = "Opción actualizada correctamente", item });
             }
             catch (ArgumentException ex)
             {
@@ -151,8 +151,8 @@ namespace Backend_Sub33.Controllers
             try
             {
                 await _service.UpdateCategoriaAsync(id, dto);
-                _logger.LogInformation("Categoría actualizada: Id={Id}, Nombre={Nombre}, Modulo={Modulo}", id, dto.Nombre, dto.Modulo);
-                return Ok(new { mensaje = "Categoría actualizada correctamente", id, nombre = dto.Nombre, modulo = dto.Modulo });
+                _logger.LogInformation("Categoría actualizada: Id={Id}, Nombre={Nombre}", id, dto.Nombre);
+                return Ok(new { mensaje = "Categoría actualizada correctamente", id, nombre = dto.Nombre });
             }
             catch (KeyNotFoundException ex)
             {
@@ -203,7 +203,6 @@ namespace Backend_Sub33.Controllers
                         categoria_id = categoriaEliminada.CategoriaId,
                         codigo = categoriaEliminada.Codigo,
                         nombre = categoriaEliminada.Nombre,
-                        modulo = categoriaEliminada.Modulo,
                         descripcion = categoriaEliminada.Descripcion
                     }
                 });
@@ -279,7 +278,4 @@ public class UpdateCategoriaDto
     [Required]
     [MaxLength(100)]
     public string Nombre { get; set; } = string.Empty;
-
-    [MaxLength(50)]
-    public string? Modulo { get; set; }
 }

@@ -12,6 +12,6 @@ namespace Backend_Sub33.DTOs.Configuracion
         [MaxLength(150)]
         public string Opcion { get; set; } = string.Empty;
 
-        public string Modulo { get; set; } = "GENERAL";
+        public string Modulo { get; set; } = string.Empty;
     }
 }

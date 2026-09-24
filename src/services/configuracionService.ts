@@ -14,7 +14,6 @@ export interface Categoria {
   categoria_id: number;
   nombre: string;
   codigo?: string;
-  modulo?: string;
 }
 
 export interface ListaItem {
@@ -117,14 +116,15 @@ export const getListasPorCategoria = async (categoria: string): Promise<ListasRe
   return Array.isArray(data) ? data : data.data || [];
 };
 
-export const createLista = async (categoria_id: number | null, categoria_nombre: string, opcion: string, modulo: string = "GENERAL"): Promise<ListasResponse> => {
+export const createLista = async (categoria_id: number | null, categoria_nombre: string, opcion: string, modulo: string): Promise<ListasResponse> => {
   try {
     const payload = {
-      CategoriaId: categoria_id,
-      Categoria: categoria_nombre,
-      Opcion: opcion.trim().toUpperCase(),
-      Modulo: modulo,
+      categoria_id: categoria_id,
+      categoria: categoria_nombre,
+      opcion: opcion.trim().toUpperCase(),
+      modulo: modulo,
     };
+    console.log("Enviando a API:", payload);
     const response = await axios.post(`${API_BASE_URL}/configuracion/listas`, payload, {
       headers: {
         "Content-Type": "application/json",
@@ -159,11 +159,13 @@ export const deleteLista = async (id: number): Promise<void> => {
   }
 };
 
-export const updateLista = async (id: number, data: { opcion: string; categoriaId?: number }): Promise<ListasResponse> => {
+export const updateLista = async (id: number, data: { opcion: string; categoriaId?: number; modulo?: string }): Promise<ListasResponse> => {
   const payload = {
     opcion: data.opcion.trim().toUpperCase(),
     ...(data.categoriaId !== undefined && { categoriaId: data.categoriaId }),
+    modulo: data.modulo ?? "",
   };
+  console.log("Enviando a API:", payload);
   const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
     method: "PUT",
     headers: {
@@ -177,7 +179,8 @@ export const updateLista = async (id: number, data: { opcion: string; categoriaI
     console.error("Error detallado del Backend:", message);
     throw new Error(message);
   }
-  return response.json();
+  const json = await response.json();
+  return json.item ?? json;
 };
 
 export const getRangos = async (): Promise<string[]> => {
@@ -268,7 +271,7 @@ export const eliminarCategoria = async (categoria: string): Promise<void> => {
   }
 };
 
-export const updateListaItem = async (id: number, opcion: string): Promise<ListasResponse> => {
+export const updateListaItem = async (id: number, opcion: string, modulo: string): Promise<ListasResponse> => {
   try {
     const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
       method: "PUT",
@@ -276,7 +279,7 @@ export const updateListaItem = async (id: number, opcion: string): Promise<Lista
         "Content-Type": "application/json",
         ...getAuthHeader(),
       },
-      body: JSON.stringify({ opcion: opcion.trim().toUpperCase() }),
+      body: JSON.stringify({ opcion: opcion.trim().toUpperCase(), modulo }),
     });
     if (!response.ok) {
       const message = await parseErrorResponse(response);
