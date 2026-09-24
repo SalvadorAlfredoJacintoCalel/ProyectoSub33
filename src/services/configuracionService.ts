@@ -14,6 +14,7 @@ export interface Categoria {
   categoria_id: number;
   nombre: string;
   codigo?: string;
+  modulo?: string;
 }
 
 export interface ListaItem {
@@ -33,6 +34,7 @@ export interface ListasResponse {
   id?: number;
   categoria: string;
   opcion: string;
+  modulo?: string;
 }
 
 export const getListaId = (item: ListasResponse): number => {
@@ -115,12 +117,13 @@ export const getListasPorCategoria = async (categoria: string): Promise<ListasRe
   return Array.isArray(data) ? data : data.data || [];
 };
 
-export const createLista = async (categoria_id: number | null, categoria_nombre: string, opcion: string): Promise<ListasResponse> => {
+export const createLista = async (categoria_id: number | null, categoria_nombre: string, opcion: string, modulo: string = "GENERAL"): Promise<ListasResponse> => {
   try {
     const payload = {
       CategoriaId: categoria_id,
       Categoria: categoria_nombre,
       Opcion: opcion.trim().toUpperCase(),
+      Modulo: modulo,
     };
     const response = await axios.post(`${API_BASE_URL}/configuracion/listas`, payload, {
       headers: {
@@ -156,11 +159,10 @@ export const deleteLista = async (id: number): Promise<void> => {
   }
 };
 
-export const updateLista = async (id: number, categoria_id: number, categoria_nombre: string, opcion: string): Promise<ListasResponse> => {
+export const updateLista = async (id: number, data: { opcion: string; categoriaId?: number }): Promise<ListasResponse> => {
   const payload = {
-    CategoriaId: categoria_id,
-    Categoria: categoria_nombre,
-    Opcion: opcion.trim().toUpperCase(),
+    opcion: data.opcion.trim().toUpperCase(),
+    ...(data.categoriaId !== undefined && { categoriaId: data.categoriaId }),
   };
   const response = await fetch(`${API_BASE_URL}/configuracion/listas/${id}`, {
     method: "PUT",
@@ -222,6 +224,26 @@ export const getTiposEmergencia = async (): Promise<string[]> => {
     return handleResponse(response);
   } catch (error) {
     console.error("Error fetching tipos de emergencia:", error);
+    throw error;
+  }
+};
+
+export const deleteCategoriaById = async (categoriaId: number): Promise<void> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/configuracion/categorias/${categoriaId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeader(),
+      },
+    });
+    if (!response.ok) {
+      const message = await parseErrorResponse(response);
+      console.error("Error eliminando categoría por ID:", message);
+      throw new Error(message);
+    }
+  } catch (error) {
+    console.error("Error eliminando categoría por ID:", error);
     throw error;
   }
 };

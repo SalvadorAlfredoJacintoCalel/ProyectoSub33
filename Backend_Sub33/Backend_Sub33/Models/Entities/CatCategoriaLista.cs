@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -20,10 +21,16 @@ namespace Backend_Sub33.Models.Entities
         [Column("nombre")]
         public string Nombre { get; set; } = string.Empty;
 
+        [MaxLength(50)]
+        [Column("modulo")]
+        public string Modulo { get; set; } = "GENERAL";
+
         [Column("descripcion")]
         public string? Descripcion { get; set; }
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
+
+        public virtual ICollection<ConfiguracionListaMaestra> Opciones { get; set; } = new List<ConfiguracionListaMaestra>();
     }
 }

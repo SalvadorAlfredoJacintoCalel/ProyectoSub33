@@ -2,8 +2,6 @@ using Backend_Sub33.DTOs.Configuracion;
 using Backend_Sub33.Models.Entities;
 using Backend_Sub33.Data;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
-using System.Globalization;
 
 namespace Backend_Sub33.Services
 {
@@ -16,319 +14,296 @@ namespace Backend_Sub33.Services
             _context = context;
         }
 
-        private static string NormalizarTexto(string texto)
+        private static string GenerarCodigo(string nombre)
         {
-            if (string.IsNullOrWhiteSpace(texto))
-                return string.Empty;
-
-            var trimmed = texto.Trim();
-            var textInfo = CultureInfo.CurrentCulture.TextInfo;
-            return textInfo.ToTitleCase(trimmed.ToLower());
+            return new string(nombre.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
         }
 
-        private static ListaItemDto NormalizarItem(ListaItemDto item)
+        private static ListaItemDto MapListaItem(ConfiguracionListaMaestra lista, CatCategoriaLista? categoria)
         {
             return new ListaItemDto
             {
-                ListaId = item.ListaId,
-                CategoriaId = item.CategoriaId,
-                CategoriaNombre = NormalizarTexto(item.CategoriaNombre),
-                CategoriaCodigo = item.CategoriaCodigo,
-                Opcion = NormalizarTexto(item.Opcion)
+                ListaId = lista.ListaId,
+                CategoriaId = lista.CategoriaId,
+                Nombre = categoria?.Nombre ?? string.Empty,
+                Codigo = categoria?.Codigo ?? string.Empty,
+                Modulo = categoria?.Modulo ?? "GENERAL",
+                Opcion = lista.Opcion,
+                Categoria = categoria?.Nombre ?? string.Empty
             };
         }
 
         public async Task<List<ListaItemDto>> GetAllListasAsync()
         {
-            try
-            {
-                var sql = @"
-                    SELECT 
-                        clm.lista_id AS ListaId,
-                        clm.categoria_id AS CategoriaId,
-                        ccl.nombre AS CategoriaNombre,
-                        ccl.codigo AS CategoriaCodigo,
-                        clm.opcion AS Opcion
-                    FROM configuracion_listas_maestras clm
-                    INNER JOIN cat_categorias_listas ccl ON clm.categoria_id = ccl.categoria_id
-                    ORDER BY ccl.nombre, clm.opcion";
-
-                var items = await _context.Database
-                    .SqlQueryRaw<ListaItemDto>(sql)
-                    .ToListAsync();
-
-                return items.Select(NormalizarItem).ToList();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error al obtener listas: {ex.Message}", ex);
-            }
+            return await _context.ConfiguracionListasMaestras
+                .Include(l => l.Categoria)
+                .OrderBy(l => l.Categoria!.Nombre)
+                .ThenBy(l => l.Opcion)
+                .Select(l => new ListaItemDto
+                {
+                    ListaId = l.ListaId,
+                    CategoriaId = l.CategoriaId,
+                    Nombre = l.Categoria!.Nombre,
+                    Codigo = l.Categoria.Codigo,
+                    Modulo = l.Categoria.Modulo,
+                    Opcion = l.Opcion,
+                    Categoria = l.Categoria.Nombre
+                })
+                .ToListAsync();
         }
 
         public async Task<List<ListaItemDto>> GetPorCategoriaAsync(int categoriaId)
         {
-            try
-            {
-                var sql = @"
-                    SELECT 
-                        clm.lista_id AS ListaId,
-                        clm.categoria_id AS CategoriaId,
-                        ccl.nombre AS CategoriaNombre,
-                        ccl.codigo AS CategoriaCodigo,
-                        clm.opcion AS Opcion
-                    FROM configuracion_listas_maestras clm
-                    INNER JOIN cat_categorias_listas ccl ON clm.categoria_id = ccl.categoria_id
-                    WHERE clm.categoria_id = @CategoriaId
-                    ORDER BY clm.opcion";
-
-                var parameter = new NpgsqlParameter("@CategoriaId", categoriaId);
-
-                var items = await _context.Database
-                    .SqlQueryRaw<ListaItemDto>(sql, parameter)
-                    .ToListAsync();
-
-                return items.Select(NormalizarItem).ToList();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error al obtener listas por categoría: {ex.Message}", ex);
-            }
+            return await _context.ConfiguracionListasMaestras
+                .Include(l => l.Categoria)
+                .Where(l => l.CategoriaId == categoriaId)
+                .OrderBy(l => l.Opcion)
+                .Select(l => new ListaItemDto
+                {
+                    ListaId = l.ListaId,
+                    CategoriaId = l.CategoriaId,
+                    Nombre = l.Categoria!.Nombre,
+                    Codigo = l.Categoria.Codigo,
+                    Modulo = l.Categoria.Modulo,
+                    Opcion = l.Opcion,
+                    Categoria = l.Categoria.Nombre
+                })
+                .ToListAsync();
         }
 
-        public async Task<List<CatCategoriaLista>> GetCategoriasAsync()
+        public async Task<List<CategoriaListaDto>> GetCategoriasAsync()
         {
-            try
-            {
-                return await _context.CatCategoriasListas
-                    .OrderBy(c => c.Nombre)
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error al obtener categorías: {ex.Message}", ex);
-            }
+            return await _context.CatCategoriasListas
+                .AsNoTracking()
+                .Include(c => c.Opciones)
+                .OrderBy(c => c.Nombre)
+                .Select(c => new CategoriaListaDto
+                {
+                    CategoriaId = c.CategoriaId,
+                    Codigo = c.Codigo,
+                    Nombre = c.Nombre,
+                    Modulo = c.Modulo,
+                    Descripcion = c.Descripcion,
+                    Opciones = c.Opciones
+                        .OrderBy(o => o.Opcion)
+                        .Select(o => new ListaMaestraDto
+                        {
+                            ListaId = o.ListaId,
+                            CategoriaId = o.CategoriaId,
+                            Opcion = o.Opcion,
+                            Modulo = c.Modulo
+                        })
+                        .ToList()
+                })
+                .ToListAsync();
         }
 
         public async Task<(bool exito, string mensaje, ListaItemDto? item)> CrearListaAsync(CreateListaMaestraDto dto)
         {
-            var opc = dto.Opcion?.Trim();
+            var opcion = dto.Opcion?.Trim();
 
-            if (string.IsNullOrWhiteSpace(opc))
+            if (string.IsNullOrWhiteSpace(opcion))
             {
                 return (false, "La opción es obligatoria.", null);
             }
 
             int categoriaId;
+            CatCategoriaLista? categoria;
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-
-            try
+            if (dto.CategoriaId.HasValue && dto.CategoriaId.Value > 0)
             {
-                if (dto.CategoriaId.HasValue && dto.CategoriaId.Value > 0)
+                categoriaId = dto.CategoriaId.Value;
+
+                categoria = await _context.CatCategoriasListas
+                    .FirstOrDefaultAsync(c => c.CategoriaId == categoriaId);
+
+                if (categoria == null)
                 {
-                    categoriaId = dto.CategoriaId.Value;
-
-                    var categoriaExiste = await _context.CatCategoriasListas
-                        .AnyAsync(c => c.CategoriaId == categoriaId);
-
-                    if (!categoriaExiste)
-                    {
-                        await transaction.RollbackAsync();
-                        return (false, $"La categoría con ID {categoriaId} no existe.", null);
-                    }
+                    return (false, $"La categoría con ID {categoriaId} no existe.", null);
                 }
-                else if (!string.IsNullOrWhiteSpace(dto.Categoria))
-                {
-                    var categoriaTexto = dto.Categoria!.Trim();
-                    var codigoCategoria = categoriaTexto.ToUpperInvariant();
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.Categoria))
+            {
+                var nombreCategoria = dto.Categoria.Trim();
 
-                    var categoria = await _context.CatCategoriasListas
-                        .FirstOrDefaultAsync(c => c.Codigo.ToLower() == codigoCategoria.ToLower() 
-                                               || c.Nombre.ToLower() == categoriaTexto.ToLower());
+                categoria = await _context.CatCategoriasListas
+                    .FirstOrDefaultAsync(c => c.Nombre.ToLower() == nombreCategoria.ToLower());
+
+                if (categoria == null)
+                {
+                    var codigoCategoria = GenerarCodigo(nombreCategoria);
+
+                    categoria = await _context.CatCategoriasListas
+                        .FirstOrDefaultAsync(c => c.Codigo.ToLower() == codigoCategoria.ToLower());
 
                     if (categoria == null)
                     {
                         categoria = new CatCategoriaLista
                         {
                             Codigo = codigoCategoria,
-                            Nombre = categoriaTexto,
-                            Descripcion = $"Categoría creada automáticamente: {categoriaTexto}",
+                            Nombre = nombreCategoria,
+                            Modulo = string.IsNullOrWhiteSpace(dto.Modulo) ? "GENERAL" : dto.Modulo.ToUpperInvariant(),
+                            Descripcion = $"Categoría creada automáticamente: {nombreCategoria}",
                             CreatedAt = DateTime.UtcNow
                         };
 
                         _context.CatCategoriasListas.Add(categoria);
-                        await _context.SaveChangesAsync();
-                    }
 
-                    categoriaId = categoria.CategoriaId;
-                }
-                else
-                {
-                    await transaction.RollbackAsync();
-                    return (false, "La categoría es obligatoria (enviar CategoriaId o Categoria).", null);
-                }
-
-                var opcionExistente = await _context.ConfiguracionListasMaestras
-                    .FirstOrDefaultAsync(l => l.CategoriaId == categoriaId 
-                                           && l.Opcion.ToLower() == opc.ToLower());
-
-                if (opcionExistente != null)
-                {
-                    var categoriaInfo = await _context.CatCategoriasListas
-                        .FirstOrDefaultAsync(c => c.CategoriaId == categoriaId);
-
-                    await transaction.CommitAsync();
-
-                    return (true, "La opción ya existe en esta categoría.", new ListaItemDto
-                    {
-                        ListaId = opcionExistente.ListaId,
-                        CategoriaId = opcionExistente.CategoriaId,
-                        CategoriaNombre = categoriaInfo?.Nombre ?? string.Empty,
-                        CategoriaCodigo = categoriaInfo?.Codigo ?? string.Empty,
-                        Opcion = opcionExistente.Opcion
-                    });
-                }
-
-                var nuevaLista = new ConfiguracionListaMaestra
-                {
-                    CategoriaId = categoriaId,
-                    Opcion = opc,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.ConfiguracionListasMaestras.Add(nuevaLista);
-                await _context.SaveChangesAsync();
-
-                var categoriaFinal = await _context.CatCategoriasListas
-                    .FirstOrDefaultAsync(c => c.CategoriaId == categoriaId);
-
-                await transaction.CommitAsync();
-
-                return (true, "Registro guardado exitosamente", new ListaItemDto
-                {
-                    ListaId = nuevaLista.ListaId,
-                    CategoriaId = nuevaLista.CategoriaId,
-                    CategoriaNombre = categoriaFinal?.Nombre ?? string.Empty,
-                    CategoriaCodigo = categoriaFinal?.Codigo ?? string.Empty,
-                    Opcion = nuevaLista.Opcion
-                });
-            }
-            catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505")
-            {
-                await transaction.RollbackAsync();
-
-                if (dto.CategoriaId.HasValue || !string.IsNullOrWhiteSpace(dto.Categoria))
-                {
-                    var resolvedId = dto.CategoriaId.HasValue 
-                        ? dto.CategoriaId.Value 
-                        : (await _context.CatCategoriasListas
-                            .FirstOrDefaultAsync(c => c.Codigo.ToLower() == dto.Categoria!.ToLower().ToUpperInvariant() 
-                                                   || c.Nombre.ToLower() == dto.Categoria!.ToLower()))?.CategoriaId ?? 0;
-
-                    if (resolvedId > 0)
-                    {
-                        var opcionExistente = await _context.ConfiguracionListasMaestras
-                            .FirstOrDefaultAsync(l => l.CategoriaId == resolvedId 
-                                                   && l.Opcion.ToLower() == opc.ToLower());
-
-                        if (opcionExistente != null)
+                        try
                         {
-                            var catInfo = await _context.CatCategoriasListas
-                                .FirstOrDefaultAsync(c => c.CategoriaId == resolvedId);
+                            await _context.SaveChangesAsync();
+                        }
+                        catch (DbUpdateException)
+                        {
+                            categoria = await _context.CatCategoriasListas
+                                .FirstOrDefaultAsync(c => c.Codigo.ToLower() == codigoCategoria.ToLower());
 
-                            return (true, "La opción ya existe en esta categoría.", new ListaItemDto
+                            if (categoria == null)
                             {
-                                ListaId = opcionExistente.ListaId,
-                                CategoriaId = opcionExistente.CategoriaId,
-                                CategoriaNombre = catInfo?.Nombre ?? string.Empty,
-                                CategoriaCodigo = catInfo?.Codigo ?? string.Empty,
-                                Opcion = opcionExistente.Opcion
-                            });
+                                throw;
+                            }
                         }
                     }
                 }
 
-                return (false, $"Error de duplicado: {ex.Message}", null);
+                categoriaId = categoria.CategoriaId;
             }
-            catch (Exception ex)
+            else
             {
-                await transaction.RollbackAsync();
-                throw new Exception($"Error al crear la lista: {ex.Message}", ex);
+                return (false, "La categoría es obligatoria (enviar CategoriaId o Categoria).", null);
             }
+
+            var opcionExistente = await _context.ConfiguracionListasMaestras
+                .FirstOrDefaultAsync(l => l.CategoriaId == categoriaId
+                                       && l.Opcion.ToLower() == opcion.ToLower());
+
+            if (opcionExistente != null)
+            {
+                return (true, "La opción ya existe en esta categoría.", MapListaItem(opcionExistente, categoria));
+            }
+
+            var nuevaLista = new ConfiguracionListaMaestra
+            {
+                CategoriaId = categoriaId,
+                Opcion = opcion,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.ConfiguracionListasMaestras.Add(nuevaLista);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                var existente = await _context.ConfiguracionListasMaestras
+                    .FirstOrDefaultAsync(l => l.CategoriaId == categoriaId
+                                           && l.Opcion.ToLower() == opcion.ToLower());
+
+                if (existente != null)
+                {
+                    return (true, "La opción ya existe en esta categoría.", MapListaItem(existente, categoria));
+                }
+
+                throw;
+            }
+
+            return (true, "Registro guardado exitosamente", MapListaItem(nuevaLista, categoria));
         }
 
         public async Task UpdateListaAsync(int id, UpdateListaMaestraDto dto)
         {
-            try
+            var lista = await _context.ConfiguracionListasMaestras
+                .FirstOrDefaultAsync(l => l.ListaId == id);
+
+            if (lista == null)
             {
-                var opcion = dto.Opcion.Trim();
+                throw new KeyNotFoundException("Lista no encontrada");
+            }
 
-                if (string.IsNullOrWhiteSpace(opcion))
+            var opcion = dto.Opcion?.Trim();
+
+            if (string.IsNullOrWhiteSpace(opcion))
+            {
+                throw new ArgumentException("La opción es obligatoria");
+            }
+
+            lista.Opcion = opcion;
+
+            var duplicada = await _context.ConfiguracionListasMaestras
+                .AnyAsync(l => l.ListaId != id
+                            && l.CategoriaId == lista.CategoriaId
+                            && l.Opcion.ToLower() == opcion.ToLower());
+
+            if (duplicada)
+            {
+                throw new InvalidOperationException($"La opción '{opcion}' ya existe en esta categoría.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Categoria))
+            {
+                var categoria = await _context.CatCategoriasListas
+                    .FirstOrDefaultAsync(c => c.CategoriaId == lista.CategoriaId);
+
+                if (categoria != null)
                 {
-                    throw new ArgumentException("La opción es obligatoria");
-                }
-
-                var checkSql = @"
-                    SELECT COUNT(*) 
-                    FROM configuracion_listas_maestras 
-                    WHERE lista_id != @Id 
-                      AND LOWER(opcion) = LOWER(@Opcion)";
-
-                var existe = await _context.Database
-                    .SqlQueryRaw<int>(checkSql, new NpgsqlParameter("@Id", id), new NpgsqlParameter("@Opcion", opcion))
-                    .FirstOrDefaultAsync();
-
-                if (existe > 0)
-                {
-                    throw new InvalidOperationException($"La opción '{opcion}' ya existe en esta categoría.");
-                }
-
-                var sql = @"
-                    UPDATE configuracion_listas_maestras 
-                    SET opcion = @Opcion 
-                    WHERE lista_id = @Id";
-
-                var parameters = new[]
-                {
-                    new NpgsqlParameter("@Id", id),
-                    new NpgsqlParameter("@Opcion", opcion)
-                };
-
-                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(sql, parameters);
-
-                if (rowsAffected == 0)
-                {
-                    throw new KeyNotFoundException("Lista no encontrada");
+                    categoria.Nombre = dto.Categoria.Trim();
                 }
             }
-            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException)
+
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateCategoriaAsync(int id, UpdateCategoriaDto dto)
+        {
+            var categoria = await _context.CatCategoriasListas
+                .FirstOrDefaultAsync(c => c.CategoriaId == id);
+
+            if (categoria == null)
             {
-                throw;
+                throw new KeyNotFoundException($"Categoría con ID {id} no encontrada");
             }
-            catch (Exception ex)
+
+            if (!string.IsNullOrWhiteSpace(dto.Nombre))
             {
-                throw new Exception($"Error al actualizar la lista: {ex.Message}", ex);
+                categoria.Nombre = dto.Nombre.Trim();
             }
+
+            if (!string.IsNullOrWhiteSpace(dto.Modulo))
+            {
+                categoria.Modulo = dto.Modulo.Trim().ToUpperInvariant();
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteListaAsync(int id)
         {
-            try
-            {
-                var sql = "DELETE FROM configuracion_listas_maestras WHERE lista_id = @Id";
-                var parameter = new NpgsqlParameter("@Id", id);
+            var rowsAffected = await _context.ConfiguracionListasMaestras
+                .Where(l => l.ListaId == id)
+                .ExecuteDeleteAsync();
 
-                var rowsAffected = await _context.Database.ExecuteSqlRawAsync(sql, parameter);
-
-                if (rowsAffected == 0)
-                {
-                    throw new KeyNotFoundException("Lista no encontrada");
-                }
-            }
-            catch (Exception ex)
+            if (rowsAffected == 0)
             {
-                throw new Exception($"Error al eliminar la lista: {ex.Message}", ex);
+                throw new KeyNotFoundException("Opción no encontrada");
             }
+        }
+
+        public async Task<CatCategoriaLista> DeleteCategoriaAsync(int categoriaId)
+        {
+            var categoria = await _context.CatCategoriasListas
+                .FirstOrDefaultAsync(c => c.CategoriaId == categoriaId);
+
+            if (categoria == null)
+            {
+                throw new KeyNotFoundException("Categoría no encontrada");
+            }
+
+            _context.CatCategoriasListas.Remove(categoria);
+            await _context.SaveChangesAsync();
+
+            return categoria;
         }
 
         public async Task<List<CatRango>> GetRangosAsync()

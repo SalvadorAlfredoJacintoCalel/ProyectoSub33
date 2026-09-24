@@ -33,8 +33,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CategoriaId).HasColumnName("categoria_id").ValueGeneratedOnAdd();
             entity.Property(e => e.Codigo).HasColumnName("codigo").IsRequired().HasMaxLength(50);
             entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Modulo).HasColumnName("modulo").HasMaxLength(50).HasDefaultValue("GENERAL");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.Codigo).IsUnique();
         });
 
         // ConfiguracionListaMaestra
@@ -47,12 +50,14 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Opcion).HasColumnName("opcion").IsRequired().HasMaxLength(150);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-            entity.HasIndex(e => new { e.CategoriaId, e.Opcion }).IsUnique();
+            entity.HasIndex(e => new { e.CategoriaId, e.Opcion })
+                  .IsUnique()
+                  .HasDatabaseName("uk_categoria_opcion");
 
             entity.HasOne(e => e.Categoria)
-                  .WithMany()
+                  .WithMany(c => c.Opciones)
                   .HasForeignKey(e => e.CategoriaId)
-                  .OnDelete(DeleteBehavior.Restrict)
+                  .OnDelete(DeleteBehavior.Cascade)
                   .HasConstraintName("fk_configuracion_listas_maestras_categoria");
         });
 

@@ -18,6 +18,7 @@ import {
   createLista,
   updateLista,
   deleteLista,
+  deleteCategoriaById,
   type ListasResponse,
   type Categoria,
   getListaId,
@@ -37,6 +38,27 @@ type SistemaSection = {
 };
 
 const INITIAL_SECTIONS: SistemaSection[] = [];
+
+type Modulo =
+  | "GENERAL"
+  | "PERSONAL"
+  | "EMERGENCIAS"
+  | "VEHICULOS"
+  | "INVENTARIO"
+  | "FINANZAS"
+  | "DONACIONES"
+  | "REPORTES";
+
+const MODULOS_OPCIONES: Modulo[] = [
+  "GENERAL",
+  "PERSONAL",
+  "EMERGENCIAS",
+  "VEHICULOS",
+  "INVENTARIO",
+  "FINANZAS",
+  "DONACIONES",
+  "REPORTES",
+];
 
 // ─── Confirm Dialog ───────────────────────────────────────────────────────────
 function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
@@ -95,16 +117,18 @@ function EditItemModal({
   isOpen: boolean;
   onClose: () => void;
   item: ListasResponse | null;
-  onSave: (id: number, opcion: string) => void;
+  onSave: (id: number, opcion: string, modulo: string) => void;
   onDelete: (id: number) => void;
   isLoading: boolean;
 }) {
   const [editValue, setEditValue] = useState("");
+  const [editModulo, setEditModulo] = useState("GENERAL");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen && item) {
       setEditValue(item.opcion);
+      setEditModulo((item as any).modulo || "GENERAL");
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen, item]);
@@ -112,7 +136,7 @@ function EditItemModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (item && editValue.trim()) {
-      onSave(getListaId(item), editValue.trim());
+      onSave(getListaId(item), editValue.trim(), editModulo);
       onClose();
     }
   };
@@ -156,6 +180,26 @@ function EditItemModal({
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Módulo
+            </label>
+            <select
+              value={editModulo}
+              onChange={(e) => setEditModulo(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+            >
+              <option value="GENERAL">GENERAL</option>
+              <option value="PERSONAL">PERSONAL</option>
+              <option value="EMERGENCIAS">EMERGENCIAS</option>
+              <option value="VEHICULOS">VEHICULOS</option>
+              <option value="INVENTARIO">INVENTARIO</option>
+              <option value="FINANZAS">FINANZAS</option>
+              <option value="DONACIONES">DONACIONES</option>
+              <option value="REPORTES">REPORTES</option>
+            </select>
+          </div>
+
           <div className="pt-4 border-t border-gray-100 flex gap-3">
             <button
               type="button"
@@ -180,6 +224,8 @@ function EditItemModal({
 
 function AccordionSection({
   categoria,
+  modulo,
+  categoriaId,
   items,
   onAdd,
   onDelete,
@@ -198,16 +244,18 @@ function AccordionSection({
   setListasMaestras,
 }: {
   categoria: string;
+  modulo?: string;
+  categoriaId?: number;
   items: ListasResponse[];
-  onAdd: (opcion: string) => void;
+  onAdd: (opcion: string, modulo: string) => void;
   onDelete: (item: ListasResponse) => void;
   onEdit: (item: ListasResponse) => void;
-  onDeleteCategoria: (categoria: string) => void;
+  onDeleteCategoria: (id: number) => void;
   nuevaOpcion: string;
   setNuevaOpcion: (val: string) => void;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  deleteCategoryConfirm: string | null;
+  deleteCategoryConfirm: number | null;
   onDeleteCategoriaConfirm: () => void;
   onCancelDeleteCategoria: () => void;
   isMobile: boolean;
@@ -218,6 +266,7 @@ function AccordionSection({
   const [confirm, setConfirm] = useState<ListasResponse | null>(null);
   const [editingItem, setEditingItem] = useState<ListasResponse | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  const [nuevaOpcionModulo, setNuevaOpcionModulo] = useState("GENERAL");
 
   function handleDeleteConfirm() {
     if (!confirm) return;
@@ -225,13 +274,13 @@ function AccordionSection({
     setConfirm(null);
   }
 
-  const handleEditSave = async (id: number, opcion: string) => {
+  const handleEditSave = async (id: number, opcion: string, modulo: string) => {
     setEditLoading(true);
     try {
-      await updateListaItem(id, opcion);
+      await updateLista(id, { opcion: opcion.trim() });
       setListasMaestras((prev) =>
         prev.map((item) =>
-          getListaId(item) === id ? { ...item, opcion: opcion.trim() } : item
+          getListaId(item) === id ? { ...item, opcion: opcion.trim(), modulo } : item
         )
       );
       showAlert("success", "¡Operación Exitosa!", "Opción actualizada");
@@ -284,7 +333,7 @@ function AccordionSection({
           onCancel={() => setConfirm(null)}
         />
       )}
-      {deleteCategoryConfirm === categoria && (
+      {deleteCategoryConfirm === categoriaId && (
         <ConfirmDialog
           message={`¿Estás seguro de eliminar la categoría "${categoria}" y todas sus opciones?`}
           onConfirm={onDeleteCategoriaConfirm}
@@ -317,7 +366,13 @@ function AccordionSection({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onDeleteCategoria(categoria);
+              // categoriaId ya viene extraído de forma defensiva desde el padre
+              const targetId = categoriaId;
+              if (targetId && onDeleteCategoria) {
+                onDeleteCategoria(Number(targetId));
+              } else {
+                console.error("No se encontró un ID válido para eliminar la categoría:", categoria);
+              }
             }}
             className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
             title="Eliminar categoría"
@@ -329,7 +384,9 @@ function AccordionSection({
         {isOpen && (
           <div className="px-4 pb-4 border-t border-gray-100">
             <div className="flex flex-wrap gap-2 mb-4 mt-4">
-{items.map((item, idx) => (
+{items.map((item, idx) => {
+                const itemModulo = (item as any).modulo || "GENERAL";
+                return (
                 <div
                   key={getListaId(item)}
                   className={`inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-full cursor-pointer transition-all text-sm font-medium text-gray-700 ${
@@ -339,6 +396,9 @@ function AccordionSection({
                   style={{ cursor: 'pointer' }}
                 >
                   <span className="flex-1 truncate select-none">{item.opcion}</span>
+                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded ml-1">
+                    [{itemModulo}]
+                  </span>
 
                   {/* Contenedor de Íconos - Siempre visible en mobile, visible en hover en desktop */}
                   <div className="flex items-center gap-1.5 ml-1 flex-shrink-0">
@@ -369,19 +429,35 @@ function AccordionSection({
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={nuevaOpcion}
                 onChange={(e) => setNuevaOpcion(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && nuevaOpcion.trim() && onAdd(nuevaOpcion.trim())}
+                onKeyDown={(e) => e.key === "Enter" && nuevaOpcion.trim() && onAdd(nuevaOpcion.trim(), nuevaOpcionModulo)}
                 placeholder="+ Agregar elemento..."
                 className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
               />
+              <select
+                value={nuevaOpcionModulo}
+                onChange={(e) => setNuevaOpcionModulo(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white"
+                style={{ minWidth: 140 }}
+              >
+                <option value="GENERAL">GENERAL</option>
+                <option value="PERSONAL">PERSONAL</option>
+                <option value="EMERGENCIAS">EMERGENCIAS</option>
+                <option value="VEHICULOS">VEHICULOS</option>
+                <option value="INVENTARIO">INVENTARIO</option>
+                <option value="FINANZAS">FINANZAS</option>
+                <option value="DONACIONES">DONACIONES</option>
+                <option value="REPORTES">REPORTES</option>
+              </select>
               <button
-                onClick={() => nuevaOpcion.trim() && onAdd(nuevaOpcion.trim())}
+                onClick={() => nuevaOpcion.trim() && onAdd(nuevaOpcion.trim(), nuevaOpcionModulo)}
                 disabled={!nuevaOpcion.trim()}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
@@ -473,6 +549,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   // Estados para "Agregar Opción a Lista Existente"
   const [nuevaOpcionModal, setNuevaOpcionModal] = useState("");
   const [nuevaCategoriaId, setNuevaCategoriaId] = useState<number | "" >("");
+  const [nuevoModulo, setNuevoModulo] = useState<Modulo>("GENERAL");
   
   const [nuevaCategoria, setNuevaCategoria] = useState("");
   const [usuarios, setUsuarios] = useState<PermisosUsuario[]>(INIT_USERS);
@@ -486,7 +563,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   // Category delete confirmation state
-  const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<string | null>(null);
+  const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<number | null>(null);
 
   // Mobile detection
   const isMobile = useIsMobile();
@@ -557,7 +634,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       return;
     }
 
-    createLista(categoriaObj.categoria_id, categoriaObj.nombre, option)
+    const moduloCategoria = categoriaObj.modulo || "GENERAL";
+
+    createLista(categoriaObj.categoria_id, categoriaObj.nombre, option, moduloCategoria)
       .then(() => {
         setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
         showAlert("success", "¡Operación Exitosa!", `"${option.trim().toUpperCase()}" agregado a ${categoria}`);
@@ -583,38 +662,42 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       });
   }
 
-  function handleDeleteCategoria(categoria: string) {
-    setDeleteCategoryConfirm(categoria);
+  function handleDeleteCategoria(categoriaId: number) {
+    setDeleteCategoryConfirm(categoriaId);
   }
 
-  function confirmDeleteCategoria() {
+  async function confirmDeleteCategoria() {
     if (!deleteCategoryConfirm) return;
-    const categoria = deleteCategoryConfirm;
+    const categoriaId = deleteCategoryConfirm;
     
-    // Obtener todos los items de esta categoría y eliminarlos uno por uno por ID
-    const itemsDeCategoria = listasMaestras.filter(item => 
-      String(item?.categoria ?? item?.nombre ?? item?.nombreCategoria ?? '').trim().toUpperCase() === categoria.trim().toUpperCase()
-    );
-
-    const deletePromises = itemsDeCategoria.map(item => 
-      deleteLista(getListaId(item))
-    );
-
-    Promise.all(deletePromises)
-      .then(() => {
-        showAlert("success", "¡Operación Exitosa!", `Categoría "${categoria}" y sus opciones eliminadas`);
-        if (expandedCategory === categoria) {
-          setExpandedCategory(null);
-        }
-        setDeleteCategoryConfirm(null);
-        cargarListas();
-      })
-      .catch((error) => {
-        console.error("Error eliminando categoría:", error);
-        const msg = error instanceof Error ? error.message : "Error desconocido";
-        showAlert("error", "Error al Eliminar", msg);
-        setDeleteCategoryConfirm(null);
-      });
+    try {
+      // Eliminar la categoría del backend usando el ID directamente
+      await deleteCategoriaById(categoriaId);
+      
+      // Actualizar estado local inmediatamente para retroalimentación instantánea
+      setCategorias(prev => (Array.isArray(prev) ? prev : []).filter(cat => cat?.categoria_id !== categoriaId));
+      
+      showAlert("success", "¡Operación Exitosa!", `Categoría eliminada correctamente`);
+      
+      // Cerrar el acordeón si era el que se eliminó
+      const categoriaEliminada = (Array.isArray(categorias) ? categorias : []).find(c => c.categoria_id === categoriaId);
+      if (categoriaEliminada && expandedCategory === categoriaEliminada.nombre) {
+        setExpandedCategory(null);
+      }
+      setDeleteCategoryConfirm(null);
+      
+      // Recargar datos del servidor para asegurar consistencia
+      try {
+        await cargarListas();
+      } catch (reloadError) {
+        console.warn("Error recargando listas tras eliminar:", reloadError);
+      }
+    } catch (error) {
+      console.error("Error eliminando categoría:", error);
+      const msg = error instanceof Error ? error.message : "Error desconocido";
+      showAlert("error", "Error al Eliminar", msg);
+      setDeleteCategoryConfirm(null);
+    }
   }
 
   function cancelDeleteCategoria() {
@@ -628,6 +711,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     setNuevaCategoria(item.categoria || "");
     setNuevaCategoriaId(cat?.categoria_id || "");
     setNuevaOpcionModal(item.opcion);
+    setNuevoModulo((item as any).modulo || cat?.modulo || "GENERAL");
     setModalMode("opcion");
     setIsEditMode(true);
     setIsCreateListaModalOpen(true);
@@ -636,6 +720,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   function handleSaveModal() {
     const categoriaTexto = nuevaCategoria.trim();
     const opcionTexto = nuevaOpcionModal.trim();
+    const moduloSeleccionado = nuevoModulo;
 
     if (!categoriaTexto || !opcionTexto) {
       showAlert("incomplete", "Campos Incompletos", "Por favor complete la categoría y el nombre de la opción");
@@ -644,10 +729,10 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
     if (isEditMode && editingItem) {
       // En edición, buscar el ID de la categoría existente
-      const categoriaObj = categorias.find(c => c.nombre.trim().toUpperCase() === categoriaTexto.toUpperCase());
+      const categoriaObj = categorias.find(c => c.nombre.trim().toUpperCase() === categoriaTexto.trim().toUpperCase());
       const categoriaId = categoriaObj?.categoria_id ?? 0;
       
-      updateLista(getListaId(editingItem), categoriaId, categoriaTexto, opcionTexto)
+      updateLista(getListaId(editingItem), { opcion: opcionTexto, categoriaId })
         .then(() => {
           showAlert("success", "¡Operación Exitosa!", "Registro actualizado");
           closeModal();
@@ -659,7 +744,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         });
     } else {
       // En creación nueva, enviar null como CategoriaId para que el backend cree la categoría
-      createLista(null, categoriaTexto, opcionTexto)
+      createLista(null, categoriaTexto, opcionTexto, moduloSeleccionado)
         .then(() => {
           showAlert("success", "¡Operación Exitosa!", "Registro guardado correctamente");
           closeModal();
@@ -678,6 +763,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     setNuevaCategoriaCodigo("");
     setNuevaOpcionModal("");
     setNuevaCategoriaId("");
+    setNuevoModulo("GENERAL");
     setModalMode("categoria");
     setIsEditMode(false);
     setEditingItem(null);
@@ -730,6 +816,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
               setNuevaCategoriaCodigo("");
               setNuevaOpcionModal("");
               setNuevaCategoriaId("");
+              setNuevoModulo("GENERAL");
               setModalMode("categoria");
               setIsCreateListaModalOpen(true);
             }}
@@ -742,13 +829,19 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     }
     
     return categories.map((categoria) => {
-      const categoriaObj = categorias.find(c => c.nombre.trim().toUpperCase() === categoria.trim().toUpperCase());
+      const safeCategorias = Array.isArray(categorias) ? categorias : [];
+      const categoriaObj = safeCategorias.find(c => c.nombre?.trim().toUpperCase() === categoria.trim().toUpperCase());
+      // Extraer ID de forma ultra defensiva revisando todas las variantes posibles
+      const categoriaId = categoriaObj?.categoria_id ?? categoriaObj?.id ?? categoriaObj?.id_categoria;
+      const moduloCategoria = categoriaObj?.modulo || "GENERAL";
       return (
         <AccordionSection
           key={categoria}
           categoria={categoria}
+          categoriaId={categoriaObj?.categoria_id}
+          modulo={moduloCategoria}
           items={grouped[categoria]}
-          onAdd={(opcion) => {
+          onAdd={(opcion, modulo) => {
             if (!opcion?.trim()) return;
             
             const categoriaObj = categorias.find(c => c.nombre.trim().toUpperCase() === categoria.trim().toUpperCase());
@@ -757,7 +850,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
               return;
             }
 
-            createLista(categoriaObj.categoria_id, categoriaObj.nombre, opcion)
+            createLista(categoriaObj.categoria_id, categoriaObj.nombre, opcion, modulo || "GENERAL")
               .then(() => {
                 setNuevaOpcion((prev) => ({ ...prev, [categoria]: "" }));
                 showAlert("success", "¡Operación Exitosa!", `"${opcion.trim().toUpperCase()}" agregado a ${categoria}`);
@@ -823,6 +916,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                     setNuevaCategoriaCodigo("");
                     setNuevaOpcionModal("");
                     setNuevaCategoriaId("");
+                    setNuevoModulo("GENERAL");
                     setModalMode("categoria");
                     setIsCreateListaModalOpen(true);
                   }}
@@ -1051,6 +1145,21 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
             {/* Formulario */}
             <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  MÓDULO
+                </label>
+                <select
+                  value={nuevoModulo}
+                  onChange={(e) => setNuevoModulo(e.target.value as Modulo)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#D32F2F]/20 focus:border-[#D32F2F] text-gray-800 text-sm bg-white"
+                >
+                  {MODULOS_OPCIONES.map((mod) => (
+                    <option key={mod} value={mod}>{mod}</option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                   CATEGORÍA DE LA LISTA

@@ -1,16 +1,20 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Backend_Sub33.DTOs.Configuracion
 {
     public class ListaMaestraDto
     {
+        [JsonPropertyName("lista_id")]
         public int ListaId { get; set; }
-        public int CategoriaId { get; set; }
-        public string CategoriaNombre { get; set; } = string.Empty;
-        public string CategoriaCodigo { get; set; } = string.Empty;
 
-        [Required]
-        [MaxLength(150)]
+        [JsonPropertyName("categoria_id")]
+        public int CategoriaId { get; set; }
+
+        [JsonPropertyName("opcion")]
         public string Opcion { get; set; } = string.Empty;
+
+        [JsonPropertyName("modulo")]
+        public string Modulo { get; set; } = "GENERAL";
     }
 }
