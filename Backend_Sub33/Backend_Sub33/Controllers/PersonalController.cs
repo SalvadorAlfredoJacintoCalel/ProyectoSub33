@@ -349,8 +349,22 @@ namespace Backend_Sub33.Controllers
                 if (dto.ContactoEmergenciaNombre != null) personal.ContactoEmergenciaNombre = dto.ContactoEmergenciaNombre.Trim();
                 if (dto.ContactoEmergenciaTelefono != null) personal.ContactoEmergenciaTelefono = dto.ContactoEmergenciaTelefono.Trim();
 
+                // Usar transacción para garantizar atomicidad al manejar usuario y roles
+                using var transaction = await _context.Database.BeginTransactionAsync();
+
                 if (dto.AccesoSistema != null)
                 {
+                    if (dto.AccesoSistema.RolId <= 0)
+                    {
+                        return BadRequest(new { mensaje = "El rol es obligatorio cuando se proporciona acceso al sistema" });
+                    }
+
+                    var rolExiste = await _context.Roles.AnyAsync(r => r.RolId == dto.AccesoSistema.RolId);
+                    if (!rolExiste)
+                    {
+                        return BadRequest(new { mensaje = "El rol seleccionado no existe" });
+                    }
+
                     var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == id);
 
                     if (usuario == null)
@@ -417,6 +431,7 @@ namespace Backend_Sub33.Controllers
                 }
 
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 var personalActualizado = await _context.Personal
                     .Include(p => p.Rango)
