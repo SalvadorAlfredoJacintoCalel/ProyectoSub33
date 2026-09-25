@@ -33,20 +33,27 @@ public class UsuarioDto
 
 public class RolDto
 {
-    public string RolId { get; set; } = string.Empty;
+    public int RolId { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
 }
 
 public class PersonalListDto
 {
-    public Guid PersonalId { get; set; }
-    public string NombreCompleto { get; set; } = string.Empty;
+    public string Id { get; set; } = string.Empty;
+    public string Codigo { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
     public string Dpi { get; set; } = string.Empty;
     public int? RangoId { get; set; }
-    public string? RangoNombre { get; set; }
-    public bool Estado { get; set; }
-    public bool TieneAccesoSistema { get; set; }
+    public string? Rango { get; set; }
+    public string Estado { get; set; } = "Activo";
+    public string Telefono { get; set; } = string.Empty;
+    public string ContactoEmergencia { get; set; } = string.Empty;
+    public string TelEmergencia { get; set; } = string.Empty;
+    public string FechaIngreso { get; set; } = string.Empty;
+    public string? Usuario { get; set; }
+    public int? RolId { get; set; }
+    public string? Rol { get; set; }
 }
 
 public class CrearPersonalDto
@@ -67,19 +74,21 @@ public class CrearPersonalDto
 
     public DateTime? FechaNacimiento { get; set; }
 
-    public int? RangoId { get; set; }
+    [Range(1, int.MaxValue, ErrorMessage = "El rango es requerido")]
+    public int RangoId { get; set; }
 
     [Required(ErrorMessage = "El teléfono es requerido")]
     public string Telefono { get; set; } = string.Empty;
 
     public bool Estado { get; set; } = true;
 
-    public string? ContactoEmergenciaNombre { get; set; }
+    [Required(ErrorMessage = "El contacto de emergencia es requerido")]
+    public string ContactoEmergenciaNombre { get; set; } = string.Empty;
 
-    public string? ContactoEmergenciaTelefono { get; set; }
+    [Required(ErrorMessage = "El teléfono de emergencia es requerido")]
+    public string ContactoEmergenciaTelefono { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "La fecha de ingreso es requerida")]
-    public DateTime FechaIngreso { get; set; }
+    public DateTime? FechaIngreso { get; set; }
 
     public AccesoSistemaDto? AccesoSistema { get; set; }
 }
@@ -93,7 +102,7 @@ public class AccesoSistemaDto
     public string Password { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "El ID del rol es requerido")]
-    public string RolId { get; set; } = string.Empty;
+    public int RolId { get; set; }
 }
 
 public class ActualizarPersonalDto

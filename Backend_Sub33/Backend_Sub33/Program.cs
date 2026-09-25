@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Backend_Sub33.Data;
-using Backend_Sub33.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,9 +32,6 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-// 3. Servicios de configuración
-builder.Services.AddScoped<IConfiguracionService, ConfiguracionService>();
 
 // 3. Política CORS (AllowAll para desarrollo)
 builder.Services.AddCors(options =>

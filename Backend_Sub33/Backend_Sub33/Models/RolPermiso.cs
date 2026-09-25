@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Backend_Sub33.Models.Entities;
 
 namespace Backend_Sub33.Models;
 
@@ -8,10 +9,10 @@ namespace Backend_Sub33.Models;
 public class RolPermiso
 {
     [Column("rol_id")]
-    public string RolId { get; set; } = string.Empty;
+    public int RolId { get; set; }
 
     [Column("permiso_id")]
-    public Guid PermisoId { get; set; }
+    public int PermisoId { get; set; }
 
     [ForeignKey("RolId")]
     public virtual Rol Rol { get; set; } = null!;

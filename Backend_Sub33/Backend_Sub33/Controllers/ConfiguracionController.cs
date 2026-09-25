@@ -1,12 +1,13 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Dapper;
+using Npgsql;
+using System.Data;
 using Backend_Sub33.Data;
+using Backend_Sub33.Models;
 using Backend_Sub33.Models.Entities;
 using Backend_Sub33.DTOs.Configuracion;
-using Backend_Sub33.Services;
-using System.Threading.Tasks;
 
 namespace Backend_Sub33.Controllers
 {
@@ -14,222 +15,580 @@ namespace Backend_Sub33.Controllers
     [Route("api/configuracion")]
     public class ConfiguracionController : ControllerBase
     {
-        private readonly IConfiguracionService _service;
         private readonly AppDbContext _context;
         private readonly ILogger<ConfiguracionController> _logger;
 
-        public ConfiguracionController(IConfiguracionService service, AppDbContext context, ILogger<ConfiguracionController> logger)
+        // ── Definición genérica de catálogos (whitelist de tablas seguras) ───────
+        private sealed record CatalogoDef(string Tabla, string Pk, string NombreCol, bool TieneDescripcion);
+
+        private static readonly Dictionary<string, CatalogoDef> Catalogos = new(StringComparer.OrdinalIgnoreCase)
         {
-            _service = service;
+            ["rangos"] = new("cat_rangos", "rango_id", "rango", true),
+            ["tipos-emergencia"] = new("cat_tipos_emergencia", "tipo_emergencia_id", "tipo", true),
+            ["hospitales"] = new("cat_hospitales", "hospital_id", "nombre", false),
+            ["tipos-unidad"] = new("cat_tipos_unidad", "tipo_unidad_id", "nombre", true),
+            ["roles-servicio"] = new("cat_roles_servicio", "rol_servicio_id", "nombre", true),
+            ["tipos-mantenimiento"] = new("cat_tipos_mantenimiento", "tipo_mantenimiento_id", "nombre", true),
+        };
+
+        public ConfiguracionController(AppDbContext context, ILogger<ConfiguracionController> logger)
+        {
             _context = context;
             _logger = logger;
         }
 
-        [HttpGet("listas")]
-        public async Task<IActionResult> GetListas()
+        private System.Data.Common.DbConnection AbrirConexion()
         {
-            try
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
             {
-                var listas = await _service.GetAllListasAsync();
-                _logger.LogInformation("Listas maestras obtenidas exitosamente. Cantidad: {Count}", listas.Count);
-                return Ok(listas);
+                connection.Open();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al obtener todas las listas maestras");
-                return StatusCode(500, new { mensaje = "Error al obtener las listas", detalle = ex.Message });
-            }
+            return connection;
         }
 
-        [HttpGet("listas/categoria/{categoriaId:int}")]
-        public async Task<IActionResult> GetListasPorCategoria(int categoriaId)
+        private static string NormalizarTexto(string? texto)
         {
-            try
+            if (string.IsNullOrWhiteSpace(texto))
             {
-                var listas = await _service.GetPorCategoriaAsync(categoriaId);
-                _logger.LogInformation("Listas por categoría '{CategoriaId}' obtenidas. Cantidad: {Count}", categoriaId, listas.Count);
-                return Ok(listas);
+                return string.Empty;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al obtener listas por categoría: {CategoriaId}", categoriaId);
-                return StatusCode(500, new { mensaje = "Error al obtener las listas por categoría", detalle = ex.Message });
-            }
+
+            var palabras = texto.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var resultado = palabras.Select(p =>
+                p.Length == 0 ? p : char.ToUpperInvariant(p[0]) + p[1..].ToLowerInvariant());
+
+            return string.Join(' ', resultado);
         }
 
-        [HttpGet("categorias")]
-        public async Task<IActionResult> GetCategorias()
+        private static string? NormalizarDescripcion(string? texto)
         {
-            try
+            if (string.IsNullOrWhiteSpace(texto))
             {
-                var categorias = await _service.GetCategoriasAsync();
-                _logger.LogInformation("Categorías obtenidas exitosamente. Cantidad: {Count}", categorias.Count);
-                return Ok(categorias);
+                return null;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al obtener categorías");
-                return StatusCode(500, new { mensaje = "Error al obtener categorías", detalle = ex.Message });
-            }
+            return texto.Trim();
         }
 
-        [HttpPost("listas")]
-        public async Task<IActionResult> CrearLista(CreateListaMaestraDto dto)
+        // ── Parámetros de la estación ───────────────────────────────────────────
+        [HttpGet("parametros")]
+        public async Task<IActionResult> GetParametros()
         {
             try
             {
-                var resultado = await _service.CrearListaAsync(dto);
-
-                if (!resultado.exito)
-                {
-                    _logger.LogWarning("Error al crear lista: {Mensaje}", resultado.mensaje);
-                    return BadRequest(new { mensaje = resultado.mensaje });
-                }
-
-                if (resultado.mensaje.Contains("ya existe"))
-                {
-                    _logger.LogInformation("Opción ya existente: CategoriaId={CategoriaId}, Opcion={Opcion}", resultado.item?.CategoriaId, resultado.item?.Opcion);
-                    return Ok(new { mensaje = resultado.mensaje, item = resultado.item });
-                }
-
-                _logger.LogInformation("Lista creada: CategoriaId={CategoriaId}, ListaId={ListaId}, Opcion={Opcion}",
-                    resultado.item?.CategoriaId, resultado.item?.ListaId, dto.Opcion);
-
-                return CreatedAtAction(nameof(GetListas), new { id = resultado.item?.ListaId }, new { mensaje = resultado.mensaje, item = resultado.item });
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(ex, "Argumento inválido al crear lista");
-                return BadRequest(new { mensaje = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error en base de datos al crear lista: CategoriaId={CategoriaId}, Categoria={Categoria}, Opcion={Opcion}", dto.CategoriaId, dto.Categoria, dto.Opcion);
-                return StatusCode(500, new { mensaje = "Error en base de datos", detalle = ex.Message });
-            }
-        }
-
-        [HttpPut("listas/{id:int}")]
-        public async Task<IActionResult> ActualizarOpcion(int id, [FromBody] UpdateListaMaestraDto dto)
-        {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.Opcion))
-            {
-                return BadRequest(new { mensaje = "El texto de la opción no puede estar vacío." });
-            }
-
-            try
-            {
-                var item = await _service.UpdateListaAsync(id, dto);
-                _logger.LogInformation("Opción actualizada: Id={Id}, Opcion={Opcion}, Modulo={Modulo}", id, item.Opcion, item.Modulo);
-                return Ok(new { mensaje = "Opción actualizada correctamente", item });
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(ex, "Argumento inválido al actualizar opción");
-                return BadRequest(new { mensaje = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(ex, "Opción duplicada al actualizar");
-                return BadRequest(new { mensaje = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                _logger.LogWarning(ex, "Opción no encontrada para actualizar: Id={Id}", id);
-                return NotFound(new { mensaje = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error interno al actualizar opción: Id={Id}", id);
-                return StatusCode(500, new { mensaje = "Error interno al actualizar", detalle = ex.Message });
-            }
-        }
-
-        [HttpPut("categorias/{id:int}")]
-        public async Task<IActionResult> UpdateCategoria(int id, [FromBody] UpdateCategoriaDto dto)
-        {
-            try
-            {
-                await _service.UpdateCategoriaAsync(id, dto);
-                _logger.LogInformation("Categoría actualizada: Id={Id}, Nombre={Nombre}", id, dto.Nombre);
-                return Ok(new { mensaje = "Categoría actualizada correctamente", id, nombre = dto.Nombre });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                _logger.LogWarning(ex, "Categoría no encontrada para actualizar: Id={Id}", id);
-                return NotFound(new { mensaje = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error interno al actualizar categoría: Id={Id}", id);
-                return StatusCode(500, new { mensaje = "Error interno al actualizar", detalle = ex.Message });
-            }
-        }
-
-        [HttpDelete("listas/{id:int}")]
-        public async Task<IActionResult> EliminarOpcion(int id)
-        {
-            try
-            {
-                await _service.DeleteListaAsync(id);
-                _logger.LogInformation("Opción eliminada: Id={Id}", id);
-                return Ok(new { exito = true, mensaje = "Opción eliminada correctamente" });
-            }
-            catch (KeyNotFoundException)
-            {
-                _logger.LogWarning("Intento de eliminar opción inexistente: Id={Id}", id);
-                return NotFound(new { exito = false, mensaje = "Opción no encontrada" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al eliminar la opción: Id={Id}", id);
-                return StatusCode(500, new { mensaje = "Error al eliminar la opción", detalle = ex.Message });
-            }
-        }
-
-        [HttpDelete("categorias/{id:int}")]
-        public async Task<IActionResult> EliminarCategoria(int id)
-        {
-            try
-            {
-                var categoriaEliminada = await _service.DeleteCategoriaAsync(id);
-                _logger.LogInformation("Categoría eliminada: CategoriaId={CategoriaId}", categoriaEliminada.CategoriaId);
-                return Ok(new
-                {
-                    exito = true,
-                    mensaje = "Categoría eliminada correctamente",
-                    categoria = new
+                var parametros = await _context.ParametrosSistema
+                    .AsNoTracking()
+                    .OrderBy(p => p.Clave)
+                    .Select(p => new ParametroSistemaDto
                     {
-                        categoria_id = categoriaEliminada.CategoriaId,
-                        codigo = categoriaEliminada.Codigo,
-                        nombre = categoriaEliminada.Nombre,
-                        descripcion = categoriaEliminada.Descripcion
-                    }
-                });
-            }
-            catch (KeyNotFoundException)
-            {
-                _logger.LogWarning("Intento de eliminar categoría inexistente: Id={Id}", id);
-                return NotFound(new { exito = false, mensaje = "Categoría no encontrada" });
+                        Clave = p.Clave,
+                        Valor = p.Valor,
+                        Descripcion = p.Descripcion
+                    })
+                    .ToListAsync();
+
+                return Ok(parametros);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al eliminar la categoría: Id={Id}", id);
-                return StatusCode(500, new { mensaje = "Error al eliminar la categoría", detalle = ex.Message });
+                _logger.LogError(ex, "Error al obtener parámetros");
+                return StatusCode(500, new { mensaje = "Error al obtener los parámetros", detalle = ex.Message });
             }
         }
 
+        [HttpPost("parametros")]
+        public async Task<IActionResult> GuardarParametros([FromBody] List<ParametroSistemaDto> parametros)
+        {
+            if (parametros == null)
+            {
+                return BadRequest(new { mensaje = "Se esperaba una lista de parámetros." });
+            }
+
+            try
+            {
+                foreach (var p in parametros)
+                {
+                    if (string.IsNullOrWhiteSpace(p.Clave))
+                    {
+                        continue;
+                    }
+
+                    var clave = p.Clave.Trim().ToUpperInvariant();
+                    var existente = await _context.ParametrosSistema
+                        .FirstOrDefaultAsync(x => x.Clave == clave);
+
+                    if (existente == null)
+                    {
+                        _context.ParametrosSistema.Add(new ParametroSistema
+                        {
+                            Clave = clave,
+                            Valor = p.Valor ?? string.Empty,
+                            Descripcion = p.Descripcion,
+                            UpdatedAt = DateTime.UtcNow
+                        });
+                    }
+                    else
+                    {
+                        existente.Valor = p.Valor ?? string.Empty;
+                        existente.Descripcion = p.Descripcion;
+                        existente.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { mensaje = "Parámetros guardados correctamente." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al guardar parámetros");
+                return StatusCode(500, new { mensaje = "Error al guardar los parámetros", detalle = ex.Message });
+            }
+        }
+
+        [HttpPut("parametros/{clave}")]
+        public async Task<IActionResult> ActualizarParametro(string clave, [FromBody] ParametroSistemaDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(clave))
+            {
+                return BadRequest(new { mensaje = "La clave es obligatoria" });
+            }
+
+            try
+            {
+                var claveNormalizada = clave.Trim().ToUpperInvariant();
+                var existente = await _context.ParametrosSistema
+                    .FirstOrDefaultAsync(x => x.Clave == claveNormalizada);
+
+                if (existente == null)
+                {
+                    _context.ParametrosSistema.Add(new ParametroSistema
+                    {
+                        Clave = claveNormalizada,
+                        Valor = dto?.Valor ?? string.Empty,
+                        Descripcion = dto?.Descripcion,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                }
+                else
+                {
+                    existente.Valor = dto?.Valor ?? string.Empty;
+                    existente.Descripcion = dto?.Descripcion;
+                    existente.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { mensaje = "Parámetro guardado correctamente." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al actualizar el parámetro {Clave}", clave);
+                return StatusCode(500, new { mensaje = "Error al actualizar el parámetro", detalle = ex.Message });
+            }
+        }
+
+        // ── Usuarios y roles ────────────────────────────────────────────────────
+        [HttpGet("usuarios")]
+        public async Task<IActionResult> GetUsuarios()
+        {
+            try
+            {
+                var usuarios = await _context.Usuarios
+                    .AsNoTracking()
+                    .OrderBy(u => u.Username)
+                    .Select(u => new UsuarioConfigDto
+                    {
+                        UsuarioId = u.UsuarioId,
+                        NombreCompleto = u.Personal != null
+                            ? $"{u.Personal.PrimerNombre} {u.Personal.SegundoNombre} {u.Personal.PrimerApellido} {u.Personal.SegundoApellido}".Trim()
+                            : u.Username,
+                        Username = u.Username,
+                        RolNombre = u.UsuarioRoles.Select(ur => ur.Rol.Nombre).FirstOrDefault() ?? "Sin Rol",
+                        RolId = u.UsuarioRoles.Select(ur => ur.Rol.RolId).FirstOrDefault(),
+                        Estado = u.Estado,
+                        CreatedAt = u.CreatedAt
+                    })
+                    .ToListAsync();
+
+                return Ok(usuarios);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener usuarios");
+                return StatusCode(500, new { mensaje = "Error al obtener los usuarios", detalle = ex.Message });
+            }
+        }
+
+        [HttpPut("usuarios/{id:guid}/estado")]
+        public async Task<IActionResult> CambiarEstadoUsuario(Guid id, [FromBody] CambiarEstadoUsuarioDto dto)
+        {
+            try
+            {
+                var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id);
+                if (usuario == null)
+                {
+                    return NotFound(new { mensaje = "Usuario no encontrado" });
+                }
+
+                usuario.Estado = dto.Estado;
+                usuario.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                return Ok(new { mensaje = "Estado actualizado correctamente", estado = usuario.Estado });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al actualizar el estado del usuario: {Id}", id);
+                return StatusCode(500, new { mensaje = "Error al actualizar el estado", detalle = ex.Message });
+            }
+        }
+
+        [HttpPut("usuarios/{id:guid}/rol")]
+        public async Task<IActionResult> CambiarRolUsuario(Guid id, [FromBody] CambiarRolUsuarioDto dto)
+        {
+            try
+            {
+                var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id);
+                if (usuario == null)
+                {
+                    return NotFound(new { mensaje = "Usuario no encontrado" });
+                }
+
+                if (dto.RolId <= 0)
+                {
+                    return BadRequest(new { mensaje = "El rol es obligatorio" });
+                }
+
+                var rolExiste = await _context.Roles.AnyAsync(r => r.RolId == dto.RolId);
+                if (!rolExiste)
+                {
+                    return BadRequest(new { mensaje = "El rol seleccionado no existe" });
+                }
+
+                var rolesActuales = await _context.UsuarioRoles.Where(ur => ur.UsuarioId == id).ToListAsync();
+                _context.UsuarioRoles.RemoveRange(rolesActuales);
+                _context.UsuarioRoles.Add(new UsuarioRol { UsuarioId = id, RolId = dto.RolId });
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { mensaje = "Rol asignado correctamente", rolId = dto.RolId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al cambiar el rol del usuario: {Id}", id);
+                return StatusCode(500, new { mensaje = "Error al cambiar el rol", detalle = ex.Message });
+            }
+        }
+
+        // ── Roles ────────────────────────────────────────────────────────────────
+        [HttpGet("roles")]
+        public async Task<IActionResult> GetRoles()
+        {
+            try
+            {
+                var roles = await _context.Roles
+                    .AsNoTracking()
+                    .OrderBy(r => r.Nombre)
+                    .Select(r => new { id = r.RolId, nombre = r.Nombre })
+                    .ToListAsync();
+
+                return Ok(roles);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener roles");
+                return StatusCode(500, new { mensaje = "Error al obtener roles", detalle = ex.Message });
+            }
+        }
+
+        [HttpPost("roles")]
+        public async Task<IActionResult> CrearRol([FromBody] CrearRolDto dto)
+        {
+            try
+            {
+                var nombre = NormalizarTexto(dto?.Nombre);
+                if (string.IsNullOrWhiteSpace(nombre))
+                {
+                    return BadRequest(new { mensaje = "El nombre del rol es obligatorio" });
+                }
+
+                var existe = await _context.Roles.AnyAsync(r => r.Nombre.ToLower() == nombre.ToLower());
+                if (existe)
+                {
+                    return Conflict(new { mensaje = "El rol ya existe" });
+                }
+
+                var rol = new Rol
+                {
+                    Nombre = nombre,
+                    Descripcion = NormalizarDescripcion(dto.Descripcion),
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Roles.Add(rol);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { id = rol.RolId, nombre = rol.Nombre });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al crear rol");
+                return StatusCode(500, new { mensaje = "Error al crear el rol", detalle = ex.Message });
+            }
+        }
+
+        // ── Matriz de permisos por rol ───────────────────────────────────────────
+        [HttpGet("roles/{rolId:int}/permisos")]
+        public async Task<IActionResult> GetPermisosRol(int rolId)
+        {
+            try
+            {
+                var permisos = await _context.Permisos
+                    .AsNoTracking()
+                    .OrderBy(p => p.Modulo.NombreModulo)
+                    .ThenBy(p => p.Codigo)
+                    .Select(p => new PermisoModuloDto
+                    {
+                        PermisoId = p.PermisoId,
+                        Codigo = p.Codigo,
+                        ModuloId = p.ModuloId,
+                        ModuloNombre = p.Modulo.NombreModulo,
+                        Descripcion = p.Descripcion,
+                        Asignado = false
+                    })
+                    .ToListAsync();
+
+                var asignados = await _context.RolPermisos
+                    .Where(rp => rp.RolId == rolId)
+                    .Select(rp => rp.PermisoId)
+                    .ToListAsync();
+
+                var asignadosSet = asignados.ToHashSet();
+                foreach (var p in permisos)
+                {
+                    p.Asignado = asignadosSet.Contains(p.PermisoId);
+                }
+
+                return Ok(permisos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener permisos del rol: {RolId}", rolId);
+                return StatusCode(500, new { mensaje = "Error al obtener los permisos del rol", detalle = ex.Message });
+            }
+        }
+
+        [HttpPost("roles/{rolId:int}/permisos")]
+        public async Task<IActionResult> GuardarPermisosRol(int rolId, [FromBody] AsignarPermisosRolDto dto)
+        {
+            try
+            {
+                var rolExiste = await _context.Roles.AnyAsync(r => r.RolId == rolId);
+                if (!rolExiste)
+                {
+                    return NotFound(new { mensaje = "El rol no existe" });
+                }
+
+                var existentes = await _context.RolPermisos.Where(rp => rp.RolId == rolId).ToListAsync();
+                _context.RolPermisos.RemoveRange(existentes);
+
+                if (dto?.Permisos != null)
+                {
+                    foreach (var permisoId in dto.Permisos.Distinct())
+                    {
+                        _context.RolPermisos.Add(new RolPermiso { RolId = rolId, PermisoId = permisoId });
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { mensaje = "Permisos guardados correctamente" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al guardar permisos del rol: {RolId}", rolId);
+                return StatusCode(500, new { mensaje = "Error al guardar los permisos", detalle = ex.Message });
+            }
+        }
+
+        // ── Catálogos / Listas Maestras (CRUD genérico) ──────────────────────────
+        [HttpGet("catalogos/{tipo}")]
+        public async Task<IActionResult> GetCatalogo(string tipo)
+        {
+            if (!Catalogos.TryGetValue(tipo, out var def))
+            {
+                return NotFound(new { mensaje = "Catálogo no encontrado" });
+            }
+
+            try
+            {
+                using var connection = AbrirConexion();
+                var descCol = def.TieneDescripcion ? "descripcion" : "NULL::text";
+
+                var sql = $@"
+                    SELECT {def.Pk} AS id, {def.NombreCol} AS nombre, {descCol} AS descripcion
+                    FROM {def.Tabla}
+                    ORDER BY {def.NombreCol};";
+
+                var items = await connection.QueryAsync<CatalogoItemDto>(sql);
+                return Ok(items);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener catálogo {Tipo}", tipo);
+                return StatusCode(500, new { mensaje = "Error al obtener el catálogo", detalle = ex.Message });
+            }
+        }
+
+        [HttpPost("catalogos/{tipo}")]
+        public async Task<IActionResult> CrearCatalogo(string tipo, [FromBody] CatalogoUpsertDto dto)
+        {
+            if (!Catalogos.TryGetValue(tipo, out var def))
+            {
+                return NotFound(new { mensaje = "Catálogo no encontrado" });
+            }
+
+            var nombre = NormalizarTexto(dto?.Nombre);
+            if (string.IsNullOrWhiteSpace(nombre))
+            {
+                return BadRequest(new { mensaje = "El nombre es obligatorio" });
+            }
+
+            try
+            {
+                using var connection = AbrirConexion();
+
+                var existe = await connection.ExecuteScalarAsync<bool>(
+                    $"SELECT EXISTS(SELECT 1 FROM {def.Tabla} WHERE LOWER({def.NombreCol}) = LOWER(@Nombre));",
+                    new { Nombre = nombre });
+
+                if (existe)
+                {
+                    return Conflict(new { mensaje = "La opción ya existe en este catálogo" });
+                }
+
+                var descripcion = NormalizarDescripcion(dto?.Descripcion);
+                var descCol = def.TieneDescripcion ? ", descripcion" : "";
+                var descVal = def.TieneDescripcion ? ", @Descripcion" : "";
+                var sql = $"INSERT INTO {def.Tabla} ({def.NombreCol}{descCol}) VALUES (@Nombre{descVal}) RETURNING {def.Pk};";
+
+                var id = await connection.ExecuteScalarAsync<int>(
+                    sql,
+                    new { Nombre = nombre, Descripcion = descripcion });
+
+                return Ok(new CatalogoItemDto { Id = id, Nombre = nombre, Descripcion = descripcion });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return Conflict(new { mensaje = "La opción ya existe en este catálogo" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al crear en catálogo {Tipo}", tipo);
+                return StatusCode(500, new { mensaje = "Error al crear el registro", detalle = ex.Message });
+            }
+        }
+
+        [HttpPut("catalogos/{tipo}/{id:int}")]
+        public async Task<IActionResult> ActualizarCatalogo(string tipo, int id, [FromBody] CatalogoUpsertDto dto)
+        {
+            if (!Catalogos.TryGetValue(tipo, out var def))
+            {
+                return NotFound(new { mensaje = "Catálogo no encontrado" });
+            }
+
+            var nombre = NormalizarTexto(dto?.Nombre);
+            if (string.IsNullOrWhiteSpace(nombre))
+            {
+                return BadRequest(new { mensaje = "El nombre es obligatorio" });
+            }
+
+            try
+            {
+                using var connection = AbrirConexion();
+
+                var existe = await connection.ExecuteScalarAsync<bool>(
+                    $"SELECT EXISTS(SELECT 1 FROM {def.Tabla} WHERE LOWER({def.NombreCol}) = LOWER(@Nombre) AND {def.Pk} <> @Id);",
+                    new { Nombre = nombre, Id = id });
+
+                if (existe)
+                {
+                    return Conflict(new { mensaje = "La opción ya existe en este catálogo" });
+                }
+
+                var descripcion = NormalizarDescripcion(dto?.Descripcion);
+                var descSet = def.TieneDescripcion ? ", descripcion = @Descripcion" : "";
+                var sql = $"UPDATE {def.Tabla} SET {def.NombreCol} = @Nombre{descSet} WHERE {def.Pk} = @Id;";
+
+                var affected = await connection.ExecuteAsync(
+                    sql,
+                    new { Nombre = nombre, Descripcion = descripcion, Id = id });
+
+                if (affected == 0)
+                {
+                    return NotFound(new { mensaje = "Registro no encontrado" });
+                }
+
+                return Ok(new { id = id, nombre = nombre });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return Conflict(new { mensaje = "La opción ya existe en este catálogo" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al actualizar en catálogo {Tipo}", tipo);
+                return StatusCode(500, new { mensaje = "Error al actualizar el registro", detalle = ex.Message });
+            }
+        }
+
+        [HttpDelete("catalogos/{tipo}/{id:int}")]
+        public async Task<IActionResult> EliminarCatalogo(string tipo, int id)
+        {
+            if (!Catalogos.TryGetValue(tipo, out var def))
+            {
+                return NotFound(new { mensaje = "Catálogo no encontrado" });
+            }
+
+            try
+            {
+                using var connection = AbrirConexion();
+
+                var sql = $"DELETE FROM {def.Tabla} WHERE {def.Pk} = @Id;";
+
+                var affected = await connection.ExecuteAsync(sql, new { Id = id });
+
+                if (affected == 0)
+                {
+                    return NotFound(new { mensaje = "Registro no encontrado" });
+                }
+
+                return Ok(new { mensaje = "Registro eliminado correctamente" });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23503")
+            {
+                return BadRequest(new { mensaje = "No se puede eliminar el registro porque tiene registros asociados en otros módulos." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al eliminar en catálogo {Tipo}", tipo);
+                return StatusCode(500, new { mensaje = "Error al eliminar el registro", detalle = ex.Message });
+            }
+        }
+
+        // ── Catálogos para otros módulos (compatibilidad) ───────────────────────
         [HttpGet("rangos")]
         public async Task<IActionResult> GetRangos()
         {
             try
             {
                 var rangos = await _context.CatRangos
+                    .AsNoTracking()
                     .Select(r => new { id = r.RangoId, nombre = r.Rango })
                     .OrderBy(r => r.nombre)
                     .ToListAsync();
 
-                _logger.LogInformation("Rangos obtenidos exitosamente. Cantidad: {Count}", rangos.Count);
                 return Ok(rangos);
             }
             catch (Exception ex)
@@ -239,43 +598,39 @@ namespace Backend_Sub33.Controllers
             }
         }
 
-        [HttpGet("hospitales")]
-        public async Task<IActionResult> GetHospitales()
+        [HttpPost("rangos")]
+        public async Task<IActionResult> CrearRango([FromBody] CrearRangoDto dto)
         {
             try
             {
-                var hospitales = await _service.GetHospitalesAsync();
-                _logger.LogInformation("Hospitales obtenidos exitosamente. Cantidad: {Count}", hospitales.Count);
-                return Ok(hospitales);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al obtener hospitales");
-                return StatusCode(500, new { mensaje = "Error al obtener hospitales", detalle = ex.Message });
-            }
-        }
+                var nombre = NormalizarTexto(dto?.Nombre ?? dto?.Rango);
 
-        [HttpGet("tipos-emergencia")]
-        public async Task<IActionResult> GetTiposEmergencia()
-        {
-            try
-            {
-                var tipos = await _service.GetTiposEmergenciaAsync();
-                _logger.LogInformation("Tipos de emergencia obtenidos exitosamente. Cantidad: {Count}", tipos.Count);
-                return Ok(tipos);
+                if (string.IsNullOrWhiteSpace(nombre))
+                {
+                    return BadRequest(new { mensaje = "El nombre del rango es obligatorio" });
+                }
+
+                var existe = await _context.CatRangos.AnyAsync(r => r.Rango.ToLower() == nombre.ToLower());
+                if (existe)
+                {
+                    return Conflict(new { mensaje = "El rango ya existe" });
+                }
+
+                var rango = new CatRango
+                {
+                    Rango = nombre,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.CatRangos.Add(rango);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { id = rango.RangoId, nombre = rango.Rango });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al obtener tipos de emergencia");
-                return StatusCode(500, new { mensaje = "Error al obtener tipos de emergencia", detalle = ex.Message });
+                _logger.LogError(ex, "Error al crear rango");
+                return StatusCode(500, new { mensaje = "Error al crear el rango", detalle = ex.Message });
             }
         }
     }
-}
-
-public class UpdateCategoriaDto
-{
-    [Required]
-    [MaxLength(100)]
-    public string Nombre { get; set; } = string.Empty;
 }

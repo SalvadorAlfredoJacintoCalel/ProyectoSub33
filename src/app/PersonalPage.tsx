@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import {
   getRangos,
+  crearRango,
   getRoles,
+  crearRol,
   getPersonal,
   registrarPersonal,
   actualizarPersonal,
@@ -152,7 +154,7 @@ function validateForm(f: FormState, credOpen: boolean, isEditing: boolean): Reco
   if (f.rangoId === 0) e.rangoId = "Rango requerido";
   if (credOpen) {
     if (!f.usuario.trim()) e.usuario = "Usuario requerido";
-    if (f.rolId === 0) e.rolId = "Rol del sistema requerido";
+    if (!f.rolId) e.rolId = "Rol del sistema requerido";
     // Password: required for new members; for edits, only validate if the user typed something
     const pwEntered = f.contrasena.length > 0;
     if (!isEditing || pwEntered) {
@@ -204,7 +206,7 @@ export function PersonalPage() {
   const [members, setMembers] = useState<Miembro[]>(sampleData);
   const [search, setSearch] = useState("");
   const [filterRango, setFilterRango] = useState<Rango | "">("");
-  const [filterEstado, setFilterEstado] = useState<Estado | "">("");
+  const [filterEstado, setFilterEstado] = useState<Estado | "">("Activo");
   const [page, setPage] = useState(1);
 
   const [showModal, setShowModal] = useState(false);
@@ -217,12 +219,17 @@ export function PersonalPage() {
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "warning" | "error"; message: string } | null>(null);
   const [alert, setAlert] = useState<{ open: boolean; type: AlertType; title: string; message: string }>({ open: false, type: "warning", title: "", message: "" });
   const [rangos, setRangos] = useState<RangoItem[]>([]);
   const [roles, setRoles] = useState<RolItem[]>([]);
   const [isLoadingRangos, setIsLoadingRangos] = useState(true);
   const [isLoadingRoles, setIsLoadingRoles] = useState(true);
+
+  const [nuevoRangoOpen, setNuevoRangoOpen] = useState(false);
+  const [nuevoRangoNombre, setNuevoRangoNombre] = useState("");
+  const [nuevoRolOpen, setNuevoRolOpen] = useState(false);
+  const [nuevoRolNombre, setNuevoRolNombre] = useState("");
 
   // ── Derived ───────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -268,9 +275,18 @@ export function PersonalPage() {
   }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  async function fetchPersonal() {
+    try {
+      const data = await getPersonal();
+      setMembers(data);
+    } catch (error) {
+      console.error("Error fetching personal:", error);
+    }
+  }
+
+  function showToast(type: "success" | "warning" | "error", message: string) {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
   }
 
   function showAlert(type: AlertType, title: string, message: string) {
@@ -329,14 +345,10 @@ export function PersonalPage() {
       !form.contactoEmergencia.trim() ||
       !form.telEmergencia.trim() ||
       form.rangoId === 0 ||
-      (credOpen && (!form.usuario.trim() || form.rolId === 0));
+      (credOpen && (!form.usuario.trim() || !form.rolId));
 
     if (isMissingKeyFields) {
-      showAlert(
-        "warning",
-        "Campos Incompletos",
-        "Por favor, complete todos los campos obligatorios (*) del personal antes de continuar."
-      );
+      showToast("warning", "Por favor completa los campos obligatorios (*).");
       return;
     }
 
@@ -346,21 +358,19 @@ export function PersonalPage() {
       (m) => m.dpi.replace(/\D/g, "") === dpiDigits
     );
     if (dpiDigits.length !== 13 || isDuplicate) {
-      showAlert(
-        "error",
-        "Error de Validación",
-        "El DPI ingresado no es válido o ya se encuentra registrado en el sistema."
-      );
+      showToast("error", "El número de DPI o Usuario ya se encuentra registrado.");
       return;
     }
 
     // ── Remaining credential validation errors (e.g. password) ──
     if (Object.keys(errs).length > 0) {
-      showAlert(
-        "warning",
-        "Campos Incompletos",
-        "Por favor, complete todos los campos obligatorios (*) del personal antes de continuar."
-      );
+      if (errs.confirmarContrasena) {
+        showToast("warning", "Las contraseñas ingresadas no coinciden.");
+      } else if (errs.contrasena) {
+        showToast("warning", "La contraseña debe tener un mínimo de 8 caracteres.");
+      } else {
+        showToast("warning", "Por favor completa los campos obligatorios (*).");
+      }
       return;
     }
 
@@ -371,22 +381,19 @@ export function PersonalPage() {
       primerApellido: form.primerApellido,
       segundoApellido: form.segundoApellido,
       dpi: form.dpi,
-      fechaNacimiento: form.fechaNacimiento,
-      codigo: form.codigo,
+      fechaNacimiento: form.fechaNacimiento || null,
       rangoId: form.rangoId,
-      fechaIngreso: form.fechaIngreso,
+      fechaIngreso: form.fechaIngreso || new Date().toISOString().split("T")[0],
       telefono: form.telefono,
-      estado: form.estado,
-      contactoEmergencia: form.contactoEmergencia,
-      telEmergencia: form.telEmergencia,
+      estado: form.estado === "Activo",
+      contactoEmergenciaNombre: form.contactoEmergencia,
+      contactoEmergenciaTelefono: form.telEmergencia,
     };
 
     if (credOpen) {
       payload.accesoSistema = {
-        usuario: form.usuario,
-        correo: form.correo,
-        contrasena: form.contrasena,
-        confirmarContrasena: form.confirmarContrasena,
+        username: form.usuario,
+        password: form.contrasena,
         rolId: form.rolId,
       };
     }
@@ -397,24 +404,28 @@ export function PersonalPage() {
       : registrarPersonal(payload as CrearPersonalDto);
 
     apiCall
-      .then(() => {
-        showAlert(
+      .then(async () => {
+        showToast(
           "success",
-          "Registro Exitoso",
           editingId !== null
-            ? "El miembro del personal ha sido actualizado correctamente."
-            : "El nuevo miembro del personal ha sido guardado correctamente en el expediente."
+            ? "Información del miembro actualizada."
+            : "¡Miembro registrado correctamente!"
         );
+        setForm(emptyFormState());
+        closeModal();
+        await fetchPersonal();
       })
       .catch((error) => {
         console.error("Error registrando personal:", error);
         const msg = error instanceof Error ? error.message : "Error desconocido";
-        showAlert(
+        const isDuplicateError =
+          msg.includes("duplicate") || msg.includes("duplicado") || msg.includes("DPI") ||
+          msg.includes("username") || msg.includes("usuario");
+        showToast(
           "error",
-          "Error al Registrar",
-          msg.includes("duplicate") || msg.includes("duplicado") || msg.includes("DPI") || msg.includes("username") || msg.includes("usuario")
-            ? "El DPI o usuario ya existe en el sistema."
-            : "No se pudo registrar el miembro. Verifique la conexión e intente nuevamente."
+          isDuplicateError
+            ? "El número de DPI o Usuario ya se encuentra registrado."
+            : "Error al conectar con el servidor."
         );
       });
   }
@@ -447,14 +458,64 @@ export function PersonalPage() {
     if (!deleteId) return;
     eliminarPersonal(deleteId)
       .then(() => {
-        setMembers((prev) => prev.filter((m) => m.id !== deleteId));
+        setMembers((prev) =>
+          prev.map((m) => (m.id === deleteId ? { ...m, estado: "Inactivo" } : m))
+        );
         setDeleteId(null);
-        showToast("Miembro eliminado.");
+        showToast("success", "Miembro desactivado correctamente.");
       })
       .catch((error) => {
         console.error("Error eliminando personal:", error);
-        showToast("No se pudo eliminar el miembro.");
+        showToast("error", "Error al conectar con el servidor.");
       });
+  }
+
+  async function handleCrearRango() {
+    const nombre = nuevoRangoNombre.trim();
+    if (!nombre) {
+      showToast("warning", "Por favor ingresa el nombre del rango.");
+      return;
+    }
+    const existe = rangos.some((r) => r.nombre.toLowerCase() === nombre.toLowerCase());
+    if (existe) {
+      showToast("warning", "El rango ya existe en la lista.");
+      return;
+    }
+    try {
+      const nuevo = await crearRango(nombre);
+      setRangos((prev) => [...prev, nuevo]);
+      setField("rangoId", nuevo.id);
+      setNuevoRangoNombre("");
+      setNuevoRangoOpen(false);
+      showToast("success", "¡Nuevo rango agregado!");
+    } catch (error) {
+      console.error("Error creando rango:", error);
+      showToast("error", "Error al conectar con el servidor.");
+    }
+  }
+
+  async function handleCrearRol() {
+    const nombre = nuevoRolNombre.trim();
+    if (!nombre) {
+      showToast("warning", "Por favor ingresa el nombre del rol.");
+      return;
+    }
+    const existe = roles.some((r) => r.nombre.toLowerCase() === nombre.toLowerCase());
+    if (existe) {
+      showToast("warning", "El rol ya existe en la lista.");
+      return;
+    }
+    try {
+      const nuevo = await crearRol(nombre);
+      setRoles((prev) => [...prev, nuevo]);
+      setField("rolId", nuevo.id);
+      setNuevoRolNombre("");
+      setNuevoRolOpen(false);
+      showToast("success", "¡Nuevo rol agregado!");
+    } catch (error) {
+      console.error("Error creando rol:", error);
+      showToast("error", "Error al conectar con el servidor.");
+    }
   }
 
   const viewMember = members.find((m) => m.id === viewId) ?? null;
@@ -464,9 +525,13 @@ export function PersonalPage() {
     <div className="min-h-screen p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
       {/* Toast */}
       {toast && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-2 rounded-lg bg-green-600 px-4 py-3 text-white shadow-lg">
-          <Check size={16} />
-          <span className="text-sm font-medium">{toast}</span>
+        <div
+          className={`fixed top-5 right-5 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-white shadow-lg ${
+            toast.type === "success" ? "bg-green-600" : toast.type === "warning" ? "bg-amber-500" : "bg-red-600"
+          }`}
+        >
+          {toast.type === "success" ? <Check size={16} /> : <AlertTriangle size={16} />}
+          <span className="text-sm font-medium">{toast.message}</span>
         </div>
       )}
 
@@ -826,18 +891,55 @@ export function PersonalPage() {
                   <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
                     Rango <span style={{ color: RED }}>*</span>
                   </label>
-                  <select
-                    value={form.rangoId}
-                    onChange={(e) => setField("rangoId", Number(e.target.value))}
-                    style={inputStyle(!!errors.rangoId)}
-                  >
-                    <option value={0}>Seleccionar rango...</option>
-                    {(isLoadingRangos ? [] : (rangos || [])).map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.nombre}
-                      </option>
-                    ))}
-                  </select>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <select
+                      value={form.rangoId}
+                      onChange={(e) => setField("rangoId", Number(e.target.value))}
+                      style={{ ...inputStyle(!!errors.rangoId), flex: 1 }}
+                    >
+                      <option value={0}>Seleccionar rango...</option>
+                      {(isLoadingRangos ? [] : (rangos || [])).map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nombre}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setNuevoRangoOpen((v) => !v)}
+                      style={{ width: 38, borderRadius: 8, border: `1px solid ${RED}`, background: "var(--bg-card)", color: RED, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                      title="Agregar rango"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                  {nuevoRangoOpen && (
+                    <div style={{ marginTop: 6, padding: 8, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)" }}>
+                      <input
+                        type="text"
+                        placeholder="Nombre del Nuevo Rango"
+                        value={nuevoRangoNombre}
+                        onChange={(e) => setNuevoRangoNombre(e.target.value)}
+                        style={{ ...inputStyle(false), marginBottom: 6 }}
+                      />
+                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          onClick={() => { setNuevoRangoOpen(false); setNuevoRangoNombre(""); }}
+                          style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCrearRango}
+                          style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: RED, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        >
+                          Guardar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {errors.rangoId && <p className="mt-0.5 text-xs text-red-600">{errors.rangoId}</p>}
                 </div>
 
@@ -969,18 +1071,55 @@ export function PersonalPage() {
                         <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
                           Rol del Sistema <span style={{ color: "var(--red)" }}>*</span>
                         </label>
-                        <select
-                          value={form.rolId}
-                          onChange={(e) => setField("rolId", Number(e.target.value))}
-                          style={inputStyle(!!errors.rolId)}
-                        >
-                          <option value={0}>Seleccionar rol...</option>
-                          {(isLoadingRoles ? [] : (roles || [])).map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.nombre}
-                            </option>
-                          ))}
-                        </select>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <select
+                            value={form.rolId}
+                            onChange={(e) => setField("rolId", Number(e.target.value))}
+                            style={{ ...inputStyle(!!errors.rolId), flex: 1 }}
+                          >
+                            <option value={0}>Seleccionar rol...</option>
+                            {(isLoadingRoles ? [] : (roles || [])).map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.nombre}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setNuevoRolOpen((v) => !v)}
+                            style={{ width: 38, borderRadius: 8, border: `1px solid ${RED}`, background: "var(--bg-card)", color: RED, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                            title="Agregar rol"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                        {nuevoRolOpen && (
+                          <div style={{ marginTop: 6, padding: 8, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)" }}>
+                            <input
+                              type="text"
+                              placeholder="Nombre del Nuevo Rol"
+                              value={nuevoRolNombre}
+                              onChange={(e) => setNuevoRolNombre(e.target.value)}
+                              style={{ ...inputStyle(false), marginBottom: 6 }}
+                            />
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              <button
+                                type="button"
+                                onClick={() => { setNuevoRolOpen(false); setNuevoRolNombre(""); }}
+                                style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCrearRol}
+                                style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: RED, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                              >
+                                Guardar
+                              </button>
+                            </div>
+                          </div>
+                        )}
                         {errors.rolId && <p className="mt-0.5 text-xs text-red-600">{errors.rolId}</p>}
                       </div>
                     </div>

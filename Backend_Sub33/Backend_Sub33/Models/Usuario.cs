@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Backend_Sub33.Models;
 
@@ -18,6 +19,7 @@ public class Usuario
     [Column("username")]
     public string Username { get; set; } = string.Empty;
 
+    [JsonIgnore]
     [Column("password_hash")]
     public string PasswordHash { get; set; } = string.Empty;
 

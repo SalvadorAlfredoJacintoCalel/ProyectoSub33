@@ -38,38 +38,35 @@ export interface CrearPersonalDto {
   primerApellido: string;
   segundoApellido?: string;
   dpi: string;
-  fechaNacimiento?: string;
-  codigo: string;
-  rangoId: number;
+  fechaNacimiento?: string | null;
+  rangoId: number | null;
   fechaIngreso: string;
   telefono: string;
-  estado: string;
-  contactoEmergencia: string;
-  telEmergencia: string;
+  estado: boolean;
+  contactoEmergenciaNombre: string;
+  contactoEmergenciaTelefono: string;
   accesoSistema?: AccesoSistemaDto;
 }
 
 export interface ActualizarPersonalDto {
-  primerNombre: string;
+  primerNombre?: string;
   segundoNombre?: string;
-  primerApellido: string;
+  primerApellido?: string;
   segundoApellido?: string;
-  dpi: string;
-  fechaNacimiento?: string;
-  codigo: string;
-  rangoId: number;
-  fechaIngreso: string;
-  telefono: string;
-  estado: string;
-  contactoEmergencia: string;
-  telEmergencia: string;
+  dpi?: string;
+  fechaNacimiento?: string | null;
+  rangoId?: number | null;
+  fechaIngreso?: string;
+  telefono?: string;
+  estado?: boolean;
+  contactoEmergenciaNombre?: string;
+  contactoEmergenciaTelefono?: string;
+  accesoSistema?: AccesoSistemaDto;
 }
 
 export interface AccesoSistemaDto {
-  usuario: string;
-  correo: string;
-  contrasena: string;
-  confirmarContrasena: string;
+  username: string;
+  password: string;
   rolId: number;
 }
 
@@ -104,13 +101,14 @@ export interface RangoItem {
 export interface RolItem {
   id: number;
   nombre: string;
+  descripcion?: string;
 }
 
 // ── API Calls ────────────────────────────────────────────────────────────────────
 
 export const getRangos = async (): Promise<RangoItem[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/configuracion/rangos`, {
+    const response = await fetch(`${API_BASE_URL}/personal/rangos`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -125,6 +123,28 @@ export const getRangos = async (): Promise<RangoItem[]> => {
   }
 };
 
+export const crearRango = async (nombre: string): Promise<RangoItem> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/configuracion/rangos`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ nombre }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.mensaje || errorData.message || `Error ${response.status}`);
+    }
+    const data = await response.json();
+    return { id: Number(data.id), nombre: data.nombre };
+  } catch (error) {
+    console.error("Error creando rango:", error);
+    throw error;
+  }
+};
+
 export const getRoles = async (): Promise<RolItem[]> => {
   try {
     const response = await fetch(`${API_BASE_URL}/configuracion/roles`, {
@@ -135,9 +155,38 @@ export const getRoles = async (): Promise<RolItem[]> => {
       },
     });
     const data = await handleResponse(response);
-    return mapListasToItems(data);
+    const roles = Array.isArray(data) ? data : data.data ?? [];
+    return roles
+      .filter((r: any) => r && (r.id || r.rolId || r.rol_id))
+      .map((r: any) => ({
+        id: Number(r.id ?? r.rolId ?? r.rol_id),
+        nombre: r.nombre ?? r.name ?? "",
+        descripcion: r.descripcion,
+      }));
   } catch (error) {
     console.error("Error fetching roles:", error);
+    throw error;
+  }
+};
+
+export const crearRol = async (nombre: string): Promise<RolItem> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/configuracion/roles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ nombre }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.mensaje || errorData.message || `Error ${response.status}`);
+    }
+    const data = await response.json();
+    return { id: Number(data.id), nombre: data.nombre };
+  } catch (error) {
+    console.error("Error creando rol:", error);
     throw error;
   }
 };

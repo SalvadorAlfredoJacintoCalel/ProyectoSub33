@@ -24,31 +24,89 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                var query = _context.Personal
-                    .Include(p => p.Rango)
-                    .AsQueryable();
+                var query = _context.Personal.AsQueryable();
 
                 if (soloActivos)
                 {
                     query = query.Where(p => p.Estado);
                 }
 
-                var lista = await query
+                var personalList = await query
+                    .Include(p => p.Rango)
                     .OrderBy(p => p.PrimerApellido)
                     .ThenBy(p => p.PrimerNombre)
-                    .Select(p => new PersonalListDto
-                    {
-                        PersonalId = p.PersonalId,
-                        NombreCompleto = $"{p.PrimerNombre} {p.SegundoNombre} {p.PrimerApellido} {p.SegundoApellido}".Trim(),
-                        Dpi = p.Dpi,
-                        RangoId = p.RangoId,
-                        RangoNombre = p.Rango != null ? p.Rango.Rango : "Sin Rango",
-                        Estado = p.Estado,
-                        TieneAccesoSistema = _context.Usuarios.Any(u => u.PersonalId == p.PersonalId)
-                    })
                     .ToListAsync();
 
+                var personalIds = personalList.Select(p => p.PersonalId).ToList();
+
+                var usuarios = await _context.Usuarios
+                    .Where(u => u.PersonalId.HasValue && personalIds.Contains(u.PersonalId.Value))
+                    .Include(u => u.UsuarioRoles)
+                    .ThenInclude(ur => ur.Rol)
+                    .ToListAsync();
+
+                var usuarioPorPersonal = usuarios
+                    .GroupBy(u => u.PersonalId!.Value)
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                var lista = personalList.Select(p =>
+                {
+                    var nombreCompleto = $"{p.PrimerNombre} {p.SegundoNombre} {p.PrimerApellido} {p.SegundoApellido}".Trim();
+
+                    string? username = null;
+                    int? rolId = null;
+                    string? rol = null;
+
+                    if (usuarioPorPersonal.TryGetValue(p.PersonalId, out var usuario))
+                    {
+                        username = usuario.Username;
+                        var rolPrincipal = usuario.UsuarioRoles.FirstOrDefault();
+                        if (rolPrincipal != null)
+                        {
+                            rolId = rolPrincipal.RolId;
+                            rol = rolPrincipal.Rol?.Nombre;
+                        }
+                    }
+
+                    return new PersonalListDto
+                    {
+                        Id = p.PersonalId.ToString(),
+                        Codigo = string.Empty,
+                        Nombre = nombreCompleto,
+                        Dpi = p.Dpi,
+                        RangoId = p.RangoId,
+                        Rango = p.Rango?.Rango,
+                        Estado = p.Estado ? "Activo" : "Inactivo",
+                        Telefono = p.Telefono,
+                        ContactoEmergencia = p.ContactoEmergenciaNombre ?? string.Empty,
+                        TelEmergencia = p.ContactoEmergenciaTelefono ?? string.Empty,
+                        FechaIngreso = p.FechaIngreso.ToString("yyyy-MM-dd"),
+                        Usuario = username,
+                        RolId = rolId,
+                        Rol = rol
+                    };
+                }).ToList();
+
                 return Ok(lista);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = ex.Message, detalle = ex.InnerException?.Message });
+            }
+        }
+
+        [HttpGet("rangos")]
+        public async Task<IActionResult> ObtenerRangos()
+        {
+            try
+            {
+                var rangos = await _context.CatRangos
+                    .AsNoTracking()
+                    .OrderBy(r => r.Rango)
+                    .Select(r => new { id = r.RangoId, nombre = r.Rango })
+                    .ToListAsync();
+
+                return Ok(rangos);
             }
             catch (Exception ex)
             {
@@ -146,13 +204,17 @@ namespace Backend_Sub33.Controllers
                     }
                 }
 
-                if (dto.RangoId.HasValue)
+                if (dto.RangoId > 0)
                 {
-                    var rangoExiste = await _context.CatRangos.AnyAsync(r => r.RangoId == dto.RangoId.Value);
+                    var rangoExiste = await _context.CatRangos.AnyAsync(r => r.RangoId == dto.RangoId);
                     if (!rangoExiste)
                     {
                         return BadRequest(new { mensaje = "El rango seleccionado no existe" });
                     }
+                }
+                else
+                {
+                    return BadRequest(new { mensaje = "El rango es obligatorio" });
                 }
 
                 using var transaction = await _context.Database.BeginTransactionAsync();
@@ -167,11 +229,11 @@ namespace Backend_Sub33.Controllers
                     Dpi = dto.Dpi.Trim(),
                     FechaNacimiento = dto.FechaNacimiento,
                     RangoId = dto.RangoId,
-                    FechaIngreso = dto.FechaIngreso,
+                    FechaIngreso = dto.FechaIngreso ?? DateTime.Today,
                     Telefono = dto.Telefono.Trim(),
                     Estado = dto.Estado,
-                    ContactoEmergenciaNombre = dto.ContactoEmergenciaNombre?.Trim(),
-                    ContactoEmergenciaTelefono = dto.ContactoEmergenciaTelefono?.Trim()
+                    ContactoEmergenciaNombre = dto.ContactoEmergenciaNombre.Trim(),
+                    ContactoEmergenciaTelefono = dto.ContactoEmergenciaTelefono.Trim()
                 };
 
                 _context.Personal.Add(personal);
@@ -440,27 +502,25 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-
-                var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == id);
-                if (usuario != null)
-                {
-                    var roles = _context.UsuarioRoles.Where(ur => ur.UsuarioId == usuario.UsuarioId);
-                    _context.UsuarioRoles.RemoveRange(roles);
-                    _context.Usuarios.Remove(usuario);
-                }
-
                 var personal = await _context.Personal.FindAsync(id);
                 if (personal == null)
                 {
                     return NotFound(new { mensaje = "Personal no encontrado" });
                 }
 
-                _context.Personal.Remove(personal);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                // Soft delete: marcar como inactivo en lugar de eliminar físicamente
+                personal.Estado = false;
 
-                return Ok(new { mensaje = "Personal eliminado correctamente" });
+                var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == id);
+                if (usuario != null)
+                {
+                    usuario.Estado = false;
+                    usuario.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { mensaje = "Personal desactivado correctamente" });
             }
             catch (Exception ex)
             {

@@ -11,7 +11,7 @@ public class UsuarioRol
     public Guid UsuarioId { get; set; }
 
     [Column("rol_id")]
-    public string RolId { get; set; } = string.Empty;
+    public int RolId { get; set; }
 
     [ForeignKey("UsuarioId")]
     public virtual Usuario Usuario { get; set; } = null!;

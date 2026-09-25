@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -15,16 +16,14 @@ namespace Backend_Sub33.Models.Entities
         [Column("nombre")]
         public string Nombre { get; set; } = string.Empty;
 
-        [MaxLength(200)]
         [Column("direccion")]
         public string? Direccion { get; set; }
 
-        [MaxLength(100)]
-        [Column("ciudad")]
-        public string? Ciudad { get; set; }
-
         [MaxLength(20)]
-        [Column("codigo_postal")]
-        public string? CodigoPostal { get; set; }
+        [Column("telefono")]
+        public string? Telefono { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

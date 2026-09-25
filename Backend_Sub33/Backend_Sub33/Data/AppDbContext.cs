@@ -13,52 +13,44 @@ public class AppDbContext : DbContext
     public DbSet<Personal> Personal { get; set; }
     public DbSet<UsuarioRol> UsuarioRoles { get; set; }
     public DbSet<Rol> Roles { get; set; }
+    public DbSet<RolPermiso> RolPermisos { get; set; }
+    public DbSet<CatModulo> CatModulos { get; set; }
     public DbSet<Permiso> Permisos { get; set; }
-
-    public DbSet<ConfiguracionListaMaestra> ConfiguracionListasMaestras { get; set; }
-    public DbSet<CatCategoriaLista> CatCategoriasListas { get; set; }
+    public DbSet<ParametroSistema> ParametrosSistema { get; set; }
     public DbSet<CatRango> CatRangos { get; set; }
     public DbSet<CatTipoEmergencia> CatTiposEmergencia { get; set; }
     public DbSet<CatHospital> CatHospitales { get; set; }
+    public DbSet<CatUnidad> CatUnidades { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // CatCategoriaLista
-        modelBuilder.Entity<CatCategoriaLista>(entity =>
+        // CatModulo
+        modelBuilder.Entity<CatModulo>(entity =>
         {
-            entity.ToTable("cat_categorias_listas");
-            entity.HasKey(e => e.CategoriaId);
-            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id").ValueGeneratedOnAdd();
-            entity.Property(e => e.Codigo).HasColumnName("codigo").IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.ToTable("cat_modulos");
+            entity.HasKey(e => e.ModuloId);
+            entity.Property(e => e.ModuloId).HasColumnName("modulo_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.CodigoModulo).HasColumnName("codigo").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.NombreModulo).HasColumnName("nombre").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
 
-            entity.HasIndex(e => e.Codigo).IsUnique();
+            entity.HasIndex(e => e.CodigoModulo).IsUnique();
         });
 
-        // ConfiguracionListaMaestra
-        modelBuilder.Entity<ConfiguracionListaMaestra>(entity =>
+        // ParametroSistema
+        modelBuilder.Entity<ParametroSistema>(entity =>
         {
-            entity.ToTable("configuracion_listas_maestras");
-            entity.HasKey(e => e.ListaId);
-            entity.Property(e => e.ListaId).HasColumnName("lista_id").ValueGeneratedOnAdd();
-            entity.Property(e => e.CategoriaId).HasColumnName("categoria_id").IsRequired();
-            entity.Property(e => e.Opcion).HasColumnName("opcion").IsRequired().HasMaxLength(150);
-            entity.Property(e => e.Modulo).HasColumnName("modulo").HasMaxLength(50);
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.ToTable("parametros_sistema");
+            entity.HasKey(e => e.ParametroId);
+            entity.Property(e => e.ParametroId).HasColumnName("parametro_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Clave).HasColumnName("clave").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Valor).HasColumnName("valor").IsRequired();
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-            entity.HasIndex(e => new { e.CategoriaId, e.Opcion })
-                  .IsUnique()
-                  .HasDatabaseName("uk_categoria_opcion");
-
-            entity.HasOne(e => e.Categoria)
-                  .WithMany(c => c.Opciones)
-                  .HasForeignKey(e => e.CategoriaId)
-                  .OnDelete(DeleteBehavior.Cascade)
-                  .HasConstraintName("fk_configuracion_listas_maestras_categoria");
+            entity.HasIndex(e => e.Clave).IsUnique();
         });
 
         // CatRango
@@ -68,8 +60,8 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.RangoId);
             entity.Property(e => e.RangoId).HasColumnName("rango_id").ValueGeneratedOnAdd();
             entity.Property(e => e.Rango).HasColumnName("rango").IsRequired().HasMaxLength(50);
-            entity.Property(e => e.Minimo).HasColumnName("minimo");
-            entity.Property(e => e.Maximo).HasColumnName("maximo");
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // CatTipoEmergencia
@@ -78,8 +70,11 @@ public class AppDbContext : DbContext
             entity.ToTable("cat_tipos_emergencia");
             entity.HasKey(e => e.TipoEmergenciaId);
             entity.Property(e => e.TipoEmergenciaId).HasColumnName("tipo_emergencia_id").ValueGeneratedOnAdd();
-            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Descripcion).HasColumnName("descripcion").HasMaxLength(200);
+            entity.Property(e => e.Tipo).HasColumnName("tipo").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.RequiereUnidad).HasColumnName("requiere_unidad").HasDefaultValue(false);
+            entity.Property(e => e.ColorHex).HasColumnName("color_hex").HasMaxLength(7);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // CatHospital
@@ -89,9 +84,24 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.HospitalId);
             entity.Property(e => e.HospitalId).HasColumnName("hospital_id").ValueGeneratedOnAdd();
             entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(150);
-            entity.Property(e => e.Direccion).HasColumnName("direccion").HasMaxLength(200);
-            entity.Property(e => e.Ciudad).HasColumnName("ciudad").HasMaxLength(100);
-            entity.Property(e => e.CodigoPostal).HasColumnName("codigo_postal").HasMaxLength(20);
+            entity.Property(e => e.Direccion).HasColumnName("direccion");
+            entity.Property(e => e.Telefono).HasColumnName("telefono").HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // CatUnidad
+        modelBuilder.Entity<CatUnidad>(entity =>
+        {
+            entity.ToTable("cat_unidades");
+            entity.HasKey(e => e.UnidadId);
+            entity.Property(e => e.UnidadId).HasColumnName("unidad_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.CodigoUnidad).HasColumnName("codigo_unidad").IsRequired().HasMaxLength(20);
+            entity.Property(e => e.TipoUnidadId).HasColumnName("tipo_unidad_id");
+            entity.Property(e => e.Placa).HasColumnName("placa").HasMaxLength(15);
+            entity.Property(e => e.Estado).HasColumnName("estado").HasMaxLength(30).HasDefaultValue("Disponible");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.CodigoUnidad).IsUnique();
         });
 
         // Personal
@@ -114,7 +124,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ContactoEmergenciaTelefono).HasColumnName("contacto_emergencia_telefono").HasMaxLength(20);
 
             entity.HasIndex(e => e.Dpi).IsUnique();
-            
+
             entity.HasOne(e => e.Rango)
                   .WithMany()
                   .HasForeignKey(e => e.RangoId)
@@ -150,19 +160,10 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("roles");
             entity.HasKey(e => e.RolId);
-            entity.Property(e => e.RolId).HasColumnName("rol_id").HasMaxLength(50);
+            entity.Property(e => e.RolId).HasColumnName("rol_id").ValueGeneratedOnAdd();
             entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
-        });
-
-        // Permiso
-        modelBuilder.Entity<Permiso>(entity =>
-        {
-            entity.ToTable("permisos");
-            entity.HasKey(e => e.PermisoId);
-            entity.Property(e => e.PermisoId).HasColumnName("permiso_id").HasColumnType("uuid").HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(e => e.Codigo).HasColumnName("codigo").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         // UsuarioRol (Many-to-Many)
@@ -171,7 +172,7 @@ public class AppDbContext : DbContext
             entity.ToTable("usuario_roles");
             entity.HasKey(ur => new { ur.UsuarioId, ur.RolId });
             entity.Property(ur => ur.UsuarioId).HasColumnName("usuario_id").HasColumnType("uuid");
-            entity.Property(ur => ur.RolId).HasColumnName("rol_id").HasMaxLength(50);
+            entity.Property(ur => ur.RolId).HasColumnName("rol_id");
 
             entity.HasOne(ur => ur.Usuario)
                   .WithMany(u => u.UsuarioRoles)
@@ -186,25 +187,45 @@ public class AppDbContext : DbContext
                   .HasConstraintName("fk_usuario_rol_rol");
         });
 
-        // RolPermiso (Many-to-Many)
+        // Permiso (catálogo de permisos ligado a cat_modulos)
+        modelBuilder.Entity<Permiso>(entity =>
+        {
+            entity.ToTable("permisos");
+            entity.HasKey(e => e.PermisoId);
+            entity.Property(e => e.PermisoId).HasColumnName("permiso_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Codigo).HasColumnName("codigo").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.ModuloId).HasColumnName("modulo_id");
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.Codigo).IsUnique();
+
+            entity.HasOne(e => e.Modulo)
+                  .WithMany(m => m.Permisos)
+                  .HasForeignKey(e => e.ModuloId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_permiso_modulo");
+        });
+
+        // RolPermiso (Many-to-Many con permisos)
         modelBuilder.Entity<RolPermiso>(entity =>
         {
             entity.ToTable("rol_permisos");
             entity.HasKey(rp => new { rp.RolId, rp.PermisoId });
-            entity.Property(rp => rp.RolId).HasColumnName("rol_id").HasMaxLength(50);
-            entity.Property(rp => rp.PermisoId).HasColumnName("permiso_id").HasColumnType("uuid");
+            entity.Property(rp => rp.RolId).HasColumnName("rol_id");
+            entity.Property(rp => rp.PermisoId).HasColumnName("permiso_id");
 
             entity.HasOne(rp => rp.Rol)
                   .WithMany(r => r.RolPermisos)
                   .HasForeignKey(rp => rp.RolId)
                   .OnDelete(DeleteBehavior.Cascade)
-                  .HasConstraintName("fk_rol_permiso_rol");
+                  .HasConstraintName("fk_rp_rol");
 
             entity.HasOne(rp => rp.Permiso)
                   .WithMany(p => p.RolPermisos)
                   .HasForeignKey(rp => rp.PermisoId)
                   .OnDelete(DeleteBehavior.Cascade)
-                  .HasConstraintName("fk_rol_permiso_permiso");
+                  .HasConstraintName("fk_rp_permiso");
         });
     }
 }
