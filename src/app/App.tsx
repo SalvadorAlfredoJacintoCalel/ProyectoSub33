@@ -23,6 +23,7 @@ import {
   Users, AlertTriangle, Wrench, Quote,
   Camera, UserCircle, CheckCircle2,
 } from "lucide-react";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 // ─── Theme colors (light mode only) ──────────────────────────────────────────
 
@@ -159,14 +160,10 @@ function QuickCard({ Icon, label, sub, onClick }: { Icon: React.ElementType; lab
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Inner App Content ──────────────────────────────────────────────────────────
 
-export default function App() {
-  const [loggedIn, setLoggedIn] = useState(() => {
-    const user = localStorage.getItem("user");
-    return user ? true : false;
-  });
-  const [userRole, setUserRole] = useState<UserRole>("admin");
+function AppContent() {
+  const { loggedIn, user, role, role: userRole, login, logout, setRole } = useAuth();
   const [activeNav, setActiveNav] = useState("bienvenida");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [period, setPeriod] = useState<Period>("month");
@@ -192,7 +189,7 @@ export default function App() {
   });
 
   const sidebarW = sidebarCollapsed ? 72 : 256;
-  const navItems = ALL_NAV.filter(n => ROLE_NAV[userRole].includes(n.id));
+  const navItems = ALL_NAV.filter(n => ROLE_NAV[role].includes(n.id));
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -208,10 +205,26 @@ export default function App() {
 
   // Guard active nav on role change
   useEffect(() => {
-    if (!ROLE_NAV[userRole].includes(activeNav)) setActiveNav("bienvenida");
-  }, [userRole, activeNav]);
+    if (!ROLE_NAV[role].includes(activeNav)) setActiveNav("bienvenida");
+  }, [role, activeNav]);
 
-  if (!loggedIn) return <LoginPage onLogin={() => setLoggedIn(true)} />;
+  if (!loggedIn) {
+    const handleLogin = () => {
+      // LoginPage sets localStorage "user" before calling onLogin
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          // Use a dummy token since LoginPage doesn't set authToken
+          // The apiClient will read from localStorage "authToken" if available
+          login("dev-token", userData);
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+    };
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   const userName = `${profileForm.nombre} ${profileForm.apellido}`;
   const initials = (profileForm.nombre[0] + profileForm.apellido[0]).toUpperCase();
@@ -251,9 +264,9 @@ export default function App() {
         {!sidebarCollapsed && (
           <div className="px-4 pt-3 pb-2">
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(255,255,255,0.06)" }}>
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: ROLE_BADGE[userRole] }} />
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: ROLE_BADGE[role] }} />
               <span className="text-[11px] font-semibold truncate text-[#CBD5E1]" style={{ fontFamily: "Inter, sans-serif" }}>
-                {ROLE_LABELS[userRole]}
+                {ROLE_LABELS[role]}
               </span>
             </div>
           </div>
@@ -316,7 +329,7 @@ export default function App() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all"
               style={{ borderColor: C.border, fontFamily: "Inter, sans-serif", color: C.textSecond, background: C.cardBg }}>
               <Shield style={{ width: 11, height: 11 }} />
-              {ROLE_LABELS[userRole]}
+              {ROLE_LABELS[role]}
               <ChevronDown style={{ width: 11, height: 11, color: C.textMuted }} />
             </button>
             {roleDropOpen && (
@@ -324,15 +337,15 @@ export default function App() {
                 <div className="px-4 py-2.5 border-b" style={{ borderColor: C.border }}>
                   <p className="text-[10px] font-bold uppercase tracking-widest" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Vista de Rol</p>
                 </div>
-                {(Object.keys(ROLE_LABELS) as UserRole[]).map(role => (
-                  <button key={role} onClick={() => { setUserRole(role); setRoleDropOpen(false); }}
+                {(Object.keys(ROLE_LABELS) as UserRole[]).map(r => (
+                  <button key={r} onClick={() => { setRole(r); setRoleDropOpen(false); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                    style={{ background: userRole === role ? C.redLight : undefined }}
-                    onMouseEnter={e => { if (userRole !== role) (e.currentTarget as HTMLElement).style.background = C.hoverBg; }}
-                    onMouseLeave={e => { if (userRole !== role) (e.currentTarget as HTMLElement).style.background = ""; }}>
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: ROLE_BADGE[role] }} />
-                    <span className="text-[12px] font-semibold" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{ROLE_LABELS[role]}</span>
-                    {userRole === role && <CheckCircle2 style={{ width: 12, height: 12, color: C.red, marginLeft: "auto" }} />}
+                    style={{ background: role === r ? C.redLight : undefined }}
+                    onMouseEnter={e => { if (role !== r) (e.currentTarget as HTMLElement).style.background = C.hoverBg; }}
+                    onMouseLeave={e => { if (role !== r) (e.currentTarget as HTMLElement).style.background = ""; }}>
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: ROLE_BADGE[r] }} />
+                    <span className="text-[12px] font-semibold" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{ROLE_LABELS[r]}</span>
+                    {role === r && <CheckCircle2 style={{ width: 12, height: 12, color: C.red, marginLeft: "auto" }} />}
                   </button>
                 ))}
               </div>
@@ -396,7 +409,7 @@ export default function App() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-[14px] leading-tight truncate" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>{userName}</p>
-                    <p className="text-[11px] mt-0.5 font-semibold" style={{ fontFamily: "Inter, sans-serif", color: C.red }}>{ROLE_LABELS[userRole]}</p>
+                    <p className="text-[11px] mt-0.5 font-semibold" style={{ fontFamily: "Inter, sans-serif", color: C.red }}>{ROLE_LABELS[role]}</p>
                     <p className="text-[10px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{profileForm.email}</p>
                   </div>
                 </div>
@@ -797,7 +810,7 @@ export default function App() {
                 style={{ borderColor: C.border, color: C.textSecond, background: C.cardBg, fontFamily: "Inter, sans-serif" }}>
                 Cancelar
               </button>
-              <button onClick={() => { setLogoutOpen(false); setLoggedIn(false); localStorage.removeItem("user"); }} className="flex-1 py-2.5 rounded-xl text-white text-[13px] font-bold transition-opacity hover:opacity-90"
+              <button onClick={() => { setLogoutOpen(false); logout(); }} className="flex-1 py-2.5 rounded-xl text-white text-[13px] font-bold transition-opacity hover:opacity-90"
                 style={{ background: C.red, fontFamily: "Inter, sans-serif" }}>
                 Confirmar
               </button>
@@ -807,5 +820,15 @@ export default function App() {
       )}
 
     </div>
+  );
+}
+
+// ─── Default Export with AuthProvider ──────────────────────────────────────────
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
