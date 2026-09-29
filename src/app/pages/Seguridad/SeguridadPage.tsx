@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Shield, Lock, Plus, X, Pencil, Trash2, Save } from "lucide-react";
-import { AlertDialog } from "./components/AlertDialog";
+import { AlertDialog } from "../../components/AlertDialog";
 import {
   getParametros,
   guardarParametros,
@@ -21,7 +21,7 @@ import {
   type PermisoItem,
   type CatalogoTipo,
   type CatalogoItem,
-} from "../services/configuracionService";
+} from "../../../services/configuracionService";
 
 const RED = "#D32F2F";
 

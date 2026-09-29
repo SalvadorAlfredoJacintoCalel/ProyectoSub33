@@ -32,7 +32,7 @@ import {
   type PersonalResponse,
   type RangoItem,
   type RolItem,
-} from "../services/personalService";
+} from "../../../services/personalService";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Estado = "Activo" | "Inactivo";

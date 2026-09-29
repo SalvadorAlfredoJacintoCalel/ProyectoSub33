@@ -13,7 +13,7 @@ import {
   Package,
   ExternalLink,
 } from "lucide-react";
-import { AlertDialog } from "./components/AlertDialog";
+import { AlertDialog } from "../../components/AlertDialog";
 
 // ─── Shared Visual Tokens ─────────────────────────────────────────────────────
 

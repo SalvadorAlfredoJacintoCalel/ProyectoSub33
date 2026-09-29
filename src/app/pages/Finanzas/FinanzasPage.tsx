@@ -16,7 +16,7 @@ import {
   Wallet,
   Power,
 } from "lucide-react";
-import { AlertDialog } from "./components/AlertDialog";
+import { AlertDialog } from "../../components/AlertDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

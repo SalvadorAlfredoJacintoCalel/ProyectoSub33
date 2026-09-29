@@ -7,16 +7,16 @@ import {
   BarChart, Bar, Cell, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
   AreaChart, Area,
 } from "recharts";
-import { EmergenciasPage } from "@/app/EmergenciasPage";
-import { ProfilePage } from "@/app/ProfilePage";
-import { LoginPage } from "@/app/LoginPage";
-import { InventarioPage } from "@/app/InventarioPage";
-import { VehiculosPage } from "@/app/VehiculosPage";
-import { FinanzasPage } from "@/app/FinanzasPage";
-import { PersonalPage } from "@/app/PersonalPage";
-import { ReportesPage } from "@/app/ReportesPage";
-import { DonacionesPage } from "@/app/DonacionesPage";
-import { SeguridadPage } from "@/app/SeguridadPage";
+import { EmergenciasPage } from "@/app/pages/Emergencias/EmergenciasPage";
+import { ProfilePage } from "@/app/pages/Perfil/ProfilePage";
+import { LoginPage } from "@/app/pages/Auth/LoginPage";
+import { InventarioPage } from "@/app/pages/Inventario/InventarioPage";
+import { VehiculosPage } from "@/app/pages/Vehiculos/VehiculosPage";
+import { FinanzasPage } from "@/app/pages/Finanzas/FinanzasPage";
+import { PersonalPage } from "@/app/pages/Personal/PersonalPage";
+import { ReportesPage } from "@/app/pages/Reportes/ReportesPage";
+import { DonacionesPage } from "@/app/pages/Donaciones/DonacionesPage";
+import { SeguridadPage } from "@/app/pages/Seguridad/SeguridadPage";
 import {
   X, ChevronLeft, ChevronRight, Zap, Truck, Package,
   Bell, LogOut, Shield, ChevronDown, Home, BarChart2,

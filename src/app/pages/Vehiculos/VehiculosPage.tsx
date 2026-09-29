@@ -4,7 +4,7 @@ import {
   AlertTriangle, ChevronLeft, ChevronRight, Fuel, Truck,
   Wrench, Info, Power,
 } from "lucide-react";
-import { AlertDialog } from "./components/AlertDialog";
+import { AlertDialog } from "../../components/AlertDialog";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const RED = "#D32F2F";

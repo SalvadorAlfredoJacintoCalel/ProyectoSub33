@@ -5,7 +5,7 @@ import {
   X, Printer, Clock, Zap, CalendarX2, Pencil, Power,
 } from "lucide-react";
 import imgCvbLogo from "@/imports/DashboardPrincipalDesktop/382ba90f17ab58630c2735b72b71bff037f7ba87.png";
-import { RegisterServicePage } from "@/app/RegisterServicePage";
+import { RegisterServicePage } from "@/app/pages/Emergencias/RegisterServicePage";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const RED = "#c11d1d";
