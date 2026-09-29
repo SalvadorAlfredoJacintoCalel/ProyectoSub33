@@ -1,33 +1,23 @@
-const API_BASE_URL = "http://localhost:5196/api";
-
-const getAuthHeader = () => {
-  const token = localStorage.getItem("authToken");
-  if (token) {
-    return { Authorization: `Bearer ${token}` };
-  }
-  return {};
-};
-
-const handleResponse = async (response: Response) => {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || errorData.mensaje || `Error ${response.status}`);
-  }
-  return response.json();
-};
+import { apiClient } from "./api/client";
+import { ApiError } from "./api/client";
+import type { ApiErrorResponse } from "../../types/api";
 
 // Helper to map backend ListasResponse format to frontend SelectItem format
-const mapListasToItems = (listas: Array<{ listaId?: number; lista_id?: number; id?: number; categoria?: string; opcion: string } | string>): Array<{ id: number; nombre: string }> => {
+const mapListasToItems = (
+  listas: Array<{ listaId?: number; lista_id?: number; id?: number; categoria?: string; opcion: string } | string>
+): Array<{ id: number; nombre: string }> => {
   if (!Array.isArray(listas)) return [];
-  return listas.map((item, index) => {
-    if (typeof item === "string") {
-      return { id: index + 1, nombre: item };
-    }
-    return {
-      id: item.id ?? item.listaId ?? item.lista_id ?? 0,
-      nombre: item.opcion ?? item.nombre ?? "",
-    };
-  }).filter((item) => item.id > 0 && item.nombre);
+  return listas
+    .map((item, index) => {
+      if (typeof item === "string") {
+        return { id: index + 1, nombre: item };
+      }
+      return {
+        id: item.id ?? item.listaId ?? item.lista_id ?? 0,
+        nombre: item.opcion ?? item.nombre ?? "",
+      };
+    })
+    .filter((item) => item.id > 0 && item.nombre);
 };
 
 // ── DTOs ────────────────────────────────────────────────────────────────────────
@@ -104,18 +94,29 @@ export interface RolItem {
   descripcion?: string;
 }
 
+// Raw response types from backend
+interface BackendRangoItem {
+  id?: number;
+  listaId?: number;
+  lista_id?: number;
+  categoria?: string;
+  opcion: string;
+}
+
+interface BackendRoleItem {
+  id?: number;
+  rolId?: number;
+  rol_id?: number;
+  nombre?: string;
+  name?: string;
+  descripcion?: string;
+}
+
 // ── API Calls ────────────────────────────────────────────────────────────────────
 
 export const getRangos = async (): Promise<RangoItem[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/personal/rangos`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-    });
-    const data = await handleResponse(response);
+    const data = await apiClient.get<BackendRangoItem[]>("/personal/rangos");
     return mapListasToItems(data);
   } catch (error) {
     console.error("Error fetching rangos:", error);
@@ -125,19 +126,7 @@ export const getRangos = async (): Promise<RangoItem[]> => {
 
 export const crearRango = async (nombre: string): Promise<RangoItem> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/configuracion/rangos`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-      body: JSON.stringify({ nombre }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.mensaje || errorData.message || `Error ${response.status}`);
-    }
-    const data = await response.json();
+    const data = await apiClient.post<{ id: number; nombre: string }>("/configuracion/rangos", { nombre });
     return { id: Number(data.id), nombre: data.nombre };
   } catch (error) {
     console.error("Error creando rango:", error);
@@ -147,18 +136,11 @@ export const crearRango = async (nombre: string): Promise<RangoItem> => {
 
 export const getRoles = async (): Promise<RolItem[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/configuracion/roles`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-    });
-    const data = await handleResponse(response);
-    const roles = Array.isArray(data) ? data : data.data ?? [];
+    const data = await apiClient.get<BackendRoleItem[]>("/configuracion/roles");
+    const roles = Array.isArray(data) ? data : (data as unknown as { data?: BackendRoleItem[] }).data ?? [];
     return roles
-      .filter((r: any) => r && (r.id || r.rolId || r.rol_id))
-      .map((r: any) => ({
+      .filter((r) => r && (r.id || r.rolId || r.rol_id))
+      .map((r) => ({
         id: Number(r.id ?? r.rolId ?? r.rol_id),
         nombre: r.nombre ?? r.name ?? "",
         descripcion: r.descripcion,
@@ -171,19 +153,7 @@ export const getRoles = async (): Promise<RolItem[]> => {
 
 export const crearRol = async (nombre: string): Promise<RolItem> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/configuracion/roles`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-      body: JSON.stringify({ nombre }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.mensaje || errorData.message || `Error ${response.status}`);
-    }
-    const data = await response.json();
+    const data = await apiClient.post<{ id: number; nombre: string }>("/configuracion/roles", { nombre });
     return { id: Number(data.id), nombre: data.nombre };
   } catch (error) {
     console.error("Error creando rol:", error);
@@ -193,14 +163,7 @@ export const crearRol = async (nombre: string): Promise<RolItem> => {
 
 export const getPersonal = async (): Promise<PersonalResponse[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/personal`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-    });
-    return handleResponse(response);
+    return await apiClient.get<PersonalResponse[]>("/personal");
   } catch (error) {
     console.error("Error fetching personal:", error);
     throw error;
@@ -209,15 +172,7 @@ export const getPersonal = async (): Promise<PersonalResponse[]> => {
 
 export const registrarPersonal = async (dto: CrearPersonalDto): Promise<PersonalResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/personal`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-      body: JSON.stringify(dto),
-    });
-    return handleResponse(response);
+    return await apiClient.post<PersonalResponse>("/personal", dto);
   } catch (error) {
     console.error("Error registrando personal:", error);
     throw error;
@@ -226,15 +181,7 @@ export const registrarPersonal = async (dto: CrearPersonalDto): Promise<Personal
 
 export const actualizarPersonal = async (id: string, dto: ActualizarPersonalDto): Promise<PersonalResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/personal/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-      body: JSON.stringify(dto),
-    });
-    return handleResponse(response);
+    return await apiClient.put<PersonalResponse>(`/personal/${id}`, dto);
   } catch (error) {
     console.error("Error actualizando personal:", error);
     throw error;
@@ -243,17 +190,7 @@ export const actualizarPersonal = async (id: string, dto: ActualizarPersonalDto)
 
 export const eliminarPersonal = async (id: string): Promise<void> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/personal/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-    });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Error ${response.status}`);
-    }
+    await apiClient.delete<void>(`/personal/${id}`);
   } catch (error) {
     console.error("Error eliminando personal:", error);
     throw error;
@@ -262,16 +199,12 @@ export const eliminarPersonal = async (id: string): Promise<void> => {
 
 export const getPersonalById = async (id: string): Promise<PersonalResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/personal/${id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...getAuthHeader(),
-      },
-    });
-    return handleResponse(response);
+    return await apiClient.get<PersonalResponse>(`/personal/${id}`);
   } catch (error) {
     console.error("Error fetching personal by id:", error);
     throw error;
   }
 };
+
+export { ApiError };
+export type { ApiErrorResponse };
