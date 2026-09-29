@@ -1,23 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
-import {
-  Pencil,
-  Trash2,
-  Eye,
-  Plus,
-  Search,
-  X,
-  Check,
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  Users,
-  Shield,
-  Phone,
-  RefreshCw,
-  KeyRound,
-  EyeOff,
-} from "lucide-react";
+import { Plus, Search, X, Check, AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Users, Shield, Phone, RefreshCw, KeyRound, EyeOff } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { PersonalTable } from "@/app/pages/Personal/components/PersonalTable";
+import { PersonalForm } from "@/app/pages/Personal/components/PersonalForm";
 import {
   getRangos,
   crearRango,
@@ -35,6 +20,7 @@ import {
 } from "../../../services/personalService";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
 type Estado = "Activo" | "Inactivo";
 
 interface Miembro {
@@ -72,9 +58,6 @@ interface FormState {
   rolId: number;
 }
 
-// ── Sample Data ────────────────────────────────────────────────────────────────
-const sampleData: Miembro[] = [];
-
 // ── Constants ──────────────────────────────────────────────────────────────────
 const RED = "#D32F2F";
 const PAGE_SIZE = 8;
@@ -98,75 +81,8 @@ function formatDate(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
-function generatePassword(): string {
-  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-}
-
-function slugify(s: string): string {
-  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "");
-}
-
-function emptyFormState(): FormState {
-  return {
-    primerNombre: "", segundoNombre: "", primerApellido: "", segundoApellido: "",
-    dpi: "", fechaNacimiento: "", codigo: "", rangoId: 0, fechaIngreso: "",
-    telefono: "", estado: "Activo", contactoEmergencia: "", telEmergencia: "",
-    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
-  };
-}
-
-function miembroToForm(m: Miembro): FormState {
-  const parts = m.nombre.trim().split(/\s+/);
-  let primerNombre = "", segundoNombre = "", primerApellido = "", segundoApellido = "";
-  if (parts.length === 1) { primerNombre = parts[0]; }
-  else if (parts.length === 2) { primerNombre = parts[0]; primerApellido = parts[1]; }
-  else if (parts.length === 3) { primerNombre = parts[0]; primerApellido = parts[1]; segundoApellido = parts[2]; }
-  else { primerNombre = parts[0]; segundoNombre = parts[1]; primerApellido = parts[2]; segundoApellido = parts.slice(3).join(" "); }
-  return {
-    primerNombre, segundoNombre, primerApellido, segundoApellido,
-    dpi: m.dpi, fechaNacimiento: "", codigo: m.codigo, rangoId: m.rangoId,
-    fechaIngreso: m.fechaIngreso, telefono: m.telefono, estado: m.estado,
-    contactoEmergencia: m.contactoEmergencia, telEmergencia: m.telEmergencia,
-    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
-  };
-}
-
-function formToMiembro(f: FormState): Omit<Miembro, "id"> {
-  const nombre = [f.primerNombre, f.segundoNombre, f.primerApellido, f.segundoApellido]
-    .map((s) => s.trim()).filter(Boolean).join(" ");
-  return {
-    codigo: f.codigo.trim(), nombre, dpi: f.dpi.trim(), rangoId: f.rangoId, estado: f.estado,
-    telefono: f.telefono.trim(), contactoEmergencia: f.contactoEmergencia.trim(),
-    telEmergencia: f.telEmergencia.trim(), fechaIngreso: f.fechaIngreso,
-  };
-}
-
-function validateForm(f: FormState, credOpen: boolean, isEditing: boolean): Record<string, string> {
-  const e: Record<string, string> = {};
-  if (!f.primerNombre.trim()) e.primerNombre = "Primer nombre requerido";
-  if (!f.primerApellido.trim()) e.primerApellido = "Primer apellido requerido";
-  const dpiDigits = f.dpi.replace(/\D/g, "");
-  if (dpiDigits.length !== 13) e.dpi = "DPI debe tener exactamente 13 dígitos";
-  if (!f.telefono.trim()) e.telefono = "Teléfono requerido";
-  if (!f.contactoEmergencia.trim()) e.contactoEmergencia = "Nombre del contacto requerido";
-  if (!f.telEmergencia.trim()) e.telEmergencia = "Teléfono de emergencia requerido";
-  if (f.rangoId === 0) e.rangoId = "Rango requerido";
-  if (credOpen) {
-    if (!f.usuario.trim()) e.usuario = "Usuario requerido";
-    if (!f.rolId) e.rolId = "Rol del sistema requerido";
-    // Password: required for new members; for edits, only validate if the user typed something
-    const pwEntered = f.contrasena.length > 0;
-    if (!isEditing || pwEntered) {
-      if (f.contrasena.length < 8) e.contrasena = "Mínimo 8 caracteres";
-      if (f.confirmarContrasena !== f.contrasena) e.confirmarContrasena = "Las contraseñas no coinciden";
-    }
-  }
-  return e;
-}
-
 // ── Shared input style helper ─────────────────────────────────────────────────
-function inputStyle(hasError: boolean): React.CSSProperties {
+function inputStyle(hasError: boolean) {
   return {
     width: "100%",
     background: "var(--bg-input)",
@@ -203,9 +119,11 @@ function AlertIcon({ type }: { type: AlertType }) {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export function PersonalPage() {
-  const [members, setMembers] = useState<Miembro[]>(sampleData);
+  const { role } = useAuth();
+
+  const [members, setMembers] = useState<Miembro[]>([]);
   const [search, setSearch] = useState("");
-  const [filterRango, setFilterRango] = useState<Rango | "">("");
+  const [filterRango, setFilterRango] = useState<RangoItem["nombre"] | "">("");
   const [filterEstado, setFilterEstado] = useState<Estado | "">("Activo");
   const [page, setPage] = useState(1);
 
@@ -297,8 +215,6 @@ export function PersonalPage() {
     setEditingId(null);
     setForm(emptyFormState());
     setErrors({});
-    setCredOpen(false);
-    setShowPw(false);
     setShowModal(true);
   }
 
@@ -306,17 +222,14 @@ export function PersonalPage() {
     setEditingId(m.id);
     setForm(miembroToForm(m));
     setErrors({});
-    setCredOpen(false);
-    setShowPw(false);
     setShowModal(true);
   }
 
   function closeModal() {
     setShowModal(false);
     setEditingId(null);
+    setForm(emptyFormState());
     setErrors({});
-    setCredOpen(false);
-    setShowPw(false);
   }
 
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
@@ -333,10 +246,32 @@ export function PersonalPage() {
   }
 
   function handleSubmit() {
-    const errs = validateForm(form, credOpen, editingId !== null);
+    // Validation will be performed by Parent (PersonalForm)
+    // We just close and refresh - the actual validation is in the form component
+    // but we need to coordinate the API call here
+    const errs: Record<string, string> = {};
+    
+    // Basic required fields validation
+    if (!form.primerNombre.trim()) errs.primerNombre = "Primer nombre requerido";
+    if (!form.primerApellido.trim()) errs.primerApellido = "Primer apellido requerido";
+    const dpiDigits = form.dpi.replace(/\D/g, "");
+    if (dpiDigits.length !== 13) errs.dpi = "DPI debe tener exactamente 13 dígitos";
+    if (!form.telefono.trim()) errs.telefono = "Teléfono requerido";
+    if (!form.contactoEmergencia.trim()) errs.contactoEmergencia = "Nombre del contacto requerido";
+    if (!form.telEmergencia.trim()) errs.telEmergencia = "Teléfono de emergencia requerido";
+    if (form.rangoId === 0) errs.rangoId = "Rango requerido";
+    if (errs.usuario && !form.usuario.trim()) errs.usuario = "Usuario requerido";
+    if (!form.rolId) errs.rolId = "Rol del sistema requerido";
+    
+    // Password validation
+    const pwEntered = form.contrasena.length > 0;
+    if (!editingId || pwEntered) {
+      if (form.contrasena.length < 8) errs.contrasena = "Mínimo 8 caracteres";
+      if (form.confirmarContrasena !== form.contrasena) errs.confirmarContrasena = "Las contraseñas no coinciden";
+    }
+
     setErrors(errs);
 
-    // ── Scenario 1: Missing required key fields ──
     const isMissingKeyFields =
       !form.primerNombre.trim() ||
       !form.primerApellido.trim() ||
@@ -345,15 +280,14 @@ export function PersonalPage() {
       !form.contactoEmergencia.trim() ||
       !form.telEmergencia.trim() ||
       form.rangoId === 0 ||
-      (credOpen && (!form.usuario.trim() || !form.rolId));
+      (errs.usuario || !form.usuario.trim() || !form.rolId);
 
-    if (isMissingKeyFields) {
+    if (isMissingKeyFields || Object.keys(errs).length > 0) {
       showToast("warning", "Por favor completa los campos obligatorios (*).");
       return;
     }
 
-    // ── Scenario 2: DPI validation error or duplicate ──
-    const dpiDigits = form.dpi.replace(/\D/g, "");
+    // DPI validation error or duplicate
     const isDuplicate = members.some(
       (m) => m.dpi.replace(/\D/g, "") === dpiDigits
     );
@@ -362,19 +296,7 @@ export function PersonalPage() {
       return;
     }
 
-    // ── Remaining credential validation errors (e.g. password) ──
-    if (Object.keys(errs).length > 0) {
-      if (errs.confirmarContrasena) {
-        showToast("warning", "Las contraseñas ingresadas no coinciden.");
-      } else if (errs.contrasena) {
-        showToast("warning", "La contraseña debe tener un mínimo de 8 caracteres.");
-      } else {
-        showToast("warning", "Por favor completa los campos obligatorios (*).");
-      }
-      return;
-    }
-
-    // ── Build payload for API ──
+    // Build payload for API
     const payload: CrearPersonalDto | ActualizarPersonalDto = {
       primerNombre: form.primerNombre,
       segundoNombre: form.segundoNombre,
@@ -390,7 +312,7 @@ export function PersonalPage() {
       contactoEmergenciaTelefono: form.telEmergencia,
     };
 
-    if (credOpen) {
+    if (form.usuario && form.rolId) {
       payload.accesoSistema = {
         username: form.usuario,
         password: form.contrasena,
@@ -398,7 +320,7 @@ export function PersonalPage() {
       };
     }
 
-    // ── Call API to register/update personal ──
+    // Call API to register/update personal
     const apiCall = editingId !== null
       ? actualizarPersonal(editingId, payload as ActualizarPersonalDto)
       : registrarPersonal(payload as CrearPersonalDto);
@@ -557,10 +479,7 @@ export function PersonalPage() {
 
       {/* ── Stat Cards ───────────────────────────────────────────────────────── */}
       <div className="mb-6 grid grid-cols-3 gap-4">
-        <div
-          className="flex items-center gap-4 rounded-2xl p-4"
-          style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}
-        >
+        <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
             <Users size={20} style={{ color: RED }} />
           </div>
@@ -570,10 +489,7 @@ export function PersonalPage() {
           </div>
         </div>
 
-        <div
-          className="flex items-center gap-4 rounded-2xl p-4"
-          style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}
-        >
+        <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50">
             <Shield size={20} className="text-green-600" />
           </div>
@@ -583,10 +499,7 @@ export function PersonalPage() {
           </div>
         </div>
 
-        <div
-          className="flex items-center gap-4 rounded-2xl p-4"
-          style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}
-        >
+        <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
           <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--bg-input)" }}>
             <Phone size={20} style={{ color: "var(--text-3)" }} />
           </div>
@@ -597,654 +510,102 @@ export function PersonalPage() {
         </div>
       </div>
 
-      {/* ── Table Card ───────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
-        {/* Filters */}
-        <div
-          className="flex flex-wrap items-center gap-3 px-4 py-3"
-          style={{ borderBottom: "1px solid var(--border)" }}
+      {/* ── Search & Filters Bar ──────────────────────────────────────────────── */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[240px] flex-1">
+          <Search
+            size={15}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+            style={{ color: "var(--text-3)" }}
+          />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, código o DPI..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-full rounded-lg py-2 pl-9 pr-3 text-sm outline-none"
+            style={{
+              background: "var(--bg-input)",
+              color: "var(--text-1)",
+              border: "1px solid var(--border)",
+            }}
+          />
+        </div>
+
+        <select
+          value={filterRango}
+          onChange={(e) => { setFilterRango(e.target.value as RangoItem["nombre"] | ""); setPage(1); }}
+          className="rounded-lg px-3 py-2 text-sm outline-none"
+          style={{
+            background: "var(--bg-input)",
+            color: "var(--text-1)",
+            border: "1px solid var(--border)",
+          }}
         >
-          <div className="relative min-w-[200px] flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
-            <input
-              type="text"
-              placeholder="Buscar por nombre, código o DPI…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              style={{ ...inputStyle(false), paddingLeft: 36 }}
-            />
-          </div>
-          <select
-            value={filterRango}
-            onChange={(e) => { setFilterRango(e.target.value as Rango | ""); setPage(1); }}
-            style={inputStyle(false)}
-            className="w-auto"
-          >
-            <option value="">Todos los Rangos</option>
-            {(rangos || []).map((r) => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
-          </select>
-          <select
-            value={filterEstado}
-            onChange={(e) => { setFilterEstado(e.target.value as Estado | ""); setPage(1); }}
-            style={inputStyle(false)}
-            className="w-auto"
-          >
-            <option value="">Todos los Estados</option>
-            <option value="Activo">Activo</option>
-            <option value="Inactivo">Inactivo</option>
-          </select>
-        </div>
+          <option value="">Todos los rangos</option>
+          {rangos.map((r) => (
+            <option key={r.id} value={r.nombre}>{r.nombre}</option>
+          ))}
+        </select>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Código", "Nombre Completo", "DPI", "Rango", "Estado", "Teléfono", "Contacto Emergencia", "Tel. Emergencia", "Fecha de Ingreso", "Acciones"].map((h) => (
-                  <th key={h} className="whitespace-nowrap px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-3)" }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="py-12 text-center text-sm" style={{ color: "var(--text-3)" }}>
-                    No se encontraron miembros.
-                  </td>
-                </tr>
-              )}
-              {pageRows.map((m) => (
-                <tr
-                  key={m.id}
-                  className="transition-colors"
-                  style={{ borderBottom: "1px solid var(--divider)" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
-                  <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold" style={{ color: "var(--text-2)" }}>
-                    {m.codigo}
-                  </td>
-                  <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>
-                    {m.nombre}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 font-mono" style={{ color: "var(--text-2)" }}>
-                    {m.dpi}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">
-                      {m.rango}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${estadoBadge[m.estado]}`}>
-                      {m.estado}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
-                    {m.telefono}
-                  </td>
-                  <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>
-                    {m.contactoEmergencia}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
-                    {m.telEmergencia}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
-                    {formatDate(m.fechaIngreso)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setViewId(m.id)}
-                        className="rounded p-1.5 transition-colors hover:bg-blue-50 hover:text-blue-600"
-                        style={{ color: "var(--text-3)" }}
-                        title="Ver"
-                      >
-                        <Eye size={15} />
-                      </button>
-                      <button
-                        onClick={() => openEditModal(m)}
-                        className="rounded p-1.5 transition-colors hover:bg-amber-50 hover:text-amber-600"
-                        style={{ color: "var(--text-3)" }}
-                        title="Editar"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(m.id)}
-                        className="rounded p-1.5 transition-colors hover:bg-red-50 hover:text-red-600"
-                        style={{ color: "var(--text-3)" }}
-                        title="Eliminar"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 text-sm" style={{ color: "var(--text-3)" }}>
-          <span>
-            Mostrando {filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} de {filtered.length} registros
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              disabled={safePage <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="rounded p-1.5 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-              <button
-                key={n}
-                onClick={() => setPage(n)}
-                className="h-7 w-7 rounded text-xs font-medium transition-colors"
-                style={n === safePage ? { background: RED, color: "#fff" } : { color: "var(--text-2)" }}
-              >
-                {n}
-              </button>
-            ))}
-            <button
-              disabled={safePage >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className="rounded p-1.5 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
+        <select
+          value={filterEstado}
+          onChange={(e) => { setFilterEstado(e.target.value as Estado | ""); setPage(1); }}
+          className="rounded-lg px-3 py-2 text-sm outline-none"
+          style={{
+            background: "var(--bg-input)",
+            color: "var(--text-1)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <option value="Activo">Activos</option>
+          <option value="Inactivo">Inactivos</option>
+          <option value="">Todos</option>
+        </select>
       </div>
+
+      {/* ── Table ──────────────────────────────────────────────────────────────── */}
+      <PersonalTable
+        members={members}
+        search={search}
+        setSearch={setSearch}
+        filterRango={filterRango}
+        setFilterRango={setFilterRango}
+        filterEstado={filterEstado}
+        setFilterEstado={setFilterEstado}
+        page={page}
+        setPage={setPage}
+        totalPages={totalPages}
+        PAGE_SIZE={PAGE_SIZE}
+        rangos={rangos}
+        roles={roles}
+        onView={(m) => setViewId(m.id)}
+        onEdit={(m) => openEditModal(m)}
+        onDelete={(id) => setDeleteId(id)}
+      />
 
       {/* ── Add / Edit Modal ───────────────────────────────────────────────────── */}
       {showModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
-          <div
-            className="w-full max-w-2xl overflow-hidden rounded-2xl shadow-2xl"
-            style={{ maxHeight: "90vh", background: "var(--bg-card)" }}
-          >
-            {/* Modal header */}
-            <div
-              className="flex items-center justify-between px-6 py-4"
-              style={{ background: "var(--bg-input)", borderBottom: "1px solid var(--border)" }}
-            >
-              <div className="flex items-center gap-2">
-                <Shield size={18} style={{ color: "var(--text-1)" }} />
-                <h2 className="text-lg font-semibold" style={{ color: "var(--text-1)" }}>
-                  {editingId ? "Editar Miembro" : "Nuevo Miembro"}
-                </h2>
-              </div>
-              <button onClick={closeModal} className="rounded p-1 transition-colors" style={{ color: "var(--text-3)" }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal body */}
-            <div
-              className="overflow-y-auto px-6 py-5"
-              style={{ maxHeight: "calc(90vh - 130px)", background: "var(--bg-card)" }}
-            >
-              {/* Error summary */}
-              {Object.keys(errors).length > 0 && (
-                <div className="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                  <span>Por favor corrige los campos marcados en rojo antes de continuar.</span>
-                </div>
-              )}
-
-              {/* ── Datos Personales ── */}
-              <SectionLabel label="Datos Personales" />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Primer Nombre <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej. Carlos"
-                    value={form.primerNombre}
-                    onChange={(e) => setField("primerNombre", e.target.value)}
-                    style={inputStyle(!!errors.primerNombre)}
-                  />
-                  {errors.primerNombre && <p className="mt-0.5 text-xs text-red-600">{errors.primerNombre}</p>}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Segundo Nombre <span style={{ color: "var(--text-3)" }}>(opcional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej. Humberto"
-                    value={form.segundoNombre}
-                    onChange={(e) => setField("segundoNombre", e.target.value)}
-                    style={inputStyle(false)}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Primer Apellido <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej. Tzintzún"
-                    value={form.primerApellido}
-                    onChange={(e) => setField("primerApellido", e.target.value)}
-                    style={inputStyle(!!errors.primerApellido)}
-                  />
-                  {errors.primerApellido && <p className="mt-0.5 text-xs text-red-600">{errors.primerApellido}</p>}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Segundo Apellido <span style={{ color: "var(--text-3)" }}>(opcional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej. Ajú"
-                    value={form.segundoApellido}
-                    onChange={(e) => setField("segundoApellido", e.target.value)}
-                    style={inputStyle(false)}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    DPI <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="0000000000000"
-                    maxLength={13}
-                    value={form.dpi}
-                    onChange={(e) => setField("dpi", e.target.value.replace(/\D/g, ""))}
-                    style={{ ...inputStyle(!!errors.dpi), fontFamily: "monospace" }}
-                  />
-                  {errors.dpi && <p className="mt-0.5 text-xs text-red-600">{errors.dpi}</p>}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Fecha de Nacimiento
-                  </label>
-                  <input
-                    type="date"
-                    value={form.fechaNacimiento}
-                    onChange={(e) => setField("fechaNacimiento", e.target.value)}
-                    style={inputStyle(false)}
-                  />
-                </div>
-              </div>
-
-              {/* ── Información de Bombero ── */}
-              <SectionLabel label="Información de Bombero" />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Rango <span style={{ color: RED }}>*</span>
-                  </label>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <select
-                      value={form.rangoId}
-                      onChange={(e) => setField("rangoId", Number(e.target.value))}
-                      style={{ ...inputStyle(!!errors.rangoId), flex: 1 }}
-                    >
-                      <option value={0}>Seleccionar rango...</option>
-                      {(isLoadingRangos ? [] : (rangos || [])).map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.nombre}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setNuevoRangoOpen((v) => !v)}
-                      style={{ width: 38, borderRadius: 8, border: `1px solid ${RED}`, background: "var(--bg-card)", color: RED, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-                      title="Agregar rango"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-                  {nuevoRangoOpen && (
-                    <div style={{ marginTop: 6, padding: 8, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)" }}>
-                      <input
-                        type="text"
-                        placeholder="Nombre del Nuevo Rango"
-                        value={nuevoRangoNombre}
-                        onChange={(e) => setNuevoRangoNombre(e.target.value)}
-                        style={{ ...inputStyle(false), marginBottom: 6 }}
-                      />
-                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                        <button
-                          type="button"
-                          onClick={() => { setNuevoRangoOpen(false); setNuevoRangoNombre(""); }}
-                          style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCrearRango}
-                          style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: RED, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                        >
-                          Guardar
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {errors.rangoId && <p className="mt-0.5 text-xs text-red-600">{errors.rangoId}</p>}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Teléfono <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="+502 XXXX-XXXX"
-                    value={form.telefono}
-                    onChange={(e) => setField("telefono", e.target.value)}
-                    style={inputStyle(!!errors.telefono)}
-                  />
-                  {errors.telefono && <p className="mt-0.5 text-xs text-red-600">{errors.telefono}</p>}
-</div>
-              </div>
-
-              {/* ── Contacto de Emergencia ── */}
-              <SectionLabel label="Contacto de Emergencia" />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Nombre del Contacto <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Nombre completo"
-                    value={form.contactoEmergencia}
-                    onChange={(e) => setField("contactoEmergencia", e.target.value)}
-                    style={inputStyle(!!errors.contactoEmergencia)}
-                  />
-                  {errors.contactoEmergencia && <p className="mt-0.5 text-xs text-red-600">{errors.contactoEmergencia}</p>}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Teléfono de Emergencia <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="+502 XXXX-XXXX"
-                    value={form.telEmergencia}
-                    onChange={(e) => setField("telEmergencia", e.target.value)}
-                    style={inputStyle(!!errors.telEmergencia)}
-                  />
-                  {errors.telEmergencia && <p className="mt-0.5 text-xs text-red-600">{errors.telEmergencia}</p>}
-                </div>
-              </div>
-
-              {/* ── Credenciales del Sistema (Accordion) ── */}
-              <div style={{ margin: "20px 0 0" }}>
-                <button
-                  type="button"
-                  onClick={() => setCredOpen((o) => !o)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 14px",
-                    borderRadius: credOpen ? "10px 10px 0 0" : 10,
-                    border: "1px solid var(--border)",
-                    borderBottom: credOpen ? "1px solid var(--border)" : "1px solid var(--border)",
-                    background: credOpen ? "var(--bg-input)" : "var(--bg-card)",
-                    cursor: "pointer",
-                    transition: "background 0.15s",
-                  }}
-                >
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    background: credOpen ? "var(--red-bg)" : "var(--bg-hover)",
-                  }}>
-                    <KeyRound size={14} style={{ color: credOpen ? "var(--red)" : "var(--text-3)" }} />
-                  </div>
-                  <div style={{ flex: 1, textAlign: "left" }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: credOpen ? "var(--text-1)" : "var(--text-2)" }}>
-                      Acceso al Sistema
-                    </span>
-                    <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 8 }}>
-                      (opcional)
-                    </span>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", marginRight: 4 }}>
-                    {credOpen ? "Ocultar" : "Gestionar usuario y contraseña"}
-                  </span>
-                  <ChevronDown
-                    size={15}
-                    style={{
-                      color: "var(--text-3)",
-                      transform: credOpen ? "rotate(180deg)" : "rotate(0deg)",
-                      transition: "transform 0.2s",
-                      flexShrink: 0,
-                    }}
-                  />
-                </button>
-
-                {credOpen && (
-                  <div
-                    style={{
-                      borderRadius: "0 0 10px 10px",
-                      border: "1px solid var(--border)",
-                      borderTop: "none",
-                      padding: 16,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 14,
-                      background: "var(--bg-input)",
-                    }}
-                  >
-                    {/* Usuario + Rol */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                          Usuario <span style={{ color: "var(--red)" }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="cgarcia"
-                          value={form.usuario}
-                          onChange={(e) => setField("usuario", e.target.value.toLowerCase().replace(/\s/g, ""))}
-                          style={{ ...inputStyle(!!errors.usuario), fontFamily: "monospace" }}
-                        />
-                        {errors.usuario && <p className="mt-0.5 text-xs text-red-600">{errors.usuario}</p>}
-                      </div>
-
-                      <div>
-                        <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                          Rol del Sistema <span style={{ color: "var(--red)" }}>*</span>
-                        </label>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <select
-                            value={form.rolId}
-                            onChange={(e) => setField("rolId", Number(e.target.value))}
-                            style={{ ...inputStyle(!!errors.rolId), flex: 1 }}
-                          >
-                            <option value={0}>Seleccionar rol...</option>
-                            {(isLoadingRoles ? [] : (roles || [])).map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.nombre}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => setNuevoRolOpen((v) => !v)}
-                            style={{ width: 38, borderRadius: 8, border: `1px solid ${RED}`, background: "var(--bg-card)", color: RED, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-                            title="Agregar rol"
-                          >
-                            <Plus size={16} />
-                          </button>
-                        </div>
-                        {nuevoRolOpen && (
-                          <div style={{ marginTop: 6, padding: 8, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)" }}>
-                            <input
-                              type="text"
-                              placeholder="Nombre del Nuevo Rol"
-                              value={nuevoRolNombre}
-                              onChange={(e) => setNuevoRolNombre(e.target.value)}
-                              style={{ ...inputStyle(false), marginBottom: 6 }}
-                            />
-                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                              <button
-                                type="button"
-                                onClick={() => { setNuevoRolOpen(false); setNuevoRolNombre(""); }}
-                                style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}
-                              >
-                                Cancelar
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleCrearRol}
-                                style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: RED, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                              >
-                                Guardar
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        {errors.rolId && <p className="mt-0.5 text-xs text-red-600">{errors.rolId}</p>}
-                      </div>
-                    </div>
-
-                    {/* Contraseña */}
-                    <div>
-                      <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                        Contraseña Temporal
-                        {!editingId && <span style={{ color: "var(--red)" }}> *</span>}
-                        {editingId && <span style={{ color: "var(--text-3)", fontWeight: 400 }}> (dejar vacío para no cambiar)</span>}
-                      </label>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <div style={{ position: "relative", flex: 1 }}>
-                          <input
-                            type={showPw ? "text" : "password"}
-                            placeholder={editingId ? "Nueva contraseña (opcional)" : "Mínimo 8 caracteres"}
-                            value={form.contrasena}
-                            onChange={(e) => setField("contrasena", e.target.value)}
-                            style={{ ...inputStyle(!!errors.contrasena), fontFamily: "monospace", paddingRight: 36 }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPw((v) => !v)}
-                            style={{
-                              position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
-                              background: "none", border: "none", cursor: "pointer",
-                              color: "var(--text-3)", display: "flex", alignItems: "center",
-                            }}
-                            tabIndex={-1}
-                            title={showPw ? "Ocultar" : "Ver contraseña"}
-                          >
-                            {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const pw = generatePassword();
-                            setForm((prev) => ({ ...prev, contrasena: pw, confirmarContrasena: pw }));
-                            setShowPw(true);
-                          }}
-                          style={{
-                            background: "var(--bg-card)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 8,
-                            padding: 8,
-                            color: "var(--text-3)",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            flexShrink: 0,
-                          }}
-                          title="Generar contraseña aleatoria"
-                        >
-                          <RefreshCw size={15} />
-                        </button>
-                      </div>
-                      {errors.contrasena && <p className="mt-0.5 text-xs text-red-600">{errors.contrasena}</p>}
-                    </div>
-
-                    {/* Confirmar contraseña — solo si se está ingresando una */}
-                    {(form.contrasena.length > 0 || !editingId) && (
-                      <div>
-                        <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                          Confirmar Contraseña {!editingId && <span style={{ color: "var(--red)" }}>*</span>}
-                        </label>
-                        <input
-                          type={showPw ? "text" : "password"}
-                          placeholder="Repetir contraseña"
-                          value={form.confirmarContrasena}
-                          onChange={(e) => setField("confirmarContrasena", e.target.value)}
-                          style={{ ...inputStyle(!!errors.confirmarContrasena), fontFamily: "monospace" }}
-                        />
-                        {errors.confirmarContrasena && <p className="mt-0.5 text-xs text-red-600">{errors.confirmarContrasena}</p>}
-                      </div>
-                    )}
-
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 8,
-                        borderRadius: 8,
-                        border: "1px solid var(--border)",
-                        background: "var(--bg-card)",
-                        padding: "8px 12px",
-                        fontSize: 12,
-                        color: "var(--text-3)",
-                      }}
-                    >
-                      <Shield size={13} style={{ marginTop: 2, flexShrink: 0, color: "var(--text-3)" }} />
-                      <span>
-                        {editingId
-                          ? "Deja la contraseña vacía si no deseas cambiarla. Solo los campos que modifiques serán actualizados."
-                          : "Al crear la cuenta, el bombero recibirá sus credenciales de acceso al sistema."}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal footer */}
-            <div
-              className="flex justify-end gap-2 px-6 py-4"
-              style={{ borderTop: "1px solid var(--border)", background: "var(--bg-input)" }}
-            >
-              <button
-                onClick={closeModal}
-                className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                style={{ border: "1px solid var(--border)", color: "var(--text-2)", background: "var(--bg-card)" }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
-                style={{ background: RED }}
-              >
-                <Check size={15} />
-                {editingId ? "Guardar Cambios" : "Registrar Miembro"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <PersonalForm
+          showModal={showModal}
+          setShowModal={setShowModal}
+          editingId={editingId}
+          setEditingId={setEditingId}
+          form={form}
+          setForm={setForm}
+          errors={errors}
+          setErrors={setErrors}
+          credOpen={credOpen}
+          setCredOpen={setCredOpen}
+          showPw={showPw}
+          setShowPw={setShowPw}
+          rangos={rangos}
+          setRangos={setRangos}
+          roles={roles}
+          setRoles={setRoles}
+          onClose={closeModal}
+          onSubmit={handleSubmit}
+        />
       )}
 
       {/* ── Delete Confirmation ────────────────────────────────────────────────── */}
@@ -1289,15 +650,12 @@ export function PersonalPage() {
         </div>
       )}
 
-      {/* ── View Detail Modal (read-only, no Editar button) ───────────────────── */}
+      {/* ── View Detail Modal (read-only) ───────────────────────────────────── */}
       {viewMember && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
           <div className="w-full max-w-md overflow-hidden rounded-2xl shadow-2xl" style={{ background: "var(--bg-card)" }}>
             {/* Header band */}
-            <div
-              className="flex items-center justify-between px-6 py-4 text-white"
-              style={{ background: RED }}
-            >
+            <div className="flex items-center justify-between px-6 py-4 text-white" style={{ background: RED }}>
               <div>
                 <p className="text-xs font-medium opacity-80">{viewMember.codigo}</p>
                 <h2 className="text-lg font-semibold leading-tight">{viewMember.nombre}</h2>
@@ -1333,11 +691,8 @@ export function PersonalPage() {
               </div>
             </div>
 
-            {/* Footer — close only, no Edit button */}
-            <div
-              className="flex justify-end px-6 pb-5 pt-2"
-              style={{ borderTop: "1px solid var(--divider)" }}
-            >
+            {/* Footer — close only */}
+            <div className="flex justify-end px-6 pb-5 pt-2" style={{ borderTop: "1px solid var(--divider)" }}>
               <button
                 onClick={() => setViewId(null)}
                 className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
@@ -1389,4 +744,41 @@ export function PersonalPage() {
       )}
     </div>
   );
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function miembroToForm(m: Miembro): FormState {
+  const parts = m.nombre.trim().split(/\s+/);
+  let primerNombre = "", segundoNombre = "", primerApellido = "", segundoApellido = "";
+  if (parts.length === 1) { primerNombre = parts[0]; }
+  else if (parts.length === 2) { primerNombre = parts[0]; primerApellido = parts[1]; }
+  else if (parts.length === 3) { primerNombre = parts[0]; primerApellido = parts[1]; segundoApellido = parts[2]; }
+  else { primerNombre = parts[0]; segundoNombre = parts[1]; primerApellido = parts[2]; segundoApellido = parts.slice(3).join(" "); }
+  return {
+    primerNombre, segundoNombre, primerApellido, segundoApellido,
+    dpi: m.dpi, fechaNacimiento: "", codigo: m.codigo, rangoId: m.rangoId,
+    fechaIngreso: m.fechaIngreso, telefono: m.telefono, estado: m.estado,
+    contactoEmergencia: m.contactoEmergencia, telEmergencia: m.telEmergencia,
+    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
+  };
+}
+
+function formToMiembro(f: FormState): Omit<Miembro, "id"> {
+  const nombre = [f.primerNombre, f.segundoNombre, f.primerApellido, f.segundoApellido]
+    .map((s) => s.trim()).filter(Boolean).join(" ");
+  return {
+    codigo: f.codigo.trim(), nombre, dpi: f.dpi.trim(), rangoId: f.rangoId, estado: f.estado,
+    telefono: f.telefono.trim(), contactoEmergencia: f.contactoEmergencia.trim(),
+    telEmergencia: f.telEmergencia.trim(), fechaIngreso: f.fechaIngreso,
+  };
+}
+
+function emptyFormState(): FormState {
+  return {
+    primerNombre: "", segundoNombre: "", primerApellido: "", segundoApellido: "",
+    dpi: "", fechaNacimiento: "", codigo: "", rangoId: 0, fechaIngreso: "",
+    telefono: "", estado: "Activo", contactoEmergencia: "", telEmergencia: "",
+    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
+  };
 }
