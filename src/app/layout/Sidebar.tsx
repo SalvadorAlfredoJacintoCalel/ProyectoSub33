@@ -4,41 +4,8 @@ import svgPaths from "@/imports/DashboardPrincipalDesktop/svg-tul6vfzka5";
 import imgCrossBadge from "@/imports/DashboardPrincipalDesktop/39b842ab5db9edc3f36b77dcb333e6063de137a7.png";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-
-type UserRole = "admin" | "voluntario" | "secretario";
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin: "Administrador",
-  voluntario: "Voluntario",
-  secretario: "Secretario",
-};
-const ROLE_BADGE: Record<UserRole, string> = {
-  admin: "#D32F2F",
-  voluntario: "#1565C0",
-  secretario: "#2E7D32",
-};
-const ROLE_NAV: Record<UserRole, string[]> = {
-  admin: ["bienvenida", "analytics", "emergencias", "inventario", "vehiculos", "finanzas", "donaciones", "personal", "reportes", "seguridad"],
-  voluntario: ["bienvenida", "emergencias", "inventario", "vehiculos"],
-  secretario: ["bienvenida", "emergencias", "personal", "donaciones", "finanzas", "reportes"],
-};
-
-type NavIconDef =
-  | { type: "svg"; vw: number; vh: number; key: keyof typeof svgPaths }
-  | { type: "lucide"; Icon: React.ElementType };
-
-const ALL_NAV: { id: string; label: string; icon: NavIconDef }[] = [
-  { id: "bienvenida", label: "Inicio", icon: { type: "lucide", Icon: () => null } },
-  { id: "analytics", label: "Dashboard", icon: { type: "lucide", Icon: () => null } },
-  { id: "emergencias", label: "Emergencias", icon: { type: "svg", vw: 17.3, vh: 18, key: "p2971ac80" } },
-  { id: "inventario", label: "Inventario", icon: { type: "svg", vw: 20, vh: 20, key: "p643d217" } },
-  { id: "vehiculos", label: "Vehículos", icon: { type: "svg", vw: 22, vh: 18, key: "p127bbf40" } },
-  { id: "finanzas", label: "Finanzas", icon: { type: "svg", vw: 22, vh: 16, key: "p26835240" } },
-  { id: "donaciones", label: "Donaciones", icon: { type: "svg", vw: 21, vh: 20.5, key: "p2897c480" } },
-  { id: "personal", label: "Personal", icon: { type: "svg", vw: 20, vh: 20, key: "p207ea900" } },
-  { id: "reportes", label: "Reportes", icon: { type: "svg", vw: 16, vh: 20, key: "pc679c40" } },
-  { id: "seguridad", label: "Configuración", icon: { type: "svg", vw: 18, vh: 20, key: "pf7fd700" } },
-];
+import { ALL_NAV, type NavIconDef } from "@/constants/navigation";
+import { ROLE_LABELS, ROLE_BADGE, ROLE_NAV } from "@/constants/roles";
 
 const C = {
   sidebarBg: "#1E293B",

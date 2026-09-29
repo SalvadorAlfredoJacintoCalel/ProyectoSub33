@@ -1,50 +1,7 @@
 import { useMemo } from "react";
 import { Search, ChevronLeft, ChevronRight, Eye, Pencil, Trash2 } from "lucide-react";
-
-type RangoItem = {
-  id: number;
-  nombre: string;
-};
-
-type RolItem = {
-  id: number;
-  nombre: string;
-};
-
-interface Miembro {
-  id: string;
-  codigo: string;
-  nombre: string;
-  dpi: string;
-  rangoId: number;
-  rango: string;
-  estado: "Activo" | "Inactivo";
-  telefono: string;
-  contactoEmergencia: string;
-  telEmergencia: string;
-  fechaIngreso: string;
-}
-
-interface FormState {
-  primerNombre: string;
-  segundoNombre: string;
-  primerApellido: string;
-  segundoApellido: string;
-  dpi: string;
-  fechaNacimiento: string;
-  codigo: string;
-  rangoId: number;
-  fechaIngreso: string;
-  telefono: string;
-  estado: "Activo" | "Inactivo";
-  contactoEmergencia: string;
-  telEmergencia: string;
-  usuario: string;
-  correo: string;
-  contrasena: string;
-  confirmarContrasena: string;
-  rolId: number;
-}
+import type { Miembro, RangoItem, RolItem, Estado } from "@/types/personal";
+import { formatDate } from "@/utils/format";
 
 interface TableProps {
   members: Miembro[];
@@ -52,8 +9,8 @@ interface TableProps {
   setSearch: (s: string) => void;
   filterRango: string;
   setFilterRango: (r: string) => void;
-  filterEstado: "Activo" | "Inactivo" | "";
-  setFilterEstado: (e: "Activo" | "Inactivo" | "") => void;
+  filterEstado: Estado | "";
+  setFilterEstado: (e: Estado | "") => void;
   page: number;
   setPage: (p: number) => void;
   totalPages: number;
@@ -63,12 +20,6 @@ interface TableProps {
   onView: (m: Miembro) => void;
   onEdit: (m: Miembro) => void;
   onDelete: (id: string) => void;
-}
-
-function formatDate(iso: string) {
-  if (!iso) return "—";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
 }
 
 export function PersonalTable({ members, search, setSearch, filterRango, setFilterRango, filterEstado, setFilterEstado, page, setPage, totalPages, PAGE_SIZE, rangos, roles, onView, onEdit, onDelete }: TableProps) {
@@ -179,18 +130,4 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
       </table>
     </div>
   );
-}
-
-function useTableMemo(members, search, filterRango, filterEstado, PAGE_SIZE) {
-  const filtered = members.filter((m) => {
-    const q = search.toLowerCase();
-    const matchSearch = !search || m.nombre.toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q) || m.dpi.replace(/\D/g, "").includes(search.replace(/\D/g, ""));
-    const matchRango = !filterRango || m.rango === filterRango;
-    const matchEstado = !filterEstado || m.estado === filterEstado;
-    return matchSearch && matchRango && matchEstado;
-  });
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  return { filtered, totalPages, safePage, pageRows };
 }

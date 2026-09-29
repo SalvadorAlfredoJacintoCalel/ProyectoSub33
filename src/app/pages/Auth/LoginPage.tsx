@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import {
   Eye, EyeOff, User, Lock, LogIn,
   Shield, Flame, Heart, Handshake,
@@ -26,8 +26,8 @@ function IconInput({
   rightSlot,
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement> & {
-  icon: React.ReactNode;
-  rightSlot?: React.ReactNode;
+  icon: ReactNode;
+  rightSlot?: ReactNode;
 }) {
   return (
     <div
@@ -56,7 +56,7 @@ function RedButton({
   onClick,
   type = "submit",
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   onClick?: () => void;
   type?: "submit" | "button";
@@ -157,7 +157,7 @@ function LeftHero() {
 
 // ─── right panel chrome (decorations shared across all steps) ─────────────────
 
-function RightPanel({ children }: { children: React.ReactNode }) {
+function RightPanel({ children }: { children: ReactNode }) {
   return (
     <div
       className="relative flex items-center justify-center overflow-hidden"

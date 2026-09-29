@@ -254,7 +254,7 @@ export function RegisterServicePage({
                 setSaturacion("");
                 setEstadoEntrega("");
                 setUnidad("");
-                setPersonalSeleccionado([]);
+                setPersonalDisponible([]);
                 setFecha(new Date().toISOString().split('T')[0]);
                 setDomicilio("");
                 setHoraToma(new Date().toTimeString().slice(0, 5));

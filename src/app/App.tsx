@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ElementType, type ReactNode } from "react";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
+import { ROLE_LABELS, ROLE_BADGE, ROLE_NAV } from "@/constants/roles";
 import svgPaths from "@/imports/DashboardPrincipalDesktop/svg-tul6vfzka5";
 import imgCrossBadge from "@/imports/DashboardPrincipalDesktop/39b842ab5db9edc3f36b77dcb333e6063de137a7.png";
 import imgCvbLogo from "@/imports/DashboardPrincipalDesktop/382ba90f17ab58630c2735b72b71bff037f7ba87.png";
@@ -52,27 +53,11 @@ const C = {
 
 type UserRole = "admin" | "voluntario" | "secretario";
 
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin:      "Administrador",
-  voluntario: "Voluntario",
-  secretario: "Secretario",
-};
-const ROLE_BADGE: Record<UserRole, string> = {
-  admin:      "#D32F2F",
-  voluntario: "#1565C0",
-  secretario: "#2E7D32",
-};
-const ROLE_NAV: Record<UserRole, string[]> = {
-  admin:      ["bienvenida","analytics","emergencias","inventario","vehiculos","finanzas","donaciones","personal","reportes","seguridad"],
-  voluntario: ["bienvenida","emergencias","inventario","vehiculos"],
-  secretario: ["bienvenida","emergencias","personal","donaciones","finanzas","reportes"],
-};
-
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
 type NavIconDef =
   | { type: "svg"; vw: number; vh: number; key: keyof typeof svgPaths }
-  | { type: "lucide"; Icon: React.ElementType };
+  | { type: "lucide"; Icon: ElementType };
 
 const ALL_NAV: { id: string; label: string; icon: NavIconDef }[] = [
   { id: "bienvenida",  label: "Inicio",         icon: { type: "lucide", Icon: Home }                        },
@@ -145,7 +130,7 @@ function Avatar({ url, initials, size = 32, onClick }: { url?: string | null; in
   );
 }
 
-function QuickCard({ Icon, label, sub, onClick }: { Icon: React.ElementType; label: string; sub: string; onClick: () => void }) {
+function QuickCard({ Icon, label, sub, onClick }: { Icon: ElementType; label: string; sub: string; onClick: () => void }) {
   return (
     <button onClick={onClick} className="flex flex-col items-start gap-3 p-6 rounded-2xl transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left w-full"
       style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
@@ -230,7 +215,7 @@ function AppContent() {
   const initials = (profileForm.nombre[0] + profileForm.apellido[0]).toUpperCase();
   const currentPageLabel = ALL_NAV.find(n => n.id === activeNav)?.label ?? "Inicio";
 
-  function ModuleWrap({ children }: { children: React.ReactNode }) {
+  function ModuleWrap({ children }: { children: ReactNode }) {
     return (
       <div className="flex-1 flex flex-col overflow-hidden" style={{ background: C.pageBg }}>
         {children}

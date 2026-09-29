@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   BarChart,
   Bar,
@@ -216,7 +216,7 @@ function Card({
   children,
   className = "",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   return (
@@ -234,7 +234,7 @@ function SectionTitle({
   title,
   subtitle,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   subtitle?: string;
 }) {
@@ -269,7 +269,7 @@ function StatCard({
   label: string;
   value: string | number;
   sub?: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   color?: string;
 }) {
   return (
@@ -1102,7 +1102,7 @@ function AnalyticasTab() {
               { key: "analytics", label: "Analíticas", icon: <BarChart2 size={14} /> },
               { key: "flota",     label: "Flota de Vehículos", icon: <Truck size={14} /> },
               { key: "combustible", label: "Control de Combustible", icon: <Fuel size={14} /> },
-            ] as { key: VehiculosSubView; label: string; icon: React.ReactNode }[]).map((tab) => (
+            ] as { key: VehiculosSubView; label: string; icon: ReactNode }[]).map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setVehiculosSubView(tab.key)}

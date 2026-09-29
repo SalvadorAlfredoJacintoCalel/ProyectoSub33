@@ -2,19 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
 import { Shield, ChevronDown, Bell, Camera, UserCircle, LogOut, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-
-type UserRole = "admin" | "voluntario" | "secretario";
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin: "Administrador",
-  voluntario: "Voluntario",
-  secretario: "Secretario",
-};
-const ROLE_BADGE: Record<UserRole, string> = {
-  admin: "#D32F2F",
-  voluntario: "#1565C0",
-  secretario: "#2E7D32",
-};
+import { ROLE_LABELS, ROLE_BADGE } from "@/constants/roles";
+import type { UserRole } from "@/constants/roles";
 
 const C = {
   topbarBg: "#FFFFFF",

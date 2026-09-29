@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import {
   Pencil,
   Trash2,
@@ -825,7 +825,7 @@ export function FinanzasPage() {
 function KpiCard({
   icon, label, value, iconBg, iconColor, trend, up,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: number;
   iconBg: string;
@@ -850,7 +850,7 @@ function KpiCard({
 function ActionBtn({
   icon, title, color, onClick,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   color: string;
   onClick: () => void;
@@ -871,7 +871,7 @@ function Field({
 }: {
   label: string;
   error?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div>

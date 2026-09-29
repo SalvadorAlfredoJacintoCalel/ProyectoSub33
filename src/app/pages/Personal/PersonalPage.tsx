@@ -15,48 +15,10 @@ import {
   type CrearPersonalDto,
   type ActualizarPersonalDto,
   type PersonalResponse,
-  type RangoItem,
-  type RolItem,
 } from "../../../services/personalService";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-type Estado = "Activo" | "Inactivo";
-
-interface Miembro {
-  id: string;
-  codigo: string;
-  nombre: string;
-  dpi: string;
-  rangoId: number;
-  rango: string;
-  estado: Estado;
-  telefono: string;
-  contactoEmergencia: string;
-  telEmergencia: string;
-  fechaIngreso: string;
-}
-
-interface FormState {
-  primerNombre: string;
-  segundoNombre: string;
-  primerApellido: string;
-  segundoApellido: string;
-  dpi: string;
-  fechaNacimiento: string;
-  codigo: string;
-  rangoId: number;
-  fechaIngreso: string;
-  telefono: string;
-  estado: Estado;
-  contactoEmergencia: string;
-  telEmergencia: string;
-  usuario: string;
-  correo: string;
-  contrasena: string;
-  confirmarContrasena: string;
-  rolId: number;
-}
+import type { Estado, Miembro, FormState, RangoItem, RolItem } from "@/types/personal";
+import { formatDate } from "@/utils/format";
+import { emptyFormState, miembroToForm, formToMiembro } from "@/utils/formHelpers";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const RED = "#D32F2F";
@@ -66,20 +28,6 @@ const estadoBadge: Record<Estado, string> = {
   Activo: "bg-green-100 text-green-800 border border-green-200",
   Inactivo: "bg-gray-100 text-gray-600 border border-gray-200",
 };
-
-type AlertType = "warning" | "error" | "success";
-
-const alertIconConfig: Record<AlertType, { bg: string; color: string; icon: React.ElementType }> = {
-  warning: { bg: "bg-amber-100", color: "text-amber-600", icon: AlertTriangle },
-  error: { bg: "bg-red-100", color: "text-red-600", icon: X },
-  success: { bg: "bg-green-100", color: "text-green-600", icon: Check },
-};
-
-function formatDate(iso: string) {
-  if (!iso) return "—";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
 
 // ── Shared input style helper ─────────────────────────────────────────────────
 function inputStyle(hasError: boolean) {
@@ -107,16 +55,6 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-function AlertIcon({ type }: { type: AlertType }) {
-  const cfg = alertIconConfig[type];
-  const IconEl = cfg.icon;
-  return (
-    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${cfg.bg}`}>
-      <IconEl className={`h-6 w-6 ${cfg.color}`} />
-    </div>
-  );
-}
-
 // ── Component ──────────────────────────────────────────────────────────────────
 export function PersonalPage() {
   const { role } = useAuth();
@@ -138,7 +76,6 @@ export function PersonalPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "warning" | "error"; message: string } | null>(null);
-  const [alert, setAlert] = useState<{ open: boolean; type: AlertType; title: string; message: string }>({ open: false, type: "warning", title: "", message: "" });
   const [rangos, setRangos] = useState<RangoItem[]>([]);
   const [roles, setRoles] = useState<RolItem[]>([]);
   const [isLoadingRangos, setIsLoadingRangos] = useState(true);
@@ -205,10 +142,6 @@ export function PersonalPage() {
   function showToast(type: "success" | "warning" | "error", message: string) {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3500);
-  }
-
-  function showAlert(type: AlertType, title: string, message: string) {
-    setAlert({ open: true, type, title, message });
   }
 
   function openAddModal() {
@@ -350,30 +283,6 @@ export function PersonalPage() {
             : "Error al conectar con el servidor."
         );
       });
-  }
-
-  function handleAlertAccept() {
-    if (alert.type === "success") {
-      const fechaIngreso = new Date().toISOString().split("T")[0];
-      if (editingId !== null) {
-        setMembers((prev) =>
-          prev.map((m) =>
-            m.id === editingId
-              ? { ...formToMiembro(form), id: editingId, fechaIngreso }
-              : m
-          )
-        );
-      } else {
-        const codigo = form.codigo.trim() || `PER-${Date.now().toString().slice(-6)}`;
-        setMembers((prev) => [
-          { id: Date.now().toString(), ...formToMiembro(form), codigo, fechaIngreso },
-          ...prev,
-        ]);
-      }
-      setForm(emptyFormState());
-      closeModal();
-    }
-    setAlert((prev) => ({ ...prev, open: false }));
   }
 
   function handleDelete() {
@@ -705,80 +614,7 @@ export function PersonalPage() {
         </div>
       )}
 
-      {/* ── Alert Dialog (System Message) ───────────────────────────────────── */}
-      {alert.open && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-2xl border border-gray-200 w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95">
-            {/* Header — Window Caption */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Aviso del Sistema</h2>
-              <button
-                onClick={() => setAlert((prev) => ({ ...prev, open: false }))}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            {/* Body — Icon + Title + Message */}
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                <AlertIcon type={alert.type} />
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{alert.title}</h3>
-                  <p className="text-sm text-gray-600">{alert.message}</p>
-                </div>
-              </div>
-            </div>
-            {/* Footer — Accept button */}
-            <div className="flex justify-end px-4 py-3 border-t border-gray-200">
-              <button
-                onClick={handleAlertAccept}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
-                style={{ background: RED }}
-              >
-                Aceptar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function miembroToForm(m: Miembro): FormState {
-  const parts = m.nombre.trim().split(/\s+/);
-  let primerNombre = "", segundoNombre = "", primerApellido = "", segundoApellido = "";
-  if (parts.length === 1) { primerNombre = parts[0]; }
-  else if (parts.length === 2) { primerNombre = parts[0]; primerApellido = parts[1]; }
-  else if (parts.length === 3) { primerNombre = parts[0]; primerApellido = parts[1]; segundoApellido = parts[2]; }
-  else { primerNombre = parts[0]; segundoNombre = parts[1]; primerApellido = parts[2]; segundoApellido = parts.slice(3).join(" "); }
-  return {
-    primerNombre, segundoNombre, primerApellido, segundoApellido,
-    dpi: m.dpi, fechaNacimiento: "", codigo: m.codigo, rangoId: m.rangoId,
-    fechaIngreso: m.fechaIngreso, telefono: m.telefono, estado: m.estado,
-    contactoEmergencia: m.contactoEmergencia, telEmergencia: m.telEmergencia,
-    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
-  };
-}
-
-function formToMiembro(f: FormState): Omit<Miembro, "id"> {
-  const nombre = [f.primerNombre, f.segundoNombre, f.primerApellido, f.segundoApellido]
-    .map((s) => s.trim()).filter(Boolean).join(" ");
-  return {
-    codigo: f.codigo.trim(), nombre, dpi: f.dpi.trim(), rangoId: f.rangoId, estado: f.estado,
-    telefono: f.telefono.trim(), contactoEmergencia: f.contactoEmergencia.trim(),
-    telEmergencia: f.telEmergencia.trim(), fechaIngreso: f.fechaIngreso,
-  };
-}
-
-function emptyFormState(): FormState {
-  return {
-    primerNombre: "", segundoNombre: "", primerApellido: "", segundoApellido: "",
-    dpi: "", fechaNacimiento: "", codigo: "", rangoId: 0, fechaIngreso: "",
-    telefono: "", estado: "Activo", contactoEmergencia: "", telEmergencia: "",
-    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
-  };
-}

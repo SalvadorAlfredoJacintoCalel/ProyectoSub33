@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { Shield, Lock, Plus, X, Pencil, Trash2, Save } from "lucide-react";
 import { AlertDialog } from "../../components/AlertDialog";
 import {
@@ -109,7 +109,7 @@ function inputStyle(hasError = false): React.CSSProperties {
   };
 }
 
-function Modal({ children, width = 440, onClose }: { children: React.ReactNode; width?: number; onClose: () => void }) {
+function Modal({ children, width = 440, onClose }: { children: ReactNode; width?: number; onClose: () => void }) {
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}
@@ -125,7 +125,7 @@ function Modal({ children, width = 440, onClose }: { children: React.ReactNode; 
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
     <div>
       <label style={{ display: "block", marginBottom: 6, fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>

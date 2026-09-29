@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import {
   Plus,
   Search,
@@ -96,7 +96,7 @@ function KpiCard({
   label: string;
   value: string;
   color: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }) {
   return (
     <div

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import {
   Pencil, Trash2, Eye, Plus, Search, X, Check,
   AlertTriangle, ChevronLeft, ChevronRight, Fuel, Truck,
@@ -1434,7 +1434,7 @@ const closeBtn: React.CSSProperties = {
   background: "none", border: "none", cursor: "pointer", color: MUTED, display: "flex", alignItems: "center", padding: 4, borderRadius: 6,
 };
 
-function Overlay({ children, onClose, wide }: { children: React.ReactNode; onClose: () => void; wide?: boolean }) {
+function Overlay({ children, onClose, wide }: { children: ReactNode; onClose: () => void; wide?: boolean }) {
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}

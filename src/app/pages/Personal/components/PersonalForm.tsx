@@ -1,53 +1,8 @@
 import { Plus, Eye, Pencil, Trash2, Search, X, Check, EyeOff, RefreshCw, KeyRound, Shield, ChevronDown } from "lucide-react";
-import { useState } from "react";
-import {
-  getRangos,
-  crearRango,
-  getRoles,
-  crearRol,
-  type CrearPersonalDto,
-  type ActualizarPersonalDto,
-  type PersonalResponse,
-  type RangoItem,
-  type RolItem,
-} from "../../../services/personalService";
-
-type Estado = "Activo" | "Inactivo";
-
-interface Miembro {
-  id: string;
-  codigo: string;
-  nombre: string;
-  dpi: string;
-  rangoId: number;
-  rango: string;
-  estado: Estado;
-  telefono: string;
-  contactoEmergencia: string;
-  telEmergencia: string;
-  fechaIngreso: string;
-}
-
-interface FormState {
-  primerNombre: string;
-  segundoNombre: string;
-  primerApellido: string;
-  segundoApellido: string;
-  dpi: string;
-  fechaNacimiento: string;
-  codigo: string;
-  rangoId: number;
-  fechaIngreso: string;
-  telefono: string;
-  estado: Estado;
-  contactoEmergencia: string;
-  telEmergencia: string;
-  usuario: string;
-  correo: string;
-  contrasena: string;
-  confirmarContrasena: string;
-  rolId: number;
-}
+import { useState, type ElementType } from "react";
+import type { Estado, Miembro, FormState, RangoItem, RolItem } from "@/types/personal";
+import { formatDate } from "@/utils/format";
+import { emptyFormState, miembroToForm } from "@/utils/formHelpers";
 
 interface FormProps {
   showModal: boolean;
@@ -71,10 +26,10 @@ interface FormProps {
   isLoadingRoles?: boolean;
   onCrearRango?: () => void;
   onCrearRol?: () => void;
+  onSubmit?: () => void;
 }
 
 const RED = "#D32F2F";
-const PAGE_SIZE = 8;
 
 const estadoBadge: Record<Estado, string> = {
   Activo: "bg-green-100 text-green-800 border border-green-200",
@@ -83,17 +38,11 @@ const estadoBadge: Record<Estado, string> = {
 
 type AlertType = "warning" | "error" | "success";
 
-const alertIconConfig: Record<AlertType, { bg: string; color: string; icon: React.ElementType }> = {
+const alertIconConfig: Record<AlertType, { bg: string; color: string; icon: ElementType }> = {
   warning: { bg: "bg-amber-100", color: "text-amber-600", icon: X },
   error: { bg: "bg-red-100", color: "text-red-600", icon: X },
   success: { bg: "bg-green-100", color: "text-green-600", icon: Check },
 };
-
-function formatDate(iso: string) {
-  if (!iso) return "—";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
 
 function slugify(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "");
@@ -102,31 +51,6 @@ function slugify(s: string): string {
 function generatePassword(): string {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-}
-
-function emptyFormState(): FormState {
-  return {
-    primerNombre: "", segundoNombre: "", primerApellido: "", segundoApellido: "",
-    dpi: "", fechaNacimiento: "", codigo: "", rangoId: 0, fechaIngreso: "",
-    telefono: "", estado: "Activo", contactoEmergencia: "", telEmergencia: "",
-    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
-  };
-}
-
-function miembroToForm(m: Miembro): FormState {
-  const parts = m.nombre.trim().split(/\s+/);
-  let primerNombre = "", segundoNombre = "", primerApellido = "", segundoApellido = "";
-  if (parts.length === 1) { primerNombre = parts[0]; }
-  else if (parts.length === 2) { primerNombre = parts[0]; primerApellido = parts[1]; }
-  else if (parts.length === 3) { primerNombre = parts[0]; primerApellido = parts[1]; segundoApellido = parts[2]; }
-  else { primerNombre = parts[0]; segundoNombre = parts[1]; primerApellido = parts[2]; segundoApellido = parts.slice(3).join(" "); }
-  return {
-    primerNombre, segundoNombre, primerApellido, segundoApellido,
-    dpi: m.dpi, fechaNacimiento: "", codigo: m.codigo, rangoId: m.rangoId,
-    fechaIngreso: m.fechaIngreso, telefono: m.telefono, estado: m.estado,
-    contactoEmergencia: m.contactoEmergencia, telEmergencia: m.telEmergencia,
-    usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
-  };
 }
 
 function inputStyle(hasError: boolean) {
@@ -164,7 +88,7 @@ function AlertIcon({ type }: { type: AlertType }) {
   );
 }
 
-export function PersonalForm({ showModal, setShowModal, editingId, setEditingId, form, setForm, errors, setErrors, credOpen, setCredOpen, showPw, setShowPw, rangos, setRangos, roles, setRoles, onClose, isLoadingRangos = false, isLoadingRoles = false, onCrearRango, onCrearRol }: FormProps) {
+export function PersonalForm({ showModal, setShowModal, editingId, setEditingId, form, setForm, errors, setErrors, credOpen, setCredOpen, showPw, setShowPw, rangos, setRangos, roles, setRoles, onClose, isLoadingRangos = false, isLoadingRoles = false, onCrearRango, onCrearRol, onSubmit }: FormProps) {
   const handleCrearRango = onCrearRango ?? (() => {});
   const handleCrearRol = onCrearRol ?? (() => {});
   const [nuevoRangoOpen, setNuevoRangoOpen] = useState(false);
@@ -186,8 +110,9 @@ export function PersonalForm({ showModal, setShowModal, editingId, setEditingId,
   }
 
   function handleSubmit() {
-    // Validation logic will be in Parent
-    // This form just passes data up
+    if (onSubmit) {
+      onSubmit();
+    }
   }
 
   function closeModal() {

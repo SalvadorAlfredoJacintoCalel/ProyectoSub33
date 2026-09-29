@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import {
   Calendar, CheckCircle2, Plus, Search,
   ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown,
@@ -509,7 +509,7 @@ function TypeBadge({ label }: { label: string }) {
   );
 }
 
-function SelectWrapper({ children }: { children: React.ReactNode }) {
+function SelectWrapper({ children }: { children: ReactNode }) {
   return (
     <div className="relative">
       {children}
@@ -531,7 +531,7 @@ function FieldRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function SectionHeading({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-4">
       <span className="font-extrabold text-[12px] tracking-[1.5px] uppercase text-[#1b2e4b]" style={{ fontFamily: "Manrope, sans-serif" }}>
