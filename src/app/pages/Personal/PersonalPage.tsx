@@ -80,10 +80,11 @@ interface DetailModalProps {
   onClose: () => void;
   onUpdate: (id: string, dto: ActualizarPersonalDto) => Promise<void>;
   onActivate: (id: string) => Promise<void>;
+  onDelete: (id: string) => void;
   showToast: (type: "success" | "warning" | "error", message: string) => void;
 }
 
-function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, showToast }: DetailModalProps) {
+function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, onDelete, showToast }: DetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<FormState>(emptyFormState());
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,21 +94,7 @@ function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, sho
 
   useEffect(() => {
     if (member) {
-      const parts = member.nombreCompleto.trim().split(/\s+/);
-      let primerNombre = "", segundoNombre = "", primerApellido = "", segundoApellido = "";
-      if (parts.length === 1) { primerNombre = parts[0]; }
-      else if (parts.length === 2) { primerNombre = parts[0]; primerApellido = parts[1]; }
-      else if (parts.length === 3) { primerNombre = parts[0]; primerApellido = parts[1]; segundoApellido = parts[2]; }
-      else { primerNombre = parts[0]; segundoNombre = parts[1]; primerApellido = parts[2]; segundoApellido = parts.slice(3).join(" "); }
-      setForm({
-        primerNombre, segundoNombre, primerApellido, segundoApellido,
-        dpi: member.dpi, fechaNacimiento: member.fechaNacimiento || "", codigo: member.codigo,
-        rangoId: member.rangoId || 0, fechaIngreso: member.fechaIngreso, telefono: member.telefono,
-        estado: member.estado ? "Activo" : "Inactivo",
-        contactoEmergencia: member.contactoEmergenciaNombre || "", telEmergencia: member.contactoEmergenciaTelefono || "",
-        usuario: member.usuario?.username || "", correo: "", contrasena: "", confirmarContrasena: "",
-        rolId: member.usuario?.rolId || 0,
-      });
+      setForm(miembroToForm(member));
       setIsEditing(false);
       setErrors({});
       setCredOpen(false);
@@ -1039,6 +1026,7 @@ export function PersonalPage() {
         onClose={() => { setViewId(null); setViewMember(null); }}
         onUpdate={handleUpdateFromDetail}
         onActivate={handleActivate}
+        onDelete={(id) => setDeleteId(id)}
         showToast={showToast}
       />
       )}
