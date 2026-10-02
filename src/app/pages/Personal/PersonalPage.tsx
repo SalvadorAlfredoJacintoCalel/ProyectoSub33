@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Search, X, Check, AlertTriangle, Users, Shield, Phone, KeyRound, EyeOff, Pencil, Trash2, Eye } from "lucide-react";
+import { Plus, Search, X, Check, AlertTriangle, Users, Shield, Phone, KeyRound, EyeOff, Pencil, Trash2, Eye, UserCheck, UserX } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { PersonalTable } from "@/app/pages/Personal/components/PersonalTable";
 import { PersonalForm } from "@/app/pages/Personal/components/PersonalForm";
@@ -518,9 +518,9 @@ export function PersonalPage() {
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const totalEfectivos = members.length;
-  const activos = members.filter((m) => m.estado === true).length;
-  const inactivos = members.filter((m) => m.estado === "Inactivo").length;
+const activos = members.filter((m) => m.estado === true).length;
 
+  const inactivos = members.filter((m) => m.estado === false).length;
   // Load rangos, roles, and personal from backend on mount
   useEffect(() => {
     const loadData = async () => {
@@ -860,7 +860,7 @@ export function PersonalPage() {
 
         <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50">
-            <Shield size={20} className="text-green-600" />
+            <UserCheck size={20} className="text-green-600" />
           </div>
           <div>
             <p className="text-xs" style={{ color: "var(--text-3)" }}>Activos</p>
@@ -869,12 +869,12 @@ export function PersonalPage() {
         </div>
 
         <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--bg-input)" }}>
-            <Phone size={20} style={{ color: "var(--text-3)" }} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
+            <UserX size={20} className="text-red-600" />
           </div>
           <div>
             <p className="text-xs" style={{ color: "var(--text-3)" }}>Inactivos</p>
-            <p className="text-2xl font-bold" style={{ color: "var(--text-2)" }}>{inactivos}</p>
+            <p className="text-2xl font-bold text-red-600">{inactivos}</p>
           </div>
         </div>
       </div>
@@ -977,8 +977,11 @@ export function PersonalPage() {
 
       {/* ── Delete Confirmation ────────────────────────────────────────────────── */}
       {deleteId && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
           <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl" style={{ background: "var(--bg-card)" }}>
+            <div className="flex items-center justify-between px-6 py-4 text-white" style={{ background: RED }}>
+              <h3 className="font-semibold" style={{ color: "var(--text-1)" }}>Desactivar Miembro</h3>
+            </div>
             <div className="p-6">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
