@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Search, ChevronLeft, ChevronRight, Eye, Pencil, Trash2 } from "lucide-react";
 import type { Miembro, RangoItem, RolItem, Estado } from "@/types/personal";
 import { formatDate } from "@/utils/format";
 
@@ -18,17 +17,15 @@ interface TableProps {
   rangos: RangoItem[];
   roles: RolItem[];
   onView: (m: Miembro) => void;
-  onEdit: (m: Miembro) => void;
-  onDelete: (id: string) => void;
 }
 
 export function PersonalTable({ members, search, setSearch, filterRango, setFilterRango, filterEstado, setFilterEstado, page, setPage, totalPages, PAGE_SIZE, rangos, roles, onView, onEdit, onDelete }: TableProps) {
   const filtered = useMemo(() => {
     return members.filter((m) => {
       const q = search.toLowerCase();
-      const matchSearch = !search || m.nombre.toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q) || m.dpi.replace(/\D/g, "").includes(search.replace(/\D/g, ""));
-      const matchRango = !filterRango || m.rango === filterRango;
-      const matchEstado = !filterEstado || m.estado === filterEstado;
+      const matchSearch = !search || m.nombreCompleto.toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q) || m.dpi.replace(/\D/g, "").includes(search.replace(/\D/g, ""));
+      const matchRango = !filterRango || m.rangoNombre === filterRango;
+      const matchEstado = !filterEstado || (m.estado ? "Activo" : "Inactivo") === filterEstado;
       return matchSearch && matchRango && matchEstado;
     });
   }, [members, search, filterRango, filterEstado]);
@@ -41,8 +38,8 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr style={{ borderBottom: "1px solid var(--border)" }}>
-            {["Código", "Nombre Completo", "DPI", "Rango", "Estado", "Teléfono", "Contacto Emergencia", "Tel. Emergencia", "Fecha de Ingreso", "Acciones"].map((h) => (
+          <tr key="header" style={{ borderBottom: "1px solid var(--border)" }}>
+            {["Código", "Nombre Completo", "DPI", "Rango", "Estado", "Teléfono", "Contacto Emergencia", "Tel. Emergencia", "Fecha de Ingreso"].map((h) => (
               <th key={h} className="whitespace-nowrap px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-3)" }}>
                 {h}
               </th>
@@ -51,7 +48,7 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
         </thead>
         <tbody>
           {pageRows.length === 0 && (
-            <tr>
+            <tr key="empty">
               <td colSpan={10} className="py-12 text-center text-sm" style={{ color: "var(--text-3)" }}>
                 No se encontraron miembros.
               </td>
@@ -59,71 +56,56 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
           )}
           {pageRows.map((m) => (
             <tr
-              key={m.id}
+              key={m.personalId}
               className="transition-colors"
               style={{ borderBottom: "1px solid var(--divider)" }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold" style={{ color: "var(--text-2)" }}>
-                {m.codigo}
+              <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold">
+                <button
+                  onClick={() => onView(m)}
+                  className="text-inherit hover:text-blue-600 cursor-pointer"
+                  style={{ background: "none", border: "none", padding: 0, font: "inherit" }}
+                >
+                  {m.codigoBombero || "Sin código"}
+                </button>
               </td>
-              <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>
-                {m.nombre}
+              <td className="px-4 py-3 font-medium">
+                <button
+                  onClick={() => onView(m)}
+                  className="text-inherit hover:text-blue-600 cursor-pointer"
+                  style={{ background: "none", border: "none", padding: 0, font: "inherit" }}
+                >
+                  {m.nombreCompleto}
+                </button>
               </td>
               <td className="whitespace-nowrap px-4 py-3 font-mono" style={{ color: "var(--text-2)" }}>
                 {m.dpi}
               </td>
               <td className="px-4 py-3">
                 <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">
-                  {m.rango}
+                  {m.rangoNombre}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${m.estado === "Activo" ? "bg-green-100 text-green-800 border border-green-200" : "bg-gray-100 text-gray-600 border border-gray-200"}`}>
-                  {m.estado}
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${m.estado === true ? "bg-green-100 text-green-800 border border-green-200" : "bg-gray-100 text-gray-600 border border-gray-200"}`}>
+                  {m.estado ? "Activo" : "Inactivo"}
                 </span>
               </td>
               <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
                 {m.telefono}
               </td>
               <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>
-                {m.contactoEmergencia}
+                {m.contactoEmergenciaNombre}
               </td>
               <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
-                {m.telEmergencia}
+                {m.contactoEmergenciaTelefono}
               </td>
               <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
                 {formatDate(m.fechaIngreso)}
               </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => onView(m)}
-                    className="rounded p-1.5 transition-colors hover:bg-blue-50 hover:text-blue-600"
-                    style={{ color: "var(--text-3)" }}
-                    title="Ver"
-                  >
-                    <Eye size={15} />
-                  </button>
-                  <button
-                    onClick={() => onEdit(m)}
-                    className="rounded p-1.5 transition-colors hover:bg-amber-50 hover:text-amber-600"
-                    style={{ color: "var(--text-3)" }}
-                    title="Editar"
-                  >
-                    <Pencil size={15} />
-                  </button>
-                  <button
-                    onClick={() => onDelete(m.id)}
-                    className="rounded p-1.5 transition-colors hover:bg-red-50 hover:text-red-600"
-                    style={{ color: "var(--text-3)" }}
-                    title="Eliminar"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </td>
+              
             </tr>
           ))}
         </tbody>

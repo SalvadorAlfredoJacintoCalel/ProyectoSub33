@@ -62,6 +62,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Rango).HasColumnName("rango").IsRequired().HasMaxLength(50);
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.Rango).IsUnique();
         });
 
         // CatTipoEmergencia
@@ -117,18 +119,23 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Dpi).HasColumnName("dpi").IsRequired().HasMaxLength(20);
             entity.Property(e => e.FechaNacimiento).HasColumnName("fecha_nacimiento").HasColumnType("date");
             entity.Property(e => e.RangoId).HasColumnName("rango_id");
+            entity.Property(e => e.CodigoBombero).HasColumnName("codigo_bombero").HasMaxLength(30);
             entity.Property(e => e.FechaIngreso).HasColumnName("fecha_ingreso").HasColumnType("date");
             entity.Property(e => e.Telefono).HasColumnName("telefono").HasMaxLength(20);
             entity.Property(e => e.Estado).HasColumnName("estado").HasDefaultValue(true);
             entity.Property(e => e.ContactoEmergenciaNombre).HasColumnName("contacto_emergencia_nombre").HasMaxLength(150);
             entity.Property(e => e.ContactoEmergenciaTelefono).HasColumnName("contacto_emergencia_telefono").HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             entity.HasIndex(e => e.Dpi).IsUnique();
+
+            entity.HasIndex(e => e.CodigoBombero).IsUnique();
 
             entity.HasOne(e => e.Rango)
                   .WithMany()
                   .HasForeignKey(e => e.RangoId)
-                  .OnDelete(DeleteBehavior.SetNull)
+                  .OnDelete(DeleteBehavior.Restrict)
                   .HasConstraintName("fk_personal_rango");
         });
 
@@ -164,6 +171,8 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.Nombre).IsUnique();
         });
 
         // UsuarioRol (Many-to-Many)
@@ -183,7 +192,7 @@ public class AppDbContext : DbContext
             entity.HasOne(ur => ur.Rol)
                   .WithMany(r => r.UsuarioRoles)
                   .HasForeignKey(ur => ur.RolId)
-                  .OnDelete(DeleteBehavior.Cascade)
+                  .OnDelete(DeleteBehavior.Restrict)
                   .HasConstraintName("fk_usuario_rol_rol");
         });
 

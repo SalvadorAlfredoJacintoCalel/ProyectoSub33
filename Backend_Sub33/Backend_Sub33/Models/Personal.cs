@@ -36,6 +36,10 @@ public class Personal
     [Column("rango_id")]
     public int? RangoId { get; set; }
 
+    [Column("codigo_bombero")]
+    [MaxLength(30)]
+    public string? CodigoBombero { get; set; }
+
     [Column("fecha_ingreso")]
     public DateTime FechaIngreso { get; set; }
 
@@ -50,6 +54,12 @@ public class Personal
 
     [Column("contacto_emergencia_telefono")]
     public string? ContactoEmergenciaTelefono { get; set; }
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     [ForeignKey("RangoId")]
     public virtual CatRango? Rango { get; set; }

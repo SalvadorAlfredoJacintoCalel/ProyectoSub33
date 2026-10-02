@@ -29,8 +29,8 @@ namespace Backend_Sub33.Controllers
                 return BadRequest("Datos de emergencia inválidos.");
             }
 
-            string numeroIncidente = dto.NumeroIncidente?.Trim();
-            string numeroIncidenteGenerado = null;
+            string? numeroIncidente = dto.NumeroIncidente?.Trim();
+            string? numeroIncidenteGenerado = null;
 
             TimeSpan? horaSalida = TimeSpan.TryParse(dto.HoraSalida, out var hs) ? hs : null;
             TimeSpan? horaEntrada = TimeSpan.TryParse(dto.HoraEntrada, out var he) ? he : null;
@@ -54,16 +54,16 @@ namespace Backend_Sub33.Controllers
                         WHERE numero_incidente LIKE @Pattern 
                         ORDER BY servicio_id DESC 
                         LIMIT 1;";
-                    var ultimoCodigo = await connection.QueryFirstOrDefaultAsync(
+                    var ultimoCodigo = await connection.QueryFirstOrDefaultAsync<string?>(
                         sqlUltimoIncidente,
                         new { Pattern = $"INC-{anioActual}-%" },
                         dbTransaction
                     );
 
                     int siguienteNumero = 1;
-                    if (ultimoCodigo != null && !string.IsNullOrEmpty(ultimoCodigo.ToString()))
+                    if (ultimoCodigo != null && !string.IsNullOrEmpty(ultimoCodigo))
                     {
-                        var partes = ultimoCodigo.ToString().Split('-');
+                        var partes = ultimoCodigo.Split('-');
                         if (partes.Length == 3)
                         {
                             if (int.TryParse(partes[2], out int parsedActual))

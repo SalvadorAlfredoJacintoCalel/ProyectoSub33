@@ -76,6 +76,7 @@ export interface PermisoItem {
 
 export type CatalogoTipo =
   | "rangos"
+  | "roles"
   | "tipos-emergencia"
   | "hospitales"
   | "tipos-unidad"

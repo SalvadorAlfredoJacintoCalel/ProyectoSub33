@@ -1,14 +1,29 @@
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Backend_Sub33.Data;
+using Backend_Sub33.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Base de datos PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSQL")));
+
+// 1.1 Servicios de negocio (DI)
+builder.Services.AddScoped<IPersonalService, PersonalService>();
+builder.Services.AddScoped<IRangoService, RangoService>();
+builder.Services.AddScoped<IRolService, RolService>();
+
+// 1.2 Manejo unificado de errores: no responder automáticamente 400 ante
+//     ModelState inválido (los controllers devuelven ApiResponse estandarizado).
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.SuppressModelStateInvalidFilter = true;
+});
 
 // 2. Configurar Autenticación JWT
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "ClaveSecretaSuperSeguraDe32Caracteres!";
@@ -28,6 +43,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 builder.Services.AddEndpointsApiExplorer();

@@ -1,5 +1,6 @@
 export function formatDate(iso: string): string {
   if (!iso) return "—";
-  const [y, m, d] = iso.split("-");
+  const datePart = iso.split("T")[0];
+  const [y, m, d] = datePart.split("-");
   return `${d}/${m}/${y}`;
 }

@@ -38,6 +38,7 @@ const PARAMETROS_PREDEFINIDOS: { clave: string; label: string; required: boolean
 
 const CATALOGOS_OPCIONES: { key: CatalogoTipo; label: string }[] = [
   { key: "rangos", label: "Rangos" },
+  { key: "roles", label: "Roles del Sistema" },
   { key: "tipos-emergencia", label: "Tipos de Emergencia" },
   { key: "hospitales", label: "Hospitales" },
   { key: "tipos-unidad", label: "Tipos de Unidad" },

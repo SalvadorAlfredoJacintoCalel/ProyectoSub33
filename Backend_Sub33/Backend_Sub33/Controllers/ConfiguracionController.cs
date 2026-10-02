@@ -307,7 +307,7 @@ namespace Backend_Sub33.Controllers
         {
             try
             {
-                var nombre = NormalizarTexto(dto?.Nombre);
+                var nombre = NormalizarTexto(dto.Nombre);
                 if (string.IsNullOrWhiteSpace(nombre))
                 {
                     return BadRequest(new { mensaje = "El nombre del rol es obligatorio" });

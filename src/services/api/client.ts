@@ -10,7 +10,9 @@ function getBaseUrl(): string {
 }
 
 function buildUrl(baseUrl: string, path: string, params?: RequestOptions["params"]): string {
-  const url = new URL(path, baseUrl);
+  const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const url = new URL(`${normalizedBase}${normalizedPath}`);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -49,6 +51,7 @@ export function createApiClient(config?: Partial<ApiClientConfig>): {
   get: <T>(path: string, options?: RequestOptions) => Promise<T>;
   post: <T>(path: string, body: unknown, options?: RequestOptions) => Promise<T>;
   put: <T>(path: string, body: unknown, options?: RequestOptions) => Promise<T>;
+  patch: <T>(path: string, body: unknown, options?: RequestOptions) => Promise<T>;
   delete: <T>(path: string, options?: RequestOptions) => Promise<T>;
 } {
   const baseUrl = config?.baseUrl ?? getBaseUrl();
@@ -87,6 +90,8 @@ export function createApiClient(config?: Partial<ApiClientConfig>): {
       request<T>(path, { ...options, method: "POST", body: JSON.stringify(body) }),
     put: <T>(path: string, body: unknown, options?: RequestOptions) =>
       request<T>(path, { ...options, method: "PUT", body: JSON.stringify(body) }),
+    patch: <T>(path: string, body: unknown, options?: RequestOptions) =>
+      request<T>(path, { ...options, method: "PATCH", body: JSON.stringify(body) }),
     delete: <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "DELETE" }),
   };
 }

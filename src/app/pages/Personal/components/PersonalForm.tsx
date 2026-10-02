@@ -1,4 +1,4 @@
-import { Plus, Eye, Pencil, Trash2, Search, X, Check, EyeOff, RefreshCw, KeyRound, Shield, ChevronDown } from "lucide-react";
+import { Plus, Eye, X, Check, EyeOff, RefreshCw, KeyRound, Shield, ChevronDown } from "lucide-react";
 import { useState, type ElementType } from "react";
 import type { Estado, Miembro, FormState, RangoItem, RolItem } from "@/types/personal";
 import { formatDate } from "@/utils/format";
@@ -254,6 +254,18 @@ export function PersonalForm({ showModal, setShowModal, editingId, setEditingId,
             {/* ── Información de Bombero ── */}
             <SectionLabel label="Información de Bombero" />
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
+                  Código de Bombero <span style={{ color: "var(--text-3)" }}>(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: SEC-001, BVOL-001 (Opcional)"
+                  value={form.codigoBombero}
+                  onChange={(e) => setField("codigoBombero", e.target.value)}
+                  style={{ ...inputStyle(false) }}
+                />
+              </div>
               <div>
                 <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
                   Rango <span style={{ color: RED }}>*</span>

@@ -1,16 +1,17 @@
 export type Estado = "Activo" | "Inactivo";
 
 export interface Miembro {
-  id: string;
+  personalId: string;
   codigo: string;
-  nombre: string;
+  codigoBombero?: string;
+  nombreCompleto: string;
   dpi: string;
-  rangoId: number;
-  rango: string;
-  estado: Estado;
+  rangoId?: number;
+  rangoNombre?: string;
+  estado: boolean;
   telefono: string;
-  contactoEmergencia: string;
-  telEmergencia: string;
+  contactoEmergenciaNombre?: string;
+  contactoEmergenciaTelefono?: string;
   fechaIngreso: string;
 }
 
@@ -22,6 +23,7 @@ export interface FormState {
   dpi: string;
   fechaNacimiento: string;
   codigo: string;
+  codigoBombero: string;
   rangoId: number;
   fechaIngreso: string;
   telefono: string;
@@ -38,9 +40,11 @@ export interface FormState {
 export interface RangoItem {
   id: number;
   nombre: string;
+  descripcion?: string;
 }
 
 export interface RolItem {
   id: number;
   nombre: string;
+  descripcion?: string;
 }
