@@ -129,8 +129,11 @@ function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, onD
     if (!form.contactoEmergencia.trim()) errs.contactoEmergencia = "Nombre del contacto requerido";
     if (!form.telEmergencia.trim()) errs.telEmergencia = "Teléfono de emergencia requerido";
     if (form.rangoId === 0) errs.rangoId = "Rango requerido";
-    if (errs.usuario && !form.usuario.trim()) errs.usuario = "Usuario requerido";
-    if (!form.rolId) errs.rolId = "Rol del sistema requerido";
+    // Solo validar credenciales si el acordeón está abierto
+    if (credOpen) {
+      if (!form.usuario.trim()) errs.usuario = "Usuario requerido";
+      if (!form.rolId) errs.rolId = "Rol del sistema requerido";
+    }
 
     const pwEntered = form.contrasena.length > 0;
     if (pwEntered) {
