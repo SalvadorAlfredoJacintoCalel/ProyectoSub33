@@ -572,6 +572,26 @@ export function PersonalPage() {
     }
   }, []);
 
+  const fetchCatalogos = useCallback(async () => {
+    try {
+      setIsLoadingRangos(true);
+      setIsLoadingRoles(true);
+      const [rangosData, rolesData] = await Promise.all([
+        getRangos(),
+        getRoles(),
+      ]);
+      setRangos(rangosData);
+      setRoles(rolesData);
+    } catch (error) {
+      console.error("Error loading catalogos:", error);
+      setRangos([]);
+      setRoles([]);
+    } finally {
+      setIsLoadingRangos(false);
+      setIsLoadingRoles(false);
+    }
+  }, []);
+
   function showToast(type: "success" | "warning" | "error", message: string) {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3500);
@@ -581,14 +601,14 @@ export function PersonalPage() {
     setEditingId(null);
     setForm(emptyFormState());
     setErrors({});
-    setShowModal(true);
+    fetchCatalogos().then(() => setShowModal(true));
   }
 
   function openEditModal(m: Miembro) {
     setEditingId(m.personalId);
     setForm(miembroToForm(m));
     setErrors({});
-    setShowModal(true);
+    fetchCatalogos().then(() => setShowModal(true));
   }
 
   function closeModal() {

@@ -97,13 +97,14 @@ interface BackendRoleItem {
 
 export const getRangos = async (): Promise<RangoItem[]> => {
   try {
-    const res = await apiClient.get<BackendEnvelope<BackendRangoItem[]>>("/catalogos/rangos");
-    const data = res.data;
+    // Usar endpoint compatible que devuelve {id, nombre} - el array viene directo, sin envelope
+    const res = await apiClient.get<{ id: number; nombre: string }[]>("/catalogos/rangos/select");
+    const data = res;
     if (!Array.isArray(data)) return [];
     return data
       .map((item) => ({
-        id: Number(item.id ?? item.listaId ?? item.lista_id ?? 0),
-        nombre: item.opcion ?? item.nombre ?? "",
+        id: Number(item.id),
+        nombre: item.nombre ?? "",
       }))
       .filter((item) => item.id > 0 && item.nombre);
   } catch (error) {
@@ -125,16 +126,12 @@ export const crearRango = async (nombre: string): Promise<RangoItem> => {
 
 export const getRoles = async (): Promise<RolItem[]> => {
   try {
-    const res = await apiClient.get<BackendEnvelope<BackendRoleItem[]>>("/roles");
-    const data = res.data;
-    const roles = Array.isArray(data) ? data : [];
-    return roles
-      .filter((r) => r && (r.id || r.rolId || r.rol_id))
-      .map((r) => ({
-        id: Number(r.id ?? r.rolId ?? r.rol_id),
-        nombre: r.nombre ?? r.name ?? "",
-        descripcion: r.descripcion,
-      }));
+    // Usar endpoint de configuración que mapea a cat_roles_servicio (3 roles: Admin, Secretario, Voluntario)
+    const res = await apiClient.get<{ id: number; nombre: string; descripcion?: string }[]>(
+      "/configuracion/catalogos/roles"
+    );
+    const data = res;
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Error fetching roles:", error);
     throw error;
@@ -143,8 +140,11 @@ export const getRoles = async (): Promise<RolItem[]> => {
 
 export const crearRol = async (nombre: string): Promise<RolItem> => {
   try {
-    const res = await apiClient.post<BackendEnvelope<{ id: number; nombre: string }>>("/roles", { nombre });
-    const data = res.data;
+    const res = await apiClient.post<{ id: number; nombre: string; descripcion?: string }>(
+      "/configuracion/catalogos/roles",
+      { nombre }
+    );
+    const data = res;
     return { id: Number(data.id), nombre: data.nombre };
   } catch (error) {
     console.error("Error creando rol:", error);

@@ -19,6 +19,15 @@ public class CatalogosController : ApiControllerBase
     public async Task<IActionResult> GetRangos(CancellationToken ct)
         => Respond(await _rangoService.GetActivosAsync(ct));
 
+    [HttpGet("rangos/select")]
+    public async Task<IActionResult> GetRangosForSelect(CancellationToken ct)
+    {
+        var result = await _rangoService.GetActivosAsync(ct);
+        if (!result.IsSuccess) return Respond(result);
+        var data = result.Data?.Select(r => new { id = r.RangoId, nombre = r.Rango }).ToArray() ?? Array.Empty<object>();
+        return Ok(data);
+    }
+
     [HttpPost("rangos")]
     public async Task<IActionResult> CrearRango([FromBody] CreateRangoDto dto, CancellationToken ct)
     {
