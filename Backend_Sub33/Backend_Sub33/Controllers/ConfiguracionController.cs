@@ -28,6 +28,7 @@ namespace Backend_Sub33.Controllers
             ["hospitales"] = new("cat_hospitales", "hospital_id", "nombre", false),
             ["tipos-unidad"] = new("cat_tipos_unidad", "tipo_unidad_id", "nombre", true),
             ["roles-servicio"] = new("cat_roles_servicio", "rol_servicio_id", "nombre", true),
+            ["roles"] = new("cat_roles_servicio", "rol_servicio_id", "nombre", true),
             ["tipos-mantenimiento"] = new("cat_tipos_mantenimiento", "tipo_mantenimiento_id", "nombre", true),
         };
 
