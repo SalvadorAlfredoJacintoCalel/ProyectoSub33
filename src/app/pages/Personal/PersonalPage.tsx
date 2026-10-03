@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Search, X, Check, AlertTriangle, Users, Shield, Phone, KeyRound, EyeOff, Pencil, Trash2, Eye, UserCheck, UserX } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Plus, Search, X, Check, AlertTriangle, Users, Shield, Phone, KeyRound, EyeOff, Pencil, Trash2, Eye, UserCheck, UserX, CheckCircle, AlertCircle, AlertTriangle as AlertTriangleIcon, Info, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { PersonalTable } from "@/app/pages/Personal/components/PersonalTable";
 import { PersonalForm } from "@/app/pages/Personal/components/PersonalForm";
@@ -21,56 +21,16 @@ import {
 import type { Estado, Miembro, FormState, RangoItem, RolItem } from "@/types/personal";
 import { formatDate } from "@/utils/format";
 import { emptyFormState, miembroToForm, formToMiembro } from "@/utils/formHelpers";
+import { useAlert } from "@/app/components/ui/AlertContext";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const RED = "#D32F2F";
+const RED = "#D32F2D";
 const PAGE_SIZE = 8;
 
 const estadoBadge: Record<Estado, string> = {
   Activo: "bg-green-100 text-green-800 border border-green-200",
   Inactivo: "bg-gray-100 text-gray-600 border border-gray-200",
 };
-
-// ── Shared input style helper ─────────────────────────────────────────────────
-function inputStyle(hasError: boolean) {
-  return {
-    width: "100%",
-    background: "var(--bg-input)",
-    color: "var(--text-1)",
-    border: hasError ? "1px solid var(--red)" : "1px solid var(--border)",
-    borderRadius: 8,
-    padding: "8px 12px",
-    fontSize: 13,
-    outline: "none",
-    boxSizing: "border-box" as const,
-  };
-}
-
-function SectionLabel({ label }: { label: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "20px 0 12px", marginTop: 20 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-3)", whiteSpace: "nowrap" }}>
-        {label}
-      </span>
-      <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-    </div>
-  );
-}
-
-// ── Toast Component ────────────────────────────────────────────────────────────
-function Toast({ toast }: { toast: { type: "success" | "warning" | "error"; message: string } | null }) {
-  if (!toast) return null;
-  return (
-    <div
-      className={`fixed top-5 right-5 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-white shadow-lg ${
-        toast.type === "success" ? "bg-green-600" : toast.type === "warning" ? "bg-amber-500" : "bg-red-600"
-      }`}
-    >
-      {toast.type === "success" ? <Check size={16} /> : <AlertTriangle size={16} />}
-      <span className="text-sm font-medium">{toast.message}</span>
-    </div>
-  );
-}
 
 // ── Detail/Edit Modal ──────────────────────────────────────────────────────────
 interface DetailModalProps {
@@ -81,10 +41,10 @@ interface DetailModalProps {
   onUpdate: (id: string, dto: ActualizarPersonalDto) => Promise<void>;
   onActivate: (id: string) => Promise<void>;
   onDelete: (id: string) => void;
-  showToast: (type: "success" | "warning" | "error", message: string) => void;
 }
 
-function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, onDelete, showToast }: DetailModalProps) {
+function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, onDelete }: DetailModalProps) {
+  const { toast } = useAlert();
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<FormState>(emptyFormState());
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -143,7 +103,7 @@ function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, onD
 
     setErrors(errs);
     if (Object.keys(errs).length > 0) {
-      showToast("warning", "Por favor completa los campos obligatorios (*).");
+      toast.warning("Por favor completa los campos obligatorios.");
       return;
     }
 
@@ -184,7 +144,7 @@ function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, onD
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Error desconocido";
       const isDuplicate = msg.includes("duplicate") || msg.includes("duplicado") || msg.includes("DPI") || msg.includes("username") || msg.includes("usuario");
-      showToast("error", isDuplicate ? "El DPI o nombre de usuario ya se encuentra registrado." : msg);
+      toast.error(isDuplicate ? "El DPI o nombre de usuario ya se encuentra registrado." : msg);
     } finally {
       setSaving(false);
     }
@@ -493,7 +453,7 @@ export function PersonalPage() {
   const [viewId, setViewId] = useState<string | null>(null);
   const [viewMember, setViewMember] = useState<PersonalResponse | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [toast, setToast] = useState<{ type: "success" | "warning" | "error"; message: string } | null>(null);
+  const { toast, alert } = useAlert();
   const [rangos, setRangos] = useState<RangoItem[]>([]);
   const [roles, setRoles] = useState<RolItem[]>([]);
   const [isLoadingRangos, setIsLoadingRangos] = useState(true);
@@ -582,11 +542,6 @@ const activos = members.filter((m) => m.estado === true).length;
     }
   }, []);
 
-  function showToast(type: "success" | "warning" | "error", message: string) {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 3500);
-  }
-
   function openAddModal() {
     setEditingId(null);
     setForm(emptyFormState());
@@ -653,7 +608,7 @@ const activos = members.filter((m) => m.estado === true).length;
       (errs.usuario || !form.usuario.trim() || !form.rolId);
 
     if (isMissingKeyFields || Object.keys(errs).length > 0) {
-      showToast("warning", "Por favor completa los campos obligatorios (*).");
+      toast.warning("Por favor completa los campos obligatorios (*).");
       return;
     }
 
@@ -661,7 +616,7 @@ const activos = members.filter((m) => m.estado === true).length;
       (m) => m.dpi.replace(/\D/g, "") === dpiDigits && m.personalId !== editingId
     );
     if (dpiDigits.length !== 13 || isDuplicate) {
-      showToast("error", "El DPI ya se encuentra registrado.");
+      toast.error("El DPI ya se encuentra registrado.");
       return;
     }
 
@@ -691,10 +646,10 @@ const activos = members.filter((m) => m.estado === true).length;
     try {
       if (editingId !== null) {
         await actualizarPersonal(editingId, payload as ActualizarPersonalDto);
-        showToast("success", "Datos actualizados exitosamente.");
+        toast.success("Datos actualizados exitosamente.");
       } else {
         await registrarPersonal(payload as CrearPersonalDto);
-        showToast("success", "Miembro registrado correctamente.");
+        toast.success("Miembro registrado correctamente.");
       }
       setForm(emptyFormState());
       closeModal();
@@ -705,8 +660,7 @@ const activos = members.filter((m) => m.estado === true).length;
       const isDuplicateError =
         msg.includes("duplicate") || msg.includes("duplicado") || msg.includes("DPI") ||
         msg.includes("username") || msg.includes("usuario");
-      showToast(
-        "error",
+      toast.error(
         isDuplicateError
           ? "El DPI o nombre de usuario ya se encuentra registrado."
           : msg
@@ -724,11 +678,11 @@ const activos = members.filter((m) => m.estado === true).length;
       setDeleteId(null);
       setViewId(null);
       setViewMember(null);
-      showToast("success", "Miembro desactivado correctamente.");
+      toast.success("Miembro desactivado correctamente.");
     } catch (error) {
       console.error("Error eliminando personal:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";
-      showToast("error", msg);
+      toast.error(msg);
     }
   }
 
@@ -740,7 +694,7 @@ const activos = members.filter((m) => m.estado === true).length;
       setViewMember(data);
     } catch (error) {
       console.error("Error loading member detail:", error);
-      showToast("error", "No se pudo cargar la información del miembro.");
+      toast.error("No se pudo cargar la información del miembro.");
       setViewId(null);
     } finally {
       setLoadingDetail(false);
@@ -750,7 +704,7 @@ const activos = members.filter((m) => m.estado === true).length;
   async function handleUpdateFromDetail(id: string, dto: ActualizarPersonalDto) {
     try {
       await actualizarPersonal(id, dto);
-      showToast("success", "Datos actualizados exitosamente.");
+      toast.success("Datos actualizados exitosamente.");
       const updated = await getPersonalById(id);
       setViewMember(updated);
       await fetchPersonal();
@@ -764,25 +718,25 @@ const activos = members.filter((m) => m.estado === true).length;
   async function handleActivate(id: string) {
     try {
       await cambiarEstadoPersonal(id, true);
-      showToast("success", "Miembro activado correctamente.");
+      toast.success("Miembro activado correctamente.");
       const updated = await getPersonalById(id);
       setViewMember(updated);
       await fetchPersonal();
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Error desconocido";
-      showToast("error", msg);
+      toast.error(msg);
     }
   }
 
   async function handleCrearRango() {
     const nombre = nuevoRangoNombre.trim();
     if (!nombre) {
-      showToast("warning", "Por favor ingresa el nombre del rango.");
+      toast.warning("Por favor ingresa el nombre del rango.");
       return;
     }
     const existe = rangos.some((r) => r.nombre.toLowerCase() === nombre.toLowerCase());
     if (existe) {
-      showToast("warning", "El rango ya existe en la lista.");
+      toast.warning("El rango ya existe en la lista.");
       return;
     }
     try {
@@ -791,23 +745,23 @@ const activos = members.filter((m) => m.estado === true).length;
       setField("rangoId", nuevo.id);
       setNuevoRangoNombre("");
       setNuevoRangoOpen(false);
-      showToast("success", "Rango agregado correctamente.");
+      toast.success("Rango agregado correctamente.");
     } catch (error) {
       console.error("Error creando rango:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";
-      showToast("error", msg);
+      toast.error(msg);
     }
   }
 
   async function handleCrearRol() {
     const nombre = nuevoRolNombre.trim();
     if (!nombre) {
-      showToast("warning", "Por favor ingresa el nombre del rol.");
+      toast.warning("Por favor ingresa el nombre del rol.");
       return;
     }
     const existe = roles.some((r) => r.nombre.toLowerCase() === nombre.toLowerCase());
     if (existe) {
-      showToast("warning", "El rol ya existe en la lista.");
+      toast.warning("El rol ya existe en la lista.");
       return;
     }
     try {
@@ -816,20 +770,17 @@ const activos = members.filter((m) => m.estado === true).length;
       setField("rolId", nuevo.id);
       setNuevoRolNombre("");
       setNuevoRolOpen(false);
-      showToast("success", "Rol agregado correctamente.");
-    } catch (error) {
-      console.error("Error creando rol:", error);
+      toast.success("Rol agregado correctamente.");
+} catch (error) {
+      console.error("Error eliminando personal:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";
-      showToast("error", msg);
+      toast.error(msg);
     }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
-      <Toast toast={toast} />
-
-      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-1)" }}>
@@ -1033,7 +984,6 @@ const activos = members.filter((m) => m.estado === true).length;
         onUpdate={handleUpdateFromDetail}
         onActivate={handleActivate}
         onDelete={(id) => setDeleteId(id)}
-        showToast={showToast}
       />
       )}
 

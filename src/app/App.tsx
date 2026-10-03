@@ -25,6 +25,7 @@ import {
   Camera, UserCircle, CheckCircle2,
 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { AlertProvider } from "@/app/components/ui/AlertContext";
 
 // ─── Theme colors (light mode only) ──────────────────────────────────────────
 
@@ -813,7 +814,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <AlertProvider>
+        <AppContent />
+      </AlertProvider>
     </AuthProvider>
   );
 }

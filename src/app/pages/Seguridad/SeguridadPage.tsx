@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { Shield, Lock, Plus, X, Pencil, Trash2, Save } from "lucide-react";
-import { AlertDialog } from "../../components/AlertDialog";
+import { useAlert } from "@/app/components/ui/AlertContext";
 import {
   getParametros,
   guardarParametros,
@@ -161,27 +161,7 @@ const btnSecondary: React.CSSProperties = {
 export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [activeTab, setActiveTab] = useState<Tab>("estacion");
 
-  // ── AlertDialog unificado ─────────────────────────────────────────────────────
-  const [dialog, setDialog] = useState<{ open: boolean; type: AlertType; title: string; message: string }>({
-    open: false,
-    type: "warning",
-    title: "",
-    message: "",
-  });
-
-  const mostrarAlerta = useCallback((type: AlertType, title: string, message: string) => {
-    setDialog({ open: true, type, title, message });
-  }, []);
-
-  const manejarError = useCallback((error: unknown) => {
-    if (error instanceof ApiError && error.status === 409) {
-      mostrarAlerta("warning", "Registro Duplicado", "La opción que intenta agregar ya se encuentra registrada.");
-    } else if (error instanceof ApiError && (error.status === 400 || error.status === 404)) {
-      mostrarAlerta("error", "Error al Actualizar", error.message || "No se pudo completar la solicitud.");
-    } else {
-      mostrarAlerta("error", "Error al Actualizar", "No se pudo completar la solicitud. Verifique la conexión con el servidor.");
-    }
-  }, [mostrarAlerta]);
+  const { toast, confirm } = useAlert();
 
   // ── Tab 1: Parámetros de la estación ─────────────────────────────────────────
   const [parametros, setParametros] = useState<ParametroSistema[]>([]);
@@ -306,21 +286,21 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const handleGuardarParametros = async () => {
     const faltante = PARAMETROS_PREDEFINIDOS.some((p) => p.required && !getValor(p.clave).trim());
     if (faltante) {
-      mostrarAlerta("warning", "Campos Incompletos", "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
+      toast.warning("Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
     try {
       await guardarParametros(parametros);
-      mostrarAlerta("success", "Operación Exitosa", "Los cambios se han guardado correctamente.");
+      toast.success("Los cambios se han guardado correctamente.");
       await cargarParametros();
     } catch (error) {
-      manejarError(error);
+      toast.error("Error al guardar los parámetros.");
     }
   };
 
   const handleAgregarParametro = () => {
     if (!nuevaClave.trim() || !nuevoValor.trim()) {
-      mostrarAlerta("warning", "Campos Incompletos", "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
+      toast.warning("Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
     const clave = nuevaClave.trim().toUpperCase().replace(/\s+/g, "_");
@@ -354,7 +334,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const guardarCatalogo = async () => {
     if (!catNombre.trim()) {
       setCatNombreError(true);
-      mostrarAlerta("warning", "Campos Incompletos", "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
+      toast.warning("Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
     try {
@@ -364,10 +344,10 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         await crearCatalogo(catalogoTipo, catNombre.trim(), catDescripcion.trim() || undefined);
       }
       setModalCatalogo(false);
-      mostrarAlerta("success", "Operación Exitosa", "Los cambios se han guardado correctamente.");
+      toast.success("Los cambios se han guardado correctamente.");
       await cargarCatalogo(catalogoTipo);
     } catch (error) {
-      manejarError(error);
+      toast.error("Error al guardar el catálogo.");
     }
   };
 
@@ -376,10 +356,10 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     try {
       await eliminarCatalogo(catalogoTipo, modalEliminar.id);
       setModalEliminar(null);
-      mostrarAlerta("success", "Operación Exitosa", "Los cambios se han guardado correctamente.");
+      toast.success("Los cambios se han guardado correctamente.");
       await cargarCatalogo(catalogoTipo);
     } catch (error) {
-      manejarError(error);
+      toast.error("Error al eliminar el catálogo.");
     }
   };
 
@@ -388,9 +368,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     try {
       await cambiarEstadoUsuario(u.usuarioId, estado);
       setUsuarios((prev) => prev.map((x) => (x.usuarioId === u.usuarioId ? { ...x, estado } : x)));
-      mostrarAlerta("success", "Operación Exitosa", "Los cambios se han guardado correctamente.");
+      toast.success("Los cambios se han guardado correctamente.");
     } catch (error) {
-      manejarError(error);
+      toast.error("Error al cambiar el estado del usuario.");
     }
   };
 
@@ -402,9 +382,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       setUsuarios((prev) =>
         prev.map((x) => (x.usuarioId === u.usuarioId ? { ...x, rolId, rolNombre: rol?.nombre ?? "" } : x))
       );
-      mostrarAlerta("success", "Operación Exitosa", "Los cambios se han guardado correctamente.");
+      toast.success("Los cambios se han guardado correctamente.");
     } catch (error) {
-      manejarError(error);
+      toast.error("Error al cambiar el rol del usuario.");
     }
   };
 
@@ -418,10 +398,10 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     try {
       const permisosAsignados = permisos.filter((p) => p.asignado).map((p) => p.permisoId);
       await guardarPermisosRol(selectedRolId, permisosAsignados);
-      mostrarAlerta("success", "Operación Exitosa", "Los cambios se han guardado correctamente.");
+      toast.success("Los cambios se han guardado correctamente.");
       await cargarPermisos(selectedRolId);
     } catch (error) {
-      manejarError(error);
+      toast.error("Error al guardar los permisos.");
     }
   };
 
@@ -758,14 +738,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         </Modal>
       )}
 
-      {/* ── AlertDialog unificado ── */}
-      <AlertDialog
-        isOpen={dialog.open}
-        onClose={() => setDialog((d) => ({ ...d, open: false }))}
-        title={dialog.title}
-        message={dialog.message}
-        type={dialog.type}
-      />
+      
     </div>
   );
 }
