@@ -26,6 +26,7 @@ namespace Backend_Sub33.Controllers
             ["rangos"] = new("cat_rangos", "rango_id", "rango", true),
             ["tipos-emergencia"] = new("cat_tipos_emergencia", "tipo_emergencia_id", "tipo", true),
             ["hospitales"] = new("cat_hospitales", "hospital_id", "nombre", false),
+            ["unidades"] = new("cat_unidades", "unidad_id", "codigo_unidad", false),
             ["tipos-unidad"] = new("cat_tipos_unidad", "tipo_unidad_id", "nombre", true),
             ["roles-servicio"] = new("cat_roles_servicio", "rol_servicio_id", "nombre", true),
             ["roles"] = new("cat_roles_servicio", "rol_servicio_id", "nombre", true),

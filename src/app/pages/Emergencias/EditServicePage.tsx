@@ -8,8 +8,9 @@ import { AlertDialog } from "@/app/components/AlertDialog";
 import type { PersonalAsignado } from "@/types/emergencia";
 
 interface Props {
+  serviceId: number;
   onClose: () => void;
-  currentUser?: string;
+  onSaved?: () => void;
 }
 
 const sectionLabel: React.CSSProperties = {
@@ -59,8 +60,8 @@ interface PersonalSel {
   rolServicioId: number | null;
 }
 
-export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
-  const { catalogos, cargarCatalogos, getSiguienteIncidente, crearEmergencia } = useEmergencias();
+export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
+  const { catalogos, cargarCatalogos, obtenerEmergencia, actualizarEmergencia } = useEmergencias();
 
   const [numeroIncidente, setNumeroIncidente] = useState("");
   const [tipoSolicitud, setTipoSolicitud] = useState<"Telefónica" | "Personal">("Telefónica");
@@ -89,6 +90,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
   const [fecha, setFecha] = useState(() => new Date().toISOString().split("T")[0]);
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [alertState, setAlertState] = useState<{
     open: boolean;
@@ -102,13 +104,52 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
     let mounted = true;
     (async () => {
       await cargarCatalogos();
-      const correlativo = await getSiguienteIncidente();
-      if (mounted && correlativo) setNumeroIncidente(correlativo);
+      const em = await obtenerEmergencia(serviceId);
+      if (!mounted) return;
+      if (em) {
+        setNumeroIncidente(em.numeroIncidente);
+        setTipoSolicitud(em.solicitudTipo === "Personal" ? "Personal" : "Telefónica");
+        setTiempoSalida(em.horaSalida ?? "");
+        setTiempoLlegada(em.horaEntrada ?? "");
+        setTipoEmergenciaId(em.tipoEmergenciaId ? String(em.tipoEmergenciaId) : "");
+        setTiposAsistencia(em.tiposAsistencia ?? []);
+        setUbicacion(em.ubicacion ?? "");
+        setHospitalDestinoId(em.hospitalDestinoId ? String(em.hospitalDestinoId) : "");
+        setNombrePaciente(em.paciente ?? "");
+        setEdad(em.edad ? String(em.edad) : "");
+        setGenero(em.genero === "No especificado" ? "" : (em.genero ?? ""));
+        setSolicitante(em.solicitante ?? "");
+        setAcompanante(em.acompanante ?? "");
+        setFallecido(em.fallecio ?? false);
+        setDomicilio(em.domicilio ?? "");
+        setEstadoEntrega(em.estadoEntrega ?? "");
+        setUnidadAsignadaId(em.unidadAsignadaId ? String(em.unidadAsignadaId) : "");
+        setResumen(em.resumen ?? "");
+        setFecha(em.fecha ? em.fecha.split("T")[0] : new Date().toISOString().split("T")[0]);
+
+        const sv = em.signosVitales;
+        if (sv) {
+          setPresionArterial(sv.presionArterial ?? "");
+          setFrecuenciaCardiaca(sv.frecuenciaCardiaca ? String(sv.frecuenciaCardiaca) : "");
+          setFrecuenciaRespiratoria(sv.frecuenciaRespiratoria ? String(sv.frecuenciaRespiratoria) : "");
+          setSaturacion(sv.saturacionOxigeno ? String(sv.saturacionOxigeno) : "");
+          setHoraToma(sv.horaToma ?? getNow());
+        }
+
+        setPersonalSeleccionado(
+          (em.personalAsignado ?? []).map((p) => ({
+            personalId: p.personalId ?? null,
+            nombre: p.nombrePersonal,
+            rolServicioId: p.rolServicioId ?? null,
+          }))
+        );
+      }
+      setLoading(false);
     })();
     return () => {
       mounted = false;
     };
-  }, [cargarCatalogos, getSiguienteIncidente]);
+  }, [serviceId, cargarCatalogos, obtenerEmergencia]);
 
   function toggleTipoAsistencia(tipo: string) {
     setTiposAsistencia((prev) =>
@@ -200,22 +241,22 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
           horaToma,
         },
         resumen: resumen || undefined,
-        creadoPorNombre: currentUser || undefined,
       };
 
-      const resultado = await crearEmergencia(dto);
+      const actualizada = await actualizarEmergencia(serviceId, dto);
 
-      if (resultado && resultado.exito) {
-        toast.success("Emergencia registrada", {
-          description: `Incidente ${resultado.numeroIncidente}`,
+      if (actualizada) {
+        toast.success("Cambios guardados", {
+          description: `Incidente ${actualizada.numeroIncidente}`,
         });
+        onSaved?.();
         onClose();
       } else {
         setAlertState({
           open: true,
           type: "error",
-          title: "Error al Registrar",
-          message: "No se pudo registrar la emergencia. Intente nuevamente.",
+          title: "Error al Guardar",
+          message: "No se pudieron guardar los cambios. Intente nuevamente.",
           details: [],
         });
       }
@@ -233,6 +274,17 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
+        <div className="bg-white rounded-2xl p-10 flex flex-col items-center gap-4" style={{ background: "var(--bg-card)" }}>
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--red)" }} />
+          <span style={{ color: "var(--text-2)", fontSize: 14 }}>Cargando emergencia…</span>
+        </div>
+      </div>
+    );
+  }
+
   const selectedIds = new Set(personalSeleccionado.map((p) => p.personalId));
 
   return (
@@ -247,7 +299,6 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
           borderRadius: 24,
         }}
       >
-        {/* Sticky header */}
         <div
           style={{
             background: "var(--bg-input)",
@@ -270,62 +321,29 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 margin: 0,
               }}
             >
-              Registrar Emergencia
+              Editar Emergencia — {numeroIncidente}
             </h1>
           </div>
           <button
             onClick={onClose}
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: 4,
-              color: "var(--text-2)",
-              display: "flex",
-              alignItems: "center",
-            }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, color: "var(--text-2)", display: "flex", alignItems: "center" }}
             aria-label="Cerrar"
           >
             <X style={{ width: 20, height: 20 }} />
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div
-          style={{
-            overflowY: "auto",
-            padding: "24px",
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            gap: 20,
-          }}
-        >
-          {/* 1. Código de Emergencia */}
+        <div style={{ overflowY: "auto", padding: "24px", flex: 1, display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Código */}
           <section>
             <p style={sectionLabel}>Código de Emergencia</p>
             <div style={{ position: "relative" }}>
-              <Lock
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: 15,
-                  height: 15,
-                  color: "var(--text-3)",
-                  pointerEvents: "none",
-                }}
-              />
-              <input
-                readOnly
-                value={numeroIncidente}
-                style={{ ...inputBase, paddingLeft: 32, color: "var(--text-3)", cursor: "default" }}
-              />
+              <Lock style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--text-3)", pointerEvents: "none" }} />
+              <input readOnly value={numeroIncidente} style={{ ...inputBase, paddingLeft: 32, color: "var(--text-3)", cursor: "default" }} />
             </div>
           </section>
 
-          {/* 2. Tipo de Solicitud */}
+          {/* Tipo de Solicitud */}
           <section>
             <p style={sectionLabel}>Tipo de Solicitud</p>
             <div style={{ display: "flex", gap: 8 }}>
@@ -336,26 +354,12 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                     key={tipo}
                     onClick={() => setTipoSolicitud(tipo)}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "8px 16px",
-                      borderRadius: 999,
-                      border: active ? "none" : "1px solid var(--border)",
-                      background: active ? "var(--red)" : "var(--bg-input)",
-                      color: active ? "#fff" : "var(--text-2)",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      transition: "all 0.15s",
+                      display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 999,
+                      border: active ? "none" : "1px solid var(--border)", background: active ? "var(--red)" : "var(--bg-input)",
+                      color: active ? "#fff" : "var(--text-2)", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
                     }}
                   >
-                    {tipo === "Telefónica" ? (
-                      <Phone style={{ width: 14, height: 14 }} />
-                    ) : (
-                      <User style={{ width: 14, height: 14 }} />
-                    )}
+                    {tipo === "Telefónica" ? <Phone style={{ width: 14, height: 14 }} /> : <User style={{ width: 14, height: 14 }} />}
                     {tipo}
                   </button>
                 );
@@ -363,50 +367,28 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             </div>
           </section>
 
-          {/* 3. Tipo de Emergencia */}
+          {/* Tipo de Emergencia */}
           <section>
             <p style={sectionLabel}>
               Tipo de Emergencia
-              {errors.tipoEmergenciaId && (
-                <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
-              )}
+              {errors.tipoEmergenciaId && <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>}
             </p>
             <div style={{ position: "relative" }}>
               <select
                 value={tipoEmergenciaId}
-                onChange={(e) => {
-                  setTipoEmergenciaId(e.target.value);
-                  setErrors((prev) => ({ ...prev, tipoEmergenciaId: false }));
-                }}
-                style={{
-                  ...selectBase,
-                  paddingRight: 32,
-                  boxShadow: errors.tipoEmergenciaId ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
-                }}
+                onChange={(e) => { setTipoEmergenciaId(e.target.value); setErrors((prev) => ({ ...prev, tipoEmergenciaId: false })); }}
+                style={{ ...selectBase, paddingRight: 32, boxShadow: errors.tipoEmergenciaId ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
               >
                 <option value="">Seleccionar tipo de emergencia…</option>
                 {catalogos.tiposEmergencia.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre}
-                  </option>
+                  <option key={t.id} value={t.id}>{t.nombre}</option>
                 ))}
               </select>
-              <ChevronDown
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: 15,
-                  height: 15,
-                  color: "var(--text-3)",
-                  pointerEvents: "none",
-                }}
-              />
+              <ChevronDown style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--text-3)", pointerEvents: "none" }} />
             </div>
           </section>
 
-          {/* 4. Tiempos de Atención */}
+          {/* Tiempos */}
           <section>
             <p style={sectionLabel}>Tiempos de Atención</p>
             <div style={{ display: "flex", gap: 12 }}>
@@ -417,26 +399,10 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 <div key={campo.label} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
                   <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500 }}>{campo.label}</span>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <input
-                      type="time"
-                      value={campo.value}
-                      onChange={(e) => campo.set(e.target.value)}
-                      style={{ ...inputBase, flex: 1, padding: "8px 10px" }}
-                    />
+                    <input type="time" value={campo.value} onChange={(e) => campo.set(e.target.value)} style={{ ...inputBase, flex: 1, padding: "8px 10px" }} />
                     <button
                       onClick={() => campo.set(getNow())}
-                      style={{
-                        padding: "7px 10px",
-                        borderRadius: 6,
-                        border: "1px solid var(--red)",
-                        background: "transparent",
-                        color: "var(--red)",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                        fontFamily: "inherit",
-                      }}
+                      style={{ padding: "7px 10px", borderRadius: 6, border: "1px solid var(--red)", background: "transparent", color: "var(--red)", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}
                     >
                       Ahora
                     </button>
@@ -446,13 +412,11 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             </div>
           </section>
 
-          {/* 5. Tipos de Asistencia */}
+          {/* Tipos de Asistencia */}
           <section>
             <p style={sectionLabel}>
               Tipos de Asistencia
-              {errors.tiposAsistencia && (
-                <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
-              )}
+              {errors.tiposAsistencia && <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>}
             </p>
             {catalogos.tiposEmergencia.length === 0 ? (
               <p style={{ color: "var(--text-2)", fontSize: 12, margin: "8px 0" }}>Sin opciones disponibles</p>
@@ -465,16 +429,9 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                       key={t.id}
                       onClick={() => toggleTipoAsistencia(t.nombre)}
                       style={{
-                        padding: "6px 14px",
-                        borderRadius: 999,
-                        border: selected ? "none" : "1px solid var(--border)",
-                        background: selected ? "var(--red)" : "var(--bg-input)",
-                        color: selected ? "#fff" : "var(--text-2)",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                        transition: "all 0.15s",
+                        padding: "6px 14px", borderRadius: 999, border: selected ? "none" : "1px solid var(--border)",
+                        background: selected ? "var(--red)" : "var(--bg-input)", color: selected ? "#fff" : "var(--text-2)",
+                        fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
                         boxShadow: errors.tiposAsistencia && !selected ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
                       }}
                     >
@@ -486,203 +443,105 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             )}
           </section>
 
-          {/* 6. Ubicación */}
+          {/* Ubicación */}
           <section>
             <p style={sectionLabel}>
               Ubicación del Incidente
-              {errors.ubicacion && (
-                <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
-              )}
+              {errors.ubicacion && <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>}
             </p>
             <div style={{ position: "relative" }}>
-              <MapPin
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: 15,
-                  height: 15,
-                  color: "var(--text-3)",
-                  pointerEvents: "none",
-                }}
-              />
+              <MapPin style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--text-3)", pointerEvents: "none" }} />
               <input
                 type="text"
                 value={ubicacion}
-                onChange={(e) => {
-                  setUbicacion(e.target.value);
-                  setErrors((prev) => ({ ...prev, ubicacion: false }));
-                }}
+                onChange={(e) => { setUbicacion(e.target.value); setErrors((prev) => ({ ...prev, ubicacion: false })); }}
                 placeholder="Aldea, sector o punto de referencia"
-                style={{
-                  ...inputBase,
-                  paddingLeft: 32,
-                  boxShadow: errors.ubicacion ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
-                }}
+                style={{ ...inputBase, paddingLeft: 32, boxShadow: errors.ubicacion ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
               />
             </div>
           </section>
 
-          {/* 7. Hospital de Destino */}
+          {/* Hospital */}
           <section>
             <p style={sectionLabel}>
               Hospital de Destino
-              {errors.hospitalDestinoId && (
-                <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
-              )}
+              {errors.hospitalDestinoId && <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>}
             </p>
             <div style={{ position: "relative" }}>
               <select
                 value={hospitalDestinoId}
-                onChange={(e) => {
-                  setHospitalDestinoId(e.target.value);
-                  setErrors((prev) => ({ ...prev, hospitalDestinoId: false }));
-                }}
-                style={{
-                  ...selectBase,
-                  paddingRight: 32,
-                  boxShadow: errors.hospitalDestinoId ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
-                }}
+                onChange={(e) => { setHospitalDestinoId(e.target.value); setErrors((prev) => ({ ...prev, hospitalDestinoId: false })); }}
+                style={{ ...selectBase, paddingRight: 32, boxShadow: errors.hospitalDestinoId ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
               >
                 <option value="">Seleccionar hospital…</option>
                 {catalogos.hospitales.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.nombre}
-                  </option>
+                  <option key={h.id} value={h.id}>{h.nombre}</option>
                 ))}
               </select>
-              <ChevronDown
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: 15,
-                  height: 15,
-                  color: "var(--text-3)",
-                  pointerEvents: "none",
-                }}
-              />
+              <ChevronDown style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--text-3)", pointerEvents: "none" }} />
             </div>
           </section>
 
-          {/* 8. Datos del Paciente */}
+          {/* Datos del Paciente */}
           <section>
             <p style={sectionLabel}>Datos del Paciente</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Nombre Completo{" "}
-                  {errors.nombrePaciente && <span style={{ color: "var(--red)" }}>*</span>}
+                  Nombre Completo {errors.nombrePaciente && <span style={{ color: "var(--red)" }}>*</span>}
                 </label>
                 <input
                   type="text"
                   value={nombrePaciente}
-                  onChange={(e) => {
-                    setNombrePaciente(e.target.value);
-                    setErrors((prev) => ({ ...prev, nombrePaciente: false }));
-                  }}
+                  onChange={(e) => { setNombrePaciente(e.target.value); setErrors((prev) => ({ ...prev, nombrePaciente: false })); }}
                   placeholder="Nombre del paciente"
-                  style={{
-                    ...inputBase,
-                    boxShadow: errors.nombrePaciente ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
-                  }}
+                  style={{ ...inputBase, boxShadow: errors.nombrePaciente ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
                 />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px" }}>
                 <div>
-                  <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                    Edad
-                  </label>
+                  <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Edad</label>
                   <input
-                    type="number"
-                    inputMode="numeric"
-                    value={edad}
-                    onChange={(e) => {
-                      setEdad(e.target.value);
-                      setErrors((prev) => ({ ...prev, edad: false }));
-                    }}
-                    placeholder="—"
-                    min={0}
-                    max={120}
-                    style={{
-                      ...inputBase,
-                      width: 80,
-                      boxShadow: errors.edad ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
-                    }}
+                    type="number" inputMode="numeric" value={edad}
+                    onChange={(e) => { setEdad(e.target.value); setErrors((prev) => ({ ...prev, edad: false })); }}
+                    placeholder="—" min={0} max={120}
+                    style={{ ...inputBase, width: 80, boxShadow: errors.edad ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                    Género
-                  </label>
+                  <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Género</label>
                   <select value={genero} onChange={(e) => setGenero(e.target.value)} style={{ ...selectBase, paddingRight: 32 }}>
-                    <option value="" disabled>
-                      Seleccione una opción
-                    </option>
+                    <option value="" disabled>Seleccione una opción</option>
                     {OpcionesGenero.map((op) => (
-                      <option key={op} value={op}>
-                        {op}
-                      </option>
+                      <option key={op} value={op}>{op}</option>
                     ))}
                   </select>
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Solicitante
-                </label>
+                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Solicitante</label>
                 <input type="text" value={solicitante} onChange={(e) => setSolicitante(e.target.value)} placeholder="Nombre del solicitante" style={inputBase} />
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Acompañante
-                </label>
+                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Acompañante</label>
                 <input type="text" value={acompanante} onChange={(e) => setAcompanante(e.target.value)} placeholder="Nombre del acompañante" style={inputBase} />
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Domicilio
-                </label>
+                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Domicilio</label>
                 <input type="text" value={domicilio} onChange={(e) => setDomicilio(e.target.value)} placeholder="Domicilio del paciente" style={inputBase} />
               </div>
               <div>
-                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 6 }}>
-                  Fallecido
-                </label>
+                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 6 }}>Fallecido</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     onClick={() => setFallecido(false)}
-                    style={{
-                      padding: "6px 18px",
-                      borderRadius: 999,
-                      border: !fallecido ? "none" : "1px solid var(--border)",
-                      background: !fallecido ? "#16a34a" : "var(--bg-input)",
-                      color: !fallecido ? "#fff" : "var(--text-2)",
-                      fontSize: 13,
-                      fontWeight: !fallecido ? 600 : 400,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      transition: "all 0.15s",
-                    }}
+                    style={{ padding: "6px 18px", borderRadius: 999, border: !fallecido ? "none" : "1px solid var(--border)", background: !fallecido ? "#16a34a" : "var(--bg-input)", color: !fallecido ? "#fff" : "var(--text-2)", fontSize: 13, fontWeight: !fallecido ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}
                   >
                     No
                   </button>
                   <button
                     onClick={() => setFallecido(true)}
-                    style={{
-                      padding: "6px 18px",
-                      borderRadius: 999,
-                      border: fallecido ? "none" : "1px solid var(--border)",
-                      background: fallecido ? "var(--red)" : "var(--bg-input)",
-                      color: fallecido ? "#fff" : "var(--text-2)",
-                      fontSize: 13,
-                      fontWeight: fallecido ? 600 : 400,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      transition: "all 0.15s",
-                    }}
+                    style={{ padding: "6px 18px", borderRadius: 999, border: fallecido ? "none" : "1px solid var(--border)", background: fallecido ? "var(--red)" : "var(--bg-input)", color: fallecido ? "#fff" : "var(--text-2)", fontSize: 13, fontWeight: fallecido ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}
                   >
                     Sí
                   </button>
@@ -691,7 +550,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             </div>
           </section>
 
-          {/* 9. Evaluación / Signos Vitales */}
+          {/* Signos Vitales */}
           <section>
             <p style={sectionLabel}>
               <Heart style={{ width: 13, height: 13, color: "var(--red)" }} />
@@ -699,146 +558,62 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
               <div>
-                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Presión Arterial (mmHg)
-                </label>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Presión Arterial (mmHg)</label>
                 <input type="text" value={presionArterial} onChange={(e) => setPresionArterial(e.target.value)} placeholder="120/80" style={inputBase} />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Frecuencia Cardíaca (BPM)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={frecuenciaCardiaca}
-                  onChange={(e) => {
-                    setFrecuenciaCardiaca(e.target.value);
-                    setErrors((prev) => ({ ...prev, frecuenciaCardiaca: false }));
-                  }}
-                  placeholder="72"
-                  style={{
-                    ...inputBase,
-                    boxShadow: errors.frecuenciaCardiaca ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
-                  }}
-                />
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Frecuencia Cardíaca (BPM)</label>
+                <input type="number" inputMode="numeric" value={frecuenciaCardiaca} onChange={(e) => { setFrecuenciaCardiaca(e.target.value); setErrors((prev) => ({ ...prev, frecuenciaCardiaca: false })); }} placeholder="72" style={{ ...inputBase, boxShadow: errors.frecuenciaCardiaca ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }} />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Frecuencia Respiratoria (resp/min)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={frecuenciaRespiratoria}
-                  onChange={(e) => setFrecuenciaRespiratoria(e.target.value)}
-                  placeholder="16"
-                  style={inputBase}
-                />
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Frecuencia Respiratoria (resp/min)</label>
+                <input type="number" inputMode="numeric" value={frecuenciaRespiratoria} onChange={(e) => setFrecuenciaRespiratoria(e.target.value)} placeholder="16" style={inputBase} />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Saturación de Oxígeno (%SpO₂)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={saturacion}
-                  onChange={(e) => {
-                    setSaturacion(e.target.value);
-                    setErrors((prev) => ({ ...prev, saturacion: false }));
-                  }}
-                  placeholder="98"
-                  style={{
-                    ...inputBase,
-                    boxShadow: errors.saturacion ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
-                  }}
-                />
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Saturación de Oxígeno (%SpO₂)</label>
+                <input type="number" inputMode="numeric" value={saturacion} onChange={(e) => { setSaturacion(e.target.value); setErrors((prev) => ({ ...prev, saturacion: false })); }} placeholder="98" style={{ ...inputBase, boxShadow: errors.saturacion ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }} />
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
-                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Hora de Toma
-                </label>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Hora de Toma</label>
                 <input type="time" value={horaToma} onChange={(e) => setHoraToma(e.target.value)} style={inputBase} />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Estado al Entregar en Hospital
-                </label>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Estado al Entregar en Hospital</label>
                 <div style={{ position: "relative" }}>
-                  <select
-                    value={estadoEntrega}
-                    onChange={(e) => setEstadoEntrega(e.target.value)}
-                    style={{ ...selectBase, paddingRight: 32 }}
-                  >
+                  <select value={estadoEntrega} onChange={(e) => setEstadoEntrega(e.target.value)} style={{ ...selectBase, paddingRight: 32 }}>
                     <option value="">Seleccionar estado…</option>
                     {OpcionesEstadoEntrega.map((op) => (
-                      <option key={op} value={op}>
-                        {op}
-                      </option>
+                      <option key={op} value={op}>{op}</option>
                     ))}
                   </select>
-                  <ChevronDown
-                    style={{
-                      position: "absolute",
-                      right: 10,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      width: 14,
-                      height: 14,
-                      color: "var(--text-3)",
-                      pointerEvents: "none",
-                    }}
-                  />
+                  <ChevronDown style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-3)", pointerEvents: "none" }} />
                 </div>
               </div>
             </div>
           </section>
 
-          {/* 10. Recursos Asignados */}
+          {/* Recursos */}
           <section>
             <p style={sectionLabel}>
               <Truck style={{ width: 13, height: 13 }} />
               Recursos Asignados
             </p>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                Unidad / Vehículo
-              </label>
+              <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Unidad / Vehículo</label>
               <div style={{ position: "relative" }}>
                 <select
                   value={unidadAsignadaId}
-                  onChange={(e) => {
-                    setUnidadAsignadaId(e.target.value);
-                    setErrors((prev) => ({ ...prev, unidadAsignadaId: false }));
-                  }}
-                  style={{
-                    ...selectBase,
-                    paddingRight: 32,
-                    boxShadow: errors.unidadAsignadaId ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
-                  }}
+                  onChange={(e) => { setUnidadAsignadaId(e.target.value); setErrors((prev) => ({ ...prev, unidadAsignadaId: false })); }}
+                  style={{ ...selectBase, paddingRight: 32, boxShadow: errors.unidadAsignadaId ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
                 >
                   <option value="">Seleccionar unidad…</option>
                   {catalogos.unidades.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nombre}
-                    </option>
+                    <option key={u.id} value={u.id}>{u.nombre}</option>
                   ))}
                 </select>
-                <ChevronDown
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    width: 14,
-                    height: 14,
-                    color: "var(--text-3)",
-                    pointerEvents: "none",
-                  }}
-                />
+                <ChevronDown style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-3)", pointerEvents: "none" }} />
               </div>
             </div>
             <div>
@@ -856,49 +631,16 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                       <div
                         key={p.personalId}
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: "6px 10px",
-                          borderRadius: 8,
+                          display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 8,
                           border: selected ? "1px solid var(--red)" : "1px solid var(--border)",
                           background: selected ? "#fef2f2" : "var(--bg-input)",
-                          boxShadow: errors.personalAsignado && !selected ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
                         }}
                       >
                         <button
                           onClick={() => togglePersonal(p.personalId, p.nombreCompleto)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            flex: 1,
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            padding: 0,
-                            color: "var(--text-1)",
-                            fontSize: 13,
-                            fontWeight: 500,
-                            fontFamily: "inherit",
-                          }}
+                          style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", padding: 0, color: "var(--text-1)", fontSize: 13, fontWeight: 500, fontFamily: "inherit" }}
                         >
-                          <span
-                            style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: 4,
-                              border: "1px solid var(--border)",
-                              background: selected ? "var(--red)" : "transparent",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: "#fff",
-                              fontSize: 11,
-                              flexShrink: 0,
-                            }}
-                          >
+                          <span style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid var(--border)", background: selected ? "var(--red)" : "transparent", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, flexShrink: 0 }}>
                             {selected ? "✓" : ""}
                           </span>
                           {p.nombreCompleto}
@@ -911,9 +653,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                           >
                             <option value="">Rol…</option>
                             {catalogos.rolesServicio.map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.nombre}
-                              </option>
+                              <option key={r.id} value={r.id}>{r.nombre}</option>
                             ))}
                           </select>
                         )}
@@ -925,76 +665,34 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             </div>
           </section>
 
-          {/* 11. Resumen */}
+          {/* Resumen */}
           <section>
             <p style={sectionLabel}>Resumen del Incidente</p>
-            <textarea
-              value={resumen}
-              onChange={(e) => setResumen(e.target.value)}
-              rows={3}
-              placeholder="Descripción breve del incidente…"
-              style={{ ...inputBase, resize: "vertical", minHeight: 80 }}
-            />
+            <textarea value={resumen} onChange={(e) => setResumen(e.target.value)} rows={3} placeholder="Descripción breve del incidente…" style={{ ...inputBase, resize: "vertical", minHeight: 80 }} />
           </section>
         </div>
 
-        {/* Sticky footer */}
-        <div
-          style={{
-            background: "var(--bg-card)",
-            borderTop: "1px solid var(--border)",
-            padding: "16px 24px",
-            display: "flex",
-            gap: 12,
-            justifyContent: "flex-end",
-            alignItems: "center",
-            flexShrink: 0,
-          }}
-        >
+        {/* Footer */}
+        <div style={{ background: "var(--bg-card)", borderTop: "1px solid var(--border)", padding: "16px 24px", display: "flex", gap: 12, justifyContent: "flex-end", alignItems: "center", flexShrink: 0 }}>
           <button
             onClick={onClose}
             disabled={submitting}
-            style={{
-              padding: "9px 20px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "transparent",
-              color: "var(--text-2)",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: submitting ? "not-allowed" : "pointer",
-              fontFamily: "inherit",
-              opacity: submitting ? 0.6 : 1,
-            }}
+            style={{ padding: "9px 20px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 14, fontWeight: 500, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: submitting ? 0.6 : 1 }}
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            style={{
-              padding: "9px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: "var(--red)",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: submitting ? "not-allowed" : "pointer",
-              fontFamily: "inherit",
-              opacity: submitting ? 0.7 : 1,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
+            style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: "var(--red)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: submitting ? 0.7 : 1, display: "flex", alignItems: "center", gap: 8 }}
           >
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} />
-                Registrando...
+                Guardando...
               </>
             ) : (
-              "Registrar Emergencia"
+              "Guardar Cambios"
             )}
           </button>
         </div>

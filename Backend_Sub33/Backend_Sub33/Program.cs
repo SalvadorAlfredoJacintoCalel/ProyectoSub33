@@ -17,6 +17,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IPersonalService, PersonalService>();
 builder.Services.AddScoped<IRangoService, RangoService>();
 builder.Services.AddScoped<IRolService, RolService>();
+builder.Services.AddScoped<IEmergenciaService, EmergenciaService>();
+
+// Dapper: mapear columnas snake_case (servicio_id) a propiedades PascalCase (ServicioId)
+Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
 // 1.2 Manejo unificado de errores: no responder automáticamente 400 ante
 //     ModelState inválido (los controllers devuelven ApiResponse estandarizado).

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Backend_Sub33.DTOs;
@@ -17,9 +18,13 @@ public class EmergenciaCreateDto
     public string? Domicilio { get; set; }
     public bool Fallecio { get; set; }
     public string Ubicacion { get; set; } = string.Empty;
+    public int? TipoEmergenciaId { get; set; }
+    public int? HospitalDestinoId { get; set; }
     public string? HospitalDestinoNombre { get; set; }
     public string? EstadoEntrega { get; set; }
+    public int? UnidadAsignadaId { get; set; }
     public string? UnidadAsignadaNombre { get; set; }
+    public Guid? FormuladoPorId { get; set; }
     public string? CreadoPorNombre { get; set; }
     public string? Resumen { get; set; }
     public List<string> TiposAsistencia { get; set; } = new();
@@ -29,7 +34,9 @@ public class EmergenciaCreateDto
 
 public class PersonalAsignadoDto
 {
+    public Guid? PersonalId { get; set; }
     public string NombrePersonal { get; set; } = string.Empty;
+    public int? RolServicioId { get; set; }
     public string RolEnServicio { get; set; } = "Socorrista";
 }
 
