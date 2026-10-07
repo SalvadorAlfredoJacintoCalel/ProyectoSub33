@@ -44,6 +44,9 @@ const CATALOGOS_OPCIONES: { key: CatalogoTipo; label: string }[] = [
   { key: "tipos-unidad", label: "Tipos de Unidad" },
   { key: "roles-servicio", label: "Roles de Servicio" },
   { key: "tipos-mantenimiento", label: "Tipos de Mantenimiento" },
+  { key: "categorias-inventario", label: "Categorías de Inventario" },
+  { key: "proveedores", label: "Proveedores" },
+  { key: "tipos-movimiento", label: "Tipos de Movimiento" },
 ];
 
 function AccessDenied() {

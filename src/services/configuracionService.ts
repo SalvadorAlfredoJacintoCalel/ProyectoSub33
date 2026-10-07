@@ -81,7 +81,10 @@ export type CatalogoTipo =
   | "hospitales"
   | "tipos-unidad"
   | "roles-servicio"
-  | "tipos-mantenimiento";
+  | "tipos-mantenimiento"
+  | "categorias-inventario"
+  | "proveedores"
+  | "tipos-movimiento";
 
 export interface CatalogoItem {
   id: number;
