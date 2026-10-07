@@ -31,6 +31,9 @@ namespace Backend_Sub33.Controllers
             ["roles-servicio"] = new("cat_roles_servicio", "rol_servicio_id", "nombre", true),
             ["roles"] = new("cat_roles_servicio", "rol_servicio_id", "nombre", true),
             ["tipos-mantenimiento"] = new("cat_tipos_mantenimiento", "tipo_mantenimiento_id", "nombre", true),
+            ["categorias-inventario"] = new("cat_categorias_inventario", "categoria_inv_id", "nombre", true),
+            ["proveedores"] = new("cat_proveedores", "proveedor_id", "nombre_empresa", false),
+            ["tipos-movimiento"] = new("cat_tipos_movimiento", "tipo_mov_id", "descripcion", false),
         };
 
         public ConfiguracionController(AppDbContext context, ILogger<ConfiguracionController> logger)

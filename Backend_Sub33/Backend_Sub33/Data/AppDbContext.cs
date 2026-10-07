@@ -21,6 +21,10 @@ public class AppDbContext : DbContext
     public DbSet<CatTipoEmergencia> CatTiposEmergencia { get; set; }
     public DbSet<CatHospital> CatHospitales { get; set; }
     public DbSet<CatUnidad> CatUnidades { get; set; }
+    public DbSet<InventarioItem> InventarioItems { get; set; }
+    public DbSet<InventarioMovimiento> InventarioMovimientos { get; set; }
+    public DbSet<EquipoUnidad> EquipoUnidades { get; set; }
+    public DbSet<ServicioInsumoUtilizado> ServicioInsumosUtilizados { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -235,6 +239,56 @@ public class AppDbContext : DbContext
                   .HasForeignKey(rp => rp.PermisoId)
                   .OnDelete(DeleteBehavior.Cascade)
                   .HasConstraintName("fk_rp_permiso");
+        });
+
+        // InventarioItem
+        modelBuilder.Entity<InventarioItem>(entity =>
+        {
+            entity.ToTable("inventario_items");
+            entity.HasKey(e => e.ItemId);
+            entity.Property(e => e.ItemId).HasColumnName("item_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.CategoriaInvId).HasColumnName("categoria_inv_id").IsRequired();
+            entity.Property(e => e.ProveedorId).HasColumnName("proveedor_id");
+            entity.Property(e => e.CodigoBarras).HasColumnName("codigo_barras").HasMaxLength(100);
+            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.StockActual).HasColumnName("stock_actual").IsRequired();
+            entity.Property(e => e.StockMinimo).HasColumnName("stock_minimo").IsRequired();
+            entity.Property(e => e.UnidadMedida).HasColumnName("unidad_medida").HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+        });
+
+        // InventarioMovimiento
+        modelBuilder.Entity<InventarioMovimiento>(entity =>
+        {
+            entity.ToTable("inventario_movimientos");
+            entity.HasKey(e => e.MovimientoId);
+            entity.Property(e => e.MovimientoId).HasColumnName("movimiento_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.ItemId).HasColumnName("item_id").IsRequired();
+            entity.Property(e => e.TipoMovId).HasColumnName("tipo_mov_id").IsRequired();
+            entity.Property(e => e.Cantidad).HasColumnName("cantidad").IsRequired();
+            entity.Property(e => e.Motivo).HasColumnName("motivo").IsRequired();
+            entity.Property(e => e.ResponsableId).HasColumnName("responsable_id");
+            entity.Property(e => e.FechaHora).HasColumnName("fecha_hora");
+        });
+
+        // EquipoUnidad (clave compuesta)
+        modelBuilder.Entity<EquipoUnidad>(entity =>
+        {
+            entity.ToTable("equipo_unidades");
+            entity.HasKey(e => new { e.UnidadId, e.ItemId });
+            entity.Property(e => e.UnidadId).HasColumnName("unidad_id");
+            entity.Property(e => e.ItemId).HasColumnName("item_id");
+            entity.Property(e => e.CantidadAsignada).HasColumnName("cantidad_asignada").IsRequired();
+        });
+
+        // ServicioInsumoUtilizado (clave compuesta)
+        modelBuilder.Entity<ServicioInsumoUtilizado>(entity =>
+        {
+            entity.ToTable("servicio_insumos_utilizados");
+            entity.HasKey(e => new { e.ServicioId, e.ItemId });
+            entity.Property(e => e.ServicioId).HasColumnName("servicio_id");
+            entity.Property(e => e.ItemId).HasColumnName("item_id");
+            entity.Property(e => e.Cantidad).HasColumnName("cantidad").IsRequired();
         });
     }
 }

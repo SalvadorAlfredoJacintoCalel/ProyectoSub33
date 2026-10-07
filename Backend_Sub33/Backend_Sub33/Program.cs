@@ -18,6 +18,7 @@ builder.Services.AddScoped<IPersonalService, PersonalService>();
 builder.Services.AddScoped<IRangoService, RangoService>();
 builder.Services.AddScoped<IRolService, RolService>();
 builder.Services.AddScoped<IEmergenciaService, EmergenciaService>();
+builder.Services.AddScoped<IInventarioService, InventarioService>();
 
 // Dapper: mapear columnas snake_case (servicio_id) a propiedades PascalCase (ServicioId)
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
