@@ -295,10 +295,15 @@ CREATE TABLE cat_tipos_asistencia (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Datos del formato físico de la hoja de servicio
 INSERT INTO cat_tipos_asistencia (nombre) VALUES
-('Quemado'), ('Fractura'), ('Herida'), ('Intoxicación'), ('Ahogamiento'),
-('Parto'), ('Paro Cardíaco'), ('Shock'), ('Hemorragia'), ('Traumatismo'),
-('Químico'), ('Eléctrico'), ('Mordedura'), ('Picadura'), ('Otro');
+('Maternidad'),
+('Accidente de tránsito'),
+('Accidente de trabajo'),
+('Servicio Social'),
+('Prevención'),
+('Capacitación'),
+('Otros');
 ```
 
 ### 4.2 Backend — Registrar en ConfiguracionController
@@ -312,14 +317,80 @@ En `src/hooks/useEmergencias.ts`:
 - Agregar `tiposAsistencia: CatalogoItem[]` al estado de catalogos
 - Cargar en `loadCatalogos()`: `getCatalogo("tipos-asistencia")`
 
-### 4.4 Frontend — Corregir RegisterServicePage.tsx
-En la sección 5 (Tipos Asistencia), cambiar:
-```tsx
-// ANTES (incorrecto):
-{catalogos.tiposEmergencia.map((t) => { ... })}
+### 4.4 Frontend — Input libre con autocomplete (RegisterServicePage.tsx)
 
-// DESPUÉS (correcto):
-{catalogos.tiposAsistencia.map((t) => { ... })}
+Reemplazar la sección 5 completa (líneas 449-487) con:
+
+```tsx
+{/* 5. Tipos de Asistencia — Input libre con sugerencias */}
+<section>
+  <p style={sectionLabel}>
+    Tipos de Asistencia
+    {errors.tiposAsistencia && (
+      <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
+    )}
+  </p>
+
+  {/* Tags seleccionados */}
+  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+    {tiposAsistencia.map((tipo, i) => (
+      <span
+        key={i}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          padding: "4px 10px",
+          borderRadius: 999,
+          background: "var(--red)",
+          color: "#fff",
+          fontSize: 12,
+          fontWeight: 500,
+        }}
+      >
+        {tipo}
+        <button
+          onClick={() => setTiposAsistencia(tiposAsistencia.filter((_, j) => j !== i))}
+          style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 0 }}
+        >
+          <X size={12} />
+        </button>
+      </span>
+    ))}
+  </div>
+
+  {/* Input con autocomplete */}
+  <input
+    list="tiposAsistenciaList"
+    value={nuevoTipoAsistencia}
+    onChange={e => setNuevoTipoAsistencia(e.target.value)}
+    onKeyDown={e => {
+      if (e.key === 'Enter' && nuevoTipoAsistencia.trim()) {
+        e.preventDefault();
+        const valor = nuevoTipoAsistencia.trim();
+        if (!tiposAsistencia.includes(valor)) {
+          setTiposAsistencia([...tiposAsistencia, valor]);
+        }
+        setNuevoTipoAsistencia('');
+        setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
+      }
+    }}
+    placeholder="Escriba y presione Enter para agregar..."
+    style={{ ...inputBase, boxShadow: errors.tiposAsistencia ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
+  />
+  <datalist id="tiposAsistenciaList">
+    {catalogos.tiposAsistencia
+      .filter(t => !tiposAsistencia.includes(t.nombre))
+      .map(t => <option key={t.id} value={t.nombre} />)
+    }
+  </datalist>
+</section>
+```
+
+### 4.5 Estado adicional en RegisterServicePage.tsx
+
+```tsx
+const [nuevoTipoAsistencia, setNuevoTipoAsistencia] = useState("");
 ```
 
 ---

@@ -70,6 +70,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
   const [tiempoLlegada, setTiempoLlegada] = useState("");
   const [tipoEmergenciaId, setTipoEmergenciaId] = useState("");
   const [tiposAsistencia, setTiposAsistencia] = useState<string[]>([]);
+  const [nuevoTipoAsistencia, setNuevoTipoAsistencia] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [hospitalDestinoId, setHospitalDestinoId] = useState("");
   const [nombrePaciente, setNombrePaciente] = useState("");
@@ -465,7 +466,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             </div>
           </section>
 
-          {/* 5. Tipos de Asistencia */}
+          {/* 5. Tipos de Asistencia — Input libre con sugerencias */}
           <section>
             <p style={sectionLabel}>
               Tipos de Asistencia
@@ -473,36 +474,72 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
               )}
             </p>
-            {catalogos.tiposAsistencia.length === 0 ? (
-              <p style={{ color: "var(--text-2)", fontSize: 12, margin: "8px 0" }}>Sin opciones disponibles</p>
-            ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {catalogos.tiposAsistencia.map((t) => {
-                  const selected = tiposAsistencia.includes(t.nombre);
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => toggleTipoAsistencia(t.nombre)}
-                      style={{
-                        padding: "6px 14px",
-                        borderRadius: 999,
-                        border: selected ? "none" : "1px solid var(--border)",
-                        background: selected ? "var(--red)" : "var(--bg-input)",
-                        color: selected ? "#fff" : "var(--text-2)",
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                        transition: "all 0.15s",
-                        boxShadow: errors.tiposAsistencia && !selected ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
-                      }}
-                    >
-                      {t.nombre}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+
+            {/* Tags seleccionados */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+              {tiposAsistencia.map((tipo, i) => (
+                <span
+                  key={i}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    background: "var(--red)",
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  {tipo}
+                  <button
+                    onClick={() => setTiposAsistencia(tiposAsistencia.filter((_, j) => j !== i))}
+                    style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 0 }}
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            {/* Input con autocomplete automático */}
+            <input
+              list="tiposAsistenciaList"
+              value={nuevoTipoAsistencia}
+              onChange={(e) => {
+                const valor = e.target.value;
+                setNuevoTipoAsistencia(valor);
+                const coincidencia = catalogos.tiposAsistencia.find(
+                  (t) => t.nombre.toLowerCase() === valor.toLowerCase()
+                );
+                if (coincidencia && !tiposAsistencia.includes(coincidencia.nombre)) {
+                  setTiposAsistencia([...tiposAsistencia, coincidencia.nombre]);
+                  setNuevoTipoAsistencia("");
+                  setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && nuevoTipoAsistencia.trim()) {
+                  e.preventDefault();
+                  const valor = nuevoTipoAsistencia.trim();
+                  if (!tiposAsistencia.includes(valor)) {
+                    setTiposAsistencia([...tiposAsistencia, valor]);
+                  }
+                  setNuevoTipoAsistencia("");
+                  setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
+                }
+              }}
+              placeholder="Escriba o seleccione..."
+              style={{ ...inputBase, boxShadow: errors.tiposAsistencia ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
+            />
+            <datalist id="tiposAsistenciaList">
+              {catalogos.tiposAsistencia
+                .filter((t) => !tiposAsistencia.includes(t.nombre))
+                .map((t) => (
+                  <option key={t.id} value={t.nombre} />
+                ))}
+            </datalist>
           </section>
 
           {/* 6. Ubicación */}
