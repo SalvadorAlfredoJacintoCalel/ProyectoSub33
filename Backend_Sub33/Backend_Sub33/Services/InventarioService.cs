@@ -41,6 +41,10 @@ namespace Backend_Sub33.Services
                    i.stock_actual,
                    i.stock_minimo,
                    COALESCE(i.unidad_medida, '') AS unidad_medida,
+                   i.donacion_id,
+                   i.origen,
+                   i.nombre_donante,
+                   i.no_recibo,
                    i.created_at
             FROM inventario_items i
             LEFT JOIN cat_categorias_inventario c ON c.categoria_inv_id = i.categoria_inv_id
@@ -159,8 +163,8 @@ namespace Backend_Sub33.Services
                 }
 
                 var itemId = await connection.QuerySingleAsync<int>(@"
-                    INSERT INTO inventario_items (categoria_inv_id, proveedor_id, codigo_barras, nombre, stock_actual, stock_minimo, unidad_medida, created_at)
-                    VALUES (@CategoriaInvId, @ProveedorId, @CodigoBarras, @Nombre, @StockActual, @StockMinimo, @UnidadMedida, CURRENT_TIMESTAMP)
+                    INSERT INTO inventario_items (categoria_inv_id, proveedor_id, codigo_barras, nombre, stock_actual, stock_minimo, unidad_medida, donacion_id, origen, nombre_donante, no_recibo, created_at)
+                    VALUES (@CategoriaInvId, @ProveedorId, @CodigoBarras, @Nombre, @StockActual, @StockMinimo, @UnidadMedida, @DonacionId, @Origen, @NombreDonante, @NoRecibo, CURRENT_TIMESTAMP)
                     RETURNING item_id;",
                     new
                     {
@@ -170,7 +174,11 @@ namespace Backend_Sub33.Services
                         Nombre = nombre,
                         StockActual = dto.StockActual,
                         StockMinimo = dto.StockMinimo,
-                        UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? "Unidad" : dto.UnidadMedida.Trim()
+                        UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? "Unidad" : dto.UnidadMedida.Trim(),
+                        DonacionId = dto.DonacionId,
+                        Origen = string.IsNullOrWhiteSpace(dto.Origen) ? "Compra Propia" : dto.Origen,
+                        NombreDonante = dto.NombreDonante,
+                        NoRecibo = dto.NoRecibo
                     });
 
                 var creado = await connection.QueryFirstOrDefaultAsync<InventarioItemDto>(
@@ -226,7 +234,11 @@ namespace Backend_Sub33.Services
                         codigo_barras = @CodigoBarras,
                         nombre = @Nombre,
                         stock_minimo = @StockMinimo,
-                        unidad_medida = @UnidadMedida
+                        unidad_medida = @UnidadMedida,
+                        donacion_id = @DonacionId,
+                        origen = @Origen,
+                        nombre_donante = @NombreDonante,
+                        no_recibo = @NoRecibo
                     WHERE item_id = @Id",
                     new
                     {
@@ -236,7 +248,11 @@ namespace Backend_Sub33.Services
                         CodigoBarras = string.IsNullOrWhiteSpace(dto.CodigoBarras) ? null : dto.CodigoBarras.Trim(),
                         Nombre = nombre,
                         StockMinimo = dto.StockMinimo,
-                        UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? "Unidad" : dto.UnidadMedida.Trim()
+                        UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? "Unidad" : dto.UnidadMedida.Trim(),
+                        DonacionId = dto.DonacionId,
+                        Origen = string.IsNullOrWhiteSpace(dto.Origen) ? "Compra Propia" : dto.Origen,
+                        NombreDonante = dto.NombreDonante,
+                        NoRecibo = dto.NoRecibo
                     });
 
                 var actualizado = await connection.QueryFirstOrDefaultAsync<InventarioItemDto>(

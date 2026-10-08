@@ -5,10 +5,12 @@ import {
 import { toast } from "sonner";
 import { AlertDialog } from "@/app/components/AlertDialog";
 import { useInventario } from "@/hooks/useInventario";
+import { donacionService } from "@/services/donacionService";
 import { MovimientosPage } from "@/app/pages/Inventario/MovimientosPage";
 import { EquipoUnidadesPage } from "@/app/pages/Inventario/EquipoUnidadesPage";
 import { ServicioInsumosPage } from "@/app/pages/Inventario/ServicioInsumosPage";
 import type { InventarioItem, InventarioItemCreate, InventarioItemUpdate } from "@/types/inventario";
+import type { Donacion, DonacionCreate } from "@/types/donacion";
 
 const CARD_STYLE: React.CSSProperties = {
   background: "#fff",
@@ -30,6 +32,10 @@ interface ItemFormState {
   stockActual: string;
   stockMinimo: string;
   unidadMedida: string;
+  origen: string;
+  donacionId: string;
+  nombreDonante: string;
+  noRecibo: string;
 }
 
 const EMPTY_FORM: ItemFormState = {
@@ -40,6 +46,10 @@ const EMPTY_FORM: ItemFormState = {
   stockActual: "",
   stockMinimo: "",
   unidadMedida: "",
+  origen: "Compra Propia",
+  donacionId: "",
+  nombreDonante: "",
+  noRecibo: "",
 };
 
 function itemToForm(item: InventarioItem): ItemFormState {
@@ -51,6 +61,10 @@ function itemToForm(item: InventarioItem): ItemFormState {
     stockActual: String(item.stockActual),
     stockMinimo: String(item.stockMinimo),
     unidadMedida: item.unidadMedida,
+    origen: item.origen ?? "Compra Propia",
+    donacionId: item.donacionId ? String(item.donacionId) : "",
+    nombreDonante: item.nombreDonante ?? "",
+    noRecibo: item.noRecibo ?? "",
   };
 }
 
@@ -77,9 +91,82 @@ function ItemsTab() {
     details: string[];
   }>({ open: false, type: "error", title: "", message: "", details: [] });
 
+  // Donaciones (para origen "Donado")
+  const [donacionesMaterial, setDonacionesMaterial] = useState<Donacion[]>([]);
+  const [showDonacionDrawer, setShowDonacionDrawer] = useState(false);
+  const [donacionForm, setDonacionForm] = useState({
+    donante: "",
+    dpiNit: "",
+    telefono: "",
+    categoria: "Insumos Médicos",
+    descripcion: "",
+    cantidad: "1",
+  });
+  const [donacionSaving, setDonacionSaving] = useState(false);
+
+  async function loadDonacionesMaterial() {
+    try {
+      const res = await donacionService.getDonaciones({ tipo: "Material", pagina: 1, tamanio: 100 });
+      setDonacionesMaterial(res.items);
+    } catch {
+      setDonacionesMaterial([]);
+    }
+  }
+
   useEffect(() => {
     loadCatalogos();
+    loadDonacionesMaterial();
   }, [loadCatalogos]);
+
+  function onSelectDonacion(donacionId: string) {
+    const donacion = donacionesMaterial.find((d) => String(d.donacionId) === donacionId);
+    setForm((p) => ({
+      ...p,
+      donacionId,
+      nombreDonante: donacion?.donante ?? "",
+      noRecibo: donacion?.noRecibo ?? "",
+    }));
+  }
+
+  async function handleCrearDonacionRapida() {
+    if (!donacionForm.donante.trim() || !donacionForm.descripcion.trim()) {
+      toast.error("Complete donante y descripción del artículo");
+      return;
+    }
+    setDonacionSaving(true);
+    try {
+      const noRecibo = `REC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100).padStart(3, "0")}`;
+      const dto: DonacionCreate = {
+        tipo: "Material",
+        donante: donacionForm.donante.trim(),
+        dpiNit: donacionForm.dpiNit,
+        telefono: donacionForm.telefono,
+        categoria: donacionForm.categoria,
+        noRecibo,
+        monto: 0,
+        materiales: [
+          { descripcion: donacionForm.descripcion.trim(), cantidad: Number(donacionForm.cantidad) || 1, valorEstimado: 0, categoria: donacionForm.categoria },
+        ],
+      };
+      const creada = await donacionService.createDonacion(dto);
+      toast.success("Donación creada y vinculada");
+      setForm((p) => ({
+        ...p,
+        origen: "Donado",
+        donacionId: String(creada.donacionId),
+        nombreDonante: creada.donante,
+        noRecibo: creada.noRecibo,
+      }));
+      setShowDonacionDrawer(false);
+      setDonacionForm({ donante: "", dpiNit: "", telefono: "", categoria: "Insumos Médicos", descripcion: "", cantidad: "1" });
+      loadDonacionesMaterial();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al crear donación";
+      setAlertState({ open: true, type: "error", title: "Error", message: msg, details: [] });
+    } finally {
+      setDonacionSaving(false);
+    }
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -141,6 +228,10 @@ function ItemsTab() {
           stockActual: Number(form.stockActual),
           stockMinimo: Number(form.stockMinimo),
           unidadMedida: form.unidadMedida.trim(),
+          origen: form.origen || "Compra Propia",
+          donacionId: form.donacionId ? Number(form.donacionId) : null,
+          nombreDonante: form.origen === "Donado" ? form.nombreDonante : undefined,
+          noRecibo: form.origen === "Donado" ? form.noRecibo : undefined,
         };
         await createItem(dto);
         toast.success("Item registrado correctamente");
@@ -152,6 +243,10 @@ function ItemsTab() {
           nombre: form.nombre.trim(),
           stockMinimo: Number(form.stockMinimo),
           unidadMedida: form.unidadMedida.trim(),
+          origen: form.origen || "Compra Propia",
+          donacionId: form.donacionId ? Number(form.donacionId) : null,
+          nombreDonante: form.origen === "Donado" ? form.nombreDonante : undefined,
+          noRecibo: form.origen === "Donado" ? form.noRecibo : undefined,
         };
         await updateItem(modal.item.itemId, dto);
         toast.success("Item actualizado correctamente");
@@ -351,6 +446,60 @@ function ItemsTab() {
                     {errors.stockMinimo && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.stockMinimo}</p>}
                   </div>
                 </div>
+
+                {/* Origen */}
+                <div>
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Origen</label>
+                  <div className="flex gap-2">
+                    {(["Compra Propia", "Donado"] as const).map((o) => (
+                      <button
+                        key={o}
+                        type="button"
+                        onClick={() => setField("origen", o)}
+                        className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition"
+                        style={{
+                          borderColor: form.origen === o ? "var(--red)" : "var(--border, #e4e4e7)",
+                          background: form.origen === o ? "var(--red)" : "var(--bg-input, #fff)",
+                          color: form.origen === o ? "#fff" : "var(--text-2, #71717a)",
+                        }}
+                      >
+                        {o}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {form.origen === "Donado" && (
+                  <div className="rounded-lg border p-3 space-y-3" style={{ borderColor: "var(--border, #e4e4e7)", background: "#f0fdf4" }}>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Donación vinculada</label>
+                      <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.donacionId} onChange={(e) => onSelectDonacion(e.target.value)}>
+                        <option value="">Sin vincular</option>
+                        {donacionesMaterial.map((d) => (
+                          <option key={d.donacionId} value={d.donacionId}>{d.noRecibo} — {d.donante}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Donante</label>
+                        <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.nombreDonante} onChange={(e) => setField("nombreDonante", e.target.value)} placeholder="Nombre del donante" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>No. Recibo</label>
+                        <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.noRecibo} onChange={(e) => setField("noRecibo", e.target.value)} placeholder="No. recibo" />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowDonacionDrawer(true)}
+                      className="flex items-center gap-1 text-xs font-semibold transition"
+                      style={{ color: "var(--red)", background: "transparent", border: "none", cursor: "pointer" }}
+                    >
+                      <Plus size={13} /> Nueva donación
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -363,6 +512,57 @@ function ItemsTab() {
                   {submitting ? "Guardando..." : "Guardar"}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDonacionDrawer && (
+        <div className="fixed inset-0 z-[70]" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setShowDonacionDrawer(false)}>
+          <div
+            className="absolute right-0 top-0 h-full w-full max-w-md shadow-2xl overflow-y-auto"
+            style={{ background: "var(--bg-card, #fff)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border, #e4e4e7)", background: "var(--bg-input, #f8fafc)" }}>
+              <h2 className="text-base font-semibold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>Nueva Donación (Material)</h2>
+              <button onClick={() => setShowDonacionDrawer(false)} className="rounded p-1 hover:bg-gray-100" style={{ color: "#71717a" }}><X size={18} /></button>
+            </div>
+            <div className="space-y-4 px-6 py-5" style={{ fontFamily: "Inter, sans-serif" }}>
+              <div>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Donante <span style={{ color: "var(--red)" }}>*</span></label>
+                <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.donante} onChange={(e) => setDonacionForm((p) => ({ ...p, donante: e.target.value }))} placeholder="Nombre del donante" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>DPI / NIT</label>
+                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.dpiNit} onChange={(e) => setDonacionForm((p) => ({ ...p, dpiNit: e.target.value }))} placeholder="DPI/NIT" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Teléfono</label>
+                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.telefono} onChange={(e) => setDonacionForm((p) => ({ ...p, telefono: e.target.value }))} placeholder="xxxx-xxxx" />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Categoría</label>
+                <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.categoria} onChange={(e) => setDonacionForm((p) => ({ ...p, categoria: e.target.value }))}>
+                  {["Insumos Médicos", "Equipo/Herramientas"].map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Descripción del artículo <span style={{ color: "var(--red)" }}>*</span></label>
+                <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.descripcion} onChange={(e) => setDonacionForm((p) => ({ ...p, descripcion: e.target.value }))} placeholder="Ej. Camillas plegables" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Cantidad</label>
+                <input type="number" min="1" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.cantidad} onChange={(e) => setDonacionForm((p) => ({ ...p, cantidad: e.target.value }))} placeholder="1" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border, #e4e4e7)", background: "var(--bg-input, #f8fafc)", fontFamily: "Inter, sans-serif" }}>
+              <button onClick={() => setShowDonacionDrawer(false)} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50" style={{ borderColor: "var(--border, #e4e4e7)", color: "var(--text-1)" }}>Cancelar</button>
+              <button onClick={handleCrearDonacionRapida} disabled={donacionSaving} className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90" style={{ background: "var(--red)", opacity: donacionSaving ? 0.7 : 1 }}>
+                {donacionSaving ? "Creando..." : "Crear y vincular"}
+              </button>
             </div>
           </div>
         </div>

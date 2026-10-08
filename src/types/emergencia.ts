@@ -34,6 +34,11 @@ export interface PersonalAsignado {
   rolEnServicio?: string;
 }
 
+export interface InsumoEmergenciaDto {
+  itemId: number;
+  cantidad: number;
+}
+
 export interface Emergencia {
   servicioId: number;
   numeroIncidente: string;
@@ -106,6 +111,7 @@ export interface EmergenciaCreate {
   tiposAsistencia: string[];
   personalAsignado: PersonalAsignado[];
   signosVitales?: SignosVitales;
+  insumosUtilizados?: InsumoEmergenciaDto[];
 }
 
 export interface EmergenciaUpdate {

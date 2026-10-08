@@ -15,6 +15,10 @@ public class InventarioItemDto
     public int StockActual { get; set; }
     public int StockMinimo { get; set; }
     public string UnidadMedida { get; set; } = string.Empty;
+    public int? DonacionId { get; set; }
+    public string? Origen { get; set; }
+    public string? NombreDonante { get; set; }
+    public string? NoRecibo { get; set; }
     public DateTime? CreatedAt { get; set; }
 }
 
@@ -27,6 +31,10 @@ public class InventarioItemCreateDto
     public int StockActual { get; set; }
     public int StockMinimo { get; set; }
     public string? UnidadMedida { get; set; }
+    public int? DonacionId { get; set; }
+    public string? Origen { get; set; }
+    public string? NombreDonante { get; set; }
+    public string? NoRecibo { get; set; }
 }
 
 public class InventarioItemUpdateDto
@@ -37,6 +45,10 @@ public class InventarioItemUpdateDto
     public string Nombre { get; set; } = string.Empty;
     public int StockMinimo { get; set; }
     public string? UnidadMedida { get; set; }
+    public int? DonacionId { get; set; }
+    public string? Origen { get; set; }
+    public string? NombreDonante { get; set; }
+    public string? NoRecibo { get; set; }
 }
 
 public class InventarioItemFiltrosDto

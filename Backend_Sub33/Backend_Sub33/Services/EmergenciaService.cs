@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Dapper;
 using Backend_Sub33.Data;
 using Backend_Sub33.DTOs;
+using Backend_Sub33.DTOs.Inventario;
 
 namespace Backend_Sub33.Services
 {
@@ -323,6 +324,47 @@ namespace Backend_Sub33.Services
                               FrecuenciaRespiratoria = dto.SignosVitales.FrecuenciaRespiratoria != null ? (object)dto.SignosVitales.FrecuenciaRespiratoria : DBNull.Value,
                               SaturacionOxigeno = dto.SignosVitales.SaturacionOxigeno != null ? (object)dto.SignosVitales.SaturacionOxigeno : DBNull.Value,
                               HoraToma = horaToma }, transaction);
+                }
+
+                // Procesar insumos utilizados
+                if (dto.InsumosUtilizados != null && dto.InsumosUtilizados.Any())
+                {
+                    foreach (var ins in dto.InsumosUtilizados)
+                    {
+                        var item = await connection.QueryFirstOrDefaultAsync<InventarioItemDto>(
+                            "SELECT item_id, nombre, stock_actual FROM inventario_items WHERE item_id = @ItemId",
+                            new { ins.ItemId }, transaction);
+
+                        if (item == null)
+                            throw new InvalidOperationException($"Item {ins.ItemId} no existe en inventario");
+
+                        if (item.StockActual < ins.Cantidad)
+                            throw new InvalidOperationException($"Stock insuficiente para {item.Nombre}. Disponible: {item.StockActual}, Solicitado: {ins.Cantidad}");
+
+                        await connection.ExecuteAsync(
+                            "UPDATE inventario_items SET stock_actual = stock_actual - @Cantidad WHERE item_id = @ItemId",
+                            new { ins.ItemId, ins.Cantidad }, transaction);
+
+                        var tipoMovId = await connection.QueryFirstOrDefaultAsync<int>(
+                            "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'USO_SERVICIO'",
+                            transaction: transaction);
+
+                        await connection.ExecuteAsync(
+                            @"INSERT INTO inventario_movimientos (item_id, tipo_mov_id, cantidad, motivo, responsable_id, fecha_hora)
+                              VALUES (@ItemId, @TipoMovId, @Cantidad, @Motivo, @ResponsableId, CURRENT_TIMESTAMP)",
+                            new
+                            {
+                                ins.ItemId,
+                                TipoMovId = tipoMovId,
+                                ins.Cantidad,
+                                Motivo = $"Uso en servicio {numeroIncidente}",
+                                ResponsableId = (object?)dto.FormuladoPorId ?? DBNull.Value
+                            }, transaction);
+
+                        await connection.ExecuteAsync(
+                            "INSERT INTO servicio_insumos_utilizados (servicio_id, item_id, cantidad) VALUES (@ServicioId, @ItemId, @Cantidad)",
+                            new { ServicioId = servicioId, ins.ItemId, ins.Cantidad }, transaction);
+                    }
                 }
 
                 transaction.Commit();

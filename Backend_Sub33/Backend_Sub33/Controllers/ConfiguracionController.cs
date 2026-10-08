@@ -34,6 +34,7 @@ namespace Backend_Sub33.Controllers
             ["categorias-inventario"] = new("cat_categorias_inventario", "categoria_inv_id", "nombre", true),
             ["proveedores"] = new("cat_proveedores", "proveedor_id", "nombre_empresa", false),
             ["tipos-movimiento"] = new("cat_tipos_movimiento", "tipo_mov_id", "descripcion", false),
+            ["tipos-asistencia"] = new("cat_tipos_asistencia", "tipo_asistencia_id", "nombre", false),
         };
 
         public ConfiguracionController(AppDbContext context, ILogger<ConfiguracionController> logger)

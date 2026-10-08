@@ -42,6 +42,10 @@ namespace Backend_Sub33.Controllers
                     numeroIncidente = creada.NumeroIncidente
                 });
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { exito = false, mensaje = ex.Message });
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR EMERGENCIAS]: {ex.Message}");

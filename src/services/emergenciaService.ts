@@ -8,6 +8,7 @@ import type {
   Paginacion,
   RegistrarEmergenciaResponse,
   TipoEmergencia,
+  CatalogoItem,
   Hospital,
   Unidad,
   RolServicio,
@@ -32,6 +33,10 @@ interface PersonalEnvelope {
 export const emergenciaService = {
   getTiposEmergencia: async (): Promise<TipoEmergencia[]> => {
     return apiClient.get<TipoEmergencia[]>("/configuracion/catalogos/tipos-emergencia");
+  },
+
+  getTiposAsistencia: async (): Promise<CatalogoItem[]> => {
+    return apiClient.get<CatalogoItem[]>("/configuracion/catalogos/tipos-asistencia");
   },
 
   getHospitales: async (): Promise<Hospital[]> => {

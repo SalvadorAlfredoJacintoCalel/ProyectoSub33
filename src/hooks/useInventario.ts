@@ -9,7 +9,6 @@ import type {
   EquipoUnidad,
   EquipoUnidadCreate,
   ServicioInsumoUtilizado,
-  ServicioInsumoUtilizadoCreate,
   PaginacionInventario,
   InventarioItemFiltros,
   CategoriaInventario,
@@ -52,7 +51,6 @@ interface UseInventarioReturn {
   deleteItem: (id: number) => Promise<void>;
   createMovimiento: (dto: InventarioMovimientoCreate) => Promise<InventarioMovimiento>;
   asignarEquipo: (dto: EquipoUnidadCreate) => Promise<void>;
-  registrarUsoInsumo: (dto: ServicioInsumoUtilizadoCreate) => Promise<void>;
 
   limpiarError: () => void;
 }
@@ -167,10 +165,6 @@ export function useInventario(): UseInventarioReturn {
     return inventarioService.asignarEquipo(dto);
   }, []);
 
-  const registrarUsoInsumo = useCallback(async (dto: ServicioInsumoUtilizadoCreate): Promise<void> => {
-    return inventarioService.registrarUsoInsumo(dto);
-  }, []);
-
   return {
     items,
     movimientos,
@@ -190,7 +184,6 @@ export function useInventario(): UseInventarioReturn {
     deleteItem,
     createMovimiento,
     asignarEquipo,
-    registrarUsoInsumo,
     limpiarError,
   };
 }

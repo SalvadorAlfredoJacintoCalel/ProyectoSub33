@@ -30,6 +30,13 @@ public class EmergenciaCreateDto
     public List<string> TiposAsistencia { get; set; } = new();
     public List<PersonalAsignadoDto> PersonalAsignado { get; set; } = new();
     public SignosVitalesDto? SignosVitales { get; set; }
+    public List<InsumoEmergenciaDto> InsumosUtilizados { get; set; } = new();
+}
+
+public class InsumoEmergenciaDto
+{
+    public int ItemId { get; set; }
+    public int Cantidad { get; set; }
 }
 
 public class PersonalAsignadoDto

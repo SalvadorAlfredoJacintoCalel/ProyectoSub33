@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import {
-  X, Lock, Phone, User, MapPin, ChevronDown, Truck, Heart, Loader2,
+  X, Lock, Phone, User, MapPin, ChevronDown, Truck, Heart, Loader2, Package,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useEmergencias } from "@/hooks/useEmergencias";
+import { inventarioService } from "@/services/inventarioService";
 import { AlertDialog } from "@/app/components/AlertDialog";
 import type { PersonalAsignado } from "@/types/emergencia";
+import type { InventarioItem } from "@/types/inventario";
 
 interface Props {
   onClose: () => void;
@@ -87,6 +89,8 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
   const [personalSeleccionado, setPersonalSeleccionado] = useState<PersonalSel[]>([]);
   const [resumen, setResumen] = useState("");
   const [fecha, setFecha] = useState(() => new Date().toISOString().split("T")[0]);
+  const [insumos, setInsumos] = useState<{ itemId: number; cantidad: number }[]>([]);
+  const [itemsDisponibles, setItemsDisponibles] = useState<InventarioItem[]>([]);
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -109,6 +113,18 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
       mounted = false;
     };
   }, [cargarCatalogos, getSiguienteIncidente]);
+
+  useEffect(() => {
+    let mounted = true;
+    inventarioService.getItems({ pagina: 1, tamanio: 200 }).then((r) => {
+      if (mounted) setItemsDisponibles(r.items);
+    }).catch(() => {
+      if (mounted) setItemsDisponibles([]);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   function toggleTipoAsistencia(tipo: string) {
     setTiposAsistencia((prev) =>
@@ -201,6 +217,9 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
         },
         resumen: resumen || undefined,
         creadoPorNombre: currentUser || undefined,
+        insumosUtilizados: insumos
+          .filter((i) => i.itemId > 0 && i.cantidad > 0)
+          .map((i) => ({ itemId: i.itemId, cantidad: i.cantidad })),
       };
 
       const resultado = await crearEmergencia(dto);
@@ -454,11 +473,11 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
               )}
             </p>
-            {catalogos.tiposEmergencia.length === 0 ? (
+            {catalogos.tiposAsistencia.length === 0 ? (
               <p style={{ color: "var(--text-2)", fontSize: 12, margin: "8px 0" }}>Sin opciones disponibles</p>
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {catalogos.tiposEmergencia.map((t) => {
+                {catalogos.tiposAsistencia.map((t) => {
                   const selected = tiposAsistencia.includes(t.nombre);
                   return (
                     <button
@@ -925,7 +944,63 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             </div>
           </section>
 
-          {/* 11. Resumen */}
+          {/* 11. Insumos Utilizados */}
+          <section>
+            <p style={sectionLabel}>
+              <Package style={{ width: 13, height: 13 }} />
+              Insumos Utilizados (opcional)
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {insumos.map((ins, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <select
+                    value={ins.itemId}
+                    onChange={(e) =>
+                      setInsumos(insumos.map((x, j) => (j === i ? { ...x, itemId: Number(e.target.value) } : x)))
+                    }
+                    style={{ ...selectBase, flex: 1 }}
+                  >
+                    <option value={0}>Seleccionar insumo...</option>
+                    {itemsDisponibles.map((it) => (
+                      <option key={it.itemId} value={it.itemId}>
+                        {it.nombre} (stock: {it.stockActual})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    value={ins.cantidad}
+                    onChange={(e) =>
+                      setInsumos(insumos.map((x, j) => (j === i ? { ...x, cantidad: Number(e.target.value) } : x)))
+                    }
+                    style={{ ...inputBase, width: 80 }}
+                  />
+                  <button
+                    onClick={() => setInsumos(insumos.filter((_, j) => j !== i))}
+                    style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer" }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setInsumos([...insumos, { itemId: 0, cantidad: 1 }])}
+                style={{
+                  background: "none",
+                  border: "1px dashed var(--border)",
+                  borderRadius: 8,
+                  padding: "8px",
+                  cursor: "pointer",
+                  color: "var(--text-2)",
+                }}
+              >
+                + Agregar insumo
+              </button>
+            </div>
+          </section>
+
+          {/* 12. Resumen */}
           <section>
             <p style={sectionLabel}>Resumen del Incidente</p>
             <textarea

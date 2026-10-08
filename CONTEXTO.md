@@ -72,10 +72,10 @@ ProyectoSub33-main/
 | **Emergencias** | `EmergenciasPage.tsx`, `RegisterServicePage.tsx`, `EditServicePage.tsx` | `emergenciaService.ts` | `EmergenciasController` | `/api/emergencias`, `/api/emergencias/siguiente-incidente` |
 | **Seguridad/Config** | `SeguridadPage.tsx` | `configuracionService.ts` | `ConfiguracionController` | `/api/configuracion/*` (parametros, usuarios, roles, permisos, catálogos) |
 | **Auth** | `LoginPage.tsx` | `AuthContext` + `authService.js` | `AuthController` | `/api/auth/login` |
+| **Inventario** | `InventarioPage.tsx`, `MovimientosPage.tsx`, `EquipoUnidadesPage.tsx`, `ServicioInsumosPage.tsx` | `inventarioService.ts` | `InventarioController` | `/api/inventario/items`, `/api/inventario/movimientos`, `/api/inventario/equipo-unidades`, `/api/inventario/servicio-insumos` |
+| **Donaciones** | `DonacionesPage.tsx` | — | — | Pendiente (plan en `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md`) |
 | **Vehículos** | `VehiculosPage.tsx` | — | — | Pendiente |
 | **Finanzas** | `FinanzasPage.tsx` | — | — | Pendiente |
-| **Inventario** | `InventarioPage.tsx` | — | — | Pendiente |
-| **Donaciones** | `DonacionesPage.tsx` | — | — | Pendiente |
 | **Reportes** | `ReportesPage.tsx` | — | — | Pendiente |
 | **Perfil** | `ProfilePage.tsx` | — | — | Solo UI |
 
@@ -150,8 +150,22 @@ POST   /rangos                        → Crear rango (legacy)
 
 ### Emergencias (`/api/emergencias`)
 ```
-POST   /api/emergencias                    → Registrar emergencia (EmergenciaCreateDto)
+POST   /api/emergencias                    → Registrar emergencia (EmergenciaCreateDto con insumosUtilizados[])
 GET    /api/emergencias/siguiente-incidente → Siguiente correlativo INC-YYYY-NNN
+```
+
+### Inventario (`/api/inventario`)
+```
+GET    /api/inventario/items?pagina=&tamanio=&busqueda=&categoriaInvId=  → Lista paginada con filtros
+GET    /api/inventario/items/{id}                                        → Detalle por ID
+POST   /api/inventario/items                                             → Crear (InventarioItemCreateDto)
+PUT    /api/inventario/items/{id}                                        → Actualizar (InventarioItemUpdateDto)
+DELETE /api/inventario/items/{id}                                        → Eliminar
+GET    /api/inventario/movimientos?itemId=&tipoMovId=&desde=&hasta=      → Historial movimientos
+POST   /api/inventario/movimientos                                       → Registrar movimiento
+GET    /api/inventario/equipo-unidades?unidadId=                         → Equipo por unidad
+POST   /api/inventario/equipo-unidades                                   → Asignar equipo
+GET    /api/inventario/servicio-insumos?servicioId=                      → Insumos por servicio (solo lectura)
 ```
 
 ### Auth (`/api/auth`)
@@ -246,7 +260,10 @@ const handleSubmit = async () => { ... };
 - **10 unidades físicas** con códigos (A-33, B-12, R-5, E-44, BD-01, etc.) y placas BOM-XXX
 
 ## Tareas Pendientes (Priorizadas)
-- [ ] **Conectar módulos Vehículos, Finanzas, Inventario, Donaciones, Reportes a backend**
+- [x] **Conectar módulo Inventario a backend** (completado: Controller, Service, DTOs, Frontend conectado)
+- [ ] **Conectar módulos Vehículos, Finanzas, Donaciones, Reportes a backend**
+- [ ] **Integración Inventario ↔ Donaciones** (plan en `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md`)
+- [ ] **Insumos en Emergencias → Inventario** (plan en `docs/modulos/inventario/PLAN_INSUMOS_EMERGENCIAS.md`)
 - [ ] **Implementar autenticación real** (reemplazar token hardcodeado "dev-token")
 - [ ] **Mover URLs hardcodeadas** a variables de entorno (`VITE_API_BASE_URL`)
 - [ ] **Dividir componentes gigantes** (InventarioPage 1742 líneas, ReportesPage 1931 líneas)
@@ -263,24 +280,100 @@ const handleSubmit = async () => { ... };
 | `src/context/AuthContext.tsx` | Auth state + login/logout |
 | `src/types/personal.ts` | Tipos módulo Personal |
 | `src/types/emergencia.ts` | Tipos módulo Emergencias |
+| `src/types/inventario.ts` | Tipos módulo Inventario |
 | `src/constants/roles.ts` | Roles, labels, badges, nav permissions |
 | `src/constants/navigation.ts` | Definición de navegación (ALL_NAV) |
 | `Backend_Sub33/Data/AppDbContext.cs` | Esquema BD completo + relaciones |
 | `Backend_Sub33/Controllers/PersonalController.cs` | Endpoints Personal |
 | `Backend_Sub33/Controllers/ConfiguracionController.cs` | Endpoints Config + Catálogos genéricos |
 | `Backend_Sub33/Controllers/EmergenciasController.cs` | Endpoints Emergencias + correlativo |
+| `Backend_Sub33/Controllers/InventarioController.cs` | Endpoints Inventario |
 | `Backend_Sub33/Controllers/AuthController.cs` | Login JWT + BCrypt |
 | `poblar_catalogos_emergencia_v4.sql` | Datos semilla catálogos emergencia |
 | `reset_db.sql` | Script completo recrear BD |
+| `docs/modulos/inventario/datos_inventario.sql` | Datos semilla inventario (categorías, proveedores, items) |
+| `docs/modulos/inventario/INVENTARIO.md` | Análisis completo módulo Inventario |
+| `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md` | Plan integración Inventario ↔ Donaciones |
+| `docs/modulos/inventario/PLAN_INSUMOS_EMERGENCIAS.md` | Plan insumos en Emergencias → Inventario |
 
-## Notas Importantes para la IA
-1. **NO usar Next.js** — el proyecto usa Vite + SPA
-2. **NO hardcodear URLs** — usar `import.meta.env.VITE_API_BASE_URL`
-3. **NO duplicar tipos** — centralizados en `src/types/`
-4. **NO duplicar constantes** — centralizadas en `src/constants/`
-5. **NO usar `any`** — TypeScript strict mode
-6. **NO eliminar código funcional** — refactorizar con cuidado
-7. **Backend usa Dapper + EF Core mixto** — Dapper para catálogos genéricos y queries complejas, EF Core para CRUD estándar
-8. **PostgreSQL específico:** `gen_random_uuid()` para UUIDs, `TIMESTAMP WITH TIME ZONE`, `SERIAL` para IDs enteros
-9. **Correlativo emergencias:** Formato `INC-YYYY-NNN` (ej: `INC-2026-017`), generado en backend
 10. **Soft delete:** Personal se desactiva (`estado = false`), no se elimina físicamente
+
+---
+
+## Estado Actual Módulo Inventario (Completado)
+
+### Backend Implementado
+| Archivo | Estado |
+|---------|--------|
+| `Backend_Sub33/Backend_Sub33/Models/Entities/InventarioItem.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/Models/Entities/InventarioMovimiento.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/Models/Entities/EquipoUnidad.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/Models/Entities/ServicioInsumoUtilizado.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/InventarioItemCreateDto.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/InventarioItemUpdateDto.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/InventarioMovimientoCreateDto.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/EquipoUnidadCreateDto.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/ServicioInsumoUtilizadoCreateDto.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/Services/IInventarioService.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/Services/InventarioService.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/Controllers/InventarioController.cs` | ✅ Creado |
+| `Backend_Sub33/Backend_Sub33/Data/AppDbContext.cs` | ✅ Actualizado (DbSets + OnModelCreating) |
+| `Backend_Sub33/Backend_Sub33/Program.cs` | ✅ Registrado servicio |
+
+### Frontend Implementado
+| Archivo | Estado |
+|---------|--------|
+| `src/types/inventario.ts` | ✅ Creado (tipos completos) |
+| `src/services/inventarioService.ts` | ✅ Creado (apiClient) |
+| `src/hooks/useInventario.ts` | ✅ Creado (estado, catálogos, CRUD) |
+| `src/app/pages/Inventario/InventarioPage.tsx` | ✅ Conectado a backend (4 tabs: Items, Movimientos, Equipo, Servicio) |
+| `src/app/pages/Inventario/MovimientosPage.tsx` | ✅ Creado (historial + registro movimientos) |
+| `src/app/pages/Inventario/EquipoUnidadesPage.tsx` | ✅ Creado (asignación equipo a unidades) |
+| `src/app/pages/Inventario/ServicioInsumosPage.tsx` | ✅ Conectado (pendiente: convertir a solo lectura per plan) |
+
+### Catálogos en Configuración (ya funcionando)
+- `categorias-inventario` → `cat_categorias_inventario`
+- `proveedores` → `cat_proveedores`
+- `tipos-movimiento` → `cat_tipos_movimiento`
+
+### Datos Semilla
+- `docs/modulos/inventario/datos_inventario.sql` → 8 categorías, 5 proveedores, 6 tipos movimiento, 5 unidades, 18 items
+
+---
+
+## Planes Creados (Listos para Ejecutar)
+
+| Plan | Archivo | Descripción |
+|------|---------|-------------|
+| **Inventario ↔ Donaciones** | `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md` | Opción B: Asset-First. Registrar en Inventario con origen "Donado" → crea registro en Donaciones |
+| **Insumos en Emergencias** | `docs/modulos/inventario/PLAN_INSUMOS_EMERGENCIAS.md` | Push desde Emergencias: registrar insumos al crear emergencia → descuenta stock, crea movimiento, Inventario solo lectura |
+
+---
+
+## Próximos Pasos Inmediatos (para siguiente IA)
+
+1. **Ejecutar migración BD** para Inventario + Donaciones (tablas + columnas)
+2. **Implementar Plan Insumos Emergencias** (PASO 1-5 del plan correspondiente)
+3. **Implementar Plan Inventario ↔ Donaciones** (FASE 1 del plan correspondiente)
+4. **Conectar DonacionesPage.tsx** a backend (crear types, service, hook)
+5. **Convertir ServicioInsumosPage.tsx** a solo lectura (quitar crear/editar)
+
+---
+
+## Comandos de Verificación
+
+```bash
+# Backend
+cd Backend_Sub33/Backend_Sub33
+dotnet build                    # Debe compilar sin errores
+dotnet ef migrations add InventarioDonacionesSync
+dotnet ef database update
+
+# Frontend
+npm run build                   # Debe compilar sin errores TS
+
+# Tests manuales
+# 1. Inventario: CRUD items, movimientos, equipo-unidades
+# 2. Emergencias: POST con insumosUtilizados[] → stock descuenta
+# 3. ServicioInsumosPage: solo lectura, sin botón crear
+```

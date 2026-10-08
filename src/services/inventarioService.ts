@@ -8,7 +8,6 @@ import type {
   EquipoUnidad,
   EquipoUnidadCreate,
   ServicioInsumoUtilizado,
-  ServicioInsumoUtilizadoCreate,
   PaginacionInventario,
   InventarioItemFiltros,
   CategoriaInventario,
@@ -82,10 +81,6 @@ export const inventarioService = {
   getServicioInsumos: async (params?: { servicioId?: number }): Promise<ServicioInsumoUtilizado[]> => {
     const res = await apiClient.get<ApiEnvelope<ServicioInsumoUtilizado[]>>(`${API_BASE}/servicio-insumos`, { params });
     return res.data;
-  },
-
-  registrarUsoInsumo: async (data: ServicioInsumoUtilizadoCreate): Promise<void> => {
-    await apiClient.post<ApiEnvelope<unknown>>(`${API_BASE}/servicio-insumos`, data);
   },
 
   // ── Catálogos (desde Configuración) ────────────────────────────────────

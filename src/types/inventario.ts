@@ -9,6 +9,10 @@ export interface InventarioItem {
   stockActual: number;
   stockMinimo: number;
   unidadMedida: string;
+  donacionId?: number | null;
+  origen?: string | null;
+  nombreDonante?: string | null;
+  noRecibo?: string | null;
   createdAt?: string;
 }
 
@@ -49,6 +53,10 @@ export interface InventarioItemCreate {
   stockActual: number;
   stockMinimo: number;
   unidadMedida?: string;
+  donacionId?: number | null;
+  origen?: string;
+  nombreDonante?: string;
+  noRecibo?: string;
 }
 
 export interface InventarioItemUpdate {
@@ -58,6 +66,10 @@ export interface InventarioItemUpdate {
   nombre: string;
   stockMinimo: number;
   unidadMedida?: string;
+  donacionId?: number | null;
+  origen?: string;
+  nombreDonante?: string;
+  noRecibo?: string;
 }
 
 export interface InventarioMovimientoCreate {

@@ -12,47 +12,26 @@ import {
   ChevronRight,
   DollarSign,
   Package,
+  Loader2,
 } from "lucide-react";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+import { toast } from "sonner";
+import { AlertDialog } from "@/app/components/AlertDialog";
+import { useDonaciones } from "@/hooks/useDonaciones";
+import type {
+  Donacion,
+  DonacionCreate,
+  DonacionUpdate,
+  MaterialDonacion,
+  TipoDonacion,
+  EstadoDonacion,
+  CategoriaDonacion,
+  MetodoPago,
+} from "@/types/donacion";
 
 const RED = "#D32F2F";
 const PAGE_SIZE = 8;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type TipoDonacion = "Monetaria" | "Material";
-type EstadoDonacion = "Confirmado" | "Pendiente" | "Procesado";
-type CategoriaDonacion =
-  | "Efectivo"
-  | "Insumos Médicos"
-  | "Equipo/Herramientas"
-  | "Vehículos";
-type MetodoPago = "Efectivo" | "Transferencia" | "Cheque";
 type FilterTab = "Todos" | CategoriaDonacion;
-
-interface MaterialItem {
-  descripcion: string;
-  cantidad: number;
-  valorEstimado: number;
-}
-
-interface Donacion {
-  id: number;
-  fecha: string;
-  noRecibo: string;
-  donante: string;
-  dpiNit: string;
-  telefono: string;
-  tipo: TipoDonacion;
-  categoria: CategoriaDonacion;
-  descripcionMonto: string;
-  monto: number;
-  estado: EstadoDonacion;
-  metodoPago?: MetodoPago;
-  noComprobante?: string;
-  materiales?: MaterialItem[];
-}
 
 interface FormErrors {
   donante?: string;
@@ -63,13 +42,6 @@ interface FormErrors {
   descripcion?: string;
   cantidad?: string;
 }
-
-// ─── Sample Data ──────────────────────────────────────────────────────────────
-
-const SAMPLE_DATA: Donacion[] = [];
-  
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatQ(n: number): string {
   return "Q " + n.toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -87,54 +59,21 @@ function todayISO(): string {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function KpiCard({
-  label,
-  value,
-  color,
-  icon,
-}: {
-  label: string;
-  value: string;
-  color: string;
-  icon: ReactNode;
-}) {
+function KpiCard({ label, value, color, icon }: { label: string; value: string; color: string; icon: ReactNode }) {
   return (
     <div
       style={{
-        background: "#fff",
-        borderRadius: 16,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-        border: "1px solid rgba(0,0,0,0.05)",
-        padding: "20px 24px",
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-        flex: 1,
-        minWidth: 180,
+        background: "#fff", borderRadius: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        border: "1px solid rgba(0,0,0,0.05)", padding: "20px 24px", display: "flex",
+        alignItems: "center", gap: 16, flex: 1, minWidth: 180,
       }}
     >
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
-          background: color + "18",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: color,
-          flexShrink: 0,
-        }}
-      >
+      <div style={{ width: 44, height: 44, borderRadius: 12, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
         {icon}
       </div>
       <div>
-        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "Manrope, sans-serif", color: "#1e293b" }}>
-          {value}
-        </div>
-        <div style={{ fontSize: 13, color: "#64748b", fontFamily: "Inter, sans-serif", marginTop: 2 }}>
-          {label}
-        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "Manrope, sans-serif", color: "#1e293b" }}>{value}</div>
+        <div style={{ fontSize: 13, color: "#64748b", fontFamily: "Inter, sans-serif", marginTop: 2 }}>{label}</div>
       </div>
     </div>
   );
@@ -143,22 +82,12 @@ function KpiCard({
 function Badge({ estado }: { estado: EstadoDonacion }) {
   const map: Record<EstadoDonacion, { bg: string; color: string }> = {
     Confirmado: { bg: "#dcfce7", color: "#15803d" },
-    Pendiente:  { bg: "#fef9c3", color: "#92400e" },
-    Procesado:  { bg: "#dbeafe", color: "#1d4ed8" },
+    Pendiente: { bg: "#fef9c3", color: "#92400e" },
+    Procesado: { bg: "#dbeafe", color: "#1d4ed8" },
   };
-  const s = map[estado];
+  const s = map[estado] ?? map.Pendiente;
   return (
-    <span
-      style={{
-        background: s.bg,
-        color: s.color,
-        borderRadius: 9999,
-        padding: "2px 10px",
-        fontSize: 12,
-        fontWeight: 600,
-        fontFamily: "Inter, sans-serif",
-      }}
-    >
+    <span style={{ background: s.bg, color: s.color, borderRadius: 9999, padding: "2px 10px", fontSize: 12, fontWeight: 600, fontFamily: "Inter, sans-serif" }}>
       {estado}
     </span>
   );
@@ -173,17 +102,13 @@ function getElementoLabel(d: Donacion): "Dinero" | "Vehículo" | "Insumos" {
 function ElementoBadge({ donacion }: { donacion: Donacion }) {
   const label = getElementoLabel(donacion);
   const styles = {
-    Dinero:   { bg: "#fef9c3", color: "#854d0e" },
+    Dinero: { bg: "#fef9c3", color: "#854d0e" },
     Vehículo: { bg: "#dbeafe", color: "#1e40af" },
-    Insumos:  { bg: "#dcfce7", color: "#15803d" },
+    Insumos: { bg: "#dcfce7", color: "#15803d" },
   };
   const s = styles[label];
   return (
-    <span style={{
-      background: s.bg, color: s.color,
-      borderRadius: 9999, padding: "2px 10px",
-      fontSize: 12, fontWeight: 600, fontFamily: "Inter, sans-serif",
-    }}>
+    <span style={{ background: s.bg, color: s.color, borderRadius: 9999, padding: "2px 10px", fontSize: 12, fontWeight: 600, fontFamily: "Inter, sans-serif" }}>
       {label}
     </span>
   );
@@ -194,16 +119,9 @@ function TipoBadge({ tipo }: { tipo: TipoDonacion }) {
   return (
     <span
       style={{
-        background: isMonetaria ? "#fef3c7" : "#ede9fe",
-        color: isMonetaria ? "#b45309" : "#6d28d9",
-        borderRadius: 9999,
-        padding: "2px 10px",
-        fontSize: 12,
-        fontWeight: 600,
-        fontFamily: "Inter, sans-serif",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
+        background: isMonetaria ? "#fef3c7" : "#ede9fe", color: isMonetaria ? "#b45309" : "#6d28d9",
+        borderRadius: 9999, padding: "2px 10px", fontSize: 12, fontWeight: 600,
+        fontFamily: "Inter, sans-serif", display: "inline-flex", alignItems: "center", gap: 4,
       }}
     >
       {isMonetaria ? <DollarSign size={11} /> : <Package size={11} />}
@@ -216,38 +134,22 @@ function TipoBadge({ tipo }: { tipo: TipoDonacion }) {
 
 function DetailModal({ donacion, onClose }: { donacion: Donacion; onClose: () => void }) {
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16,
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        style={{
-          background: "#fff", borderRadius: 20, width: "100%", maxWidth: 560,
-          maxHeight: "90vh", overflowY: "auto",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-        }}
-      >
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
         <div style={{ padding: "24px 28px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0, fontFamily: "Manrope, sans-serif", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
-            Detalle de Donación
-          </h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: 4 }}>
-            <X size={20} />
-          </button>
+          <h2 style={{ margin: 0, fontFamily: "Manrope, sans-serif", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>Detalle de Donación</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: 4 }}><X size={20} /></button>
         </div>
         <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
           {[
             ["No. Recibo", donacion.noRecibo],
-            ["Fecha", donacion.fecha],
+            ["Fecha", donacion.fecha ? donacion.fecha.split("T")[0] : "—"],
             ["Donante", donacion.donante],
-            ["DPI / NIT", donacion.dpiNit],
-            ["Teléfono", donacion.telefono],
+            ["DPI / NIT", donacion.dpiNit ?? "—"],
+            ["Teléfono", donacion.telefono ?? "—"],
             ["Elemento", getElementoLabel(donacion)],
             ["Tipo", donacion.tipo],
-            ["Categoría", donacion.categoria],
+            ["Categoría", donacion.categoria ?? "—"],
             ["Estado", donacion.estado],
           ].map(([label, value]) => (
             <div key={label} style={{ display: "flex", gap: 8 }}>
@@ -303,82 +205,7 @@ function DetailModal({ donacion, onClose }: { donacion: Donacion; onClose: () =>
           )}
         </div>
         <div style={{ padding: "16px 28px", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "flex-end" }}>
-          <button
-            onClick={onClose}
-            style={{
-              background: "#f1f5f9", border: "none", borderRadius: 10, padding: "9px 22px",
-              fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer",
-            }}
-          >
-            Cerrar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Delete Confirm Modal ──────────────────────────────────────────────────────
-
-function DeleteModal({
-  donacion,
-  onConfirm,
-  onClose,
-}: {
-  donacion: Donacion;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16,
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        style={{
-          background: "#fff", borderRadius: 20, width: "100%", maxWidth: 420,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-        }}
-      >
-        <div style={{ padding: "28px 28px 20px", textAlign: "center" }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: "50%", background: "#fef2f2",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 16px", color: RED,
-          }}>
-            <AlertTriangle size={26} />
-          </div>
-          <h3 style={{ margin: "0 0 8px", fontFamily: "Manrope, sans-serif", fontSize: 17, fontWeight: 700, color: "#1e293b" }}>
-            Eliminar Donación
-          </h3>
-          <p style={{ margin: 0, fontSize: 14, color: "#64748b", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }}>
-            ¿Está seguro que desea eliminar el recibo <strong>{donacion.noRecibo}</strong> de <strong>{donacion.donante}</strong>? Esta acción no se puede deshacer.
-          </p>
-        </div>
-        <div style={{ padding: "0 28px 24px", display: "flex", gap: 10, justifyContent: "center" }}>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1, background: "#f1f5f9", border: "none", borderRadius: 10,
-              padding: "10px 0", fontFamily: "Inter, sans-serif", fontSize: 14,
-              fontWeight: 600, color: "#475569", cursor: "pointer",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={onConfirm}
-            style={{
-              flex: 1, background: RED, border: "none", borderRadius: 10,
-              padding: "10px 0", fontFamily: "Inter, sans-serif", fontSize: 14,
-              fontWeight: 600, color: "#fff", cursor: "pointer",
-            }}
-          >
-            Eliminar
-          </button>
+          <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 10, padding: "9px 22px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer" }}>Cerrar</button>
         </div>
       </div>
     </div>
@@ -396,12 +223,10 @@ interface DonacionForm {
   noRecibo: string;
   categoria: CategoriaDonacion;
   estado: EstadoDonacion;
-  // Monetaria
   monto: string;
   metodoPago: MetodoPago;
   noComprobante: string;
-  // Material
-  materiales: MaterialItem[];
+  materiales: MaterialDonacion[];
 }
 
 function emptyForm(): DonacionForm {
@@ -425,19 +250,16 @@ function donacionToForm(d: Donacion): DonacionForm {
   return {
     tipo: d.tipo,
     donante: d.donante,
-    dpiNit: d.dpiNit,
-    telefono: d.telefono,
-    fecha: d.fecha,
+    dpiNit: d.dpiNit ?? "",
+    telefono: d.telefono ?? "",
+    fecha: d.fecha ? d.fecha.split("T")[0] : todayISO(),
     noRecibo: d.noRecibo,
-    categoria: d.categoria,
+    categoria: (d.categoria as CategoriaDonacion) ?? "Efectivo",
     estado: d.estado,
     monto: d.tipo === "Monetaria" ? String(d.monto) : "",
-    metodoPago: d.metodoPago ?? "Efectivo",
+    metodoPago: (d.metodoPago as MetodoPago) ?? "Efectivo",
     noComprobante: d.noComprobante ?? "",
-    materiales:
-      d.materiales && d.materiales.length > 0
-        ? d.materiales
-        : [{ descripcion: "", cantidad: 1, valorEstimado: 0 }],
+    materiales: d.materiales && d.materiales.length > 0 ? d.materiales : [{ descripcion: "", cantidad: 1, valorEstimado: 0 }],
   };
 }
 
@@ -446,13 +268,13 @@ function DonacionModal({
   onSave,
   onClose,
   onDelete,
-  onValidationError,
+  saving,
 }: {
   initial: DonacionForm | null;
   onSave: (f: DonacionForm) => void;
   onClose: () => void;
   onDelete?: () => void;
-  onValidationError?: () => void;
+  saving?: boolean;
 }) {
   const [form, setForm] = useState<DonacionForm>(initial ?? emptyForm());
   const [errors, setErrors] = useState<FormErrors>({});
@@ -463,27 +285,19 @@ function DonacionModal({
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
-  function setMaterialField(idx: number, key: keyof MaterialItem, val: string | number) {
+  function setMaterialField(idx: number, key: keyof MaterialDonacion, val: string | number) {
     setForm((prev) => {
-      const updated = prev.materiales.map((m, i) =>
-        i === idx ? { ...m, [key]: val } : m
-      );
+      const updated = prev.materiales.map((m, i) => (i === idx ? { ...m, [key]: val } : m));
       return { ...prev, materiales: updated };
     });
   }
 
   function addMaterial() {
-    setForm((prev) => ({
-      ...prev,
-      materiales: [...prev.materiales, { descripcion: "", cantidad: 1, valorEstimado: 0 }],
-    }));
+    setForm((prev) => ({ ...prev, materiales: [...prev.materiales, { descripcion: "", cantidad: 1, valorEstimado: 0 }] }));
   }
 
   function removeMaterial(idx: number) {
-    setForm((prev) => ({
-      ...prev,
-      materiales: prev.materiales.filter((_, i) => i !== idx),
-    }));
+    setForm((prev) => ({ ...prev, materiales: prev.materiales.filter((_, i) => i !== idx) }));
   }
 
   function validate(): FormErrors {
@@ -508,19 +322,15 @@ function DonacionModal({
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       setShowErrors(true);
-      onValidationError?.();
       return;
     }
     onSave(form);
   }
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", border: "1px solid #e2e8f0", borderRadius: 10,
-    padding: "9px 12px", fontSize: 14, fontFamily: "Inter, sans-serif",
-    color: "#1e293b", background: "#fff", outline: "none", boxSizing: "border-box",
+    width: "100%", border: "1px solid #e2e8f0", borderRadius: 10, padding: "9px 12px",
+    fontSize: 14, fontFamily: "Inter, sans-serif", color: "#1e293b", background: "#fff", outline: "none", boxSizing: "border-box",
   };
-
-  const errorInput: React.CSSProperties = { ...inputStyle, border: "1.5px solid #ef4444" };
 
   const labelStyle: React.CSSProperties = {
     fontSize: 13, fontWeight: 600, color: "#374151", fontFamily: "Inter, sans-serif", marginBottom: 4, display: "block",
@@ -529,32 +339,16 @@ function DonacionModal({
   const totalMaterial = form.materiales.reduce((s, m) => s + (Number(m.valorEstimado) || 0), 0);
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16,
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        style={{
-          background: "#fff", borderRadius: 20, width: "100%", maxWidth: 620,
-          maxHeight: "92vh", overflowY: "auto",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-        }}
-      >
-        {/* Header */}
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
         <div style={{ padding: "22px 28px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 style={{ margin: 0, fontFamily: "Manrope, sans-serif", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
             {initial ? "Editar Donación" : "Nueva Donación"}
           </h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: 4 }}>
-            <X size={20} />
-          </button>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: 4 }}><X size={20} /></button>
         </div>
 
         <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 18 }}>
-          {/* Type toggle */}
           <div>
             <label style={labelStyle}>Tipo de Donación</label>
             <div style={{ display: "flex", gap: 0, border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", width: "fit-content" }}>
@@ -563,15 +357,13 @@ function DonacionModal({
                   key={t}
                   onClick={() => {
                     setField("tipo", t);
-                    if (t === "Efectivo" as unknown as TipoDonacion) setField("categoria", "Efectivo");
+                    if (t === "Monetaria") setField("categoria", "Efectivo");
                     if (t === "Material") setField("categoria", "Insumos Médicos");
                   }}
                   style={{
-                    padding: "8px 22px", border: "none", cursor: "pointer",
-                    fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600,
-                    background: form.tipo === t ? RED : "#fff",
-                    color: form.tipo === t ? "#fff" : "#64748b",
-                    transition: "all 0.15s",
+                    padding: "8px 22px", border: "none", cursor: "pointer", fontFamily: "Inter, sans-serif",
+                    fontSize: 13, fontWeight: 600, background: form.tipo === t ? RED : "#fff",
+                    color: form.tipo === t ? "#fff" : "#64748b", transition: "all 0.15s",
                   }}
                 >
                   {t}
@@ -580,43 +372,26 @@ function DonacionModal({
             </div>
           </div>
 
-          {/* Common fields */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label style={labelStyle}>Donante <span style={{ color: RED }}>*</span></label>
-              <input
-                style={inputStyle}
-                value={form.donante}
-                onChange={(e) => setField("donante", e.target.value)}
-                placeholder="Nombre o razón social"
-              />
+              <input style={inputStyle} value={form.donante} onChange={(e) => setField("donante", e.target.value)} placeholder="Nombre o razón social" />
+              {errors.donante && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#ef4444" }}>{errors.donante}</p>}
             </div>
             <div>
               <label style={labelStyle}>DPI / NIT <span style={{ color: RED }}>*</span></label>
-              <input
-                style={inputStyle}
-                value={form.dpiNit}
-                onChange={(e) => setField("dpiNit", e.target.value)}
-                placeholder="DPI o NIT del donante"
-              />
+              <input style={inputStyle} value={form.dpiNit} onChange={(e) => setField("dpiNit", e.target.value)} placeholder="DPI o NIT del donante" />
+              {errors.dpiNit && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#ef4444" }}>{errors.dpiNit}</p>}
             </div>
             <div>
               <label style={labelStyle}>Teléfono <span style={{ color: RED }}>*</span></label>
-              <input
-                style={inputStyle}
-                value={form.telefono}
-                onChange={(e) => setField("telefono", e.target.value)}
-                placeholder="xxxx-xxxx"
-              />
+              <input style={inputStyle} value={form.telefono} onChange={(e) => setField("telefono", e.target.value)} placeholder="xxxx-xxxx" />
+              {errors.telefono && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#ef4444" }}>{errors.telefono}</p>}
             </div>
             <div>
               <label style={labelStyle}>Fecha <span style={{ color: RED }}>*</span></label>
-              <input
-                type="date"
-                style={inputStyle}
-                value={form.fecha}
-                onChange={(e) => setField("fecha", e.target.value)}
-              />
+              <input type="date" style={inputStyle} value={form.fecha} onChange={(e) => setField("fecha", e.target.value)} />
+              {errors.fecha && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#ef4444" }}>{errors.fecha}</p>}
             </div>
             <div>
               <label style={labelStyle}>No. Recibo</label>
@@ -624,79 +399,43 @@ function DonacionModal({
             </div>
             <div>
               <label style={labelStyle}>Estado</label>
-              <select
-                style={inputStyle}
-                value={form.estado}
-                onChange={(e) => setField("estado", e.target.value as EstadoDonacion)}
-              >
-                {(["Pendiente", "Confirmado", "Procesado"] as EstadoDonacion[]).map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+              <select style={inputStyle} value={form.estado} onChange={(e) => setField("estado", e.target.value as EstadoDonacion)}>
+                {(["Pendiente", "Confirmado", "Procesado"] as EstadoDonacion[]).map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
 
-          {/* Monetaria fields */}
           {form.tipo === "Monetaria" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
               <div>
                 <label style={labelStyle}>Monto (Q) <span style={{ color: RED }}>*</span></label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  style={inputStyle}
-                  value={form.monto}
-                  onChange={(e) => setField("monto", e.target.value)}
-                  placeholder="0.00"
-                />
+                <input type="number" min="0" step="0.01" style={inputStyle} value={form.monto} onChange={(e) => setField("monto", e.target.value)} placeholder="0.00" />
+                {errors.monto && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#ef4444" }}>{errors.monto}</p>}
               </div>
               <div>
                 <label style={labelStyle}>Método de Pago</label>
-                <select
-                  style={inputStyle}
-                  value={form.metodoPago}
-                  onChange={(e) => setField("metodoPago", e.target.value as MetodoPago)}
-                >
-                  {(["Efectivo", "Transferencia", "Cheque"] as MetodoPago[]).map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
+                <select style={inputStyle} value={form.metodoPago} onChange={(e) => setField("metodoPago", e.target.value as MetodoPago)}>
+                  {(["Efectivo", "Transferencia", "Cheque"] as MetodoPago[]).map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div>
                 <label style={labelStyle}>No. Comprobante</label>
-                <input
-                  style={inputStyle}
-                  value={form.noComprobante}
-                  onChange={(e) => setField("noComprobante", e.target.value)}
-                  placeholder="Opcional"
-                />
+                <input style={inputStyle} value={form.noComprobante} onChange={(e) => setField("noComprobante", e.target.value)} placeholder="Opcional" />
               </div>
             </div>
           )}
 
-          {/* Material fields */}
           {form.tipo === "Material" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <label style={labelStyle}>Categoría</label>
-                <select
-                  style={inputStyle}
-                  value={form.categoria}
-                  onChange={(e) => setField("categoria", e.target.value as CategoriaDonacion)}
-                >
-                  {(["Insumos Médicos", "Equipo/Herramientas", "Vehículos"] as CategoriaDonacion[]).map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                <select style={inputStyle} value={form.categoria} onChange={(e) => setField("categoria", e.target.value as CategoriaDonacion)}>
+                  {(["Insumos Médicos", "Equipo/Herramientas", "Vehículos"] as CategoriaDonacion[]).map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
 
               {form.categoria === "Vehículos" && (
-                <div style={{
-                  background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10,
-                  padding: "10px 14px", fontSize: 13, color: "#1d4ed8",
-                  fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 8,
-                }}>
+                <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#1d4ed8", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
                   <AlertTriangle size={15} />
                   Se vinculará automáticamente al módulo de Vehículos al confirmar.
                 </div>
@@ -705,56 +444,23 @@ function DonacionModal({
               <div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                   <label style={{ ...labelStyle, margin: 0 }}>Artículos donados <span style={{ color: RED }}>*</span></label>
-                  <button
-                    onClick={addMaterial}
-                    style={{
-                      background: "#f1f5f9", border: "none", borderRadius: 8,
-                      padding: "5px 12px", fontSize: 12, fontWeight: 600, color: "#475569",
-                      cursor: "pointer", fontFamily: "Inter, sans-serif",
-                    }}
-                  >
+                  <button onClick={addMaterial} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: "#475569", cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
                     + Añadir
                   </button>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {form.materiales.map((m, i) => (
                     <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 120px 32px", gap: 8, alignItems: "center" }}>
-                      <input
-                        style={inputStyle}
-                        value={m.descripcion}
-                        onChange={(e) => setMaterialField(i, "descripcion", e.target.value)}
-                        placeholder="Descripción del artículo"
-                      />
-                      <input
-                        type="number"
-                        min="1"
-                        style={inputStyle}
-                        value={m.cantidad}
-                        onChange={(e) => setMaterialField(i, "cantidad", Number(e.target.value))}
-                        placeholder="Cant."
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        style={inputStyle}
-                        value={m.valorEstimado || ""}
-                        onChange={(e) => setMaterialField(i, "valorEstimado", Number(e.target.value))}
-                        placeholder="Valor est. (Q)"
-                      />
-                      <button
-                        onClick={() => removeMaterial(i)}
-                        disabled={form.materiales.length === 1}
-                        style={{
-                          background: "none", border: "none", cursor: form.materiales.length === 1 ? "not-allowed" : "pointer",
-                          color: form.materiales.length === 1 ? "#cbd5e1" : "#ef4444", padding: 4,
-                        }}
-                      >
+                      <input style={inputStyle} value={m.descripcion} onChange={(e) => setMaterialField(i, "descripcion", e.target.value)} placeholder="Descripción del artículo" />
+                      <input type="number" min="1" style={inputStyle} value={m.cantidad} onChange={(e) => setMaterialField(i, "cantidad", Number(e.target.value))} placeholder="Cant." />
+                      <input type="number" min="0" step="0.01" style={inputStyle} value={m.valorEstimado || ""} onChange={(e) => setMaterialField(i, "valorEstimado", Number(e.target.value))} placeholder="Valor est. (Q)" />
+                      <button onClick={() => removeMaterial(i)} disabled={form.materiales.length === 1} style={{ background: "none", border: "none", cursor: form.materiales.length === 1 ? "not-allowed" : "pointer", color: form.materiales.length === 1 ? "#cbd5e1" : "#ef4444", padding: 4 }}>
                         <X size={16} />
                       </button>
                     </div>
                   ))}
                 </div>
+                {errors.descripcion && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#ef4444" }}>{errors.descripcion}</p>}
                 <div style={{ textAlign: "right", marginTop: 6, fontSize: 13, fontWeight: 700, color: "#1e293b", fontFamily: "Inter, sans-serif" }}>
                   Total estimado: {formatQ(totalMaterial)}
                 </div>
@@ -762,79 +468,38 @@ function DonacionModal({
             </div>
           )}
 
-          {/* Origen tag for Material */}
           {form.tipo === "Material" && (
             <div>
               <label style={labelStyle}>Origen</label>
-              <span style={{
-                display: "inline-block", background: "#dcfce7", color: "#15803d",
-                borderRadius: 9999, padding: "3px 12px", fontSize: 12, fontWeight: 700,
-                fontFamily: "Inter, sans-serif",
-              }}>
+              <span style={{ display: "inline-block", background: "#dcfce7", color: "#15803d", borderRadius: 9999, padding: "3px 12px", fontSize: 12, fontWeight: 700, fontFamily: "Inter, sans-serif" }}>
                 Donado
               </span>
             </div>
           )}
         </div>
 
-        {/* Delete confirmation panel */}
         {confirmDelete && (
           <div style={{ margin: "0 28px 0", padding: "14px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: RED, fontFamily: "Inter, sans-serif" }}>
-              ¿Eliminar esta donación? Esta acción no se puede deshacer.
-            </p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: RED, fontFamily: "Inter, sans-serif" }}>¿Eliminar esta donación? Esta acción no se puede deshacer.</p>
             <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                style={{ flex: 1, background: "#f1f5f9", border: "none", borderRadius: 8, padding: "8px 0", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: "#475569", cursor: "pointer" }}
-              >
-                No, cancelar
-              </button>
-              <button
-                onClick={onDelete}
-                style={{ flex: 1, background: RED, border: "none", borderRadius: 8, padding: "8px 0", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer" }}
-              >
-                Sí, eliminar
-              </button>
+              <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, background: "#f1f5f9", border: "none", borderRadius: 8, padding: "8px 0", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: "#475569", cursor: "pointer" }}>No, cancelar</button>
+              <button onClick={onDelete} style={{ flex: 1, background: RED, border: "none", borderRadius: 8, padding: "8px 0", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer" }}>Sí, eliminar</button>
             </div>
           </div>
         )}
 
-        {/* Footer */}
         <div style={{ padding: "16px 28px", borderTop: "1px solid #f1f5f9", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
           <div>
             {initial && onDelete && !confirmDelete && (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                style={{
-                  background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "9px 16px",
-                  fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: RED,
-                  cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-                }}
-              >
+              <button onClick={() => setConfirmDelete(true)} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "9px 16px", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: RED, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                 <Trash2 size={14} /> Eliminar
               </button>
             )}
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button
-              onClick={onClose}
-              style={{
-                background: "#f1f5f9", border: "none", borderRadius: 10, padding: "9px 22px",
-                fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer",
-              }}
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSubmit}
-              style={{
-                background: RED, border: "none", borderRadius: 10, padding: "9px 22px",
-                fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff",
-                cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-              }}
-            >
-              <Check size={16} />
+            <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", borderRadius: 10, padding: "9px 22px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer" }}>Cancelar</button>
+            <button onClick={handleSubmit} disabled={saving} style={{ background: RED, border: "none", borderRadius: 10, padding: "9px 22px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, opacity: saving ? 0.7 : 1 }}>
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
               {initial ? "Guardar Cambios" : "Registrar Donación"}
             </button>
           </div>
@@ -847,51 +512,33 @@ function DonacionModal({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function DonacionesPage() {
-  const [data, setData] = useState<Donacion[]>(SAMPLE_DATA);
+  const { donaciones, paginacion, loading, loadDonaciones, createDonacion, updateDonacion, deleteDonacion } = useDonaciones();
+
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("Todos");
   const [page, setPage] = useState(1);
 
-  // Modals
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Donacion | null>(null);
   const [viewTarget, setViewTarget] = useState<Donacion | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Donacion | null>(null);
-
-  // Toast
-  const [toast, setToast] = useState<string | null>(null);
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertType, setAlertType] = useState<"warning" | "success">("warning");
+  const [saving, setSaving] = useState(false);
+  const [alertState, setAlertState] = useState<{ open: boolean; title: string; message: string; type: "error" }>({ open: false, title: "", message: "", type: "error" });
 
   useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
+    const timer = setTimeout(() => {
+      loadDonaciones({
+        pagina: page,
+        tamanio: PAGE_SIZE,
+        busqueda: search || undefined,
+        categoria: activeTab === "Todos" ? undefined : activeTab,
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, activeTab, page, loadDonaciones]);
 
-  useEffect(() => {
-    if (showAlert) {
-      const timer = setTimeout(() => setShowAlert(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showAlert]);
-
-  // Filtering
-  const filtered = data.filter((d) => {
-    const matchTab = activeTab === "Todos" || d.categoria === activeTab;
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      d.donante.toLowerCase().includes(q) ||
-      d.noRecibo.toLowerCase().includes(q) ||
-      d.descripcionMonto.toLowerCase().includes(q);
-    return matchTab && matchSearch;
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageData = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const totalItems = paginacion?.totalItems ?? 0;
+  const totalPages = Math.max(1, paginacion?.totalPaginas ?? 1);
 
   function handleTabChange(tab: FilterTab) {
     setActiveTab(tab);
@@ -903,196 +550,143 @@ export function DonacionesPage() {
     setPage(1);
   }
 
-  function handleSave(form: DonacionForm) {
-    if (editTarget) {
-      setData((prev) =>
-        prev.map((d) => {
-          if (d.id !== editTarget.id) return d;
-          const monto =
-            form.tipo === "Monetaria"
-              ? Number(form.monto)
-              : form.materiales.reduce((s, m) => s + Number(m.valorEstimado), 0);
-          return {
-            ...d,
-            tipo: form.tipo,
-            donante: form.donante,
-            dpiNit: form.dpiNit,
-            telefono: form.telefono,
-            fecha: form.fecha,
-            noRecibo: form.noRecibo,
-            categoria: form.tipo === "Monetaria" ? "Efectivo" : form.categoria,
-            estado: form.estado,
-            monto,
-            descripcionMonto:
-              form.tipo === "Monetaria"
-                ? formatQ(monto)
-                : form.materiales.map((m) => m.descripcion).join(", ") + ` (est. ${formatQ(monto)})`,
-            metodoPago: form.tipo === "Monetaria" ? form.metodoPago : undefined,
-            noComprobante: form.tipo === "Monetaria" ? form.noComprobante : undefined,
-            materiales: form.tipo === "Material" ? form.materiales : undefined,
-          };
-        })
-      );
-      setAlertType("success");
-      setShowAlert(true);
-    } else {
-      const monto =
-        form.tipo === "Monetaria"
-          ? Number(form.monto)
-          : form.materiales.reduce((s, m) => s + Number(m.valorEstimado), 0);
-      const newId = data.length > 0 ? Math.max(...data.map((d) => d.id)) + 1 : 1;
-      const newDonacion: Donacion = {
-        id: newId,
-        fecha: form.fecha,
-        noRecibo: form.noRecibo,
-        donante: form.donante,
-        dpiNit: form.dpiNit,
-        telefono: form.telefono,
-        tipo: form.tipo,
-        categoria: form.tipo === "Monetaria" ? "Efectivo" : form.categoria,
-        descripcionMonto:
-          form.tipo === "Monetaria"
-            ? formatQ(monto)
-            : form.materiales.map((m) => m.descripcion).join(", ") + ` (est. ${formatQ(monto)})`,
-        monto,
-        estado: form.estado,
-        metodoPago: form.tipo === "Monetaria" ? form.metodoPago : undefined,
-        noComprobante: form.tipo === "Monetaria" ? form.noComprobante : undefined,
-        materiales: form.tipo === "Material" ? form.materiales : undefined,
-      };
-      setData((prev) => [newDonacion, ...prev]);
-      setAlertType("success");
-      setShowAlert(true);
+  async function handleSave(form: DonacionForm) {
+    const monto = form.tipo === "Monetaria" ? Number(form.monto) : form.materiales.reduce((s, m) => s + Number(m.valorEstimado), 0);
+
+    setSaving(true);
+    try {
+      if (editTarget) {
+        const dto: DonacionUpdate = {
+          tipo: form.tipo,
+          donante: form.donante,
+          dpiNit: form.dpiNit,
+          telefono: form.telefono,
+          fecha: form.fecha,
+          noRecibo: form.noRecibo,
+          categoria: form.tipo === "Monetaria" ? "Efectivo" : form.categoria,
+          estado: form.estado,
+          monto,
+          metodoPago: form.tipo === "Monetaria" ? form.metodoPago : undefined,
+          noComprobante: form.tipo === "Monetaria" ? form.noComprobante : undefined,
+          materiales: form.tipo === "Material" ? form.materiales : undefined,
+        };
+        await updateDonacion(editTarget.donacionId, dto);
+        toast.success("Donación actualizada correctamente");
+      } else {
+        const dto: DonacionCreate = {
+          tipo: form.tipo,
+          donante: form.donante,
+          dpiNit: form.dpiNit,
+          telefono: form.telefono,
+          fecha: form.fecha,
+          noRecibo: form.noRecibo,
+          categoria: form.tipo === "Monetaria" ? "Efectivo" : form.categoria,
+          estado: form.estado,
+          monto,
+          metodoPago: form.tipo === "Monetaria" ? form.metodoPago : undefined,
+          noComprobante: form.tipo === "Monetaria" ? form.noComprobante : undefined,
+          materiales: form.tipo === "Material" ? form.materiales : undefined,
+        };
+        await createDonacion(dto);
+        toast.success("Donación registrada correctamente");
+      }
+      setShowForm(false);
+      setEditTarget(null);
+      loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al guardar la donación";
+      setAlertState({ open: true, title: "Error", message: msg, type: "error" });
+    } finally {
+      setSaving(false);
     }
-    setShowForm(false);
-    setEditTarget(null);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return;
-    setData((prev) => prev.filter((d) => d.id !== deleteTarget.id));
-    setDeleteTarget(null);
-    setToast("Donación eliminada.");
+    try {
+      await deleteDonacion(deleteTarget.donacionId);
+      toast.success("Donación eliminada.");
+      setDeleteTarget(null);
+      loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al eliminar";
+      setDeleteTarget(null);
+      setAlertState({ open: true, title: "Error", message: msg, type: "error" });
+    }
   }
 
-  // KPI totals
-  const totalDonaciones = data.reduce((s, d) => s + d.monto, 0);
-  const totalEfectivo = data.filter((d) => d.categoria === "Efectivo").reduce((s, d) => s + d.monto, 0);
-  const totalEspecie = data.filter((d) => d.categoria !== "Efectivo").reduce((s, d) => s + d.monto, 0);
+  async function handleDeleteFromModal() {
+    if (!editTarget) return;
+    try {
+      await deleteDonacion(editTarget.donacionId);
+      toast.success("Donación eliminada.");
+      setShowForm(false);
+      setEditTarget(null);
+      loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al eliminar";
+      setAlertState({ open: true, title: "Error", message: msg, type: "error" });
+    }
+  }
+
+  const totalDonaciones = donaciones.reduce((s, d) => s + d.monto, 0);
+  const totalEfectivo = donaciones.filter((d) => d.categoria === "Efectivo").reduce((s, d) => s + d.monto, 0);
+  const totalEspecie = donaciones.filter((d) => d.categoria !== "Efectivo").reduce((s, d) => s + d.monto, 0);
 
   const tabs: FilterTab[] = ["Todos", "Efectivo", "Insumos Médicos", "Equipo/Herramientas", "Vehículos"];
 
   const thStyle: React.CSSProperties = {
-    padding: "10px 14px", textAlign: "left", fontFamily: "Inter, sans-serif",
-    fontSize: 12, fontWeight: 600, color: "#64748b", whiteSpace: "nowrap",
+    padding: "10px 14px", textAlign: "left", fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: "#64748b", whiteSpace: "nowrap",
   };
 
   const tdStyle: React.CSSProperties = {
-    padding: "12px 14px", fontFamily: "Inter, sans-serif",
-    fontSize: 13, color: "#1e293b", borderTop: "1px solid #f1f5f9",
+    padding: "12px 14px", fontFamily: "Inter, sans-serif", fontSize: 13, color: "#1e293b", borderTop: "1px solid #f1f5f9",
   };
 
   return (
     <div style={{ background: "#F1F5F9", minHeight: "100vh", padding: "28px 24px", boxSizing: "border-box" }}>
-      {/* Toast */}
-      {toast && (
-        <div
-          style={{
-            position: "fixed", top: 24, right: 24, zIndex: 2000,
-            background: "#16a34a", color: "#fff", borderRadius: 12,
-            padding: "12px 20px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-            display: "flex", alignItems: "center", gap: 8,
-          }}
-        >
-          <Check size={16} />
-          {toast}
-        </div>
-      )}
-
-      {/* Page header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ margin: 0, fontFamily: "Manrope, sans-serif", fontSize: 24, fontWeight: 800, color: "#1e293b" }}>
-            Donaciones
-          </h1>
+          <h1 style={{ margin: 0, fontFamily: "Manrope, sans-serif", fontSize: 24, fontWeight: 800, color: "#1e293b" }}>Donaciones</h1>
           <p style={{ margin: "4px 0 0", fontSize: 14, color: "#64748b", fontFamily: "Inter, sans-serif" }}>
             33ª Compañía de Bomberos Voluntarios — Gestión de donaciones recibidas
           </p>
         </div>
         <button
           onClick={() => { setEditTarget(null); setShowForm(true); }}
-          style={{
-            background: RED, color: "#fff", border: "none", borderRadius: 12,
-            padding: "10px 20px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600,
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-          }}
+          style={{ background: RED, color: "#fff", border: "none", borderRadius: 12, padding: "10px 20px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
         >
           <Plus size={16} />
           Nueva Donación
         </button>
       </div>
 
-      {/* KPI row */}
       <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-        <KpiCard
-          label="Total Donaciones"
-          value={formatQ(totalDonaciones)}
-          color="#D97706"
-          icon={<DollarSign size={22} />}
-        />
-        <KpiCard
-          label="Donaciones Efectivo"
-          value={formatQ(totalEfectivo)}
-          color="#16a34a"
-          icon={<DollarSign size={22} />}
-        />
-        <KpiCard
-          label="Donaciones en Especie"
-          value={formatQ(totalEspecie)}
-          color="#1565c0"
-          icon={<Package size={22} />}
-        />
+        <KpiCard label="Total Donaciones" value={formatQ(totalDonaciones)} color="#D97706" icon={<DollarSign size={22} />} />
+        <KpiCard label="Donaciones Efectivo" value={formatQ(totalEfectivo)} color="#16a34a" icon={<DollarSign size={22} />} />
+        <KpiCard label="Donaciones en Especie" value={formatQ(totalEspecie)} color="#1565c0" icon={<Package size={22} />} />
       </div>
 
-      {/* Table card */}
-      <div
-        style={{
-          background: "#fff", borderRadius: 20,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.05)",
-          overflow: "hidden",
-        }}
-      >
-        {/* Toolbar */}
+      <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden" }}>
         <div style={{ padding: "18px 20px 0", display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Search */}
           <div style={{ position: "relative", maxWidth: 340 }}>
             <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
             <input
-              style={{
-                width: "100%", border: "1px solid #e2e8f0", borderRadius: 10,
-                padding: "8px 12px 8px 36px", fontSize: 14, fontFamily: "Inter, sans-serif",
-                color: "#1e293b", background: "#f8fafc", outline: "none", boxSizing: "border-box",
-              }}
+              style={{ width: "100%", border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 12px 8px 36px", fontSize: 14, fontFamily: "Inter, sans-serif", color: "#1e293b", background: "#f8fafc", outline: "none", boxSizing: "border-box" }}
               placeholder="Buscar por donante, recibo o descripción…"
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
             />
           </div>
 
-          {/* Filter tabs */}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
                 style={{
-                  padding: "6px 14px", borderRadius: 9999, border: "none",
-                  fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600,
-                  cursor: "pointer",
-                  background: activeTab === tab ? RED : "transparent",
-                  color: activeTab === tab ? "#fff" : "#64748b",
-                  transition: "all 0.15s",
+                  padding: "6px 14px", borderRadius: 9999, border: "none", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  background: activeTab === tab ? RED : "transparent", color: activeTab === tab ? "#fff" : "#64748b", transition: "all 0.15s",
                 }}
               >
                 {tab}
@@ -1101,7 +695,6 @@ export function DonacionesPage() {
           </div>
         </div>
 
-        {/* Table */}
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
             <thead>
@@ -1117,199 +710,106 @@ export function DonacionesPage() {
               </tr>
             </thead>
             <tbody>
-              {pageData.length === 0 && (
+              {loading && donaciones.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ ...tdStyle, textAlign: "center", color: "#94a3b8", padding: "40px 0" }}>
+                  <td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "#94a3b8", padding: "40px 0" }}>
+                    <Loader2 size={24} className="animate-spin" style={{ color: RED, margin: "0 auto" }} />
+                  </td>
+                </tr>
+              ) : donaciones.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "#94a3b8", padding: "40px 0" }}>
                     No se encontraron donaciones con los filtros actuales.
                   </td>
                 </tr>
+              ) : (
+                donaciones.map((d) => (
+                  <tr key={d.donacionId} style={{ transition: "background 0.1s" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "#fafafa"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
+                  >
+                    <td style={tdStyle}>{d.fecha ? d.fecha.split("T")[0] : "—"}</td>
+                    <td style={{ ...tdStyle, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap" }}>{d.noRecibo}</td>
+                    <td style={{ ...tdStyle, maxWidth: 200 }}>
+                      <div style={{ fontWeight: 500 }}>{d.donante}</div>
+                    </td>
+                    <td style={tdStyle}><ElementoBadge donacion={d} /></td>
+                    <td style={tdStyle}><TipoBadge tipo={d.tipo} /></td>
+                    <td style={{ ...tdStyle, maxWidth: 240 }}>
+                      <div style={{ fontSize: 13, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
+                        {d.tipo === "Monetaria"
+                          ? formatQ(d.monto)
+                          : (d.materiales?.map((m) => m.descripcion).join(", ") ?? "") + ` (est. ${formatQ(d.monto)})`}
+                      </div>
+                    </td>
+                    <td style={tdStyle}><Badge estado={d.estado} /></td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}>
+                      <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                        <button title="Ver detalle" onClick={() => setViewTarget(d)} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#475569", display: "flex", alignItems: "center" }}><Eye size={15} /></button>
+                        <button title="Editar" onClick={() => { setEditTarget(d); setShowForm(true); }} style={{ background: "#eff6ff", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#1d4ed8", display: "flex", alignItems: "center" }}><Pencil size={15} /></button>
+                        <button title="Eliminar" onClick={() => setDeleteTarget(d)} style={{ background: "#fef2f2", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: RED, display: "flex", alignItems: "center" }}><Trash2 size={15} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
-              {pageData.map((d) => (
-                <tr key={d.id} style={{ transition: "background 0.1s" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "#fafafa"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
-                >
-                  <td style={tdStyle}>{d.fecha}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600, color: "#1e293b", whiteSpace: "nowrap" }}>{d.noRecibo}</td>
-                  <td style={{ ...tdStyle, maxWidth: 200 }}>
-                    <div style={{ fontWeight: 500 }}>{d.donante}</div>
-                  </td>
-                  <td style={tdStyle}><ElementoBadge donacion={d} /></td>
-                  <td style={tdStyle}><TipoBadge tipo={d.tipo} /></td>
-                  <td style={{ ...tdStyle, maxWidth: 240 }}>
-                    <div style={{ fontSize: 13, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
-                      {d.descripcionMonto}
-                    </div>
-                  </td>
-                  <td style={tdStyle}><Badge estado={d.estado} /></td>
-                  <td style={{ ...tdStyle, textAlign: "center" }}>
-                    <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                      <button
-                        title="Ver detalle"
-                        onClick={() => setViewTarget(d)}
-                        style={{
-                          background: "#f1f5f9", border: "none", borderRadius: 8,
-                          padding: "6px 8px", cursor: "pointer", color: "#475569",
-                          display: "flex", alignItems: "center",
-                        }}
-                      >
-                        <Eye size={15} />
-                      </button>
-                      <button
-                        title="Editar"
-                        onClick={() => { setEditTarget(d); setShowForm(true); }}
-                        style={{
-                          background: "#eff6ff", border: "none", borderRadius: 8,
-                          padding: "6px 8px", cursor: "pointer", color: "#1d4ed8",
-                          display: "flex", alignItems: "center",
-                        }}
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        title="Eliminar"
-                        onClick={() => setDeleteTarget(d)}
-                        style={{
-                          background: "#fef2f2", border: "none", borderRadius: 8,
-                          padding: "6px 8px", cursor: "pointer", color: RED,
-                          display: "flex", alignItems: "center",
-                        }}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
-        <div style={{
-          padding: "14px 20px", borderTop: "1px solid #f1f5f9",
-          display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8,
-        }}>
+        <div style={{ padding: "14px 20px", borderTop: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontSize: 13, color: "#64748b", fontFamily: "Inter, sans-serif" }}>
-            Mostrando {filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} de {filtered.length} registros
+            Mostrando {donaciones.length} de {totalItems} registros
           </span>
           <div style={{ display: "flex", gap: 6 }}>
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={safePage === 1}
-              style={{
-                background: safePage === 1 ? "#f1f5f9" : "#fff",
-                border: "1px solid #e2e8f0", borderRadius: 8,
-                padding: "6px 10px", cursor: safePage === 1 ? "not-allowed" : "pointer",
-                color: safePage === 1 ? "#cbd5e1" : "#475569",
-                display: "flex", alignItems: "center",
-              }}
-            >
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} style={{ background: page === 1 ? "#f1f5f9" : "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 10px", cursor: page === 1 ? "not-allowed" : "pointer", color: page === 1 ? "#cbd5e1" : "#475569", display: "flex", alignItems: "center" }}>
               <ChevronLeft size={16} />
             </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                style={{
-                  border: "1px solid",
-                  borderColor: safePage === p ? RED : "#e2e8f0",
-                  borderRadius: 8, padding: "6px 12px",
-                  cursor: "pointer",
-                  background: safePage === p ? RED : "#fff",
-                  color: safePage === p ? "#fff" : "#475569",
-                  fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600,
-                }}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safePage === totalPages}
-              style={{
-                background: safePage === totalPages ? "#f1f5f9" : "#fff",
-                border: "1px solid #e2e8f0", borderRadius: 8,
-                padding: "6px 10px", cursor: safePage === totalPages ? "not-allowed" : "pointer",
-                color: safePage === totalPages ? "#cbd5e1" : "#475569",
-                display: "flex", alignItems: "center",
-              }}
-            >
+            <span style={{ padding: "6px 10px", fontSize: 13, fontWeight: 600, color: "#475569", fontFamily: "Inter, sans-serif" }}>{page} / {totalPages}</span>
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ background: page === totalPages ? "#f1f5f9" : "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 10px", cursor: page === totalPages ? "not-allowed" : "pointer", color: page === totalPages ? "#cbd5e1" : "#475569", display: "flex", alignItems: "center" }}>
               <ChevronRight size={16} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Modals */}
       {showForm && (
         <DonacionModal
           initial={editTarget ? donacionToForm(editTarget) : null}
           onSave={handleSave}
           onClose={() => { setShowForm(false); setEditTarget(null); }}
-          onDelete={editTarget ? () => {
-            setData((prev) => prev.filter((d) => d.id !== editTarget.id));
-            setShowForm(false);
-            setEditTarget(null);
-            setToast("Donación eliminada.");
-          } : undefined}
-          onValidationError={() => {
-            setAlertType("warning");
-            setShowAlert(true);
-          }}
+          onDelete={editTarget ? handleDeleteFromModal : undefined}
+          saving={saving}
         />
       )}
-      {viewTarget && (
-        <DetailModal donacion={viewTarget} onClose={() => setViewTarget(null)} />
-      )}
+      {viewTarget && <DetailModal donacion={viewTarget} onClose={() => setViewTarget(null)} />}
       {deleteTarget && (
-        <DeleteModal
-          donacion={deleteTarget}
-          onConfirm={handleDelete}
-          onClose={() => setDeleteTarget(null)}
-        />
-      )}
-
-      {showAlert && (
-        <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 shadow-2xl border border-gray-100 w-full max-w-sm text-center flex flex-col items-center gap-4 relative">
-            <button
-              onClick={() => setShowAlert(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold"
-            >
-              ✕
-            </button>
-            <div className="w-12 h-12 rounded-full border-2 border-[#eab308] bg-[#fefce8] text-[#ca8a04] flex items-center justify-center">
-              <svg
-                className="h-6 w-6"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }} onClick={() => setDeleteTarget(null)}>
+          <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: "28px 28px 20px", textAlign: "center" }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: RED }}>
+                <AlertTriangle size={26} />
+              </div>
+              <h3 style={{ margin: "0 0 8px", fontFamily: "Manrope, sans-serif", fontSize: 17, fontWeight: 700, color: "#1e293b" }}>Eliminar Donación</h3>
+              <p style={{ margin: 0, fontSize: 14, color: "#64748b", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }}>
+                ¿Está seguro que desea eliminar el recibo <strong>{deleteTarget.noRecibo}</strong> de <strong>{deleteTarget.donante}</strong>? Esta acción no se puede deshacer.
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-gray-900">
-              {alertType === "warning" ? "Campos Incompletos" : "Registro Exitoso"}
-            </h3>
-            <p className="text-sm text-gray-600">
-              {alertType === "warning"
-                ? "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar."
-                : "La donación ha sido registrada correctamente."}
-            </p>
-            <button
-              onClick={() => setShowAlert(false)}
-              className="w-full bg-[#d92d20] text-white py-2.5 rounded-xl font-medium hover:bg-[#b92318] transition-colors"
-            >
-              Aceptar
-            </button>
+            <div style={{ padding: "0 28px 24px", display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, background: "#f1f5f9", border: "none", borderRadius: 10, padding: "10px 0", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleDelete} style={{ flex: 1, background: RED, border: "none", borderRadius: 10, padding: "10px 0", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer" }}>Eliminar</button>
+            </div>
           </div>
         </div>
       )}
+
+      <AlertDialog
+        isOpen={alertState.open}
+        onClose={() => setAlertState((s) => ({ ...s, open: false }))}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+      />
     </div>
   );
 }

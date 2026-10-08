@@ -25,6 +25,8 @@ public class AppDbContext : DbContext
     public DbSet<InventarioMovimiento> InventarioMovimientos { get; set; }
     public DbSet<EquipoUnidad> EquipoUnidades { get; set; }
     public DbSet<ServicioInsumoUtilizado> ServicioInsumosUtilizados { get; set; }
+    public DbSet<Donacion> Donaciones { get; set; }
+    public DbSet<MaterialDonacion> MaterialesDonacion { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -254,6 +256,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.StockActual).HasColumnName("stock_actual").IsRequired();
             entity.Property(e => e.StockMinimo).HasColumnName("stock_minimo").IsRequired();
             entity.Property(e => e.UnidadMedida).HasColumnName("unidad_medida").HasMaxLength(50);
+            entity.Property(e => e.DonacionId).HasColumnName("donacion_id");
+            entity.Property(e => e.Origen).HasColumnName("origen").HasMaxLength(20).HasDefaultValue("Compra Propia");
+            entity.Property(e => e.NombreDonante).HasColumnName("nombre_donante").HasMaxLength(150);
+            entity.Property(e => e.NoRecibo).HasColumnName("no_recibo").HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at");
         });
 
@@ -289,6 +295,43 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ServicioId).HasColumnName("servicio_id");
             entity.Property(e => e.ItemId).HasColumnName("item_id");
             entity.Property(e => e.Cantidad).HasColumnName("cantidad").IsRequired();
+        });
+
+        // Donacion
+        modelBuilder.Entity<Donacion>(entity =>
+        {
+            entity.ToTable("donaciones");
+            entity.HasKey(e => e.DonacionId);
+            entity.Property(e => e.DonacionId).HasColumnName("donacion_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Fecha).HasColumnName("fecha").IsRequired();
+            entity.Property(e => e.NoRecibo).HasColumnName("no_recibo").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Donante).HasColumnName("donante").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.DpiNit).HasColumnName("dpi_nit").HasMaxLength(20);
+            entity.Property(e => e.Telefono).HasColumnName("telefono").HasMaxLength(20);
+            entity.Property(e => e.Tipo).HasColumnName("tipo").IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Categoria).HasColumnName("categoria").HasMaxLength(50);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.Monto).HasColumnName("monto").HasColumnType("numeric(12,2)");
+            entity.Property(e => e.Estado).HasColumnName("estado").HasMaxLength(20).HasDefaultValue("Pendiente");
+            entity.Property(e => e.MetodoPago).HasColumnName("metodo_pago").HasMaxLength(20);
+            entity.Property(e => e.NoComprobante).HasColumnName("no_comprobante").HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasIndex(e => e.NoRecibo).IsUnique();
+        });
+
+        // MaterialDonacion
+        modelBuilder.Entity<MaterialDonacion>(entity =>
+        {
+            entity.ToTable("materiales_donacion");
+            entity.HasKey(e => e.MaterialId);
+            entity.Property(e => e.MaterialId).HasColumnName("material_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.DonacionId).HasColumnName("donacion_id").IsRequired();
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Cantidad).HasColumnName("cantidad").IsRequired();
+            entity.Property(e => e.ValorEstimado).HasColumnName("valor_estimado").HasColumnType("numeric(12,2)");
+            entity.Property(e => e.Categoria).HasColumnName("categoria").HasMaxLength(50);
         });
     }
 }

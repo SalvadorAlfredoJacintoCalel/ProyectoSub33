@@ -9,6 +9,7 @@ import type {
   EmergenciaUpdate,
   RegistrarEmergenciaResponse,
   TipoEmergencia,
+  CatalogoItem,
   Hospital,
   Unidad,
   RolServicio,
@@ -18,6 +19,7 @@ import type {
 
 interface Catalogos {
   tiposEmergencia: TipoEmergencia[];
+  tiposAsistencia: CatalogoItem[];
   hospitales: Hospital[];
   unidades: Unidad[];
   rolesServicio: RolServicio[];
@@ -27,6 +29,7 @@ interface Catalogos {
 
 const CATALOGOS_INICIALES: Catalogos = {
   tiposEmergencia: [],
+  tiposAsistencia: [],
   hospitales: [],
   unidades: [],
   rolesServicio: [],
@@ -81,9 +84,10 @@ export function useEmergencias(): UseEmergenciasReturn {
   const cargarCatalogos = useCallback(async () => {
     setError(null);
     try {
-      const [tiposEmergencia, hospitales, unidades, rolesServicio, tiposUnidad, personal] =
+      const [tiposEmergencia, tiposAsistencia, hospitales, unidades, rolesServicio, tiposUnidad, personal] =
         await Promise.all([
           emergenciaService.getTiposEmergencia(),
+          emergenciaService.getTiposAsistencia(),
           emergenciaService.getHospitales(),
           emergenciaService.getUnidades(),
           emergenciaService.getRolesServicio(),
@@ -93,6 +97,7 @@ export function useEmergencias(): UseEmergenciasReturn {
 
       setCatalogos({
         tiposEmergencia,
+        tiposAsistencia,
         hospitales,
         unidades,
         rolesServicio,

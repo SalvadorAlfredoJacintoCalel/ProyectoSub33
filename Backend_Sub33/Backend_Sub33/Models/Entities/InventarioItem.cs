@@ -39,6 +39,21 @@ namespace Backend_Sub33.Models.Entities
         [Column("unidad_medida")]
         public string? UnidadMedida { get; set; }
 
+        [Column("donacion_id")]
+        public int? DonacionId { get; set; }
+
+        [MaxLength(20)]
+        [Column("origen")]
+        public string Origen { get; set; } = "Compra Propia";
+
+        [MaxLength(150)]
+        [Column("nombre_donante")]
+        public string? NombreDonante { get; set; }
+
+        [MaxLength(50)]
+        [Column("no_recibo")]
+        public string? NoRecibo { get; set; }
+
         [Column("created_at")]
         public DateTime? CreatedAt { get; set; }
     }
