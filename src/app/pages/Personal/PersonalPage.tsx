@@ -65,10 +65,9 @@ interface DetailModalProps {
   roles: RolItem[];
   onClose: () => void;
   onUpdate: (id: string, dto: ActualizarPersonalDto) => Promise<void>;
-  onActivate: (id: string) => Promise<void>;
 }
 
-function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate }: DetailModalProps) {
+function DetailModal({ member, rangos, roles, onClose, onUpdate }: DetailModalProps) {
   const { toast } = useAlert();
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<FormState>(emptyFormState());
@@ -392,16 +391,7 @@ function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate }: D
         <div className="flex justify-end gap-2 px-6 py-4" style={{ borderTop: "1px solid var(--border)", background: "var(--bg-input)" }}>
           {!isEditing ? (
             <>
-              {!member.estado && (
-                <button
-                  onClick={() => onActivate(member.personalId)}
-                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                  style={{ border: "1px solid var(--green)", color: "var(--green)", background: "var(--bg-card)" }}
-                >
-                  <Check size={15} />
-                  Activar
-                </button>
-              )}
+
               <button
                 onClick={() => setIsEditing(true)}
                 className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -773,19 +763,6 @@ const activos = members.filter((m) => m.estado === true).length;
     }
   }
 
-  async function handleActivate(id: string) {
-    try {
-      await cambiarEstadoPersonal(id, true);
-      toast.success("Miembro activado correctamente.");
-      const updated = await getPersonalById(id);
-      setViewMember(updated);
-      await fetchPersonal();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Error desconocido";
-      toast.error(msg);
-    }
-  }
-
   async function handleCrearRango() {
     const nombre = nuevoRangoNombre.trim();
     if (!nombre) {
@@ -1078,7 +1055,6 @@ const activos = members.filter((m) => m.estado === true).length;
         roles={roles}
         onClose={() => { setViewId(null); setViewMember(null); }}
         onUpdate={handleUpdateFromDetail}
-        onActivate={handleActivate}
       />
       )}
 
