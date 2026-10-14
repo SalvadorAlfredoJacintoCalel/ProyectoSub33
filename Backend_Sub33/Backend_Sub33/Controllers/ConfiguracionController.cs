@@ -240,6 +240,14 @@ namespace Backend_Sub33.Controllers
 
                 usuario.Estado = dto.Estado;
                 usuario.UpdatedAt = DateTime.UtcNow;
+
+                var personal = await _context.Personal.FirstOrDefaultAsync(p => p.PersonalId == usuario.PersonalId);
+                if (personal != null)
+                {
+                    personal.Estado = dto.Estado;
+                    personal.UpdatedAt = DateTime.UtcNow;
+                }
+
                 await _context.SaveChangesAsync();
 
                 return Ok(new { mensaje = "Estado actualizado correctamente", estado = usuario.Estado });

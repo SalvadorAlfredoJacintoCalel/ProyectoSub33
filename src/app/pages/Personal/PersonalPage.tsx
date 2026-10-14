@@ -10,7 +10,7 @@ import {
   crearRol,
   getPersonal,
   getPersonalById,
-  buscarPersonal,
+
   registrarPersonal,
   actualizarPersonal,
   cambiarEstadoPersonal,
@@ -453,8 +453,6 @@ export function PersonalPage() {
 
   const [members, setMembers] = useState<Miembro[]>([]);
   const [search, setSearch] = useState("");
-  const [suggestions, setSuggestions] = useState<Miembro[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [estadoDropdownOpen, setEstadoDropdownOpen] = useState(false);
   const [filterRango, setFilterRango] = useState<RangoItem["nombre"] | "">("");
   const [filterEstado, setFilterEstado] = useState<Estado | "">("Activo");
@@ -529,25 +527,6 @@ const activos = members.filter((m) => m.estado === true).length;
     };
     loadData();
   }, []);
-
-  useEffect(() => {
-    if (!search.trim()) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const results = await buscarPersonal(search);
-        setSuggestions(results);
-        setShowSuggestions(true);
-      } catch {
-        setSuggestions([]);
-        setShowSuggestions(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const fetchPersonal = useCallback(async () => {
@@ -900,49 +879,6 @@ const activos = members.filter((m) => m.estado === true).length;
               border: "1px solid var(--border)",
             }}
           />
-          {showSuggestions && suggestions.length > 0 && (
-            <div
-              style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                right: 0,
-                marginTop: 4,
-                zIndex: 30,
-                background: "var(--bg-card)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                boxShadow: "var(--shadow)",
-                maxHeight: 240,
-                overflowY: "auto",
-              }}
-            >
-              {suggestions.map((s) => (
-                <button
-                  key={s.personalId}
-                  onClick={() => { setSearch(s.nombreCompleto); setShowSuggestions(false); setPage(1); }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "8px 12px",
-                    fontSize: 13,
-                    color: "var(--text-1)",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
-                  <span style={{ fontWeight: 600 }}>{s.nombreCompleto}</span>
-                  <span style={{ color: "var(--text-3)", fontSize: 11 }}>{s.codigo}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         <select
