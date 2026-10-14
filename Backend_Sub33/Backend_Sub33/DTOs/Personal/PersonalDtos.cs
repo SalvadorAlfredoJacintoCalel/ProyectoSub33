@@ -127,6 +127,8 @@ public class PersonalResumenDto
     public string? ContactoEmergenciaTelefono { get; init; }
     public string FechaIngreso { get; init; } = string.Empty;
     public bool TieneUsuario { get; init; }
+    public string? Username { get; init; }
+    public string? RolNombre { get; init; }
 }
 
 public class PersonalResponseDto

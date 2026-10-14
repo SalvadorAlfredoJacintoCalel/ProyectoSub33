@@ -13,6 +13,14 @@ export interface Miembro {
   contactoEmergenciaNombre?: string;
   contactoEmergenciaTelefono?: string;
   fechaIngreso: string;
+  username?: string;
+  rolNombre?: string;
+  usuario?: {
+    username: string;
+    estado: boolean;
+    rolId?: number;
+    rol?: string;
+  };
 }
 
 export interface FormState {

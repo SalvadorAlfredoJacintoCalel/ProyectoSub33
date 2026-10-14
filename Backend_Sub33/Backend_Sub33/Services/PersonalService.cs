@@ -57,6 +57,7 @@ public partial class PersonalService : IPersonalService
 
             var ids = registros.Select(p => p.PersonalId).ToList();
             var usuariosPorPersonal = await ObtenerUsuariosPorPersonalAsync(ids, ct);
+            var rolesPorPersonal = await ObtenerRolesPorPersonalAsync(ids, ct);
 
             var items = registros
                 .Select(p => new PersonalResumenDto
@@ -73,7 +74,9 @@ public partial class PersonalService : IPersonalService
                     ContactoEmergenciaNombre = p.ContactoEmergenciaNombre ?? string.Empty,
                     ContactoEmergenciaTelefono = p.ContactoEmergenciaTelefono ?? string.Empty,
                     FechaIngreso = p.FechaIngreso.ToString("yyyy-MM-dd"),
-                    TieneUsuario = usuariosPorPersonal.ContainsKey(p.PersonalId)
+                    TieneUsuario = usuariosPorPersonal.ContainsKey(p.PersonalId),
+                    Username = usuariosPorPersonal.GetValueOrDefault(p.PersonalId),
+                    RolNombre = rolesPorPersonal.GetValueOrDefault(p.PersonalId)
                 })
                 .ToList();
 
@@ -637,7 +640,18 @@ public partial class PersonalService : IPersonalService
         return await _context.Usuarios
             .AsNoTracking()
             .Where(u => u.PersonalId.HasValue && ids.Contains(u.PersonalId.Value))
-            .ToDictionaryAsync(u => u.PersonalId!.Value, u => u.Username, ct);
+            .ToDictionaryAsync(u => u.PersonalId!.Value, u => (string?)u.Username, ct);
+    }
+
+    private async Task<Dictionary<Guid, string?>> ObtenerRolesPorPersonalAsync(List<Guid> ids, CancellationToken ct)
+    {
+        if (ids.Count == 0) return new Dictionary<Guid, string?>();
+        var roles = await _context.UsuarioRoles
+            .AsNoTracking()
+            .Where(ur => ur.Usuario.PersonalId.HasValue && ids.Contains(ur.Usuario.PersonalId.Value))
+            .Select(ur => new { ur.Usuario.PersonalId, ur.Rol.Nombre })
+            .ToListAsync(ct);
+        return roles.ToDictionary(r => r.PersonalId!.Value, r => r.Nombre);
     }
 
     private static string GenerarCodigo(Guid id, IReadOnlyDictionary<Guid, int> index)

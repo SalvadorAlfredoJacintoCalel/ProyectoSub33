@@ -23,7 +23,7 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
   const filtered = useMemo(() => {
     return members.filter((m) => {
       const q = search.toLowerCase();
-      const matchSearch = !search || m.nombreCompleto.toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q) || m.dpi.replace(/\D/g, "").includes(search.replace(/\D/g, ""));
+      const matchSearch = !search || m.nombreCompleto.toLowerCase().includes(q) || m.dpi.replace(/\D/g, "").includes(search.replace(/\D/g, ""));
       const matchRango = !filterRango || m.rangoNombre === filterRango;
       const matchEstado = !filterEstado || (m.estado ? "Activo" : "Inactivo") === filterEstado;
       return matchSearch && matchRango && matchEstado;
@@ -39,7 +39,7 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
       <table className="w-full text-sm">
         <thead>
           <tr key="header" style={{ borderBottom: "1px solid var(--border)" }}>
-            {["Código", "Nombre Completo", "DPI", "Rango", "Estado", "Teléfono", "Contacto Emergencia", "Tel. Emergencia", "Fecha de Ingreso"].map((h) => (
+             {["Código", "Nombre Completo", "DPI", "Rango", "Estado", "Teléfono", "Fecha de Ingreso"].map((h) => (
               <th key={h} className="whitespace-nowrap px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-3)" }}>
                 {h}
               </th>
@@ -49,7 +49,7 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
         <tbody>
           {pageRows.length === 0 && (
             <tr key="empty">
-              <td colSpan={10} className="py-12 text-center text-sm" style={{ color: "var(--text-3)" }}>
+              <td colSpan={7} className="py-12 text-center text-sm" style={{ color: "var(--text-3)" }}>
                 No se encontraron miembros.
               </td>
             </tr>
@@ -93,14 +93,8 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
                   {m.estado ? "Activo" : "Inactivo"}
                 </span>
               </td>
-              <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
+               <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
                 {m.telefono}
-              </td>
-              <td className="px-4 py-3" style={{ color: "var(--text-2)" }}>
-                {m.contactoEmergenciaNombre}
-              </td>
-              <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
-                {m.contactoEmergenciaTelefono}
               </td>
               <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
                 {formatDate(m.fechaIngreso)}

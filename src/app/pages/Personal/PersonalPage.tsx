@@ -176,7 +176,6 @@ function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate }: D
   }
 
   const detailFields = [
-    { label: "Código", value: member.codigo },
     { label: "Código Bombero", value: member.codigoBombero || "Sin asignar" },
     { label: "DPI", value: member.dpi },
     { label: "Rango", value: member.rangoNombre || "" },
@@ -186,6 +185,9 @@ function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate }: D
     { label: "Fecha de Ingreso", value: formatDate(member.fechaIngreso) },
     { label: "Contacto Emergencia", value: member.contactoEmergenciaNombre || "" },
     { label: "Tel. Emergencia", value: member.contactoEmergenciaTelefono || "" },
+    { label: "Usuario del Sistema", value: member.usuario?.username || "Sin cuenta" },
+    { label: "Rol del Sistema", value: member.usuario?.rol || "Sin rol" },
+    { label: "Acceso al Sistema", value: member.usuario ? "Sí" : "No" },
   ];
 
   return (
@@ -453,6 +455,7 @@ export function PersonalPage() {
 
   const [members, setMembers] = useState<Miembro[]>([]);
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [estadoDropdownOpen, setEstadoDropdownOpen] = useState(false);
   const [filterRango, setFilterRango] = useState<RangoItem["nombre"] | "">("");
   const [filterEstado, setFilterEstado] = useState<Estado | "">("Activo");
@@ -485,10 +488,27 @@ export function PersonalPage() {
   const filtered = useMemo(() => {
     if (!Array.isArray(members)) return [];
     return members.filter((m) => {
-      const q = search.toLowerCase();
-      const matchSearch = !search || m.nombreCompleto.toLowerCase().includes(q) || m.codigo.toLowerCase().includes(q) || (m.codigoBombero && m.codigoBombero.toLowerCase().includes(q)) || m.dpi.replace(/\D/g, "").includes(search.replace(/\D/g, ""));
+      if (!search.trim()) return true;
+      const q = search.toLowerCase().trim();
+      const qDigits = q.replace(/\D/g, "");
+
+      const matchNombre = m.nombreCompleto.toLowerCase().includes(q) ||
+        m.nombreCompleto.toLowerCase().split(" ").some(p => p.startsWith(q));
+
+      const matchCodigo = m.codigo.toLowerCase().includes(q) ||
+        (m.codigoBombero && m.codigoBombero.toLowerCase().includes(q));
+
+      const matchDpi = qDigits.length >= 2 && m.dpi.replace(/\D/g, "").includes(qDigits);
+
+      const matchTelefono = qDigits.length >= 2 && (m.telefono || "").replace(/\D/g, "").includes(qDigits);
+
+      const matchUsuario = m.usuario?.username?.toLowerCase().includes(q) || false;
+
+      const matchSearch = matchNombre || matchCodigo || matchDpi || matchTelefono || matchUsuario;
+
       const matchRango = !filterRango || m.rangoNombre === filterRango;
       const matchEstado = !filterEstado || m.estado === filterEstado;
+
       return matchSearch && matchRango && matchEstado;
     });
   }, [members, search, filterRango, filterEstado]);
@@ -528,16 +548,43 @@ const activos = members.filter((m) => m.estado === true).length;
     loadData();
   }, []);
 
+  useEffect(() => {
+    setSearch(searchInput);
+    setPage(1);
+  }, [searchInput]);
+
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const fetchPersonal = useCallback(async () => {
     try {
       const data = await getPersonal();
-      setMembers(Array.isArray(data) ? data : []);
+      if (!Array.isArray(data)) { setMembers([]); return; }
+      const mapped = data.map((m: any) => ({
+        ...m,
+        usuario: m.Username ? { username: m.Username, rol: m.RolNombre, estado: true } : undefined,
+      }));
+      setMembers(mapped);
     } catch (error) {
       console.error("Error fetching personal:", error);
       setMembers([]);
     }
   }, []);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchPersonal();
+    };
+    const handleUsuariosActualizados = () => {
+      fetchPersonal();
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+    window.addEventListener("usuarios-actualizados", handleUsuariosActualizados);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+      window.removeEventListener("usuarios-actualizados", handleUsuariosActualizados);
+    };
+  }, [fetchPersonal]);
 
   const fetchCatalogos = useCallback(async () => {
     try {
@@ -870,8 +917,8 @@ const activos = members.filter((m) => m.estado === true).length;
           <input
             type="text"
             placeholder="Buscar por nombre, código o DPI..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            value={searchInput}
+            onChange={(e) => { setSearchInput(e.target.value); setPage(1); }}
             className="w-full rounded-lg py-2 pl-9 pr-3 text-sm outline-none"
             style={{
               background: "var(--bg-input)",

@@ -468,6 +468,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     try {
       await cambiarEstadoUsuario(u.usuarioId, estado);
       setUsuarios((prev) => prev.map((x) => (x.usuarioId === u.usuarioId ? { ...x, estado } : x)));
+      window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
       toast.success("Los cambios se han guardado correctamente.");
     } catch (error) {
       toast.error("Error al cambiar el estado del usuario.");
@@ -482,6 +483,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       setUsuarios((prev) =>
         prev.map((x) => (x.usuarioId === u.usuarioId ? { ...x, rolId, rolNombre: rol?.nombre ?? "" } : x))
       );
+      window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
       toast.success("Los cambios se han guardado correctamente.");
     } catch (error) {
       toast.error("Error al cambiar el rol del usuario.");
@@ -504,6 +506,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       setUsuarios((prev) =>
         prev.map((x) => (x.usuarioId === modalUsername.usuarioId ? { ...x, username } : x))
       );
+      window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
       toast.success("Nombre de usuario actualizado correctamente.");
       setModalUsername(null);
       setNuevoUsername("");
@@ -525,6 +528,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     }
     try {
       await actualizarAccesoSistema(modalPassword.personalId, { username: "", password: nuevaPassword, rolId: 0 });
+      window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
       toast.success("Contraseña actualizada correctamente.");
       setModalPassword(null);
       setNuevaPassword("");
