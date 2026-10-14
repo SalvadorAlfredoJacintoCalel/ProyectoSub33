@@ -13,7 +13,7 @@
 src/app/pages/Personal/
 ├── PersonalPage.tsx          # Página principal (lista, filtros, paginación, modales)
 ├── components/
-│   ├── PersonalForm.tsx      # Formulario crear/editar (4 secciones)
+│   ├── PersonalForm.tsx      # Formulario crear/editar (4 secciones + acordeón acceso)
 │   └── PersonalTable.tsx     # Tabla con acciones
 src/services/personalService.ts  # Cliente API (8 funciones)
 src/types/personal.ts           # Tipos: Miembro, FormState, RangoItem, RolItem
@@ -42,6 +42,7 @@ Backend_Sub33/Backend_Sub33/
 | PUT | `/api/personal/{id}` | Actualizar | ✅ |
 | PATCH | `/api/personal/{id}/estado` | Cambiar estado | ✅ |
 | DELETE | `/api/personal/{id}` | Soft delete | ✅ |
+| GET | `/api/personal/buscar?q=` | Búsqueda typeahead | ❌ Pendiente |
 
 ## Funciones Frontend (personalService.ts)
 
@@ -52,6 +53,7 @@ Backend_Sub33/Backend_Sub33/
 | `getRoles()` | GET /configuracion/roles | Cargar select de roles |
 | `crearRol()` | POST /configuracion/roles | Crear nuevo rol |
 | `getPersonal()` | GET /personal | Cargar lista |
+| `buscarPersonal(q)` | GET /personal/buscar | Typeahead con debounce |
 | `registrarPersonal()` | POST /personal | Crear miembro |
 | `actualizarPersonal()` | PUT /personal/{id} | Editar miembro |
 | `eliminarPersonal()` | DELETE /personal/{id} | Eliminar miembro |
@@ -96,7 +98,83 @@ public class PersonalListDto {
 }
 ```
 
-## Mejoras Necesarias
+## Bug Crítico Detectado — Formulario Acceso al Sistema
+
+### Problema
+En `PersonalPage.tsx` `handleSubmit` (líneas 589-590, 608), la validación de credenciales es SIEMPRE obligatoria, aunque el acordeón "Acceso al Sistema" esté cerrado:
+
+```tsx
+// Línea 590: SIEMPRE requiere rolId (aunque el acordeón esté cerrado)
+if (!form.rolId) errs.rolId = "Rol del sistema requerido";
+
+// Línea 608: SIEMPRE requiere usuario y rolId
+(errs.usuario || !form.usuario.trim() || !form.rolId)
+```
+
+**Resultado:** Es imposible registrar un miembro SIN acceso al sistema, aunque el acordeón esté cerrado.
+
+### Comparación con DetailModal (editar) — Correcto
+```tsx
+// Solo validar credenciales si el acordeón está abierto
+if (credOpen) {
+  if (!form.usuario.trim()) errs.usuario = "Usuario requerido";
+  if (!form.rolId) errs.rolId = "Rol del sistema requerido";
+}
+```
+
+### Solución
+En `handleSubmit` de `PersonalPage.tsx`:
+```tsx
+async function handleSubmit() {
+  const errs: Record<string, string> = {};
+  // Validaciones básicas (siempre)
+  if (!form.primerNombre.trim()) errs.primerNombre = "Primer nombre requerido";
+  if (!form.primerApellido.trim()) errs.primerApellido = "Primer apellido requerido";
+  const dpiDigits = form.dpi.replace(/\D/g, "");
+  if (dpiDigits.length !== 13) errs.dpi = "DPI debe tener exactamente 13 dígitos";
+  if (!form.telefono.trim()) errs.telefono = "Teléfono requerido";
+  if (!form.contactoEmergencia.trim()) errs.contactoEmergencia = "Nombre del contacto requerido";
+  if (!form.telEmergencia.trim()) errs.telEmergencia = "Teléfono de emergencia requerido";
+  if (form.rangoId === 0) errs.rangoId = "Rango requerido";
+
+  // SOLO validar credenciales si el acordeón está abierto
+  if (credOpen) {
+    if (!form.usuario.trim()) errs.usuario = "Usuario requerido";
+    if (!form.rolId) errs.rolId = "Rol del sistema requerido";
+    if (!editingId && form.contrasena.length < 8) errs.contrasena = "Mínimo 8 caracteres";
+    if (form.confirmarContrasena !== form.contrasena) errs.confirmarContrasena = "Las contraseñas no coinciden";
+  }
+
+  setErrors(errs);
+  if (Object.keys(errs).length > 0) {
+    toast.warning("Por favor completa los campos obligatorios (*).");
+    return;
+  }
+
+  // ... payload
+  // Solo enviar accesoSistema si el acordeón está abierto Y se llenaron credenciales
+  if (credOpen && form.usuario && form.rolId) {
+    payload.accesoSistema = {
+      username: form.usuario,
+      password: form.contrasena,
+      rolId: form.rolId,
+    };
+  }
+}
+```
+
+**El backend ya soporta esto** (`accesoSistema?: AccesoSistemaDto` es opcional en `personalService.ts`).
+
+### Regla de Negocio
+- **NO** dar acceso a todo el personal
+- "Acceso al Sistema" es OPCIONAL:
+  - Acordeón **cerrado** → guarda solo datos de personal (sin cuenta)
+  - Acordeón **abierto** + campos llenos → guarda personal + cuenta de usuario
+  - Acordeón **abierto** + campos vacíos → validar que completen usuario/rol/contraseña
+
+---
+
+## Mejoras Propuestas
 
 ### Backend (Prioridad Alta)
 1. **Generación de código** — `PersonalListDto.Codigo` siempre vacío, implementar generación automática
@@ -104,11 +182,26 @@ public class PersonalListDto {
 3. **Paginación** — Agregar `GET /api/personal?pagina=&tamanio=`
 4. **Manejo de errores** — Usar códigos HTTP correctos (404, 409, 400) en lugar de 500 genérico
 
+### BD (Prioridad Alta)
+5. **Índices para búsqueda** — Crear índices en columnas de búsqueda:
+```sql
+CREATE INDEX idx_personal_nombre ON personal (primer_apellido, primer_nombre);
+CREATE INDEX idx_personal_dpi ON personal (dpi);
+CREATE INDEX idx_personal_codigo ON personal (codigo_bombero);
+```
+
 ### Frontend (Prioridad Media)
-5. **Eliminar `getPersonalById()`** — Función no usada
-6. **Simplificar `mapListasToItems()`** — Helper genérico que maneja múltiples formatos
-7. **Alinear DTOs** — `PersonalResponse` tiene campos que no vienen del backend (`codigo`, `correo`)
-8. **Eliminar re-exports** — `export { ApiError }` y `export type { ApiErrorResponse }` innecesarios
+6. **Eliminar `getPersonalById()`** — Función no usada
+7. **Simplificar `mapListasToItems()`** — Helper genérico que maneja múltiples formatos
+8. **Alinear DTOs** — `PersonalResponse` tiene campos que no vienen del backend (`codigo`, `correo`)
+9. **Eliminar re-exports** — `export { ApiError }` y `export type { ApiErrorResponse }` innecesarios
+
+### Frontend UI/UX (Prioridad Media)
+10. **Typeahead con debounce** — Búsqueda en backend mientras se escribe (300ms debounce)
+11. **Stat Cards con animación** — Hover: escala 1.05x + sombra más grande; Click: filtra directamente
+12. **Dropdown estado personalizado** — Reemplazar `<select>` aburrido por dropdown moderno con colores y animación de flecha
+
+---
 
 ## Convenciones del Módulo
 
@@ -136,10 +229,16 @@ public class PersonalListDto {
 - **NO duplicar constantes** — usar `src/constants/`
 
 ## Tareas Pendientes
+- [ ] Frontend: Agregar definición de `SectionLabel` en PersonalPage.tsx (error ReferenceError al editar miembro)
 - [ ] Backend: Implementar generación de código automática
 - [ ] Backend: Agregar endpoint de búsqueda con filtros
 - [ ] Backend: Agregar paginación
 - [ ] Backend: Mejorar manejo de errores
+- [ ] BD: Crear índices para búsqueda (nombre, DPI, código)
+- [ ] Frontend: Corregir validación formulario acceso al sistema (bug crítico)
+- [ ] Frontend: Agregar typeahead con debounce
+- [ ] Frontend: Stat Cards con animación hover + click para filtrar
+- [ ] Frontend: Dropdown estado personalizado (reemplazar select aburrido)
 - [ ] Frontend: Eliminar `getPersonalById()` no usado
 - [ ] Frontend: Simplificar `mapListasToItems()`
 - [ ] Frontend: Alinear DTOs con backend

@@ -32,6 +32,31 @@ const estadoBadge: Record<Estado, string> = {
   Inactivo: "bg-gray-100 text-gray-600 border border-gray-200",
 };
 
+function inputStyle(hasError: boolean) {
+  return {
+    width: "100%",
+    background: "var(--bg-input)",
+    color: "var(--text-1)",
+    border: hasError ? "1px solid var(--red)" : "1px solid var(--border)",
+    borderRadius: 8,
+    padding: "8px 12px",
+    fontSize: 13,
+    outline: "none",
+    boxSizing: "border-box",
+  };
+}
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "20px 0 12px", marginTop: 20 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-3)", whiteSpace: "nowrap" }}>
+        {label}
+      </span>
+      <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+    </div>
+  );
+}
+
 // ── Detail/Edit Modal ──────────────────────────────────────────────────────────
 interface DetailModalProps {
   member: PersonalResponse | null;
@@ -586,28 +611,18 @@ const activos = members.filter((m) => m.estado === true).length;
     if (!form.contactoEmergencia.trim()) errs.contactoEmergencia = "Nombre del contacto requerido";
     if (!form.telEmergencia.trim()) errs.telEmergencia = "Teléfono de emergencia requerido";
     if (form.rangoId === 0) errs.rangoId = "Rango requerido";
-    if (errs.usuario && !form.usuario.trim()) errs.usuario = "Usuario requerido";
-    if (!form.rolId) errs.rolId = "Rol del sistema requerido";
 
-    const pwEntered = form.contrasena.length > 0;
-    if (!editingId || pwEntered) {
-      if (form.contrasena.length < 8) errs.contrasena = "Mínimo 8 caracteres";
+    // Solo validar credenciales si el acordeón está abierto
+    if (credOpen) {
+      if (!form.usuario.trim()) errs.usuario = "Usuario requerido";
+      if (!form.rolId) errs.rolId = "Rol del sistema requerido";
+      if (!editingId && form.contrasena.length < 8) errs.contrasena = "Mínimo 8 caracteres";
       if (form.confirmarContrasena !== form.contrasena) errs.confirmarContrasena = "Las contraseñas no coinciden";
     }
 
     setErrors(errs);
 
-    const isMissingKeyFields =
-      !form.primerNombre.trim() ||
-      !form.primerApellido.trim() ||
-      !form.dpi.trim() ||
-      !form.telefono.trim() ||
-      !form.contactoEmergencia.trim() ||
-      !form.telEmergencia.trim() ||
-      form.rangoId === 0 ||
-      (errs.usuario || !form.usuario.trim() || !form.rolId);
-
-    if (isMissingKeyFields || Object.keys(errs).length > 0) {
+    if (Object.keys(errs).length > 0) {
       toast.warning("Por favor completa los campos obligatorios (*).");
       return;
     }
@@ -635,7 +650,8 @@ const activos = members.filter((m) => m.estado === true).length;
       contactoEmergenciaTelefono: form.telEmergencia,
     };
 
-    if (form.usuario && form.rolId) {
+    // Solo enviar accesoSistema si el acordeón está abierto Y se llenaron credenciales
+    if (credOpen && form.usuario && form.rolId) {
       payload.accesoSistema = {
         username: form.usuario,
         password: form.contrasena,
