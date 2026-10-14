@@ -203,10 +203,11 @@ namespace Backend_Sub33.Controllers
                 var usuarios = await _context.Usuarios
                     .AsNoTracking()
                     .OrderBy(u => u.Username)
-                    .Select(u => new UsuarioConfigDto
-                    {
-                        UsuarioId = u.UsuarioId,
-                        NombreCompleto = u.Personal != null
+            .Select(u => new UsuarioConfigDto
+            {
+                UsuarioId = u.UsuarioId,
+                PersonalId = u.PersonalId,
+                NombreCompleto = u.Personal != null
                             ? $"{u.Personal.PrimerNombre} {u.Personal.SegundoNombre} {u.Personal.PrimerApellido} {u.Personal.SegundoApellido}".Trim()
                             : u.Username,
                         Username = u.Username,
@@ -580,6 +581,86 @@ namespace Backend_Sub33.Controllers
             {
                 _logger.LogError(ex, "Error al eliminar en catálogo {Tipo}", tipo);
                 return StatusCode(500, new { mensaje = "Error al eliminar el registro", detalle = ex.Message });
+            }
+        }
+
+        // ── CRUD personalizado: Hospitales (nombre + direccion + telefono) ──────
+        [HttpPost("catalogos/hospitales-completo")]
+        public async Task<IActionResult> CrearHospitalCompleto([FromBody] HospitalCompletoDto dto)
+        {
+            var nombre = NormalizarTexto(dto?.Nombre);
+            if (string.IsNullOrWhiteSpace(nombre))
+            {
+                return BadRequest(new { mensaje = "El nombre es obligatorio" });
+            }
+
+            try
+            {
+                using var connection = AbrirConexion();
+
+                var existe = await connection.ExecuteScalarAsync<bool>(
+                    "SELECT EXISTS(SELECT 1 FROM cat_hospitales WHERE LOWER(nombre) = LOWER(@Nombre));",
+                    new { Nombre = nombre });
+                if (existe)
+                {
+                    return Conflict(new { mensaje = "El hospital ya existe" });
+                }
+
+                var sql = "INSERT INTO cat_hospitales (nombre, direccion, telefono) VALUES (@Nombre, @Direccion, @Telefono) RETURNING hospital_id;";
+                var id = await connection.ExecuteScalarAsync<int>(sql, new { Nombre = nombre, Direccion = NormalizarDescripcion(dto?.Direccion), Telefono = dto?.Telefono });
+
+                return Ok(new { id, nombre });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return Conflict(new { mensaje = "El hospital ya existe" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al crear hospital");
+                return StatusCode(500, new { mensaje = "Error al crear el hospital", detalle = ex.Message });
+            }
+        }
+
+        [HttpPut("catalogos/hospitales-completo/{id:int}")]
+        public async Task<IActionResult> ActualizarHospitalCompleto(int id, [FromBody] HospitalCompletoDto dto)
+        {
+            var nombre = NormalizarTexto(dto?.Nombre);
+            if (string.IsNullOrWhiteSpace(nombre))
+            {
+                return BadRequest(new { mensaje = "El nombre es obligatorio" });
+            }
+
+            try
+            {
+                using var connection = AbrirConexion();
+
+                var existe = await connection.ExecuteScalarAsync<bool>(
+                    "SELECT EXISTS(SELECT 1 FROM cat_hospitales WHERE LOWER(nombre) = LOWER(@Nombre) AND hospital_id <> @Id);",
+                    new { Nombre = nombre, Id = id });
+                if (existe)
+                {
+                    return Conflict(new { mensaje = "El hospital ya existe" });
+                }
+
+                var sql = "UPDATE cat_hospitales SET nombre = @Nombre, direccion = @Direccion, telefono = @Telefono WHERE hospital_id = @Id;";
+                var affected = await connection.ExecuteAsync(sql, new { Nombre = nombre, Direccion = NormalizarDescripcion(dto?.Direccion), Telefono = dto?.Telefono, Id = id });
+
+                if (affected == 0)
+                {
+                    return NotFound(new { mensaje = "Hospital no encontrado" });
+                }
+
+                return Ok(new { id, nombre });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return Conflict(new { mensaje = "El hospital ya existe" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al actualizar hospital {Id}", id);
+                return StatusCode(500, new { mensaje = "Error al actualizar el hospital", detalle = ex.Message });
             }
         }
 

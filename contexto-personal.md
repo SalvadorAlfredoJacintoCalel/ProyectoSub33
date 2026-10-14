@@ -228,6 +228,111 @@ CREATE INDEX idx_personal_codigo ON personal (codigo_bombero);
 - **NO duplicar tipos** — usar `src/types/personal.ts`
 - **NO duplicar constantes** — usar `src/constants/`
 
+## Plan: Separación Personal ↔ Configuración
+
+### Objetivo
+- **Personal** = cambios grandes: datos personales, crear/editar usuario + rol, activar/desactivar **personal**
+- **Configuración** = cambios rápidos: cambiar rol, cambiar contraseña, activar/desactivar **cuenta**
+
+### 1. Backend — PersonalService.cs
+
+**Cambiar `ChangeEstadoAsync`:** Solo modifica `personal.estado` (NO toca `usuarios.estado`):
+```csharp
+public async Task<ServiceResult> ChangeEstadoAsync(Guid id, bool estado, CancellationToken ct = default)
+{
+    var personal = await _context.Personal.FirstOrDefaultAsync(p => p.PersonalId == id, ct);
+    if (personal is null) return ServiceResult.NotFound("Personal no encontrado.");
+
+    personal.Estado = estado;
+    personal.UpdatedAt = DateTime.UtcNow;
+    await _context.SaveChangesAsync(ct);
+    return ServiceResult.Success();
+}
+```
+
+**Agregar `ActualizarAccesoSistemaAsync`:** Actualiza username + password + rol:
+```csharp
+public async Task<ServiceResult> ActualizarAccesoSistemaAsync(Guid personalId, string username, string password, int rolId, CancellationToken ct = default)
+{
+    var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == personalId, ct);
+    if (usuario is null) return ServiceResult.NotFound("Usuario no encontrado.");
+
+    usuario.Username = username.ToLower();
+    usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+    usuario.UpdatedAt = DateTime.UtcNow;
+
+    var rolesActuales = await _context.UsuarioRoles.Where(ur => ur.UsuarioId == usuario.UsuarioId).ToListAsync(ct);
+    _context.UsuarioRoles.RemoveRange(rolesActuales);
+    _context.UsuarioRoles.Add(new UsuarioRol { UsuarioId = usuario.UsuarioId, RolId = rolId });
+
+    await _context.SaveChangesAsync(ct);
+    return ServiceResult.Success();
+}
+```
+
+**Nuevo DTO en `DTOs/Personal/AccesoSistemaUpdateDto.cs`:**
+```csharp
+public class AccesoSistemaUpdateDto
+{
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public int RolId { get; set; }
+}
+```
+
+**Nuevo endpoint en PersonalController.cs:**
+```csharp
+[HttpPut("{id:guid}/acceso-sistema")]
+public async Task<IActionResult> ActualizarAcceso(Guid id, [FromBody] AccesoSistemaUpdateDto dto, CancellationToken ct)
+    => Respond(await _personalService.ActualizarAccesoSistemaAsync(id, dto.Username, dto.Password, dto.RolId, ct));
+```
+
+### 2. Frontend — PersonalPage.tsx (DetailModal)
+
+**Mantener en formulario:**
+- Select de rol (edita rol directamente)
+- Acordeón "Acceso al Sistema" (usuario + contraseña)
+
+**Quitar:**
+- Botón "Desactivar" en DetailModal (ahora se gestiona en Configuración)
+
+### 3. Frontend — SeguridadPage.tsx
+
+**Tab "Usuarios y Roles" — Agregar:**
+| Campo | Acción |
+|-------|--------|
+| Username | Botón "Cambiar" (modal con input) |
+| Rol | Dropdown (ya existe) |
+| Contraseña | Botón "Cambiar" (modal con input) |
+| Estado | Toggle (ya existe) |
+
+### 4. Flujo Final
+
+```
+Personal (cambios grandes):
+  ├─ Editar datos personales ✓
+  ├─ Editar rol (select en formulario) ✓
+  ├─ Cambiar username + contraseña (acordeón) ✓
+  └─ Activar/desactivar BOMBERO ✓
+
+Configuración (cambios rápidos):
+  ├─ Cambiar rol (dropdown en tabla) ✓
+  ├─ Cambiar contraseña (modal rápido) ✓
+  └─ Activar/desactivar CUENTA ✓
+```
+
+### 5. Verificación
+
+- [ ] `PATCH /api/personal/{id}/estado` solo modifica `personal.estado`
+- [ ] `PUT /api/personal/{id}/acceso-sistema` actualiza username + password + rol
+- [ ] `PUT /api/configuracion/usuarios/{id}/estado` solo modifica `usuarios.estado`
+- [ ] `PUT /api/configuracion/usuarios/{id}/rol` sigue funcionando
+- [ ] PersonalPage DetailModal ya no tiene botón "Desactivar"
+- [ ] SeguridadPage tiene modales para cambiar username y contraseña
+- [ ] `dotnet build` ✅, `npm run build` ✅
+
+---
+
 ## Tareas Pendientes
 - [ ] Frontend: Agregar definición de `SectionLabel` en PersonalPage.tsx (error ReferenceError al editar miembro)
 - [ ] Backend: Implementar generación de código automática
@@ -243,6 +348,10 @@ CREATE INDEX idx_personal_codigo ON personal (codigo_bombero);
 - [ ] Frontend: Simplificar `mapListasToItems()`
 - [ ] Frontend: Alinear DTOs con backend
 - [ ] Frontend: Eliminar re-exports innecesarios
+- [ ] Backend: Separar personal.estado de usuarios.estado
+- [ ] Backend: Agregar endpoint PUT /api/personal/{id}/acceso-sistema
+- [ ] Frontend: Quitar botón desactivar de DetailModal
+- [ ] Frontend: Agregar modales cambio username/contraseña en SeguridadPage
 
 ## Esquema de Base de Datos — Módulo Personal y Seguridad
 

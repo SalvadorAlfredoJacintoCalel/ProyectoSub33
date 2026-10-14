@@ -20,6 +20,9 @@ namespace Backend_Sub33.DTOs.Configuracion
         [JsonPropertyName("usuarioId")]
         public Guid UsuarioId { get; set; }
 
+        [JsonPropertyName("personalId")]
+        public Guid? PersonalId { get; set; }
+
         public string NombreCompleto { get; set; } = string.Empty;
 
         public string Username { get; set; } = string.Empty;
@@ -94,5 +97,14 @@ namespace Backend_Sub33.DTOs.Configuracion
         public string? Nombre { get; set; }
 
         public string? Descripcion { get; set; }
+    }
+
+    public class HospitalCompletoDto
+    {
+        public string Nombre { get; set; } = string.Empty;
+
+        public string? Direccion { get; set; }
+
+        public string? Telefono { get; set; }
     }
 }

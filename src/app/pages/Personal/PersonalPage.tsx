@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Search, X, Check, AlertTriangle, Users, Shield, Phone, KeyRound, EyeOff, Pencil, Trash2, Eye, UserCheck, UserX, CheckCircle, AlertCircle, AlertTriangle as AlertTriangleIcon, Info, Loader2 } from "lucide-react";
+import { Plus, Search, X, Check, AlertTriangle, Users, Shield, Phone, KeyRound, EyeOff, Pencil, Trash2, Eye, UserCheck, UserX, CheckCircle, AlertCircle, AlertTriangle as AlertTriangleIcon, Info, Loader2, ChevronDown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { PersonalTable } from "@/app/pages/Personal/components/PersonalTable";
 import { PersonalForm } from "@/app/pages/Personal/components/PersonalForm";
@@ -10,6 +10,7 @@ import {
   crearRol,
   getPersonal,
   getPersonalById,
+  buscarPersonal,
   registrarPersonal,
   actualizarPersonal,
   cambiarEstadoPersonal,
@@ -65,10 +66,9 @@ interface DetailModalProps {
   onClose: () => void;
   onUpdate: (id: string, dto: ActualizarPersonalDto) => Promise<void>;
   onActivate: (id: string) => Promise<void>;
-  onDelete: (id: string) => void;
 }
 
-function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, onDelete }: DetailModalProps) {
+function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate }: DetailModalProps) {
   const { toast } = useAlert();
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<FormState>(emptyFormState());
@@ -390,16 +390,7 @@ function DetailModal({ member, rangos, roles, onClose, onUpdate, onActivate, onD
         <div className="flex justify-end gap-2 px-6 py-4" style={{ borderTop: "1px solid var(--border)", background: "var(--bg-input)" }}>
           {!isEditing ? (
             <>
-              {member.estado ? (
-                <button
-                  onClick={() => onDelete(member.personalId)}
-                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                  style={{ border: "1px solid var(--red)", color: "var(--red)", background: "var(--bg-card)" }}
-                >
-                  <Trash2 size={15} />
-                  Desactivar
-                </button>
-              ) : (
+              {!member.estado && (
                 <button
                   onClick={() => onActivate(member.personalId)}
                   className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
@@ -462,6 +453,9 @@ export function PersonalPage() {
 
   const [members, setMembers] = useState<Miembro[]>([]);
   const [search, setSearch] = useState("");
+  const [suggestions, setSuggestions] = useState<Miembro[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [estadoDropdownOpen, setEstadoDropdownOpen] = useState(false);
   const [filterRango, setFilterRango] = useState<RangoItem["nombre"] | "">("");
   const [filterEstado, setFilterEstado] = useState<Estado | "">("Activo");
   const [page, setPage] = useState(1);
@@ -535,6 +529,25 @@ const activos = members.filter((m) => m.estado === true).length;
     };
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!search.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const results = await buscarPersonal(search);
+        setSuggestions(results);
+        setShowSuggestions(true);
+      } catch {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const fetchPersonal = useCallback(async () => {
@@ -818,7 +831,13 @@ const activos = members.filter((m) => m.estado === true).length;
 
       {/* ── Stat Cards ───────────────────────────────────────────────────────── */}
       <div className="mb-6 grid grid-cols-3 gap-4">
-        <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
+        <div
+          className="flex items-center gap-4 rounded-2xl p-4"
+          style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)"; }}
+          onClick={() => { setFilterEstado(""); setPage(1); }}
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
             <Users size={20} style={{ color: RED }} />
           </div>
@@ -828,7 +847,13 @@ const activos = members.filter((m) => m.estado === true).length;
           </div>
         </div>
 
-        <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
+        <div
+          className="flex items-center gap-4 rounded-2xl p-4"
+          style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)"; }}
+          onClick={() => { setFilterEstado("Activo"); setPage(1); }}
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50">
             <UserCheck size={20} className="text-green-600" />
           </div>
@@ -838,7 +863,13 @@ const activos = members.filter((m) => m.estado === true).length;
           </div>
         </div>
 
-        <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
+        <div
+          className="flex items-center gap-4 rounded-2xl p-4"
+          style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)"; }}
+          onClick={() => { setFilterEstado("Inactivo"); setPage(1); }}
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
             <UserX size={20} className="text-red-600" />
           </div>
@@ -869,6 +900,49 @@ const activos = members.filter((m) => m.estado === true).length;
               border: "1px solid var(--border)",
             }}
           />
+          {showSuggestions && suggestions.length > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                marginTop: 4,
+                zIndex: 30,
+                background: "var(--bg-card)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                boxShadow: "var(--shadow)",
+                maxHeight: 240,
+                overflowY: "auto",
+              }}
+            >
+              {suggestions.map((s) => (
+                <button
+                  key={s.personalId}
+                  onClick={() => { setSearch(s.nombreCompleto); setShowSuggestions(false); setPage(1); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "8px 12px",
+                    fontSize: 13,
+                    color: "var(--text-1)",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span style={{ fontWeight: 600 }}>{s.nombreCompleto}</span>
+                  <span style={{ color: "var(--text-3)", fontSize: 11 }}>{s.codigo}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <select
@@ -887,20 +961,40 @@ const activos = members.filter((m) => m.estado === true).length;
           ))}
         </select>
 
-        <select
-          value={filterEstado}
-          onChange={(e) => { setFilterEstado(e.target.value as Estado | ""); setPage(1); }}
-          className="rounded-lg px-3 py-2 text-sm outline-none"
-          style={{
-            background: "var(--bg-input)",
-            color: "var(--text-1)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <option value="Activo">Activos</option>
-          <option value="Inactivo">Inactivos</option>
-          <option value="">Todos</option>
-        </select>
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setEstadoDropdownOpen((o) => !o)}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none"
+            style={{ background: "var(--bg-input)", color: "var(--text-1)", border: "1px solid var(--border)" }}
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: filterEstado === "Activo" ? "#16a34a" : filterEstado === "Inactivo" ? RED : "#9ca3af",
+              }}
+            />
+            {filterEstado === "Activo" ? "Activos" : filterEstado === "Inactivo" ? "Inactivos" : "Todos"}
+            <ChevronDown size={14} style={{ color: "var(--text-3)", transform: estadoDropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+          </button>
+          {estadoDropdownOpen && (
+            <div
+              style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 30, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "var(--shadow)", minWidth: 140, overflow: "hidden" }}
+            >
+              {([["Activo", "Activos", "#16a34a"], ["Inactivo", "Inactivos", RED], ["", "Todos", "#9ca3af"]] as const).map(([val, label, color]) => (
+                <button
+                  key={label}
+                  onClick={() => { setFilterEstado(val); setPage(1); setEstadoDropdownOpen(false); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", fontSize: 13, color: "var(--text-1)", background: filterEstado === val ? "var(--bg-hover)" : "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+                >
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: color }} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Table ──────────────────────────────────────────────────────────────── */}
@@ -999,7 +1093,6 @@ const activos = members.filter((m) => m.estado === true).length;
         onClose={() => { setViewId(null); setViewMember(null); }}
         onUpdate={handleUpdateFromDetail}
         onActivate={handleActivate}
-        onDelete={(id) => setDeleteId(id)}
       />
       )}
 

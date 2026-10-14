@@ -52,6 +52,7 @@ export interface ParametroSistema {
 
 export interface UsuarioConfig {
   usuarioId: string;
+  personalId?: string;
   nombreCompleto: string;
   username: string;
   rolNombre: string;
@@ -202,3 +203,22 @@ export const eliminarCatalogo = async (tipo: CatalogoTipo, id: number): Promise<
     headers: jsonHeaders(),
   });
 };
+
+export const crearHospitalCompleto = (
+  data: { nombre: string; direccion?: string; telefono?: string }
+) =>
+  request(`${API_BASE_URL}/configuracion/catalogos/hospitales-completo`, {
+    method: "POST",
+    headers: jsonHeaders(),
+    body: JSON.stringify(data),
+  });
+
+export const actualizarHospitalCompleto = (
+  id: number,
+  data: { nombre: string; direccion?: string; telefono?: string }
+) =>
+  request(`${API_BASE_URL}/configuracion/catalogos/hospitales-completo/${id}`, {
+    method: "PUT",
+    headers: jsonHeaders(),
+    body: JSON.stringify(data),
+  });

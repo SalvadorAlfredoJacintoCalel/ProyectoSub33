@@ -9,8 +9,10 @@ public interface IPersonalService
         int pagina, int tamanio, int? rangoId, bool? estado, CancellationToken ct = default);
 
     Task<ServiceResult<PersonalResponseDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<ServiceResult<List<PersonalResumenDto>>> BuscarAsync(string termino, CancellationToken ct = default);
     Task<ServiceResult<PersonalResponseDto>> CreateAsync(CreatePersonalDto dto, CancellationToken ct = default);
     Task<ServiceResult<PersonalResponseDto>> UpdateAsync(Guid id, UpdatePersonalDto dto, CancellationToken ct = default);
     Task<ServiceResult> ChangeEstadoAsync(Guid id, bool estado, CancellationToken ct = default);
+    Task<ServiceResult> ActualizarAccesoSistemaAsync(Guid personalId, string username, string password, int rolId, CancellationToken ct = default);
     Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default);
 }

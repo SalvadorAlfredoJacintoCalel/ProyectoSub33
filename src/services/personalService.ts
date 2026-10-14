@@ -1,5 +1,5 @@
 import { apiClient } from "./api/client";
-import type { RangoItem, RolItem } from "../types/personal";
+import type { RangoItem, RolItem, Miembro } from "../types/personal";
 
 // ── Backend envelope ───────────────────────────────────────────────────────────
 interface BackendEnvelope<T> {
@@ -43,6 +43,12 @@ export interface ActualizarPersonalDto {
 }
 
 export interface AccesoSistemaDto {
+  username: string;
+  password: string;
+  rolId: number;
+}
+
+export interface AccesoSistemaUpdateDto {
   username: string;
   password: string;
   rolId: number;
@@ -167,6 +173,16 @@ export const getPersonal = async (): Promise<PersonalResponse[]> => {
   }
 };
 
+export const buscarPersonal = async (q: string): Promise<Miembro[]> => {
+  try {
+    const res = await apiClient.get<BackendEnvelope<Miembro[]>>(`/personal/buscar?q=${encodeURIComponent(q)}`);
+    return res.data ?? [];
+  } catch (error) {
+    console.error("Error buscando personal:", error);
+    throw error;
+  }
+};
+
 export const registrarPersonal = async (dto: CrearPersonalDto): Promise<PersonalResponse> => {
   try {
     const res = await apiClient.post<BackendEnvelope<PersonalResponse>>("/personal", dto);
@@ -202,6 +218,15 @@ export const cambiarEstadoPersonal = async (id: string, estado: boolean): Promis
     return res.data;
   } catch (error) {
     console.error("Error cambiando estado personal:", error);
+    throw error;
+  }
+};
+
+export const actualizarAccesoSistema = async (id: string, dto: AccesoSistemaUpdateDto): Promise<void> => {
+  try {
+    await apiClient.put<BackendEnvelope<void>>(`/personal/${id}/acceso-sistema`, dto);
+  } catch (error) {
+    console.error("Error actualizando acceso al sistema:", error);
     throw error;
   }
 };

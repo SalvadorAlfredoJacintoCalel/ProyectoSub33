@@ -127,6 +127,62 @@ public partial class PersonalService : IPersonalService
         }
     }
 
+    public async Task<ServiceResult<List<PersonalResumenDto>>> BuscarAsync(string termino, CancellationToken ct = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(termino))
+            {
+                return ServiceResult<List<PersonalResumenDto>>.Success(new List<PersonalResumenDto>());
+            }
+
+            var search = $"%{termino.Trim()}%";
+
+            var registros = await _context.Personal
+                .AsNoTracking()
+                .Include(p => p.Rango)
+                .Where(p =>
+                    EF.Functions.ILike(p.PrimerNombre, search) ||
+                    EF.Functions.ILike(p.SegundoNombre ?? "", search) ||
+                    EF.Functions.ILike(p.PrimerApellido, search) ||
+                    EF.Functions.ILike(p.SegundoApellido ?? "", search) ||
+                    EF.Functions.ILike(p.Dpi, search) ||
+                    EF.Functions.ILike(p.CodigoBombero ?? "", search))
+                .OrderBy(p => p.PrimerApellido)
+                .ThenBy(p => p.PrimerNombre)
+                .Take(20)
+                .ToListAsync(ct);
+
+            var codigos = await BuildCodigoIndexAsync(ct);
+
+            var items = registros
+                .Select(p => new PersonalResumenDto
+                {
+                    PersonalId = p.PersonalId.ToString(),
+                    Codigo = GenerarCodigo(p.PersonalId, codigos),
+                    CodigoBombero = p.CodigoBombero,
+                    NombreCompleto = BuildNombreCompleto(p),
+                    Dpi = p.Dpi,
+                    RangoId = p.RangoId,
+                    RangoNombre = p.Rango?.Rango,
+                    Estado = p.Estado,
+                    Telefono = p.Telefono,
+                    ContactoEmergenciaNombre = p.ContactoEmergenciaNombre ?? string.Empty,
+                    ContactoEmergenciaTelefono = p.ContactoEmergenciaTelefono ?? string.Empty,
+                    FechaIngreso = p.FechaIngreso.ToString("yyyy-MM-dd"),
+                    TieneUsuario = false
+                })
+                .ToList();
+
+            return ServiceResult<List<PersonalResumenDto>>.Success(items);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al buscar personal");
+            return ServiceResult<List<PersonalResumenDto>>.Internal("Error al buscar personal.");
+        }
+    }
+
     public async Task<ServiceResult<PersonalResponseDto>> CreateAsync(CreatePersonalDto dto, CancellationToken ct = default)
     {
         try
@@ -452,13 +508,6 @@ public partial class PersonalService : IPersonalService
             personal.Estado = estado;
             personal.UpdatedAt = DateTime.UtcNow;
 
-            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == id, ct);
-            if (usuario is not null)
-            {
-                usuario.Estado = estado;
-                usuario.UpdatedAt = DateTime.UtcNow;
-            }
-
             await _context.SaveChangesAsync(ct);
 
             return ServiceResult.Success();
@@ -467,6 +516,63 @@ public partial class PersonalService : IPersonalService
         {
             _logger.LogError(ex, "Error al cambiar el estado del personal {Id}", id);
             return ServiceResult.Internal("Error al cambiar el estado del personal.");
+        }
+    }
+
+    public async Task<ServiceResult> ActualizarAccesoSistemaAsync(Guid personalId, string username, string password, int rolId, CancellationToken ct = default)
+    {
+        try
+        {
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == personalId, ct);
+            if (usuario is null)
+            {
+                return ServiceResult.NotFound("Usuario no encontrado.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(username))
+            {
+                var usuarioExiste = await _context.Usuarios.AnyAsync(u => u.Username.ToLower() == username.ToLower() && u.UsuarioId != usuario.UsuarioId, ct);
+                if (usuarioExiste)
+                {
+                    return ServiceResult.Conflict("El nombre de usuario ya existe.");
+                }
+
+                usuario.Username = username.ToLower();
+            }
+
+            if (!string.IsNullOrWhiteSpace(password))
+            {
+                if (password.Length < 8)
+                {
+                    return ServiceResult.BadRequest("La contraseña debe tener al menos 8 caracteres.");
+                }
+
+                usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            }
+
+            usuario.UpdatedAt = DateTime.UtcNow;
+
+            if (rolId > 0)
+            {
+                var rolExiste = await _context.Roles.AnyAsync(r => r.RolId == rolId, ct);
+                if (!rolExiste)
+                {
+                    return ServiceResult.BadRequest("El rol seleccionado no existe.");
+                }
+
+                var rolesActuales = await _context.UsuarioRoles.Where(ur => ur.UsuarioId == usuario.UsuarioId).ToListAsync(ct);
+                _context.UsuarioRoles.RemoveRange(rolesActuales);
+                _context.UsuarioRoles.Add(new UsuarioRol { UsuarioId = usuario.UsuarioId, RolId = rolId });
+            }
+
+            await _context.SaveChangesAsync(ct);
+
+            return ServiceResult.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al actualizar el acceso al sistema del personal {Id}", personalId);
+            return ServiceResult.Internal("Error al actualizar el acceso al sistema.");
         }
     }
 

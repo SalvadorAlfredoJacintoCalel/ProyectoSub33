@@ -28,6 +28,10 @@ public class PersonalController : ApiControllerBase
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
         => Respond(await _personalService.GetByIdAsync(id, ct));
 
+    [HttpGet("buscar")]
+    public async Task<IActionResult> Buscar([FromQuery] string q, CancellationToken ct)
+        => Respond(await _personalService.BuscarAsync(q, ct));
+
     [HttpPost]
     public async Task<IActionResult> Crear([FromBody] CreatePersonalDto dto, CancellationToken ct)
     {
@@ -60,6 +64,10 @@ public class PersonalController : ApiControllerBase
         => Respond(
             await _personalService.ChangeEstadoAsync(id, dto.Estado, ct),
             dto.Estado ? "Personal activado correctamente." : "Personal desactivado correctamente.");
+
+    [HttpPut("{id:guid}/acceso-sistema")]
+    public async Task<IActionResult> ActualizarAcceso(Guid id, [FromBody] AccesoSistemaUpdateDto dto, CancellationToken ct)
+        => Respond(await _personalService.ActualizarAccesoSistemaAsync(id, dto.Username, dto.Password, dto.RolId, ct), "Acceso al sistema actualizado correctamente.");
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Eliminar(Guid id, CancellationToken ct)

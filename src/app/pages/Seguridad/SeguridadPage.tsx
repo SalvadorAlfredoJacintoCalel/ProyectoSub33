@@ -14,6 +14,8 @@ import {
   crearCatalogo,
   actualizarCatalogo,
   eliminarCatalogo,
+  crearHospitalCompleto,
+  actualizarHospitalCompleto,
   ApiError,
   type ParametroSistema,
   type UsuarioConfig,
@@ -22,6 +24,7 @@ import {
   type CatalogoTipo,
   type CatalogoItem,
 } from "../../../services/configuracionService";
+import { actualizarAccesoSistema } from "../../../services/personalService";
 
 const RED = "#D32F2F";
 
@@ -48,6 +51,16 @@ const CATALOGOS_OPCIONES: { key: CatalogoTipo; label: string }[] = [
   { key: "proveedores", label: "Proveedores" },
   { key: "tipos-movimiento", label: "Tipos de Movimiento" },
 ];
+
+const CATALOGOS_COMPLEJOS: Record<string, { fields: { name: string; label: string; type: string; required?: boolean }[] }> = {
+  hospitales: {
+    fields: [
+      { name: "nombre", label: "Nombre", type: "text", required: true },
+      { name: "direccion", label: "Dirección", type: "text" },
+      { name: "telefono", label: "Teléfono", type: "text" },
+    ],
+  },
+};
 
 function AccessDenied() {
   return (
@@ -161,6 +174,44 @@ const btnSecondary: React.CSSProperties = {
   cursor: "pointer",
 };
 
+function CatalogoModal({
+  title,
+  fields,
+  initial,
+  onSave,
+  onClose,
+}: {
+  title: string;
+  fields: { name: string; label: string; type: string; required?: boolean }[];
+  initial: Record<string, string>;
+  onSave: (data: Record<string, string>) => void;
+  onClose: () => void;
+}) {
+  const [valores, setValores] = useState<Record<string, string>>(initial);
+
+  return (
+    <Modal width={420} onClose={onClose}>
+      <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>{title}</h3>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {fields.map((f) => (
+          <Field key={f.name} label={f.label} required={f.required}>
+            <input
+              type={f.type}
+              value={valores[f.name] ?? ""}
+              onChange={(e) => setValores((p) => ({ ...p, [f.name]: e.target.value }))}
+              style={inputStyle()}
+            />
+          </Field>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+        <button onClick={onClose} style={btnSecondary}>Cancelar</button>
+        <button onClick={() => onSave(valores)} style={btnPrimary}>Guardar</button>
+      </div>
+    </Modal>
+  );
+}
+
 export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [activeTab, setActiveTab] = useState<Tab>("estacion");
 
@@ -184,10 +235,19 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [catNombreError, setCatNombreError] = useState(false);
   const [modalEliminar, setModalEliminar] = useState<CatalogoItem | null>(null);
 
+  const [modalHospital, setModalHospital] = useState(false);
+  const [hospitalInicial, setHospitalInicial] = useState<Record<string, string>>({});
+  const [editandoHospitalId, setEditandoHospitalId] = useState<number | null>(null);
+
   // ── Tab 3: Usuarios y roles ──────────────────────────────────────────────────
   const [usuarios, setUsuarios] = useState<UsuarioConfig[]>([]);
   const [roles, setRoles] = useState<RolItem[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(true);
+
+  const [modalUsername, setModalUsername] = useState<UsuarioConfig | null>(null);
+  const [nuevoUsername, setNuevoUsername] = useState("");
+  const [modalPassword, setModalPassword] = useState<UsuarioConfig | null>(null);
+  const [nuevaPassword, setNuevaPassword] = useState("");
 
   // ── Tab 4: Matriz de permisos ────────────────────────────────────────────────
   const [permisos, setPermisos] = useState<PermisoItem[]>([]);
@@ -319,6 +379,12 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
   // ── Handlers: Catálogos ──────────────────────────────────────────────────────
   const abrirCrearCatalogo = () => {
+    if (catalogoTipo === "hospitales") {
+      setEditandoHospitalId(null);
+      setHospitalInicial({ nombre: "", direccion: "", telefono: "" });
+      setModalHospital(true);
+      return;
+    }
     setEditandoItem(null);
     setCatNombre("");
     setCatDescripcion("");
@@ -327,6 +393,12 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   };
 
   const abrirEditarCatalogo = (item: CatalogoItem) => {
+    if (catalogoTipo === "hospitales") {
+      setEditandoHospitalId(item.id);
+      setHospitalInicial({ nombre: item.nombre, direccion: "", telefono: "" });
+      setModalHospital(true);
+      return;
+    }
     setEditandoItem(item);
     setCatNombre(item.nombre);
     setCatDescripcion(item.descripcion ?? "");
@@ -351,6 +423,31 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       await cargarCatalogo(catalogoTipo);
     } catch (error) {
       toast.error("Error al guardar el catálogo.");
+    }
+  };
+
+  const guardarHospital = async (data: Record<string, string>) => {
+    const nombre = (data.nombre ?? "").trim();
+    if (!nombre) {
+      toast.warning("Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
+      return;
+    }
+    try {
+      const payload = {
+        nombre,
+        direccion: (data.direccion ?? "").trim() || undefined,
+        telefono: (data.telefono ?? "").trim() || undefined,
+      };
+      if (editandoHospitalId) {
+        await actualizarHospitalCompleto(editandoHospitalId, payload);
+      } else {
+        await crearHospitalCompleto(payload);
+      }
+      setModalHospital(false);
+      toast.success("Los cambios se han guardado correctamente.");
+      await cargarCatalogo(catalogoTipo);
+    } catch (error) {
+      toast.error("Error al guardar el hospital.");
     }
   };
 
@@ -388,6 +485,52 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       toast.success("Los cambios se han guardado correctamente.");
     } catch (error) {
       toast.error("Error al cambiar el rol del usuario.");
+    }
+  };
+
+  const handleCambiarUsername = async () => {
+    if (!modalUsername) return;
+    const username = nuevoUsername.trim();
+    if (!username) {
+      toast.warning("Ingrese el nuevo nombre de usuario.");
+      return;
+    }
+    if (!modalUsername.personalId) {
+      toast.error("El usuario no está vinculado a un registro de personal.");
+      return;
+    }
+    try {
+      await actualizarAccesoSistema(modalUsername.personalId, { username, password: "", rolId: 0 });
+      setUsuarios((prev) =>
+        prev.map((x) => (x.usuarioId === modalUsername.usuarioId ? { ...x, username } : x))
+      );
+      toast.success("Nombre de usuario actualizado correctamente.");
+      setModalUsername(null);
+      setNuevoUsername("");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Error al cambiar el usuario";
+      toast.error(msg);
+    }
+  };
+
+  const handleCambiarPassword = async () => {
+    if (!modalPassword) return;
+    if (nuevaPassword.length < 8) {
+      toast.warning("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (!modalPassword.personalId) {
+      toast.error("El usuario no está vinculado a un registro de personal.");
+      return;
+    }
+    try {
+      await actualizarAccesoSistema(modalPassword.personalId, { username: "", password: nuevaPassword, rolId: 0 });
+      toast.success("Contraseña actualizada correctamente.");
+      setModalPassword(null);
+      setNuevaPassword("");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Error al cambiar la contraseña";
+      toast.error(msg);
     }
   };
 
@@ -590,7 +733,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--bg-page)", borderBottom: "1px solid var(--divider)" }}>
-                  {["Nombre Completo", "Usuario", "Rol", "Estado", "Acciones"].map((h) => (
+                  {["Nombre Completo", "Usuario", "Rol", "Contraseña", "Estado"].map((h) => (
                     <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>
                       {h}
                     </th>
@@ -610,7 +753,18 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                   usuarios.map((u, i) => (
                     <tr key={u.usuarioId} style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-page)", borderBottom: "1px solid var(--divider)" }}>
                       <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{u.nombreCompleto}</td>
-                      <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--text-2)", fontFamily: "monospace" }}>@{u.username}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--text-2)", fontFamily: "monospace" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span>@{u.username}</span>
+                          <button
+                            onClick={() => { setModalUsername(u); setNuevoUsername(u.username); }}
+                            style={{ background: "transparent", border: "none", color: "var(--text-2)", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}
+                            title="Cambiar usuario"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </div>
+                      </td>
                       <td style={{ padding: "12px 16px" }}>
                         <select
                           value={u.rolId}
@@ -624,10 +778,15 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                         </select>
                       </td>
                       <td style={{ padding: "12px 16px" }}>
-                        <Toggle checked={u.estado} onChange={(v) => handleEstado(u, v)} />
+                        <button
+                          onClick={() => { setModalPassword(u); setNuevaPassword(""); }}
+                          style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, color: "var(--text-2)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+                        >
+                          <Lock size={13} /> Cambiar
+                        </button>
                       </td>
-                      <td style={{ padding: "12px 16px", fontSize: 11, fontWeight: 700, color: u.estado ? "#15803d" : "#71717a" }}>
-                        {u.estado ? "Activo" : "Inactivo"}
+                      <td style={{ padding: "12px 16px" }}>
+                        <Toggle checked={u.estado} onChange={(v) => handleEstado(u, v)} />
                       </td>
                     </tr>
                   ))
@@ -727,6 +886,17 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         </Modal>
       )}
 
+      {/* ── Modal: Catálogo complejo (Hospitales) ── */}
+      {modalHospital && (
+        <CatalogoModal
+          title={editandoHospitalId ? "Editar Hospital" : "Nuevo Hospital"}
+          fields={CATALOGOS_COMPLEJOS.hospitales.fields}
+          initial={hospitalInicial}
+          onSave={guardarHospital}
+          onClose={() => setModalHospital(false)}
+        />
+      )}
+
       {/* ── Modal: Confirmar eliminación de catálogo ── */}
       {modalEliminar && (
         <Modal width={400} onClose={() => setModalEliminar(null)}>
@@ -741,7 +911,52 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         </Modal>
       )}
 
-      
+      {/* ── Modal: Cambiar Usuario ── */}
+      {modalUsername && (
+        <Modal width={400} onClose={() => setModalUsername(null)}>
+          <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Cambiar Usuario</h3>
+          <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-2)" }}>
+            Usuario actual: <strong style={{ color: "var(--text-1)", fontFamily: "monospace" }}>@{modalUsername.username}</strong>
+          </p>
+          <Field label="Nuevo Usuario" required>
+            <input
+              type="text"
+              value={nuevoUsername}
+              onChange={(e) => setNuevoUsername(e.target.value)}
+              style={inputStyle()}
+              placeholder="nuevo_usuario"
+            />
+          </Field>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+            <button onClick={() => setModalUsername(null)} style={btnSecondary}>Cancelar</button>
+            <button onClick={handleCambiarUsername} style={btnPrimary}>Guardar</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Modal: Cambiar Contraseña ── */}
+      {modalPassword && (
+        <Modal width={400} onClose={() => setModalPassword(null)}>
+          <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Cambiar Contraseña</h3>
+          <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-2)" }}>
+            Usuario: <strong style={{ color: "var(--text-1)", fontFamily: "monospace" }}>@{modalPassword.username}</strong>
+          </p>
+          <Field label="Nueva Contraseña" required>
+            <input
+              type="password"
+              value={nuevaPassword}
+              onChange={(e) => setNuevaPassword(e.target.value)}
+              style={inputStyle()}
+              placeholder="Mínimo 8 caracteres"
+            />
+          </Field>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+            <button onClick={() => setModalPassword(null)} style={btnSecondary}>Cancelar</button>
+            <button onClick={handleCambiarPassword} style={btnPrimary}>Guardar</button>
+          </div>
+        </Modal>
+      )}
+
     </div>
   );
 }
