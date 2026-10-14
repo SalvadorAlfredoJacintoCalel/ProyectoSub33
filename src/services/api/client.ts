@@ -56,6 +56,7 @@ export function createApiClient(config?: Partial<ApiClientConfig>): {
 } {
   const baseUrl = config?.baseUrl ?? getBaseUrl();
   const getToken = config?.getToken ?? (() => localStorage.getItem("authToken"));
+  const inFlightRequests = new Map<string, Promise<unknown>>();
 
   async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { params, headers, ...fetchOptions } = options;
@@ -66,22 +67,44 @@ export function createApiClient(config?: Partial<ApiClientConfig>): {
       ...createJsonHeaders(token),
       ...(headers as Record<string, string>),
     };
+    const method = String(fetchOptions.method ?? "GET").toUpperCase();
 
-    const response = await fetch(url, {
-      ...fetchOptions,
-      headers: mergedHeaders,
-    });
+    const doFetch = async (): Promise<T> => {
+      const response = await fetch(url, {
+        ...fetchOptions,
+        headers: mergedHeaders,
+      });
 
-    if (!response.ok) {
-      const errorData = await parseErrorResponse(response);
-      throw ApiError.fromResponse(response.status, errorData);
+      if (!response.ok) {
+        const errorData = await parseErrorResponse(response);
+        throw ApiError.fromResponse(response.status, errorData);
+      }
+
+      if (response.status === 204) {
+        return undefined as T;
+      }
+
+      return response.json() as Promise<T>;
+    };
+
+    // Deduplicar peticiones GET concurrentes (sin cache de datos obsoletos)
+    if (method === "GET") {
+      const cacheKey = `GET:${url}`;
+      const existing = inFlightRequests.get(cacheKey);
+      if (existing) {
+        return existing as Promise<T>;
+      }
+
+      const promise = doFetch();
+      inFlightRequests.set(cacheKey, promise);
+      try {
+        return await promise;
+      } finally {
+        inFlightRequests.delete(cacheKey);
+      }
     }
 
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    return response.json() as Promise<T>;
+    return doFetch();
   }
 
   return {

@@ -157,6 +157,9 @@ public partial class PersonalService : IPersonalService
                 .ToListAsync(ct);
 
             var codigos = await BuildCodigoIndexAsync(ct);
+            var ids = registros.Select(p => p.PersonalId).ToList();
+            var usuariosPorPersonal = await ObtenerUsuariosPorPersonalAsync(ids, ct);
+            var rolesPorPersonal = await ObtenerRolesPorPersonalAsync(ids, ct);
 
             var items = registros
                 .Select(p => new PersonalResumenDto
@@ -173,7 +176,9 @@ public partial class PersonalService : IPersonalService
                     ContactoEmergenciaNombre = p.ContactoEmergenciaNombre ?? string.Empty,
                     ContactoEmergenciaTelefono = p.ContactoEmergenciaTelefono ?? string.Empty,
                     FechaIngreso = p.FechaIngreso.ToString("yyyy-MM-dd"),
-                    TieneUsuario = false
+                    TieneUsuario = usuariosPorPersonal.ContainsKey(p.PersonalId),
+                    Username = usuariosPorPersonal.GetValueOrDefault(p.PersonalId),
+                    RolNombre = rolesPorPersonal.GetValueOrDefault(p.PersonalId)
                 })
                 .ToList();
 
@@ -332,6 +337,16 @@ public partial class PersonalService : IPersonalService
 
                 throw;
             }
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("dpi") == true)
+        {
+            _logger.LogWarning(ex, "DPI duplicado al registrar personal");
+            return ServiceResult<PersonalResponseDto>.Conflict("El DPI ya se encuentra registrado.");
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("username") == true)
+        {
+            _logger.LogWarning(ex, "Nombre de usuario duplicado al registrar personal");
+            return ServiceResult<PersonalResponseDto>.Conflict("El nombre de usuario ya existe.");
         }
         catch (Exception ex)
         {

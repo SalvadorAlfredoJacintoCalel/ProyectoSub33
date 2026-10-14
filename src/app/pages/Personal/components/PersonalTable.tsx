@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import type { Miembro, RangoItem, RolItem, Estado } from "@/types/personal";
 import { formatDate } from "@/utils/format";
 
@@ -18,6 +18,60 @@ interface TableProps {
   roles: RolItem[];
   onView: (m: Miembro) => void;
 }
+
+interface RowProps {
+  m: Miembro;
+  onView: (m: Miembro) => void;
+}
+
+const MemoizedRow = memo(function MemoizedRow({ m, onView }: RowProps) {
+  return (
+    <tr
+      className="transition-colors"
+      style={{ borderBottom: "1px solid var(--divider)" }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold">
+        <button
+          onClick={() => onView(m)}
+          className="text-inherit hover:text-blue-600 cursor-pointer"
+          style={{ background: "none", border: "none", padding: 0, font: "inherit" }}
+        >
+          {m.codigoBombero || "Sin código"}
+        </button>
+      </td>
+      <td className="px-4 py-3 font-medium">
+        <button
+          onClick={() => onView(m)}
+          className="text-inherit hover:text-blue-600 cursor-pointer"
+          style={{ background: "none", border: "none", padding: 0, font: "inherit" }}
+        >
+          {m.nombreCompleto}
+        </button>
+      </td>
+      <td className="whitespace-nowrap px-4 py-3 font-mono" style={{ color: "var(--text-2)" }}>
+        {m.dpi}
+      </td>
+      <td className="px-4 py-3">
+        <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">
+          {m.rangoNombre}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${m.estado === true ? "bg-green-100 text-green-800 border border-green-200" : "bg-gray-100 text-gray-600 border border-gray-200"}`}>
+          {m.estado ? "Activo" : "Inactivo"}
+        </span>
+      </td>
+      <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
+        {m.telefono}
+      </td>
+      <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
+        {formatDate(m.fechaIngreso)}
+      </td>
+    </tr>
+  );
+});
 
 export function PersonalTable({ members, search, setSearch, filterRango, setFilterRango, filterEstado, setFilterEstado, page, setPage, totalPages, PAGE_SIZE, rangos, roles, onView, onEdit, onDelete }: TableProps) {
   const filtered = useMemo(() => {
@@ -55,52 +109,7 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
             </tr>
           )}
           {pageRows.map((m) => (
-            <tr
-              key={m.personalId}
-              className="transition-colors"
-              style={{ borderBottom: "1px solid var(--divider)" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold">
-                <button
-                  onClick={() => onView(m)}
-                  className="text-inherit hover:text-blue-600 cursor-pointer"
-                  style={{ background: "none", border: "none", padding: 0, font: "inherit" }}
-                >
-                  {m.codigoBombero || "Sin código"}
-                </button>
-              </td>
-              <td className="px-4 py-3 font-medium">
-                <button
-                  onClick={() => onView(m)}
-                  className="text-inherit hover:text-blue-600 cursor-pointer"
-                  style={{ background: "none", border: "none", padding: 0, font: "inherit" }}
-                >
-                  {m.nombreCompleto}
-                </button>
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 font-mono" style={{ color: "var(--text-2)" }}>
-                {m.dpi}
-              </td>
-              <td className="px-4 py-3">
-                <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">
-                  {m.rangoNombre}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${m.estado === true ? "bg-green-100 text-green-800 border border-green-200" : "bg-gray-100 text-gray-600 border border-gray-200"}`}>
-                  {m.estado ? "Activo" : "Inactivo"}
-                </span>
-              </td>
-               <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
-                {m.telefono}
-              </td>
-              <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
-                {formatDate(m.fechaIngreso)}
-              </td>
-              
-            </tr>
+            <MemoizedRow key={m.personalId} m={m} onView={onView} />
           ))}
         </tbody>
       </table>

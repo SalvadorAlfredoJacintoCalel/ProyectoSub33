@@ -549,8 +549,11 @@ const activos = members.filter((m) => m.estado === true).length;
   }, []);
 
   useEffect(() => {
-    setSearch(searchInput);
-    setPage(1);
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 250);
+    return () => clearTimeout(timer);
   }, [searchInput]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
