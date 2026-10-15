@@ -4,6 +4,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog } from "@/app/components/AlertDialog";
+import { EmptyState } from "@/app/components/ui/empty-state";
+import { Skeleton } from "@/app/components/ui/skeleton";
 import { useInventario } from "@/hooks/useInventario";
 import { donacionService } from "@/services/donacionService";
 import { MovimientosPage } from "@/app/pages/Inventario/MovimientosPage";
@@ -282,13 +284,13 @@ function ItemsTab() {
 
   return (
     <div style={CARD_STYLE}>
-      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "#e4e4e7" }}>
+      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--neutral-200)" }}>
         <div className="flex items-center gap-3">
           <div className="relative w-72">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#71717a" }} />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--neutral-500)" }} />
             <input
               className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"
-              style={{ borderColor: "#e4e4e7", color: "#1b1b1c", fontFamily: "Inter, sans-serif", background: "var(--bg-input)" }}
+              style={{ borderColor: "var(--neutral-200)", color: "var(--text-1)", fontFamily: "Inter, sans-serif", background: "var(--bg-input)" }}
               placeholder="Buscar por código o nombre…"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -298,7 +300,7 @@ function ItemsTab() {
             value={categoriaFilter}
             onChange={(e) => { setCategoriaFilter(e.target.value); setPage(1); }}
             className="rounded-lg border px-3 py-2 text-sm outline-none"
-            style={{ borderColor: "#e4e4e7", color: "#1b1b1c", background: "var(--bg-input)" }}
+            style={{ borderColor: "var(--neutral-200)", color: "var(--text-1)", background: "var(--bg-input)" }}
           >
             <option value="">Todas las categorías</option>
             {catalogos.categorias.map((c) => (
@@ -318,38 +320,55 @@ function ItemsTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-left" style={{ fontFamily: "Inter, sans-serif" }}>
           <thead>
-            <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #e4e4e7" }}>
+            <tr style={{ background: "var(--bg-input)", borderBottom: "1px solid var(--neutral-200)" }}>
               {cols.map((h) => (
-                <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "#71717a" }}>{h}</th>
+                <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--neutral-500)" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading && items.length === 0 ? (
-              <tr>
-                <td colSpan={cols.length} className="py-16 text-center">
-                  <Loader2 size={24} className="mx-auto animate-spin" style={{ color: "var(--red)" }} />
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={`skeleton-${i}`} style={{ borderBottom: "1px solid var(--neutral-200)" }}>
+                  {cols.map((_, j) => (
+                    <td key={j} className="px-4 py-3">
+                      <Skeleton className="h-4 w-full bg-neutral-200" style={{ maxWidth: j === 1 ? 200 : 120 }} />
+                    </td>
+                  ))}
+                </tr>
+              ))
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={cols.length} className="py-16 text-center text-sm" style={{ color: "#71717a" }}>
-                  No se encontraron registros.
+                <td colSpan={cols.length}>
+                  <EmptyState
+                    icon={Package}
+                    title="No hay items registrados"
+                    description="Registre un nuevo insumo o equipo para comenzar a gestionar el inventario."
+                    action={
+                      <button
+                        onClick={openAdd}
+                        className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                        style={{ background: "var(--red)", fontFamily: "Inter, sans-serif" }}
+                      >
+                        <Plus size={16} /> Nuevo Item
+                      </button>
+                    }
+                  />
                 </td>
               </tr>
             ) : (
               items.map((it) => (
-                <tr key={it.itemId} className="border-b transition hover:bg-gray-50" style={{ borderColor: "#e4e4e7" }}>
-                  <td className="px-4 py-3 text-sm font-mono font-medium" style={{ color: "#1b1b1c" }}>{it.codigoBarras || "—"}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "#1b1b1c", maxWidth: 240 }}>{it.nombre}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "#71717a" }}>{it.categoriaNombre}</td>
-                  <td className="px-4 py-3 text-sm font-medium" style={{ color: it.stockActual <= it.stockMinimo ? "var(--red)" : "#1b1b1c" }}>{it.stockActual}</td>
-                  <td className="px-4 py-3 text-sm text-center" style={{ color: "#71717a" }}>{it.stockMinimo}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "#71717a" }}>{it.unidadMedida}</td>
+                <tr key={it.itemId} className="border-b transition hover:bg-gray-50" style={{ borderColor: "var(--neutral-200)" }}>
+                  <td className="px-4 py-3 text-sm font-mono font-medium" style={{ color: "var(--text-1)" }}>{it.codigoBarras || "—"}</td>
+                  <td className="px-4 py-3 text-sm" style={{ color: "var(--text-1)", maxWidth: 240 }}>{it.nombre}</td>
+                  <td className="px-4 py-3 text-sm" style={{ color: "var(--neutral-500)" }}>{it.categoriaNombre}</td>
+                  <td className="px-4 py-3 text-sm font-medium" style={{ color: it.stockActual <= it.stockMinimo ? "var(--red)" : "var(--text-1)" }}>{it.stockActual}</td>
+                  <td className="px-4 py-3 text-sm text-center" style={{ color: "var(--neutral-500)" }}>{it.stockMinimo}</td>
+                  <td className="px-4 py-3 text-sm" style={{ color: "var(--neutral-500)" }}>{it.unidadMedida}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button onClick={() => openView(it)} title="Ver" className="rounded p-1.5 text-blue-600 transition hover:bg-blue-50"><Eye size={15} /></button>
-                      <button onClick={() => openEdit(it)} title="Editar" className="rounded p-1.5 transition hover:bg-gray-100" style={{ color: "#71717a" }}><Pencil size={15} /></button>
+                      <button onClick={() => openEdit(it)} title="Editar" className="rounded p-1.5 transition hover:bg-gray-100" style={{ color: "var(--neutral-500)" }}><Pencil size={15} /></button>
                       <button onClick={() => setDeleteTarget(it)} title="Eliminar" className="rounded p-1.5 transition hover:bg-red-50" style={{ color: "var(--red)" }}><Trash2 size={15} /></button>
                     </div>
                   </td>
@@ -360,12 +379,12 @@ function ItemsTab() {
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: "#e4e4e7", fontFamily: "Inter, sans-serif" }}>
-        <p className="text-xs" style={{ color: "#71717a" }}>{total} registro{total !== 1 ? "s" : ""} — Página {page} de {totalPages}</p>
+      <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: "var(--neutral-200)", fontFamily: "Inter, sans-serif" }}>
+        <p className="text-xs" style={{ color: "var(--neutral-500)" }}>{total} registro{total !== 1 ? "s" : ""} — Página {page} de {totalPages}</p>
         <div className="flex items-center gap-1">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "#71717a" }}><ChevronLeft size={16} /></button>
-          <span className="px-2 text-xs font-medium" style={{ color: "#71717a" }}>{page} / {totalPages}</span>
-          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "#71717a" }}><ChevronRight size={16} /></button>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "var(--neutral-500)" }}><ChevronLeft size={16} /></button>
+          <span className="px-2 text-xs font-medium" style={{ color: "var(--neutral-500)" }}>{page} / {totalPages}</span>
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "var(--neutral-500)" }}><ChevronRight size={16} /></button>
         </div>
       </div>
 
@@ -373,11 +392,11 @@ function ItemsTab() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setModal(null)}>
           <div className="w-full max-w-lg rounded-2xl" style={{ background: "var(--bg-card, #fff)", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border, #e4e4e7)", background: "var(--bg-input, #f8fafc)" }}>
-              <h2 className="text-base font-semibold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1, #1b1b1c)" }}>
+            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))" }}>
+              <h2 className="text-base font-semibold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1, var(--text-1))" }}>
                 {modal.mode === "add" ? "Nuevo Item" : modal.mode === "edit" ? "Editar Item" : "Ver Item"}
               </h2>
-              <button onClick={() => setModal(null)} className="rounded p-1 hover:bg-gray-100" style={{ color: "#71717a" }}><X size={18} /></button>
+              <button onClick={() => setModal(null)} className="rounded p-1 hover:bg-gray-100" style={{ color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
 
             {modal.mode === "view" ? (
@@ -392,30 +411,30 @@ function ItemsTab() {
                   { label: "Unidad de Medida", value: form.unidadMedida },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3, #71717a)" }}>{label}</span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1, #1b1b1c)" }}>{value}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3, var(--neutral-500))" }}>{label}</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1, var(--text-1))" }}>{value}</span>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="space-y-4 px-6 py-5" style={{ fontFamily: "Inter, sans-serif" }}>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Nombre <span style={{ color: "var(--red)" }}>*</span></label>
-                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.nombre} onChange={(e) => setField("nombre", e.target.value)} placeholder="Nombre del insumo o equipo" />
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Nombre <span style={{ color: "var(--red)" }}>*</span></label>
+                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.nombre} onChange={(e) => setField("nombre", e.target.value)} placeholder="Nombre del insumo o equipo" />
                   {errors.nombre && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.nombre}</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Categoría <span style={{ color: "var(--red)" }}>*</span></label>
-                    <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.categoriaInvId} onChange={(e) => setField("categoriaInvId", e.target.value)}>
+                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Categoría <span style={{ color: "var(--red)" }}>*</span></label>
+                    <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.categoriaInvId} onChange={(e) => setField("categoriaInvId", e.target.value)}>
                       <option value="">Seleccionar…</option>
                       {catalogos.categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
                     {errors.categoriaInvId && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.categoriaInvId}</p>}
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Proveedor</label>
-                    <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.proveedorId} onChange={(e) => setField("proveedorId", e.target.value)}>
+                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Proveedor</label>
+                    <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.proveedorId} onChange={(e) => setField("proveedorId", e.target.value)}>
                       <option value="">Sin proveedor</option>
                       {catalogos.proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                     </select>
@@ -423,33 +442,33 @@ function ItemsTab() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Código de Barras</label>
-                    <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.codigoBarras} onChange={(e) => setField("codigoBarras", e.target.value)} placeholder="Ej. MED-001" />
+                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Código de Barras</label>
+                    <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.codigoBarras} onChange={(e) => setField("codigoBarras", e.target.value)} placeholder="Ej. MED-001" />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Unidad <span style={{ color: "var(--red)" }}>*</span></label>
-                    <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.unidadMedida} onChange={(e) => setField("unidadMedida", e.target.value)} placeholder="comprimidos, bolsas…" />
+                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Unidad <span style={{ color: "var(--red)" }}>*</span></label>
+                    <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.unidadMedida} onChange={(e) => setField("unidadMedida", e.target.value)} placeholder="comprimidos, bolsas…" />
                     {errors.unidadMedida && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.unidadMedida}</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {modal.mode === "add" && (
                     <div>
-                      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Stock Actual <span style={{ color: "var(--red)" }}>*</span></label>
-                      <input type="number" min="0" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.stockActual} onChange={(e) => setField("stockActual", e.target.value)} placeholder="0" />
+                      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Stock Actual <span style={{ color: "var(--red)" }}>*</span></label>
+                      <input type="number" min="0" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.stockActual} onChange={(e) => setField("stockActual", e.target.value)} placeholder="0" />
                       {errors.stockActual && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.stockActual}</p>}
                     </div>
                   )}
                   <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Stock Mínimo <span style={{ color: "var(--red)" }}>*</span></label>
-                    <input type="number" min="0" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.stockMinimo} onChange={(e) => setField("stockMinimo", e.target.value)} placeholder="5" />
+                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Stock Mínimo <span style={{ color: "var(--red)" }}>*</span></label>
+                    <input type="number" min="0" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.stockMinimo} onChange={(e) => setField("stockMinimo", e.target.value)} placeholder="5" />
                     {errors.stockMinimo && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.stockMinimo}</p>}
                   </div>
                 </div>
 
                 {/* Origen */}
                 <div>
-                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Origen</label>
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Origen</label>
                   <div className="flex gap-2">
                     {(["Compra Propia", "Donado"] as const).map((o) => (
                       <button
@@ -458,9 +477,9 @@ function ItemsTab() {
                         onClick={() => setField("origen", o)}
                         className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition"
                         style={{
-                          borderColor: form.origen === o ? "var(--red)" : "var(--border, #e4e4e7)",
+                          borderColor: form.origen === o ? "var(--red)" : "var(--border, var(--neutral-200))",
                           background: form.origen === o ? "var(--red)" : "var(--bg-input, #fff)",
-                          color: form.origen === o ? "#fff" : "var(--text-2, #71717a)",
+                          color: form.origen === o ? "#fff" : "var(--text-2, var(--neutral-500))",
                         }}
                       >
                         {o}
@@ -470,10 +489,10 @@ function ItemsTab() {
                 </div>
 
                 {form.origen === "Donado" && (
-                  <div className="rounded-lg border p-3 space-y-3" style={{ borderColor: "var(--border, #e4e4e7)", background: "#f0fdf4" }}>
+                  <div className="rounded-lg border p-3 space-y-3" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--success-50)" }}>
                     <div>
-                      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Donación vinculada</label>
-                      <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.donacionId} onChange={(e) => onSelectDonacion(e.target.value)}>
+                      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Donación vinculada</label>
+                      <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.donacionId} onChange={(e) => onSelectDonacion(e.target.value)}>
                         <option value="">Sin vincular</option>
                         {donacionesMaterial.map((d) => (
                           <option key={d.donacionId} value={d.donacionId}>{d.noRecibo} — {d.donante}</option>
@@ -482,12 +501,12 @@ function ItemsTab() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Donante</label>
-                        <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.nombreDonante} onChange={(e) => setField("nombreDonante", e.target.value)} placeholder="Nombre del donante" />
+                        <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Donante</label>
+                        <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.nombreDonante} onChange={(e) => setField("nombreDonante", e.target.value)} placeholder="Nombre del donante" />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>No. Recibo</label>
-                        <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.noRecibo} onChange={(e) => setField("noRecibo", e.target.value)} placeholder="No. recibo" />
+                        <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>No. Recibo</label>
+                        <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.noRecibo} onChange={(e) => setField("noRecibo", e.target.value)} placeholder="No. recibo" />
                       </div>
                     </div>
                     <button
@@ -503,8 +522,8 @@ function ItemsTab() {
               </div>
             )}
 
-            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border, #e4e4e7)", background: "var(--bg-input, #f8fafc)", fontFamily: "Inter, sans-serif" }}>
-              <button onClick={() => setModal(null)} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50" style={{ borderColor: "var(--border, #e4e4e7)", color: "var(--text-1)" }}>
+            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))", fontFamily: "Inter, sans-serif" }}>
+              <button onClick={() => setModal(null)} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50" style={{ borderColor: "var(--border, var(--neutral-200))", color: "var(--text-1)" }}>
                 {modal.mode === "view" ? "Cerrar" : "Cancelar"}
               </button>
               {modal.mode !== "view" && (
@@ -524,42 +543,42 @@ function ItemsTab() {
             style={{ background: "var(--bg-card, #fff)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border, #e4e4e7)", background: "var(--bg-input, #f8fafc)" }}>
+            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))" }}>
               <h2 className="text-base font-semibold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>Nueva Donación (Material)</h2>
-              <button onClick={() => setShowDonacionDrawer(false)} className="rounded p-1 hover:bg-gray-100" style={{ color: "#71717a" }}><X size={18} /></button>
+              <button onClick={() => setShowDonacionDrawer(false)} className="rounded p-1 hover:bg-gray-100" style={{ color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
             <div className="space-y-4 px-6 py-5" style={{ fontFamily: "Inter, sans-serif" }}>
               <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Donante <span style={{ color: "var(--red)" }}>*</span></label>
-                <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.donante} onChange={(e) => setDonacionForm((p) => ({ ...p, donante: e.target.value }))} placeholder="Nombre del donante" />
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Donante <span style={{ color: "var(--red)" }}>*</span></label>
+                <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.donante} onChange={(e) => setDonacionForm((p) => ({ ...p, donante: e.target.value }))} placeholder="Nombre del donante" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>DPI / NIT</label>
-                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.dpiNit} onChange={(e) => setDonacionForm((p) => ({ ...p, dpiNit: e.target.value }))} placeholder="DPI/NIT" />
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>DPI / NIT</label>
+                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.dpiNit} onChange={(e) => setDonacionForm((p) => ({ ...p, dpiNit: e.target.value }))} placeholder="DPI/NIT" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Teléfono</label>
-                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.telefono} onChange={(e) => setDonacionForm((p) => ({ ...p, telefono: e.target.value }))} placeholder="xxxx-xxxx" />
+                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Teléfono</label>
+                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.telefono} onChange={(e) => setDonacionForm((p) => ({ ...p, telefono: e.target.value }))} placeholder="xxxx-xxxx" />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Categoría</label>
-                <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.categoria} onChange={(e) => setDonacionForm((p) => ({ ...p, categoria: e.target.value }))}>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Categoría</label>
+                <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.categoria} onChange={(e) => setDonacionForm((p) => ({ ...p, categoria: e.target.value }))}>
                   {["Insumos Médicos", "Equipo/Herramientas"].map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Descripción del artículo <span style={{ color: "var(--red)" }}>*</span></label>
-                <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.descripcion} onChange={(e) => setDonacionForm((p) => ({ ...p, descripcion: e.target.value }))} placeholder="Ej. Camillas plegables" />
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Descripción del artículo <span style={{ color: "var(--red)" }}>*</span></label>
+                <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.descripcion} onChange={(e) => setDonacionForm((p) => ({ ...p, descripcion: e.target.value }))} placeholder="Ej. Camillas plegables" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Cantidad</label>
-                <input type="number" min="1" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={donacionForm.cantidad} onChange={(e) => setDonacionForm((p) => ({ ...p, cantidad: e.target.value }))} placeholder="1" />
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Cantidad</label>
+                <input type="number" min="1" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.cantidad} onChange={(e) => setDonacionForm((p) => ({ ...p, cantidad: e.target.value }))} placeholder="1" />
               </div>
             </div>
-            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border, #e4e4e7)", background: "var(--bg-input, #f8fafc)", fontFamily: "Inter, sans-serif" }}>
-              <button onClick={() => setShowDonacionDrawer(false)} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50" style={{ borderColor: "var(--border, #e4e4e7)", color: "var(--text-1)" }}>Cancelar</button>
+            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))", fontFamily: "Inter, sans-serif" }}>
+              <button onClick={() => setShowDonacionDrawer(false)} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50" style={{ borderColor: "var(--border, var(--neutral-200))", color: "var(--text-1)" }}>Cancelar</button>
               <button onClick={handleCrearDonacionRapida} disabled={donacionSaving} className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90" style={{ background: "var(--red)", opacity: donacionSaving ? 0.7 : 1 }}>
                 {donacionSaving ? "Creando..." : "Crear y vincular"}
               </button>
@@ -607,14 +626,14 @@ export function InventarioPage() {
   const [topTab, setTopTab] = useState<TopTab>("items");
 
   return (
-    <div className="min-h-screen p-6" style={{ background: "#F1F5F9", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-screen p-6" style={{ background: "var(--bg-hover)", fontFamily: "Inter, sans-serif" }}>
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--red)" }}>
           <Package size={20} className="text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold" style={{ fontFamily: "Manrope, sans-serif", color: "#1b1b1c" }}>Inventario</h1>
-          <p className="text-xs" style={{ color: "#71717a" }}>Gestión de insumos, equipos y movimientos de stock</p>
+          <h1 className="text-xl font-bold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>Inventario</h1>
+          <p className="text-xs" style={{ color: "var(--neutral-500)" }}>Gestión de insumos, equipos y movimientos de stock</p>
         </div>
       </div>
 
@@ -629,7 +648,7 @@ export function InventarioPage() {
               style={{
                 fontFamily: "Manrope, sans-serif",
                 background: active ? "var(--red)" : "#fff",
-                color: active ? "#fff" : "#71717a",
+                color: active ? "#fff" : "var(--neutral-500)",
                 boxShadow: active ? "0 2px 8px rgba(211,47,47,0.25)" : "0 1px 4px rgba(0,0,0,0.06)",
                 border: active ? "none" : "1px solid rgba(0,0,0,0.08)",
               }}

@@ -7,10 +7,10 @@ import {
 import { AlertDialog } from "../../components/AlertDialog";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const RED = "#D32F2F";
-const BG = "#F1F5F9";
-const BORDER = "#e4e4e7";
-const MUTED = "#71717a";
+const RED = "var(--red)";
+const BG = "var(--bg-hover)";
+const BORDER = "var(--neutral-200)";
+const MUTED = "var(--neutral-500)";
 const CARD_SHADOW = "0 1px 4px rgba(0,0,0,0.06)";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ const INITIAL_FUEL: FuelEntry[] = [];
 // ─── Status badge helper ──────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: VehicleStatus }) {
   const cfg: Record<VehicleStatus, { bg: string; label: string }> = {
-    Operativa:     { bg: "#16a34a", label: "Operativa"     },
+    Operativa:     { bg: "var(--success-600)", label: "Operativa"     },
     "En Servicio": { bg: "#1565c0", label: "En Servicio"   },
     Mantenimiento: { bg: "#D97706", label: "Mantenimiento" },
   };
@@ -501,13 +501,13 @@ export function VehiculosPage() {
     const base: React.CSSProperties = {
       width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, outline: "none",
       fontFamily: "Inter, sans-serif", boxSizing: "border-box",
-      border: `1px solid ${hasErr ? "#ef4444" : BORDER}`,
+      border: `1px solid ${hasErr ? "var(--brand-500)" : BORDER}`,
       background: hasErr ? "#fff5f5" : "#fff",
     };
     if (options) {
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>{label}{hasErr && <span style={{ color: "#ef4444" }}> *</span>}</label>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
           <select value={fuelForm[key] as string} onChange={(ev) => setFuelForm((f) => ({ ...f, [key]: ev.target.value }))} style={base}>
             {options.map((o) => <option key={o}>{o}</option>)}
           </select>
@@ -516,7 +516,7 @@ export function VehiculosPage() {
     }
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>{label}{hasErr && <span style={{ color: "#ef4444" }}> *</span>}</label>
+        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
         <input type={type} value={fuelForm[key] as string} onChange={(ev) => setFuelForm((f) => ({ ...f, [key]: ev.target.value }))} style={base} />
       </div>
     );
@@ -528,13 +528,13 @@ export function VehiculosPage() {
     const base: React.CSSProperties = {
       width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, outline: "none",
       fontFamily: "Inter, sans-serif", boxSizing: "border-box",
-      border: `1px solid ${hasErr ? "#ef4444" : BORDER}`,
+      border: `1px solid ${hasErr ? "var(--brand-500)" : BORDER}`,
       background: hasErr ? "#fff5f5" : "#fff",
     };
     if (options) {
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>{label}{hasErr && <span style={{ color: "#ef4444" }}> *</span>}</label>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
           <select value={vehicleForm[key] as string} onChange={(ev) => setVehicleForm((f) => ({ ...f, [key]: ev.target.value }))} style={base}>
             {options.map((o) => <option key={o}>{o}</option>)}
           </select>
@@ -543,7 +543,7 @@ export function VehiculosPage() {
     }
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>{label}{hasErr && <span style={{ color: "#ef4444" }}> *</span>}</label>
+        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
         <input type={type} value={vehicleForm[key] as string} onChange={(ev) => setVehicleForm((f) => ({ ...f, [key]: ev.target.value }))} style={base} />
       </div>
     );
@@ -555,13 +555,13 @@ export function VehiculosPage() {
     const base: React.CSSProperties = {
       width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, outline: "none",
       fontFamily: "Inter, sans-serif", boxSizing: "border-box",
-      border: `1px solid ${hasErr ? "#ef4444" : BORDER}`,
+      border: `1px solid ${hasErr ? "var(--brand-500)" : BORDER}`,
       background: hasErr ? "#fff5f5" : "#fff",
     };
     if (options) {
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>{label}{hasErr && <span style={{ color: "#ef4444" }}> *</span>}</label>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
           <select value={maintForm[key] as string} onChange={(ev) => setMaintForm((f) => ({ ...f, [key]: ev.target.value }))} style={base}>
             {options.map((o) => <option key={o}>{o}</option>)}
           </select>
@@ -570,7 +570,7 @@ export function VehiculosPage() {
     }
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>{label}{hasErr && <span style={{ color: "#ef4444" }}> *</span>}</label>
+        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
         <input type={type} value={maintForm[key] as string} onChange={(ev) => setMaintForm((f) => ({ ...f, [key]: ev.target.value }))} style={base} />
       </div>
     );
@@ -582,14 +582,14 @@ export function VehiculosPage() {
 
       {/* ── Toast ──────────────────────────────────────────────────────────── */}
       {toast && (
-        <div style={{ position: "fixed", top: 24, right: 24, zIndex: 9999, background: "#16a34a", color: "#fff", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+        <div style={{ position: "fixed", top: 24, right: 24, zIndex: 9999, background: "var(--success-600)", color: "#fff", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
           <Check size={16} /> {toast}
         </div>
       )}
 
       {/* ── Page header ───────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#18181b", margin: 0, display: "flex", alignItems: "center", gap: 10, fontFamily: "Manrope, sans-serif" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--neutral-900)", margin: 0, display: "flex", alignItems: "center", gap: 10, fontFamily: "Manrope, sans-serif" }}>
           <Truck size={22} color={RED} /> Vehículos &amp; Combustible
         </h1>
         <p style={{ fontSize: 13, color: MUTED, margin: "4px 0 0" }}>33ª Compañía Bomberos Voluntarios San Lucas Tolimán</p>
@@ -600,7 +600,7 @@ export function VehiculosPage() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
       <section style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#18181b", margin: 0, fontFamily: "Manrope, sans-serif" }}>Estado de la Flota</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--neutral-900)", margin: 0, fontFamily: "Manrope, sans-serif" }}>Estado de la Flota</h2>
           <button
             onClick={openNewVehicle}
             style={{ display: "flex", alignItems: "center", gap: 6, background: RED, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}
@@ -612,23 +612,24 @@ export function VehiculosPage() {
           {vehicles.map((v) => (
             <div
               key={v.code}
+              className="transition-transform duration-200 hover:-translate-y-0.5"
               style={{ background: "#fff", borderRadius: 16, boxShadow: CARD_SHADOW, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Truck size={18} color={RED} />
-                  <span style={{ fontWeight: 700, fontSize: 16, color: "#18181b", fontFamily: "Manrope, sans-serif" }}>{v.code}</span>
+                  <span style={{ fontWeight: 700, fontSize: 16, color: "var(--neutral-900)", fontFamily: "Manrope, sans-serif" }}>{v.code}</span>
                 </div>
                 <StatusBadge status={v.status} />
               </div>
               <div>
-                <p style={{ fontWeight: 600, fontSize: 14, color: "#18181b", margin: 0 }}>{v.type} {v.brand}</p>
+                <p style={{ fontWeight: 600, fontSize: 14, color: "var(--neutral-900)", margin: 0 }}>{v.type} {v.brand}</p>
                 <p style={{ fontSize: 12, color: MUTED, margin: "2px 0 0" }}>Placa: {v.plate} &nbsp;·&nbsp; Año: {v.year}</p>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button
                   onClick={() => setDetailVehicle(v)}
-                  style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: "6px 0", borderRadius: 7, border: `1px solid ${BORDER}`, background: "#fff", color: "#18181b", cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                  style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: "6px 0", borderRadius: 7, border: `1px solid ${BORDER}`, background: "#fff", color: "var(--neutral-900)", cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
                 >
                   <Eye size={12} /> Ver Detalle
                 </button>
@@ -649,7 +650,7 @@ export function VehiculosPage() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
       <section>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#18181b", margin: 0, display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--neutral-900)", margin: 0, display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
             <Fuel size={16} color={RED} /> Control de Combustible — Cupones Shell
           </h2>
           <button
@@ -684,9 +685,9 @@ export function VehiculosPage() {
         <div style={{ background: "#fff", borderRadius: 16, boxShadow: CARD_SHADOW, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr style={{ background: "#fafafa", borderBottom: `1px solid ${BORDER}` }}>
+              <tr style={{ background: "var(--neutral-50)", borderBottom: `1px solid ${BORDER}` }}>
                 {["Fecha","Responsable","Placas","Tipo Unidad","Galonaje","Comisión Realizada","Gasolinera","Cupones Del","Cupones Al","Total","Valor Q","Haber (Q)","Saldo (Q)","Acciones"].map((h) => (
-                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: "#18181b", whiteSpace: "nowrap", fontFamily: "Manrope, sans-serif" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: "var(--neutral-900)", whiteSpace: "nowrap", fontFamily: "Manrope, sans-serif" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -697,27 +698,27 @@ export function VehiculosPage() {
                 </tr>
               )}
               {pageRows.map((e, idx) => (
-                <tr key={e.id} style={{ borderBottom: `1px solid ${BORDER}`, background: idx % 2 === 0 ? "#fff" : "#fafafa" }}>
-                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#18181b" }}>{e.fecha}</td>
-                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#18181b" }}>{e.responsable}</td>
-                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "#18181b" }}>{e.placas}</td>
-                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#18181b" }}>{e.tipoUnidad}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "#18181b" }}>{e.galonaje} gal</td>
+                <tr key={e.id} style={{ borderBottom: `1px solid ${BORDER}`, background: idx % 2 === 0 ? "#fff" : "var(--neutral-50)" }}>
+                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "var(--neutral-900)" }}>{e.fecha}</td>
+                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "var(--neutral-900)" }}>{e.responsable}</td>
+                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--neutral-900)" }}>{e.placas}</td>
+                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "var(--neutral-900)" }}>{e.tipoUnidad}</td>
+                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--neutral-900)" }}>{e.galonaje} gal</td>
                   <td style={{ padding: "9px 12px", color: MUTED, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.comision}</td>
                   <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>
                     <span style={{ background: "#fef9c3", color: "#b45309", borderRadius: 999, padding: "2px 8px", fontWeight: 600, fontSize: 11 }}>{e.gasolinera}</span>
                   </td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "#18181b" }}>{e.cuponDel}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "#18181b" }}>{e.cuponAl}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#18181b" }}>{e.totalCupones}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "#18181b" }}>Q{e.valorCupon}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "#16a34a", fontWeight: 700 }}>Q{e.haber.toLocaleString()}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: e.saldoRestante < 500 ? "#dc2626" : "#18181b", fontWeight: 700 }}>Q{e.saldoRestante.toLocaleString()}</td>
+                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--neutral-900)" }}>{e.cuponDel}</td>
+                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--neutral-900)" }}>{e.cuponAl}</td>
+                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "var(--neutral-900)" }}>{e.totalCupones}</td>
+                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--neutral-900)" }}>Q{e.valorCupon}</td>
+                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--success-600)", fontWeight: 700 }}>Q{e.haber.toLocaleString()}</td>
+                  <td style={{ padding: "9px 12px", textAlign: "right", color: e.saldoRestante < 500 ? "var(--brand-600)" : "var(--neutral-900)", fontWeight: 700 }}>Q{e.saldoRestante.toLocaleString()}</td>
                   <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => setDetailEntry(e)} title="Ver" style={iconBtn("#eff6ff","#1d4ed8")}><Eye size={13} /></button>
+                      <button onClick={() => setDetailEntry(e)} title="Ver" style={iconBtn("var(--info-50)","#1d4ed8")}><Eye size={13} /></button>
                       <button onClick={() => openEditFuel(e)} title="Editar" style={iconBtn("#fefce8","#b45309")}><Pencil size={13} /></button>
-                      <button onClick={() => setDeleteId(e.id)} title="Eliminar" style={iconBtn("#fff5f5","#dc2626")}><Trash2 size={13} /></button>
+                      <button onClick={() => setDeleteId(e.id)} title="Eliminar" style={iconBtn("#fff5f5","var(--brand-600)")}><Trash2 size={13} /></button>
                     </div>
                   </td>
                 </tr>
@@ -734,7 +735,7 @@ export function VehiculosPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                style={{ padding: "5px 9px", borderRadius: 6, border: `1px solid ${BORDER}`, background: page === 1 ? "#fafafa" : "#fff", cursor: page === 1 ? "default" : "pointer", color: page === 1 ? MUTED : "#18181b" }}
+                style={{ padding: "5px 9px", borderRadius: 6, border: `1px solid ${BORDER}`, background: page === 1 ? "var(--neutral-50)" : "#fff", cursor: page === 1 ? "default" : "pointer", color: page === 1 ? MUTED : "var(--neutral-900)" }}
               >
                 <ChevronLeft size={14} />
               </button>
@@ -742,7 +743,7 @@ export function VehiculosPage() {
                 <button
                   key={p}
                   onClick={() => setPage(p)}
-                  style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${p === page ? RED : BORDER}`, background: p === page ? RED : "#fff", color: p === page ? "#fff" : "#18181b", cursor: "pointer", fontWeight: p === page ? 700 : 400, fontSize: 12 }}
+                  style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${p === page ? RED : BORDER}`, background: p === page ? RED : "#fff", color: p === page ? "#fff" : "var(--neutral-900)", cursor: "pointer", fontWeight: p === page ? 700 : 400, fontSize: 12 }}
                 >
                   {p}
                 </button>
@@ -750,7 +751,7 @@ export function VehiculosPage() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                style={{ padding: "5px 9px", borderRadius: 6, border: `1px solid ${BORDER}`, background: page === totalPages ? "#fafafa" : "#fff", cursor: page === totalPages ? "default" : "pointer", color: page === totalPages ? MUTED : "#18181b" }}
+                style={{ padding: "5px 9px", borderRadius: 6, border: `1px solid ${BORDER}`, background: page === totalPages ? "var(--neutral-50)" : "#fff", cursor: page === totalPages ? "default" : "pointer", color: page === totalPages ? MUTED : "var(--neutral-900)" }}
               >
                 <ChevronRight size={14} />
               </button>
@@ -765,7 +766,7 @@ export function VehiculosPage() {
       {showVehicleModal && (
         <Overlay onClose={() => setShowVehicleModal(false)} wide>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#18181b", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
               <Truck size={16} color={RED} /> {vehicleStep === 1 ? "Origen del Vehículo" : "Registrar Vehículo"}
             </h3>
             <button onClick={() => setShowVehicleModal(false)} style={closeBtn}><X size={16} /></button>
@@ -799,7 +800,7 @@ export function VehiculosPage() {
                   }}
                 >
                   <span style={{ fontSize: 28 }}>🏠</span>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: "#18181b", fontFamily: "Manrope, sans-serif" }}>Propiedad de Estación</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "var(--neutral-900)", fontFamily: "Manrope, sans-serif" }}>Propiedad de Estación</span>
                   <span style={{ fontSize: 12, color: MUTED }}>Adquisición normal</span>
                 </button>
                 {/* Donación */}
@@ -819,12 +820,12 @@ export function VehiculosPage() {
                   }}
                 >
                   <span style={{ fontSize: 28 }}>🎁</span>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: "#18181b", fontFamily: "Manrope, sans-serif" }}>Donación</span>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "var(--neutral-900)", fontFamily: "Manrope, sans-serif" }}>Donación</span>
                   <span style={{ fontSize: 12, color: MUTED }}>Se vinculará al módulo de Donaciones</span>
                 </button>
               </div>
               {vehicleOrigin === "donacion" && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "var(--info-50)", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
                   <Info size={16} color="#1565c0" style={{ flexShrink: 0, marginTop: 1 }} />
                   <span style={{ fontSize: 13, color: "#1565c0" }}>Este vehículo será registrado como donación en el módulo de Donaciones.</span>
                 </div>
@@ -834,7 +835,7 @@ export function VehiculosPage() {
                 <button
                   onClick={handleVehicleStep1Next}
                   disabled={!vehicleOrigin}
-                  style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: vehicleOrigin ? RED : "#d1d5db", color: "#fff", fontSize: 13, fontWeight: 700, cursor: vehicleOrigin ? "pointer" : "default", fontFamily: "Inter, sans-serif" }}
+                  style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: vehicleOrigin ? RED : "var(--neutral-300)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: vehicleOrigin ? "pointer" : "default", fontFamily: "Inter, sans-serif" }}
                 >
                   Siguiente →
                 </button>
@@ -845,7 +846,7 @@ export function VehiculosPage() {
           {vehicleStep === 2 && (
             <>
               {vehicleOrigin === "donacion" && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "var(--info-50)", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
                   <Info size={16} color="#1565c0" style={{ flexShrink: 0, marginTop: 1 }} />
                   <span style={{ fontSize: 13, color: "#1565c0" }}>Este vehículo será registrado como donación en el módulo de Donaciones.</span>
                 </div>
@@ -891,33 +892,33 @@ export function VehiculosPage() {
       {showMaintModal && (
         <Overlay onClose={() => setShowMaintModal(false)} wide>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#18181b", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
               <Wrench size={16} color={RED} /> Registrar Mantenimiento / Taller
             </h3>
             <button onClick={() => setShowMaintModal(false)} style={closeBtn}><X size={16} /></button>
           </div>
 
           {maintErrors.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
-              <AlertTriangle size={15} color="#dc2626" />
-              <span style={{ fontSize: 13, color: "#dc2626", fontWeight: 600 }}>Por favor complete todos los campos obligatorios.</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--brand-50)", border: "1px solid var(--brand-200)", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+              <AlertTriangle size={15} color="var(--brand-600)" />
+              <span style={{ fontSize: 13, color: "var(--brand-600)", fontWeight: 600 }}>Por favor complete todos los campos obligatorios.</span>
             </div>
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {/* Vehículo (readonly) */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>Vehículo</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Vehículo</label>
               <input
                 readOnly
                 value={maintForm.vehicleCode}
-                style={{ width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, border: `1px solid ${BORDER}`, background: "#f4f4f5", fontFamily: "Inter, sans-serif", boxSizing: "border-box", fontWeight: 700, color: "#18181b" }}
+                style={{ width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--neutral-100)", fontFamily: "Inter, sans-serif", boxSizing: "border-box", fontWeight: 700, color: "var(--neutral-900)" }}
               />
             </div>
 
             {/* Taller */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>Taller*</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Taller*</label>
               <select
                 value={maintForm.taller}
                 onChange={(ev) => setMaintForm((f) => ({ ...f, taller: ev.target.value }))}
@@ -936,7 +937,7 @@ export function VehiculosPage() {
 
             {/* Tipo segmented toggle */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>Tipo*</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Tipo*</label>
               <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: `1px solid ${BORDER}` }}>
                 {(["Preventivo", "Correctivo"] as MantenimientoTipo[]).map((t) => (
                   <button
@@ -951,7 +952,7 @@ export function VehiculosPage() {
                       cursor: "pointer",
                       fontFamily: "Inter, sans-serif",
                       background: maintForm.tipo === t ? RED : "#fff",
-                      color: maintForm.tipo === t ? "#fff" : "#18181b",
+                      color: maintForm.tipo === t ? "#fff" : "var(--neutral-900)",
                     }}
                   >
                     {t}
@@ -962,7 +963,7 @@ export function VehiculosPage() {
 
             {/* Estado segmented toggle */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>Estado</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Estado</label>
               <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: `1px solid ${BORDER}` }}>
                 {(["En proceso", "Finalizado"] as MantenimientoEstado[]).map((s) => (
                   <button
@@ -977,7 +978,7 @@ export function VehiculosPage() {
                       cursor: "pointer",
                       fontFamily: "Inter, sans-serif",
                       background: maintForm.estado === s ? "#1565c0" : "#fff",
-                      color: maintForm.estado === s ? "#fff" : "#18181b",
+                      color: maintForm.estado === s ? "#fff" : "var(--neutral-900)",
                     }}
                   >
                     {s}
@@ -991,7 +992,7 @@ export function VehiculosPage() {
             {maintField("km", "Kilometraje actual*", "number")}
             {maintField("costoEstimado", "Costo estimado (Q)", "number")}
             <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>Descripción del trabajo*{maintErrors.includes("descripcion") && <span style={{ color: "#ef4444" }}> *</span>}</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Descripción del trabajo*{maintErrors.includes("descripcion") && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
               <textarea
                 value={maintForm.descripcion}
                 onChange={(ev) => setMaintForm((f) => ({ ...f, descripcion: ev.target.value }))}
@@ -1001,7 +1002,7 @@ export function VehiculosPage() {
                   fontSize: 13,
                   padding: "7px 10px",
                   borderRadius: 7,
-                  border: `1px solid ${maintErrors.includes("descripcion") ? "#ef4444" : BORDER}`,
+                  border: `1px solid ${maintErrors.includes("descripcion") ? "var(--brand-500)" : BORDER}`,
                   background: maintErrors.includes("descripcion") ? "#fff5f5" : "#fff",
                   fontFamily: "Inter, sans-serif",
                   boxSizing: "border-box",
@@ -1027,7 +1028,7 @@ export function VehiculosPage() {
       {detailEntry && (
         <Overlay onClose={() => setDetailEntry(null)}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#18181b", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
               <Fuel size={16} color={RED} /> Detalle de Registro
             </h3>
             <button onClick={() => setDetailEntry(null)} style={closeBtn}><X size={16} /></button>
@@ -1049,7 +1050,7 @@ export function VehiculosPage() {
             ] as [string, string][]).map(([k, v]) => (
               <div key={k}>
                 <p style={{ margin: 0, fontSize: 11, color: MUTED, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#18181b", fontWeight: 500 }}>{v}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--neutral-900)", fontWeight: 500 }}>{v}</p>
               </div>
             ))}
           </div>
@@ -1062,7 +1063,7 @@ export function VehiculosPage() {
       {showFuelModal && (
         <Overlay onClose={closeFuelModal} wide>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#18181b", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
               <Fuel size={16} color={RED} /> {editId ? "Editar Registro" : "Nuevo Cupón de Combustible"}
             </h3>
             <button onClick={closeFuelModal} style={closeBtn}><X size={16} /></button>
@@ -1102,19 +1103,19 @@ export function VehiculosPage() {
             {fuelField("cuponDel",    "Cupón Del",      "number")}
             {fuelField("cuponAl",     "Cupón Al",       "number")}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>Total Cupones (auto)</label>
-              <input readOnly value={totalCupones} style={{ width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 7, border: `1px solid ${BORDER}`, background: "#f4f4f5", fontFamily: "Inter, sans-serif", boxSizing: "border-box", fontWeight: 700, color: "#18181b" }} />
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Total Cupones (auto)</label>
+              <input readOnly value={totalCupones} style={{ width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--neutral-100)", fontFamily: "Inter, sans-serif", boxSizing: "border-box", fontWeight: 700, color: "var(--neutral-900)" }} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#18181b" }}>Haber Q (auto)</label>
-              <input readOnly value={`Q${haber.toLocaleString()}`} style={{ width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 7, border: `1px solid ${BORDER}`, background: "#f4f4f5", fontFamily: "Inter, sans-serif", boxSizing: "border-box", fontWeight: 700, color: "#16a34a" }} />
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Haber Q (auto)</label>
+              <input readOnly value={`Q${haber.toLocaleString()}`} style={{ width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--neutral-100)", fontFamily: "Inter, sans-serif", boxSizing: "border-box", fontWeight: 700, color: "var(--success-600)" }} />
             </div>
             {fuelField("saldoRestante", "Saldo Restante (Q)", "number")}
             <div style={{ gridColumn: "1 / -1" }}>{fuelField("comision", "Comisión Realizada")}</div>
           </div>
 
           {fuelOrigen === "donacion" && !editId && (
-            <div style={{ marginTop: 12, padding: "14px 16px", borderRadius: 10, background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+            <div style={{ marginTop: 12, padding: "14px 16px", borderRadius: 10, background: "var(--info-50)", border: "1px solid #BFDBFE" }}>
               <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: "#1565c0", fontFamily: "Inter, sans-serif" }}>
                 Datos de la Donación Directa
               </p>
@@ -1158,10 +1159,10 @@ export function VehiculosPage() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {detailVehicle && (() => {
         const det = VEHICLE_DETAILS[detailVehicle.code];
-        const tireColor: Record<string, string> = { Bueno: "#16a34a", Regular: "#D97706", Crítico: "#D32F2F" };
+        const tireColor: Record<string, string> = { Bueno: "var(--success-600)", Regular: "#D97706", Crítico: "var(--red)" };
         const maintTypeStyle = (t: "Preventivo" | "Correctivo"): React.CSSProperties =>
           t === "Preventivo"
-            ? { background: "#eff6ff", color: "#1565c0", border: "1px solid #bfdbfe", borderRadius: 999, padding: "2px 9px", fontSize: 11, fontWeight: 700 }
+            ? { background: "var(--info-50)", color: "#1565c0", border: "1px solid #bfdbfe", borderRadius: 999, padding: "2px 9px", fontSize: 11, fontWeight: 700 }
             : { background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa", borderRadius: 999, padding: "2px 9px", fontSize: 11, fontWeight: 700 };
 
         const specs: [string, string][] = [
@@ -1214,10 +1215,10 @@ export function VehiculosPage() {
 
                 {/* Specifications grid */}
                 <section>
-                  <h3 style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 700, color: "#18181b", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "Manrope, sans-serif" }}>
+                  <h3 style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 700, color: "var(--neutral-900)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "Manrope, sans-serif" }}>
                     Especificaciones
                   </h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px", background: "#f8fafc", borderRadius: 12, padding: "18px 20px", border: `1px solid ${BORDER}` }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px", background: "var(--bg-input)", borderRadius: 12, padding: "18px 20px", border: `1px solid ${BORDER}` }}>
                     {specs.map(([label, value]) => (
                       <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <span style={{ fontSize: 11, fontWeight: 600, color: MUTED, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
@@ -1227,7 +1228,7 @@ export function VehiculosPage() {
                             <span style={{ fontSize: 13, fontWeight: 600, color: tireColor[det.tireCondition] }}>{value}</span>
                           </span>
                         ) : (
-                          <span style={{ fontSize: 13, fontWeight: 500, color: "#18181b" }}>{value}</span>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--neutral-900)" }}>{value}</span>
                         )}
                       </div>
                     ))}
@@ -1237,14 +1238,14 @@ export function VehiculosPage() {
                 {/* Equipo Asignado */}
                 {det && (
                   <section>
-                    <h3 style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: "#18181b", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "Manrope, sans-serif" }}>
+                    <h3 style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: "var(--neutral-900)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "Manrope, sans-serif" }}>
                       Equipo Asignado
                     </h3>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {det.equipment.map((eq) => (
                         <div key={eq.item} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "7px 14px" }}>
                           <span style={{ width: 6, height: 6, borderRadius: "50%", background: RED, display: "inline-block", flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, color: "#18181b", fontWeight: 500 }}>{eq.item}</span>
+                          <span style={{ fontSize: 13, color: "var(--neutral-900)", fontWeight: 500 }}>{eq.item}</span>
                           <span style={{ fontSize: 12, color: MUTED, fontWeight: 700 }}>{eq.qty}</span>
                         </div>
                       ))}
@@ -1255,7 +1256,7 @@ export function VehiculosPage() {
                 {/* Historial de Mantenimiento */}
                 {det && (
                   <section>
-                    <h3 style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 700, color: "#18181b", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "Manrope, sans-serif" }}>
+                    <h3 style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 700, color: "var(--neutral-900)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "Manrope, sans-serif" }}>
                       Historial de Mantenimiento
                     </h3>
                     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -1269,15 +1270,15 @@ export function VehiculosPage() {
                             )}
                           </div>
                           {/* Entry content */}
-                          <div style={{ background: "#fafafa", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div style={{ background: "var(--neutral-50)", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: "#18181b" }}>{m.date}</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--neutral-900)" }}>{m.date}</span>
                                 <span style={maintTypeStyle(m.type)}>{m.type}</span>
                               </div>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "#16a34a" }}>{m.cost}</span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--success-600)" }}>{m.cost}</span>
                             </div>
-                            <p style={{ margin: 0, fontSize: 13, color: "#18181b" }}>{m.desc}</p>
+                            <p style={{ margin: 0, fontSize: 13, color: "var(--neutral-900)" }}>{m.desc}</p>
                             <p style={{ margin: 0, fontSize: 11, color: MUTED, fontWeight: 500 }}>{m.taller}</p>
                           </div>
                         </div>
@@ -1298,7 +1299,7 @@ export function VehiculosPage() {
                         setDetailVehicle((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
                         setConfirmInactivate(null);
                         setToast("Vehículo marcado como Inactivo.");
-                      }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
+                      }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
                     </div>
                   </div>
                 )}
@@ -1308,7 +1309,7 @@ export function VehiculosPage() {
                   <div style={{ display: "flex", gap: 8 }}>
                     {detailVehicle.estado !== "Inactivo" && confirmInactivate !== detailVehicle.code && (
                       <button onClick={() => setConfirmInactivate(detailVehicle.code)}
-                        style={{ padding: "9px 18px", borderRadius: 9, border: "1px solid #dc2626", background: "#fff", color: "#dc2626", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
+                        style={{ padding: "9px 18px", borderRadius: 9, border: "1px solid var(--brand-600)", background: "#fff", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
                         <Power size={13} /> Desactivar
                       </button>
                     )}
@@ -1346,14 +1347,14 @@ export function VehiculosPage() {
       {deleteId !== null && (
         <Overlay onClose={() => setDeleteId(null)}>
           <div style={{ textAlign: "center", padding: "8px 0" }}>
-            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
-              <Trash2 size={22} color="#dc2626" />
+            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--brand-50)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+              <Trash2 size={22} color="var(--brand-600)" />
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#18181b", margin: "0 0 8px", fontFamily: "Manrope, sans-serif" }}>Eliminar Registro</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", margin: "0 0 8px", fontFamily: "Manrope, sans-serif" }}>Eliminar Registro</h3>
             <p style={{ fontSize: 13, color: MUTED, margin: "0 0 22px" }}>Esta acción no se puede deshacer. ¿Está seguro de que desea eliminar este registro?</p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
               <button onClick={() => setDeleteId(null)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-              <button onClick={() => handleDelete(deleteId)} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={() => handleDelete(deleteId)} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
                 <Trash2 size={13} /> Eliminar
               </button>
             </div>
@@ -1366,8 +1367,8 @@ export function VehiculosPage() {
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
           <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
-              <span style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", fontFamily: "Inter, sans-serif" }}>Editar Vehículo — {editingVehicle.code}</span>
-              <button onClick={() => setEditingVehicle(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}><X size={18} /></button>
+              <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Editar Vehículo — {editingVehicle.code}</span>
+              <button onClick={() => setEditingVehicle(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
               {([
@@ -1379,14 +1380,14 @@ export function VehiculosPage() {
                 { key: "km" as const, label: "Km / Horas" },
               ] as { key: keyof Vehicle; label: string }[]).map(({ key, label }) => (
                 <div key={key}>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>{label}</label>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>{label}</label>
                   <input value={editingVehicle[key] as string}
                     onChange={(e) => setEditingVehicle((prev) => prev ? { ...prev, [key]: e.target.value } : prev)}
                     style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }} />
                 </div>
               ))}
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado Operativo</label>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado Operativo</label>
                 <select value={editingVehicle.status}
                   onChange={(e) => setEditingVehicle((prev) => prev ? { ...prev, status: e.target.value as VehicleStatus } : prev)}
                   style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}>
@@ -1394,7 +1395,7 @@ export function VehiculosPage() {
                 </select>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado Registro</label>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado Registro</label>
                 <select value={editingVehicle.estado ?? "Activo"}
                   onChange={(e) => setEditingVehicle((prev) => prev ? { ...prev, estado: e.target.value as "Activo" | "Inactivo" } : prev)}
                   style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}>

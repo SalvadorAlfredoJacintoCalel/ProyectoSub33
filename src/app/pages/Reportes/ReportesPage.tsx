@@ -42,11 +42,11 @@ import {
 } from "lucide-react";
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
-const RED = "#D32F2F";
-const BG = "#F1F5F9";
+const RED = "var(--red)";
+const BG = "var(--bg-hover)";
 const CARD_SHADOW = "0 1px 4px rgba(0,0,0,0.06)";
 const CARD_BORDER = "1px solid rgba(0,0,0,0.05)";
-const BORDER = "#e4e4e7";
+const BORDER = "var(--neutral-200)";
 
 // ─── Module options ───────────────────────────────────────────────────────────
 type Modulo =
@@ -221,7 +221,7 @@ function Card({
 }) {
   return (
     <div
-      className={`bg-white rounded-2xl p-5 ${className}`}
+      className={`bg-white rounded-2xl p-5 transition-transform duration-200 hover:-translate-y-0.5 ${className}`}
       style={{ boxShadow: CARD_SHADOW, border: CARD_BORDER }}
     >
       {children}
@@ -242,7 +242,7 @@ function SectionTitle({
     <div className="flex items-center gap-3 mb-4">
       <div
         className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: "#fef2f2" }}
+        style={{ background: "var(--brand-50)" }}
       >
         <span style={{ color: RED }}>{icon}</span>
       </div>
@@ -367,12 +367,12 @@ function EmergenciasCharts() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="tipo"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
+                tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#6b7280" }}
+                tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -414,12 +414,12 @@ function EmergenciasCharts() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="mes"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
+                tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#6b7280" }}
+                tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -492,12 +492,12 @@ function VehiculosCharts() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="mes"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
+                tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#6b7280" }}
+                tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
                 axisLine={false}
                 tickLine={false}
                 unit=" gal"
@@ -535,12 +535,12 @@ function VehiculosCharts() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="mes"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
+                tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#6b7280" }}
+                tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => `Q${(v / 1000).toFixed(0)}k`}
@@ -624,11 +624,11 @@ function InventarioCharts() {
             layout="vertical"
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+            <XAxis type="number" tick={{ fontSize: 11, fill: "var(--neutral-500)" }} axisLine={false} tickLine={false} />
             <YAxis
               type="category"
               dataKey="name"
-              tick={{ fontSize: 11, fill: "#6b7280" }}
+              tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
               axisLine={false}
               tickLine={false}
               width={90}
@@ -689,12 +689,12 @@ function DonacionesCharts() {
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis
               dataKey="mes"
-              tick={{ fontSize: 11, fill: "#6b7280" }}
+              tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: "#6b7280" }}
+              tick={{ fontSize: 11, fill: "var(--neutral-500)" }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => `Q${(v / 1000).toFixed(0)}k`}
@@ -732,8 +732,8 @@ function TodosCharts() {
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={incidentesTipoData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="tipo" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="tipo" tick={{ fontSize: 10, fill: "var(--neutral-500)" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: "var(--neutral-500)" }} axisLine={false} tickLine={false} />
             <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 12 }} />
             <Bar dataKey="cantidad" fill={RED} radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -756,8 +756,8 @@ function TodosCharts() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "var(--neutral-500)" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: "var(--neutral-500)" }} axisLine={false} tickLine={false} />
             <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 12 }} />
             <Area type="monotone" dataKey="emergencias" stroke={RED} strokeWidth={2} fill="url(#gradEmerg2)" dot={false} activeDot={{ r: 4 }} />
           </AreaChart>
@@ -774,8 +774,8 @@ function TodosCharts() {
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={combustibleData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} unit=" gal" />
+            <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "var(--neutral-500)" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: "var(--neutral-500)" }} axisLine={false} tickLine={false} unit=" gal" />
             <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 12 }} formatter={(v: number) => [`${v} gal`]} />
             <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} iconType="circle" iconSize={8} />
             <Bar dataKey="A-33" stackId="a" fill={RED} radius={[0, 0, 0, 0]} />
@@ -839,8 +839,8 @@ function TodosCharts() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} tickFormatter={(v) => `Q${(v / 1000).toFixed(0)}k`} />
+            <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "var(--neutral-500)" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: "var(--neutral-500)" }} axisLine={false} tickLine={false} tickFormatter={(v) => `Q${(v / 1000).toFixed(0)}k`} />
             <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${BORDER}`, fontSize: 12 }} formatter={(v: number) => [`Q${v.toLocaleString()}`]} />
             <Area type="monotone" dataKey="monto" stroke="#059669" strokeWidth={2} fill="url(#gradDon2)" dot={false} activeDot={{ r: 4 }} />
           </AreaChart>
@@ -1053,7 +1053,7 @@ function AnalyticasTab() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-600" style={{ fontFamily: "Inter, sans-serif" }}>Buscar</label>
             <div style={{ position: "relative" }}>
-              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }} />
+              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--neutral-400)" }} />
               <input
                 type="text"
                 placeholder="Código, nombre, placa..."
@@ -1097,7 +1097,7 @@ function AnalyticasTab() {
       {modulo === "vehiculos" && (
         <div className="space-y-4">
           {/* Sub-tab selector */}
-          <div style={{ display: "flex", gap: 4, background: "#f1f5f9", borderRadius: 10, padding: 4 }}>
+          <div style={{ display: "flex", gap: 4, background: "var(--bg-hover)", borderRadius: 10, padding: 4 }}>
             {([
               { key: "analytics", label: "Analíticas", icon: <BarChart2 size={14} /> },
               { key: "flota",     label: "Flota de Vehículos", icon: <Truck size={14} /> },
@@ -1111,7 +1111,7 @@ function AnalyticasTab() {
                   padding: "8px 14px", borderRadius: 8, border: "none", cursor: "pointer",
                   fontSize: 13, fontWeight: 600, fontFamily: "Inter, sans-serif",
                   background: vehiculosSubView === tab.key ? "#fff" : "transparent",
-                  color: vehiculosSubView === tab.key ? RED : "#64748b",
+                  color: vehiculosSubView === tab.key ? RED : "var(--text-2)",
                   boxShadow: vehiculosSubView === tab.key ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
                   transition: "all 0.15s",
                 }}
@@ -1134,26 +1134,26 @@ function AnalyticasTab() {
             return (
               <Card>
                 <div style={{ marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <p style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", fontFamily: "Inter, sans-serif" }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
                     Flota de Vehículos — {rows.length} unidad{rows.length !== 1 ? "es" : ""}
                   </p>
                 </div>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
-                      <tr style={{ background: "#f8fafc" }}>
+                      <tr style={{ background: "var(--bg-input)" }}>
                         {["Código","Tipo","Marca / Modelo","Placa","Año","Km","Operación","Estado"].map((h) => (
-                          <th key={h} style={{ textAlign: "left", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${BORDER}` }}>{h}</th>
+                          <th key={h} style={{ textAlign: "left", padding: "8px 12px", color: "var(--neutral-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${BORDER}` }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {rows.length === 0 ? (
-                        <tr><td colSpan={8} style={{ textAlign: "center", padding: 32, color: "#9ca3af", fontSize: 13 }}>Sin resultados</td></tr>
+                        <tr><td colSpan={8} style={{ textAlign: "center", padding: 32, color: "var(--neutral-400)", fontSize: 13 }}>Sin resultados</td></tr>
                       ) : rows.map((v) => (
                         <tr key={v.code} style={{ borderBottom: `1px solid ${BORDER}`, cursor: "pointer" }}
                           onClick={() => setDetailVehicle(v)}
-                          onMouseOver={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                          onMouseOver={(e) => (e.currentTarget.style.background = "var(--bg-input)")}
                           onMouseOut={(e) => (e.currentTarget.style.background = "")}>
                           <td style={{ padding: "10px 12px" }}>
                             <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, color: RED, fontSize: 13, fontFamily: "Inter, sans-serif" }}
@@ -1174,13 +1174,13 @@ function AnalyticasTab() {
                           <td style={{ padding: "10px 12px" }}>
                             <span style={{
                               display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                              background: v.status === "Operativa" ? "#dcfce7" : v.status === "En Servicio" ? "#dbeafe" : "#fef9c3",
+                              background: v.status === "Operativa" ? "var(--success-100)" : v.status === "En Servicio" ? "var(--info-100)" : "#fef9c3",
                               color: v.status === "Operativa" ? "#166534" : v.status === "En Servicio" ? "#1d4ed8" : "#92400e",
                             }}>{v.status}</span>
                           </td>
                           <td style={{ padding: "10px 12px" }}>
                             <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                              background: v.estado === "Activo" ? "#dcfce7" : "#fee2e2",
+                              background: v.estado === "Activo" ? "var(--success-100)" : "var(--brand-100)",
                               color: v.estado === "Activo" ? "#166534" : "#991b1b" }}>
                               {v.estado}
                             </span>
@@ -1207,31 +1207,31 @@ function AnalyticasTab() {
             return (
               <Card>
                 <div style={{ marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                  <p style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", fontFamily: "Inter, sans-serif" }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
                     Control de Combustible — {rows.length} registro{rows.length !== 1 ? "s" : ""}
                   </p>
-                  <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#6b7280" }}>
-                    <span>Total galones: <strong style={{ color: "#0f172a" }}>{totalGalones}</strong></span>
-                    <span>Total cupones: <strong style={{ color: "#0f172a" }}>{totalCupones}</strong></span>
-                    <span>Total Q: <strong style={{ color: "#0f172a" }}>Q{totalHaber.toLocaleString()}</strong></span>
+                  <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--neutral-500)" }}>
+                    <span>Total galones: <strong style={{ color: "var(--text-1)" }}>{totalGalones}</strong></span>
+                    <span>Total cupones: <strong style={{ color: "var(--text-1)" }}>{totalCupones}</strong></span>
+                    <span>Total Q: <strong style={{ color: "var(--text-1)" }}>Q{totalHaber.toLocaleString()}</strong></span>
                   </div>
                 </div>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
-                      <tr style={{ background: "#f8fafc" }}>
+                      <tr style={{ background: "var(--bg-input)" }}>
                         {["Fecha","Responsable","Placas","Unidad","Gasolinera","Galonaje","Cupones","Haber (Q)","Saldo (Q)","Estado"].map((h) => (
-                          <th key={h} style={{ textAlign: "left", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${BORDER}` }}>{h}</th>
+                          <th key={h} style={{ textAlign: "left", padding: "8px 12px", color: "var(--neutral-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${BORDER}` }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {rows.length === 0 ? (
-                        <tr><td colSpan={10} style={{ textAlign: "center", padding: 32, color: "#9ca3af", fontSize: 13 }}>Sin resultados</td></tr>
+                        <tr><td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--neutral-400)", fontSize: 13 }}>Sin resultados</td></tr>
                       ) : rows.map((f) => (
                         <tr key={f.id} style={{ borderBottom: `1px solid ${BORDER}`, cursor: "pointer" }}
                           onClick={() => setDetailFuel(f)}
-                          onMouseOver={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                          onMouseOver={(e) => (e.currentTarget.style.background = "var(--bg-input)")}
                           onMouseOut={(e) => (e.currentTarget.style.background = "")}>
                           <td style={{ padding: "10px 12px", color: "#374151" }}>{f.fecha}</td>
                           <td style={{ padding: "10px 12px" }}>
@@ -1254,7 +1254,7 @@ function AnalyticasTab() {
                           <td style={{ padding: "10px 12px", color: "#374151" }}>Q{f.saldoRestante.toLocaleString()}</td>
                           <td style={{ padding: "10px 12px" }}>
                             <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                              background: f.estado === "Activo" ? "#dcfce7" : "#fee2e2",
+                              background: f.estado === "Activo" ? "var(--success-100)" : "var(--brand-100)",
                               color: f.estado === "Activo" ? "#166534" : "#991b1b" }}>
                               {f.estado}
                             </span>
@@ -1278,9 +1278,9 @@ function AnalyticasTab() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Truck size={18} style={{ color: RED }} />
-                <span style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", fontFamily: "Inter, sans-serif" }}>Ficha de Vehículo — {detailVehicle.code}</span>
+                <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Ficha de Vehículo — {detailVehicle.code}</span>
               </div>
-              <button onClick={() => { setDetailVehicle(null); setConfirmInactivateFleet(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}><X size={18} /></button>
+              <button onClick={() => { setDetailVehicle(null); setConfirmInactivateFleet(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
             {/* body */}
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 20px" }}>
@@ -1296,8 +1296,8 @@ function AnalyticasTab() {
                 ["Estado Registro", detailVehicle.estado],
               ].map(([label, val]) => (
                 <div key={label as string}>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2, fontFamily: "Inter, sans-serif" }}>{label}</p>
-                  <p style={{ fontSize: 14, color: "#0f172a", fontFamily: "Inter, sans-serif" }}>{val}</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2, fontFamily: "Inter, sans-serif" }}>{label}</p>
+                  <p style={{ fontSize: 14, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>{val}</p>
                 </div>
               ))}
             </div>
@@ -1312,7 +1312,7 @@ function AnalyticasTab() {
                     setFleetData((prev) => prev.map((v) => v.code === detailVehicle.code ? { ...v, estado: "Inactivo" } : v));
                     setDetailVehicle((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
                     setConfirmInactivateFleet(null);
-                  }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
+                  }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
                 </div>
               </div>
             )}
@@ -1321,7 +1321,7 @@ function AnalyticasTab() {
               <div style={{ display: "flex", gap: 8 }}>
                 {detailVehicle.estado === "Activo" && confirmInactivateFleet !== detailVehicle.code && (
                   <button onClick={() => setConfirmInactivateFleet(detailVehicle.code)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid #dc2626", background: "#fff", color: "#dc2626", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "#fff", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
                     <Power size={14} /> Desactivar
                   </button>
                 )}
@@ -1346,8 +1346,8 @@ function AnalyticasTab() {
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
           <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
-              <span style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", fontFamily: "Inter, sans-serif" }}>Editar Vehículo — {editingFleet.code}</span>
-              <button onClick={() => setEditingFleet(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}><X size={18} /></button>
+              <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Editar Vehículo — {editingFleet.code}</span>
+              <button onClick={() => setEditingFleet(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
               {[
@@ -1358,13 +1358,13 @@ function AnalyticasTab() {
                 { key: "km" as const, label: "Km Recorrido" },
               ].map(({ key, label }) => (
                 <div key={key}>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>{label}</label>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>{label}</label>
                   <input value={editingFleet[key] as string} onChange={(e) => setEditingFleet((prev) => prev ? { ...prev, [key]: e.target.value } : prev)}
                     style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }} />
                 </div>
               ))}
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado</label>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado</label>
                 <select value={editingFleet.estado} onChange={(e) => setEditingFleet((prev) => prev ? { ...prev, estado: e.target.value as "Activo" | "Inactivo" } : prev)}
                   style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}>
                   <option>Activo</option><option>Inactivo</option>
@@ -1392,9 +1392,9 @@ function AnalyticasTab() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Fuel size={18} style={{ color: RED }} />
-                <span style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", fontFamily: "Inter, sans-serif" }}>Ficha de Combustible — {detailFuel.placas}</span>
+                <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Ficha de Combustible — {detailFuel.placas}</span>
               </div>
-              <button onClick={() => { setDetailFuel(null); setConfirmInactivateFuel(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}><X size={18} /></button>
+              <button onClick={() => { setDetailFuel(null); setConfirmInactivateFuel(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 20px" }}>
               {[
@@ -1412,8 +1412,8 @@ function AnalyticasTab() {
                 ["Estado", detailFuel.estado],
               ].map(([label, val]) => (
                 <div key={label as string}>
-                  <p style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2, fontFamily: "Inter, sans-serif" }}>{label}</p>
-                  <p style={{ fontSize: 14, color: "#0f172a", fontFamily: "Inter, sans-serif" }}>{val}</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2, fontFamily: "Inter, sans-serif" }}>{label}</p>
+                  <p style={{ fontSize: 14, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>{val}</p>
                 </div>
               ))}
             </div>
@@ -1426,7 +1426,7 @@ function AnalyticasTab() {
                     setFuelData((prev) => prev.map((f) => f.id === detailFuel.id ? { ...f, estado: "Inactivo" } : f));
                     setDetailFuel((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
                     setConfirmInactivateFuel(null);
-                  }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
+                  }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
                 </div>
               </div>
             )}
@@ -1434,7 +1434,7 @@ function AnalyticasTab() {
               <div style={{ display: "flex", gap: 8 }}>
                 {detailFuel.estado === "Activo" && confirmInactivateFuel !== detailFuel.id && (
                   <button onClick={() => setConfirmInactivateFuel(detailFuel.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid #dc2626", background: "#fff", color: "#dc2626", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "#fff", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
                     <Power size={14} /> Desactivar
                   </button>
                 )}
@@ -1457,8 +1457,8 @@ function AnalyticasTab() {
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
           <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
-              <span style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", fontFamily: "Inter, sans-serif" }}>Editar Registro de Combustible</span>
-              <button onClick={() => setEditingFuel(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}><X size={18} /></button>
+              <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Editar Registro de Combustible</span>
+              <button onClick={() => setEditingFuel(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
               {([
@@ -1473,14 +1473,14 @@ function AnalyticasTab() {
                 { key: "haber" as const, label: "Haber (Q)", type: "number" },
               ] as { key: keyof ReporteFuel; label: string; type: string }[]).map(({ key, label, type }) => (
                 <div key={key}>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>{label}</label>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>{label}</label>
                   <input type={type} value={editingFuel[key] as string | number}
                     onChange={(e) => setEditingFuel((prev) => prev ? { ...prev, [key]: type === "number" ? Number(e.target.value) : e.target.value } : prev)}
                     style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }} />
                 </div>
               ))}
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado</label>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado</label>
                 <select value={editingFuel.estado} onChange={(e) => setEditingFuel((prev) => prev ? { ...prev, estado: e.target.value as "Activo" | "Inactivo" } : prev)}
                   style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}>
                   <option>Activo</option><option>Inactivo</option>
@@ -1506,7 +1506,7 @@ function AnalyticasTab() {
       {exportToast && (
         <div
           className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl text-white text-sm font-medium shadow-xl"
-          style={{ background: "#1e293b" }}
+          style={{ background: "var(--neutral-900)" }}
         >
           <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
             <Download size={12} />
@@ -1614,7 +1614,7 @@ function UsuariosTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ background: "#F8FAFC", borderBottom: `1px solid ${BORDER}` }}>
+              <tr style={{ background: "var(--bg-input)", borderBottom: `1px solid ${BORDER}` }}>
                 {["Usuario", "Nombre Completo", "Correo", "Rol", "Estado", "Última Sesión", "Acciones"].map(
                   (col) => (
                     <th

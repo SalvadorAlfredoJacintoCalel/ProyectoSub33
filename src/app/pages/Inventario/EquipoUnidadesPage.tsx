@@ -69,8 +69,8 @@ export function EquipoUnidadesPage() {
 
   return (
     <div style={CARD_STYLE}>
-      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "#e4e4e7" }}>
-        <select value={unidadFilter} onChange={(e) => setUnidadFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "#e4e4e7", color: "#1b1b1c", background: "var(--bg-input)" }}>
+      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--neutral-200)" }}>
+        <select value={unidadFilter} onChange={(e) => setUnidadFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--neutral-200)", color: "var(--text-1)", background: "var(--bg-input)" }}>
           <option value="">Todas las unidades</option>
           {catalogos.unidades.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
         </select>
@@ -82,21 +82,21 @@ export function EquipoUnidadesPage() {
       <div className="overflow-x-auto">
         <table className="w-full text-left" style={{ fontFamily: "Inter, sans-serif" }}>
           <thead>
-            <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #e4e4e7" }}>
-              {cols.map((h) => <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "#71717a" }}>{h}</th>)}
+            <tr style={{ background: "var(--bg-input)", borderBottom: "1px solid var(--neutral-200)" }}>
+              {cols.map((h) => <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--neutral-500)" }}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
             {loading && equipoUnidades.length === 0 ? (
               <tr><td colSpan={cols.length} className="py-16 text-center"><Loader2 size={24} className="mx-auto animate-spin" style={{ color: "var(--red)" }} /></td></tr>
             ) : equipoUnidades.length === 0 ? (
-              <tr><td colSpan={cols.length} className="py-16 text-center text-sm" style={{ color: "#71717a" }}>No hay equipo asignado.</td></tr>
+              <tr><td colSpan={cols.length} className="py-16 text-center text-sm" style={{ color: "var(--neutral-500)" }}>No hay equipo asignado.</td></tr>
             ) : (
               equipoUnidades.map((e, idx) => (
-                <tr key={`${e.unidadId}-${e.itemId}-${idx}`} className="border-b transition hover:bg-gray-50" style={{ borderColor: "#e4e4e7" }}>
-                  <td className="px-4 py-3 text-sm font-medium" style={{ color: "#1b1b1c" }}>{e.unidadCodigo}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "#1b1b1c" }}>{e.itemNombre}</td>
-                  <td className="px-4 py-3 text-sm font-medium" style={{ color: "#71717a" }}>{e.cantidadAsignada}</td>
+                <tr key={`${e.unidadId}-${e.itemId}-${idx}`} className="border-b transition hover:bg-gray-50" style={{ borderColor: "var(--neutral-200)" }}>
+                  <td className="px-4 py-3 text-sm font-medium" style={{ color: "var(--text-1)" }}>{e.unidadCodigo}</td>
+                  <td className="px-4 py-3 text-sm" style={{ color: "var(--text-1)" }}>{e.itemNombre}</td>
+                  <td className="px-4 py-3 text-sm font-medium" style={{ color: "var(--neutral-500)" }}>{e.cantidadAsignada}</td>
                 </tr>
               ))
             )}
@@ -107,35 +107,35 @@ export function EquipoUnidadesPage() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setModal(false)}>
           <div className="w-full max-w-md rounded-2xl" style={{ background: "var(--bg-card, #fff)", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border, #e4e4e7)", background: "var(--bg-input, #f8fafc)" }}>
+            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))" }}>
               <h2 className="text-base font-semibold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>Asignar Equipo a Unidad</h2>
-              <button onClick={() => setModal(false)} className="rounded p-1 hover:bg-gray-100" style={{ color: "#71717a" }}><X size={18} /></button>
+              <button onClick={() => setModal(false)} className="rounded p-1 hover:bg-gray-100" style={{ color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
             <div className="space-y-4 px-6 py-5" style={{ fontFamily: "Inter, sans-serif" }}>
               <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Unidad <span style={{ color: "var(--red)" }}>*</span></label>
-                <select className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.unidadId} onChange={(e) => setForm((p) => ({ ...p, unidadId: e.target.value }))}>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Unidad <span style={{ color: "var(--red)" }}>*</span></label>
+                <select className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.unidadId} onChange={(e) => setForm((p) => ({ ...p, unidadId: e.target.value }))}>
                   <option value="">Seleccionar…</option>
                   {catalogos.unidades.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
                 </select>
                 {errors.unidadId && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.unidadId}</p>}
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Item / Equipo <span style={{ color: "var(--red)" }}>*</span></label>
-                <select className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.itemId} onChange={(e) => setForm((p) => ({ ...p, itemId: e.target.value }))}>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Item / Equipo <span style={{ color: "var(--red)" }}>*</span></label>
+                <select className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.itemId} onChange={(e) => setForm((p) => ({ ...p, itemId: e.target.value }))}>
                   <option value="">Seleccionar…</option>
                   {items.map((i) => <option key={i.itemId} value={i.itemId}>{i.nombre}</option>)}
                 </select>
                 {errors.itemId && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.itemId}</p>}
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, #71717a)" }}>Cantidad Asignada <span style={{ color: "var(--red)" }}>*</span></label>
-                <input type="number" min="1" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, #e4e4e7)" }} value={form.cantidadAsignada} onChange={(e) => setForm((p) => ({ ...p, cantidadAsignada: e.target.value }))} placeholder="0" />
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Cantidad Asignada <span style={{ color: "var(--red)" }}>*</span></label>
+                <input type="number" min="1" className="w-full rounded-lg border px-3 py-2 text-sm outline-none" style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.cantidadAsignada} onChange={(e) => setForm((p) => ({ ...p, cantidadAsignada: e.target.value }))} placeholder="0" />
                 {errors.cantidadAsignada && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.cantidadAsignada}</p>}
               </div>
             </div>
-            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border, #e4e4e7)", background: "var(--bg-input, #f8fafc)", fontFamily: "Inter, sans-serif" }}>
-              <button onClick={() => setModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50" style={{ borderColor: "var(--border, #e4e4e7)", color: "var(--text-1)" }}>Cancelar</button>
+            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))", fontFamily: "Inter, sans-serif" }}>
+              <button onClick={() => setModal(false)} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50" style={{ borderColor: "var(--border, var(--neutral-200))", color: "var(--text-1)" }}>Cancelar</button>
               <button onClick={handleSave} disabled={submitting} className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90" style={{ background: "var(--red)", opacity: submitting ? 0.7 : 1 }}>
                 {submitting ? "Guardando..." : "Guardar"}
               </button>

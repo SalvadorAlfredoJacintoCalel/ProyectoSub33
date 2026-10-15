@@ -1,0 +1,62 @@
+/* ── Global Reset ── */
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body { @apply bg-background text-foreground; min-height: 100vh; }
+
+/* ── Focus Visible Global Premium ── */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--brand-100), 0 0 0 1px var(--brand-500);
+  border-radius: 6px;
+}
+
+/* ── Selection ── */
+::selection { background: var(--brand-200); color: var(--brand-900); }
+
+/* ── Scrollbar Branded ── */
+* { scrollbar-width: thin; scrollbar-color: var(--brand-300) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--brand-300), var(--brand-400));
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--brand-400), var(--brand-500)); }
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Print ── */
+@media print { .no-print { display: none !important; } }
+
+/* ── Utility Classes for Layout ── */
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.grid-center { display: grid; place-items: center; }
+
+/* ── Glassmorphism Utilities ── */
+.glass-strong { background: var(--glass-bg-strong); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); }
+.glass-subtle { background: var(--glass-bg-subtle); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); }
+
+/* ── Gradient Utilities ── */
+.grad-primary { background: var(--grad-primary); }
+.grad-primary-soft { background: var(--grad-primary-soft); }
+.grad-hero { background: var(--grad-hero); }
+.grad-card-hover { background: var(--grad-card-hover); }
+
+/* ── Elevation Utilities ── */
+.elev-1 { box-shadow: var(--elevation-1); }
+.elev-2 { box-shadow: var(--elevation-2); }
+.elev-3 { box-shadow: var(--elevation-3); }
+.elev-brand-1 { box-shadow: var(--elevation-brand-1); }
+.elev-brand-2 { box-shadow: var(--elevation-brand-2); }
+.elev-brand-3 { box-shadow: var(--elevation-brand-3); }
+
+/* ── Text Gradient ── */
+.text-gradient-brand { background: var(--grad-primary); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }

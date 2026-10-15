@@ -17,12 +17,12 @@ type Props = {
 
 function AvatarPlaceholder() {
   return (
-    <div className="w-32 h-32 rounded-full bg-[#d4d4d8] flex items-center justify-center overflow-hidden shrink-0">
+    <div className="w-32 h-32 rounded-full bg-[var(--neutral-300)] flex items-center justify-center overflow-hidden shrink-0">
       <svg viewBox="0 0 80 80" fill="none" className="w-full h-full">
         {/* Head */}
-        <circle cx="40" cy="28" r="16" fill="#f4f4f5" />
+        <circle cx="40" cy="28" r="16" fill="var(--neutral-100)" />
         {/* Shoulders */}
-        <ellipse cx="40" cy="74" rx="28" ry="22" fill="#f4f4f5" />
+        <ellipse cx="40" cy="74" rx="28" ry="22" fill="var(--neutral-100)" />
       </svg>
     </div>
   );
@@ -34,15 +34,15 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
-    <div className="flex-1 overflow-y-auto px-12 py-10 flex flex-col gap-8">
+    <div className="flex-1 overflow-y-auto px-12 py-10 flex flex-col gap-8 animate-page-enter">
 
       {/* Page title */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-['Manrope:ExtraBold',sans-serif] font-extrabold text-[36px] tracking-[-1.5px] text-[#1b1b1c] leading-tight">
+          <h1 className="font-['Manrope:ExtraBold',sans-serif] font-extrabold text-[36px] tracking-[-1.5px] text-[var(--text-1)] leading-tight">
             MI PERFIL DE BOMBERO
           </h1>
-          <p className="font-['Inter:Regular',sans-serif] text-[16px] text-[#5f5e5e] mt-1">
+          <p className="font-['Inter:Regular',sans-serif] text-[16px] text-[var(--text-2)] mt-1">
             Información personal y credenciales institucionales
           </p>
         </div>
@@ -50,7 +50,7 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
           onClick={onClose}
           className="p-2 rounded-lg hover:bg-black/5 transition-colors mt-2 shrink-0"
         >
-          <X size={20} color="#71717a" />
+          <X size={20} color="var(--neutral-500)" />
         </button>
       </div>
 
@@ -63,7 +63,7 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
           style={{ border: "1px solid rgba(0,0,0,0.07)", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
         >
           {/* Avatar area — centered placeholder */}
-          <div className="flex flex-col items-center justify-center pt-10 pb-6 px-5 bg-[#fafafa]" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+          <div className="flex flex-col items-center justify-center pt-10 pb-6 px-5 bg-[var(--neutral-50)]" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
             <AvatarPlaceholder />
           </div>
 
@@ -71,7 +71,7 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
           <div className="px-5 pt-5 pb-1">
             <label className="cursor-pointer block">
               <input ref={fileInputRef} type="file" accept="image/*" className="sr-only" />
-              <div className="w-full py-3 rounded-lg bg-[#c11d1d] text-center font-['Inter:Bold',sans-serif] font-bold text-[14px] text-white hover:bg-[#a61818] transition-colors">
+              <div className="w-full py-3 rounded-lg bg-[var(--red)] text-center font-['Inter:Bold',sans-serif] font-bold text-[14px] text-white hover:bg-[var(--brand-700)] transition-colors">
                 Subir Nueva Foto
               </div>
             </label>
@@ -80,18 +80,18 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
           {/* Info rows */}
           <div className="px-5 py-5 flex flex-col gap-4">
             <div className="flex flex-col gap-0.5">
-              <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#71717a]">Full Name</p>
-              <p className="font-['Manrope:Bold',sans-serif] font-bold text-[15px] text-[#1b1b1c]">
+              <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[var(--neutral-500)]">Full Name</p>
+              <p className="font-['Manrope:Bold',sans-serif] font-bold text-[15px] text-[var(--text-1)]">
                 {profileForm.nombre} {profileForm.apellido}
               </p>
             </div>
             <div className="flex flex-col gap-0.5">
-              <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#71717a]">Rango</p>
-              <p className="font-['Manrope:Bold',sans-serif] font-bold text-[15px] text-[#1b1b1c]">Bombero Primero</p>
+              <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[var(--neutral-500)]">Rango</p>
+              <p className="font-['Manrope:Bold',sans-serif] font-bold text-[15px] text-[var(--text-1)]">Bombero Primero</p>
             </div>
             <div className="flex flex-col gap-0.5">
-              <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#71717a]">Compañía</p>
-              <p className="font-['Manrope:Bold',sans-serif] font-bold text-[15px] text-[#1b1b1c]">33ª Compañía</p>
+              <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[var(--neutral-500)]">Compañía</p>
+              <p className="font-['Manrope:Bold',sans-serif] font-bold text-[15px] text-[var(--text-1)]">33ª Compañía</p>
             </div>
           </div>
         </div>
@@ -107,31 +107,31 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
 
             {/* Nombre */}
             <div className="flex flex-col gap-1.5">
-              <label className="font-['Inter:Regular',sans-serif] text-[13px] text-[#1b1b1c]">Nombre</label>
+              <label className="font-['Inter:Regular',sans-serif] text-[13px] text-[var(--text-1)]">Nombre</label>
               <input
                 type="text"
                 value={profileForm.nombre}
                 onChange={e => setProfileForm(f => ({ ...f, nombre: e.target.value }))}
-                className="w-full bg-white border border-[#e4e4e7] rounded-lg px-4 py-3 text-[13px] text-[#1b1b1c] outline-none focus:border-[#c11d1d] transition-colors"
+                className="w-full bg-white border border-[var(--neutral-200)] rounded-lg px-4 py-3 text-[13px] text-[var(--text-1)] outline-none focus:border-[var(--red)] transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
               />
             </div>
 
             {/* Apellido */}
             <div className="flex flex-col gap-1.5">
-              <label className="font-['Inter:Regular',sans-serif] text-[13px] text-[#1b1b1c]">Apellido</label>
+              <label className="font-['Inter:Regular',sans-serif] text-[13px] text-[var(--text-1)]">Apellido</label>
               <input
                 type="text"
                 value={profileForm.apellido}
                 onChange={e => setProfileForm(f => ({ ...f, apellido: e.target.value }))}
-                className="w-full bg-white border border-[#e4e4e7] rounded-lg px-4 py-3 text-[13px] text-[#1b1b1c] outline-none focus:border-[#c11d1d] transition-colors"
+                className="w-full bg-white border border-[var(--neutral-200)] rounded-lg px-4 py-3 text-[13px] text-[var(--text-1)] outline-none focus:border-[var(--red)] transition-colors"
                 style={{ fontFamily: "Inter, sans-serif" }}
               />
             </div>
 
             {/* Nueva Contraseña — with eye toggle */}
             <div className="flex flex-col gap-1.5">
-              <label className="font-['Inter:Regular',sans-serif] text-[13px] text-[#1b1b1c]">
+              <label className="font-['Inter:Regular',sans-serif] text-[13px] text-[var(--text-1)]">
                 Nueva Contraseña
               </label>
               <div className="relative">
@@ -140,13 +140,13 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
                   placeholder="••••••"
                   value={profileForm.password}
                   onChange={e => setProfileForm(f => ({ ...f, password: e.target.value }))}
-                  className="w-full bg-white border border-[#e4e4e7] rounded-lg px-4 py-3 text-[13px] text-[#1b1b1c] outline-none focus:border-[#c11d1d] transition-colors pr-12"
+                  className="w-full bg-white border border-[var(--neutral-200)] rounded-lg px-4 py-3 text-[13px] text-[var(--text-1)] outline-none focus:border-[var(--red)] transition-colors pr-12"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#a1a1aa] hover:text-[#71717a] transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--neutral-400)] hover:text-[var(--neutral-500)] transition-colors"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -156,7 +156,7 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
 
             {/* Confirmar Contraseña — with eye toggle */}
             <div className="flex flex-col gap-1.5">
-              <label className="font-['Inter:Regular',sans-serif] text-[13px] text-[#1b1b1c]">
+              <label className="font-['Inter:Regular',sans-serif] text-[13px] text-[var(--text-1)]">
                 Confirmar Contraseña
               </label>
               <div className="relative">
@@ -165,13 +165,13 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
                   placeholder="••••••"
                   value={profileForm.confirmPassword}
                   onChange={e => setProfileForm(f => ({ ...f, confirmPassword: e.target.value }))}
-                  className="w-full bg-white border border-[#e4e4e7] rounded-lg px-4 py-3 text-[13px] text-[#1b1b1c] outline-none focus:border-[#c11d1d] transition-colors pr-12"
+                  className="w-full bg-white border border-[var(--neutral-200)] rounded-lg px-4 py-3 text-[13px] text-[var(--text-1)] outline-none focus:border-[var(--red)] transition-colors pr-12"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(v => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#a1a1aa] hover:text-[#71717a] transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--neutral-400)] hover:text-[var(--neutral-500)] transition-colors"
                   tabIndex={-1}
                 >
                   {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -183,7 +183,7 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
           {/* Save */}
           <button
             onClick={onClose}
-            className="w-full py-3.5 rounded-lg bg-[#c11d1d] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-white hover:bg-[#a61818] transition-colors mt-2"
+            className="w-full py-3.5 rounded-lg bg-[var(--red)] font-['Inter:Bold',sans-serif] font-bold text-[14px] text-white hover:bg-[var(--brand-700)] transition-colors mt-2"
           >
             Guardar Cambios
           </button>

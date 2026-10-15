@@ -25,7 +25,7 @@ import { emptyFormState, miembroToForm, formToMiembro } from "@/utils/formHelper
 import { useAlert } from "@/app/components/ui/AlertContext";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const RED = "#D32F2D";
+const RED = "var(--brand-600)";
 const PAGE_SIZE = 8;
 
 const estadoBadge: Record<Estado, string> = {
@@ -935,7 +935,7 @@ const activos = members.filter((m) => m.estado === true).length;
                 width: 10,
                 height: 10,
                 borderRadius: "50%",
-                background: filterEstado === "Activo" ? "#16a34a" : filterEstado === "Inactivo" ? RED : "#9ca3af",
+                background: filterEstado === "Activo" ? "var(--success-600)" : filterEstado === "Inactivo" ? RED : "var(--neutral-400)",
               }}
             />
             {filterEstado === "Activo" ? "Activos" : filterEstado === "Inactivo" ? "Inactivos" : "Todos"}
@@ -945,7 +945,7 @@ const activos = members.filter((m) => m.estado === true).length;
             <div
               style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 30, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "var(--shadow)", minWidth: 140, overflow: "hidden" }}
             >
-              {([["Activo", "Activos", "#16a34a"], ["Inactivo", "Inactivos", RED], ["", "Todos", "#9ca3af"]] as const).map(([val, label, color]) => (
+              {([["Activo", "Activos", "var(--success-600)"], ["Inactivo", "Inactivos", RED], ["", "Todos", "var(--neutral-400)"]] as const).map(([val, label, color]) => (
                 <button
                   key={label}
                   onClick={() => { setFilterEstado(val); setPage(1); setEstadoDropdownOpen(false); }}

@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, type ElementType, type ReactNode } from "react";
+import { motion } from "motion/react";
+import { LayoutProvider, useLayout } from "@/app/layout/LayoutContext";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
 import { ROLE_LABELS, ROLE_BADGE, ROLE_NAV } from "@/constants/roles";
 import svgPaths from "@/imports/DashboardPrincipalDesktop/svg-tul6vfzka5";
@@ -22,7 +24,7 @@ import {
   X, ChevronLeft, ChevronRight, Zap, Truck, Package,
   Bell, LogOut, Shield, ChevronDown, Home, BarChart2,
   Users, AlertTriangle, Wrench, Quote,
-  Camera, UserCircle, CheckCircle2,
+  Camera, UserCircle, CheckCircle2, Moon, Sun,
 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
@@ -30,23 +32,23 @@ import { AlertProvider } from "@/app/components/ui/AlertContext";
 // ─── Theme colors (light mode only) ──────────────────────────────────────────
 
 const C = {
-  pageBg:        "#F1F5F9",
-  sidebarBg:     "#1E293B",
-  sidebarActive: "#D32F2F",
-  topbarBg:      "#FFFFFF",
-  topbarBorder:  "rgba(0,0,0,0.06)",
-  cardBg:        "#FFFFFF",
-  cardBorder:    "rgba(0,0,0,0.05)",
-  cardShadow:    "0 1px 4px rgba(0,0,0,0.06)",
-  heroBg:        "#1E293B",
-  textPrimary:   "#1E293B",
-  textSecond:    "#64748B",
-  textMuted:     "#94A3B8",
-  border:        "#E2E8F0",
-  hoverBg:       "#F8FAFC",
-  red:           "#D32F2F",
-  redLight:      "#FFF1F0",
-  inputBg:       "#F8FAFC",
+  pageBg:        "var(--bg-page)",
+  sidebarBg:     "var(--neutral-900)",
+  sidebarActive: "var(--red)",
+  topbarBg:      "var(--bg-card)",
+  topbarBorder:  "var(--divider)",
+  cardBg:        "var(--bg-card)",
+  cardBorder:    "var(--divider)",
+  cardShadow:    "var(--shadow)",
+  heroBg:        "var(--neutral-900)",
+  textPrimary:   "var(--text-1)",
+  textSecond:    "var(--text-2)",
+  textMuted:     "var(--text-3)",
+  border:        "var(--border)",
+  hoverBg:       "var(--bg-hover)",
+  red:           "var(--red)",
+  redLight:      "var(--brand-50)",
+  inputBg:       "var(--bg-input)",
   overlay:       "rgba(0,0,0,0.5)",
 };
 
@@ -150,6 +152,11 @@ function QuickCard({ Icon, label, sub, onClick }: { Icon: ElementType; label: st
 
 function AppContent() {
   const { loggedIn, user, role, role: userRole, login, logout, setRole } = useAuth();
+  const { isDrawerOpen, isModalOpen } = useLayout();
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof localStorage === "undefined") return false;
+    return localStorage.getItem("theme") === "dark";
+  });
   const [activeNav, setActiveNav] = useState("bienvenida");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [period, setPeriod] = useState<Period>("month");
@@ -194,6 +201,20 @@ function AppContent() {
     if (!ROLE_NAV[role].includes(activeNav)) setActiveNav("bienvenida");
   }, [role, activeNav]);
 
+  // Lock body scroll when a drawer/modal is open
+  useEffect(() => {
+    document.body.style.overflow = isDrawerOpen || isModalOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isDrawerOpen, isModalOpen]);
+
+  // Persist dark mode toggle
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+    localStorage.setItem("theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
+
   if (!loggedIn) {
     const handleLogin = () => {
       // LoginPage sets localStorage "user" before calling onLogin
@@ -218,7 +239,7 @@ function AppContent() {
 
   function ModuleWrap({ children }: { children: ReactNode }) {
     return (
-      <div className="flex-1 flex flex-col overflow-hidden" style={{ background: C.pageBg }}>
+      <div className="flex-1 flex flex-col overflow-hidden animate-page-enter" style={{ background: C.pageBg }}>
         {children}
       </div>
     );
@@ -228,8 +249,10 @@ function AppContent() {
     <div className="flex min-h-screen" style={{ background: C.pageBg }}>
 
       {/* ════ SIDEBAR ════ */}
-      <aside className="fixed left-0 top-0 bottom-0 flex flex-col z-20 transition-all duration-200 overflow-hidden"
-        style={{ width: sidebarW, background: C.sidebarBg, borderRight: `1px solid ${C.topbarBorder}` }}>
+      <motion.aside className="fixed left-0 top-0 bottom-0 flex flex-col z-20 overflow-hidden"
+        style={{ background: C.sidebarBg, borderRight: `1px solid ${C.topbarBorder}` }}
+        animate={{ width: sidebarW }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}>
 
         {/* Logo */}
         <div className={`flex items-center shrink-0 transition-all duration-200 ${sidebarCollapsed ? "justify-center px-0 pt-5 pb-3" : "px-5 pt-5 pb-3 gap-3"}`}>
@@ -264,8 +287,8 @@ function AppContent() {
             const active = activeNav === id;
             return (
               <button key={id} onClick={() => setActiveNav(id)}
-                className={`w-full flex items-center rounded-lg transition-all duration-150 ${sidebarCollapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"}`}
-                style={active ? { background: C.sidebarActive, boxShadow: `0 4px 14px ${C.sidebarActive}40` } : undefined}
+                className={`w-full flex items-center rounded-lg transition-all duration-150 hover:scale-[1.02] ${active ? "animate-nav-active-pulse" : ""} ${sidebarCollapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5 hover:translate-x-0.5"}`}
+                style={active ? { background: "var(--grad-primary)" } : undefined}
                 onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}
                 onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = ""; }}
                 title={sidebarCollapsed ? label : undefined}>
@@ -293,14 +316,18 @@ function AppContent() {
                   <span className="text-[11px] font-semibold text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "Inter, sans-serif" }}>Contraer</span></>}
           </button>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* ════ MAIN ════ */}
-      <div className="flex-1 flex flex-col min-w-0 transition-all duration-200" style={{ marginLeft: sidebarW }}>
+      <motion.div className="flex-1 flex flex-col min-w-0"
+        animate={{ marginLeft: sidebarW }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}>
 
         {/* ── Topbar ── */}
-        <header className="h-16 shrink-0 flex items-center px-8 sticky top-0 z-10"
-          style={{ background: C.topbarBg, borderBottom: `1px solid ${C.topbarBorder}`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+        <motion.header className="h-16 shrink-0 flex items-center px-8 sticky top-0 z-[var(--z-topbar)]"
+          style={{ background: C.topbarBg, borderBottom: `1px solid ${C.topbarBorder}`, boxShadow: "var(--shadow-sm)" }}
+          animate={{ opacity: isDrawerOpen || isModalOpen ? 0 : 1, y: isDrawerOpen || isModalOpen ? "-100%" : 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}>
 
           {/* Breadcrumb */}
           <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -308,6 +335,14 @@ function AppContent() {
             <span style={{ color: C.border }}>/</span>
             <span className="text-[12px] font-bold truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{currentPageLabel}</span>
           </div>
+
+          {/* Dark mode toggle */}
+          <button onClick={() => setDarkMode(d => !d)} aria-label="Alternar tema"
+            className="flex items-center justify-center p-2 rounded-xl mr-2 transition-colors"
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
+            {darkMode ? <Sun style={{ width: 17, height: 17, color: C.textSecond }} /> : <Moon style={{ width: 17, height: 17, color: C.textSecond }} />}
+          </button>
 
           {/* Role switcher */}
           <div ref={roleDropRef} className="relative mr-3">
@@ -319,7 +354,7 @@ function AppContent() {
               <ChevronDown style={{ width: 11, height: 11, color: C.textMuted }} />
             </button>
             {roleDropOpen && (
-              <div className="absolute right-0 top-full mt-1.5 rounded-xl shadow-2xl z-50 overflow-hidden" style={{ background: C.cardBg, border: `1px solid ${C.border}`, minWidth: 190 }}>
+              <div className="absolute right-0 top-full mt-1.5 rounded-xl shadow-2xl z-50 overflow-hidden animate-scale-in" style={{ background: C.cardBg, border: `1px solid ${C.border}`, minWidth: 190 }}>
                 <div className="px-4 py-2.5 border-b" style={{ borderColor: C.border }}>
                   <p className="text-[10px] font-bold uppercase tracking-widest" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Vista de Rol</p>
                 </div>
@@ -349,7 +384,7 @@ function AppContent() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: C.red }} />
             </button>
             {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl shadow-2xl z-40 overflow-hidden"
+              <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl shadow-2xl z-40 overflow-hidden animate-scale-in"
                 style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
                 <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: C.border }}>
                   <span className="font-bold text-[13px]" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>Alertas</span>
@@ -379,7 +414,7 @@ function AppContent() {
           <div ref={profileDRef} className="relative">
             <Avatar url={avatarUrl} initials={initials} size={34} onClick={() => setProfileDropOpen(o => !o)} />
             {profileDropOpen && (
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl shadow-2xl z-40 overflow-hidden"
+              <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl shadow-2xl z-40 overflow-hidden animate-scale-in"
                 style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
                 {/* User info header */}
                 <div className="px-5 py-5 flex items-center gap-4 border-b" style={{ borderColor: C.border }}>
@@ -423,7 +458,7 @@ function AppContent() {
               </div>
             )}
           </div>
-        </header>
+        </motion.header>
 
         {/* ── Profile page overlay ── */}
         {profileOpen && (
@@ -442,7 +477,7 @@ function AppContent() {
 
         {/* ════ BIENVENIDA SCREEN ════ */}
         {!profileOpen && activeNav === "bienvenida" && (
-          <div className="flex-1 overflow-y-auto" style={{ background: C.pageBg }}>
+          <div className="flex-1 overflow-y-auto animate-page-enter" style={{ background: C.pageBg }}>
 
             {/* Hero */}
             <section className="relative overflow-hidden" style={{ background: "#FFFFFF", borderBottom: `1px solid ${C.topbarBorder}` }}>
@@ -530,7 +565,7 @@ function AppContent() {
 
         {/* ════ ANALYTICS DASHBOARD ════ */}
         {!profileOpen && activeNav === "analytics" && (
-          <div className="flex-1 overflow-y-auto" style={{ background: C.pageBg }}>
+          <div className="flex-1 overflow-y-auto animate-page-enter" style={{ background: C.pageBg }}>
             <div className="px-12 py-8 flex flex-col gap-8">
 
               {/* Page header */}
@@ -718,7 +753,7 @@ function AppContent() {
           </div>
         )}
 
-      </div>
+      </motion.div>
 
       {/* ════ HISTORIAL MODAL ════ */}
       {historialOpen && (
@@ -815,7 +850,9 @@ export default function App() {
   return (
     <AuthProvider>
       <AlertProvider>
-        <AppContent />
+        <LayoutProvider>
+          <AppContent />
+        </LayoutProvider>
       </AlertProvider>
     </AuthProvider>
   );

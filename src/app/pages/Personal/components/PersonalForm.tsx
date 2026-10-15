@@ -27,7 +27,7 @@ interface FormProps {
   onSubmit?: () => void;
 }
 
-const RED = "#D32F2F";
+const RED = "var(--brand-600)";
 
 const estadoBadge: Record<Estado, string> = {
   Activo: "bg-green-100 text-green-800 border border-green-200",

@@ -26,7 +26,7 @@ import {
 } from "../../../services/configuracionService";
 import { actualizarAccesoSistema } from "../../../services/personalService";
 
-const RED = "#D32F2F";
+const RED = "var(--red)";
 
 type UserRole = "admin" | "voluntario" | "secretario";
 type Tab = "estacion" | "catalogos" | "usuarios" | "permisos";
@@ -66,7 +66,7 @@ function AccessDenied() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-page)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div style={{ background: "var(--bg-card)", borderRadius: 24, padding: "48px 40px", textAlign: "center", maxWidth: 400, width: "100%", boxShadow: "var(--shadow)", border: "1px solid var(--border)" }}>
-        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#FEE2E2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--brand-100)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
           <Lock size={34} color={RED} />
         </div>
         <h2 style={{ fontFamily: "Manrope, sans-serif", fontWeight: 800, fontSize: 22, color: "var(--text-1)", margin: "0 0 10px" }}>
@@ -574,7 +574,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     <div style={{ background: "var(--bg-page)", minHeight: "100vh", fontFamily: "Inter, sans-serif" }}>
       {/* Header */}
       <div style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)", padding: "20px 28px", display: "flex", alignItems: "center", gap: 14 }}>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: "#FEE2E2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 42, height: 42, borderRadius: 12, background: "var(--brand-100)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Shield size={22} color={RED} />
         </div>
         <div>

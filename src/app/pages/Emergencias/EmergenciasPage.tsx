@@ -14,7 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { Emergencia, EmergenciaListItem, EmergenciaFiltros } from "@/types/emergencia";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const RED = "#c11d1d";
+const RED = "var(--red)";
 
 // ─── Types (para impresión y reporte) ────────────────────────────────────────
 type Service = {
@@ -482,7 +482,7 @@ function PrintForm({ service }: { service: Service }) {
 
 function TypeBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center px-2.5 py-[5px] rounded text-[11px] font-semibold bg-[#f4f4f5] text-[#3f3f46] border border-[#e4e4e7] whitespace-nowrap">
+    <span className="inline-flex items-center px-2.5 py-[5px] rounded text-[11px] font-semibold bg-[var(--neutral-100)] text-[var(--neutral-700)] border border-[var(--neutral-200)] whitespace-nowrap">
       {label}
     </span>
   );
@@ -492,7 +492,7 @@ function SelectWrapper({ children }: { children: ReactNode }) {
   return (
     <div className="relative">
       {children}
-      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9ca3af] pointer-events-none" strokeWidth={2.5} />
+      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--neutral-400)] pointer-events-none" strokeWidth={2.5} />
     </div>
   );
 }
@@ -500,8 +500,8 @@ function SelectWrapper({ children }: { children: ReactNode }) {
 function FieldRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[#a1a1aa]" style={{ fontFamily: "Inter, sans-serif" }}>{label}</span>
-      <span className="text-[14px] text-[#1b1b1c] font-medium" style={{ fontFamily: "Inter, sans-serif" }}>{value || "—"}</span>
+      <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>{label}</span>
+      <span className="text-[14px] text-[var(--text-1)] font-medium" style={{ fontFamily: "Inter, sans-serif" }}>{value || "—"}</span>
     </div>
   );
 }
@@ -561,7 +561,7 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
         <div className="overflow-y-auto flex-1 px-8 py-6 flex flex-col gap-7">
           <div className="grid grid-cols-3 gap-4 p-5 rounded-xl" style={{ background: "#fef8f8", border: "1px solid rgba(193,29,29,0.1)" }}>
             <div className="flex flex-col gap-1">
-              <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[#a1a1aa]" style={{ fontFamily: "Inter, sans-serif" }}>Solicitud</span>
+              <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Solicitud</span>
               <span className="inline-flex items-center self-start px-3 py-1 rounded-full text-[12px] font-bold text-white" style={{ background: RED, fontFamily: "Inter, sans-serif" }}>
                 {service.solicitud}
               </span>
@@ -579,9 +579,9 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
               <FieldRow label="Domicilio" value={service.domicilio} />
               <FieldRow label="Edad" value={service.edad} />
               <div className="flex flex-col gap-0.5">
-                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[#a1a1aa]" style={{ fontFamily: "Inter, sans-serif" }}>Falleció</span>
+                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Falleció</span>
                 <span className="inline-flex items-center self-start px-3 py-1 rounded-full text-[12px] font-bold"
-                  style={{ background: service.fallecio ? "#fef2f2" : "#f0fdf4", color: service.fallecio ? "#b91c1c" : "#15803d", fontFamily: "Inter, sans-serif" }}>
+                  style={{ background: service.fallecio ? "var(--brand-50)" : "var(--success-50)", color: service.fallecio ? "var(--brand-700)" : "var(--success-700)", fontFamily: "Inter, sans-serif" }}>
                   {service.fallecio ? "SÍ" : "NO"}
                 </span>
               </div>
@@ -602,7 +602,7 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
             <SectionHeading>Personal y Unidades</SectionHeading>
             <div className="grid grid-cols-2 gap-x-10 gap-y-5">
               <div className="flex flex-col gap-1.5">
-                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[#a1a1aa]" style={{ fontFamily: "Inter, sans-serif" }}>Unidad(es) Destacada(s)</span>
+                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Unidad(es) Destacada(s)</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {service.unidades.map((u) => (
                     <span key={u} className="px-2.5 py-1 rounded text-[12px] font-bold text-white" style={{ background: "#1b2e4b", fontFamily: "Inter, sans-serif" }}>{u}</span>
@@ -611,12 +611,12 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
               </div>
               <FieldRow label="Formulado por (Responsable)" value={service.formuladoPor} />
               <div className="flex flex-col gap-1">
-                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[#a1a1aa]" style={{ fontFamily: "Inter, sans-serif" }}>Piloto(s)</span>
-                {service.pilotos.map((p) => <span key={p} className="text-[13px] text-[#3f3f46]" style={{ fontFamily: "Inter, sans-serif" }}>{p}</span>)}
+                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Piloto(s)</span>
+                {service.pilotos.map((p) => <span key={p} className="text-[13px] text-[var(--neutral-700)]" style={{ fontFamily: "Inter, sans-serif" }}>{p}</span>)}
               </div>
               <div className="flex flex-col gap-1">
-                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[#a1a1aa]" style={{ fontFamily: "Inter, sans-serif" }}>Camillero(s)</span>
-                {service.camilleros.map((c) => <span key={c} className="text-[13px] text-[#3f3f46]" style={{ fontFamily: "Inter, sans-serif" }}>{c}</span>)}
+                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Camillero(s)</span>
+                {service.camilleros.map((c) => <span key={c} className="text-[13px] text-[var(--neutral-700)]" style={{ fontFamily: "Inter, sans-serif" }}>{c}</span>)}
               </div>
             </div>
           </div>
@@ -624,12 +624,12 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
           {service.resumen && (
             <div>
               <SectionHeading>Resumen del Incidente</SectionHeading>
-              <p className="text-[13px] text-[#3f3f46] leading-relaxed" style={{ fontFamily: "Inter, sans-serif" }}>{service.resumen}</p>
+              <p className="text-[13px] text-[var(--neutral-700)] leading-relaxed" style={{ fontFamily: "Inter, sans-serif" }}>{service.resumen}</p>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-4 px-8 py-5 shrink-0 flex-wrap" style={{ borderTop: "1px solid #f0f0f0", background: "#fafafa" }}>
+        <div className="flex items-center justify-between gap-4 px-8 py-5 shrink-0 flex-wrap" style={{ borderTop: "1px solid #f0f0f0", background: "var(--neutral-50)" }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
               onClick={() => window.print()}
@@ -642,12 +642,12 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
             {service.estado !== "Inactivo" && onDesactivar && (
               <button onClick={onDesactivar}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-[13px] transition-colors hover:bg-red-50"
-                style={{ border: "1.5px solid #dc2626", color: "#dc2626", background: "#fff", fontFamily: "Inter, sans-serif" }}>
+                style={{ border: "1.5px solid var(--brand-600)", color: "var(--brand-600)", background: "#fff", fontFamily: "Inter, sans-serif" }}>
                 <Power size={14} /> DESACTIVAR
               </button>
             )}
             {service.estado === "Inactivo" && (
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af", background: "#f3f4f6", padding: "6px 12px", borderRadius: 8, fontFamily: "Inter, sans-serif" }}>INACTIVO</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--neutral-400)", background: "#f3f4f6", padding: "6px 12px", borderRadius: 8, fontFamily: "Inter, sans-serif" }}>INACTIVO</span>
             )}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -658,7 +658,7 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
                 <Pencil size={14} /> EDITAR
               </button>
             )}
-            <button onClick={onClose} className="px-5 py-2.5 rounded-lg bg-[#f4f4f5] text-[#3f3f46] font-bold text-[13px] hover:bg-[#e4e4e7] transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
+            <button onClick={onClose} className="px-5 py-2.5 rounded-lg bg-[var(--neutral-100)] text-[var(--neutral-700)] font-bold text-[13px] hover:bg-[var(--neutral-200)] transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
               CERRAR
             </button>
           </div>
@@ -791,8 +791,8 @@ export function EmergenciasPage() {
             <div className="relative flex flex-col justify-between px-8 py-6 w-[210px]">
               <div aria-hidden className="absolute bottom-0 left-0 right-0 h-[3px] pointer-events-none" style={{ background: RED }} />
               <div className="flex items-center justify-between">
-                <Calendar className="w-[18px] h-[18px] text-[#a1a1aa]" strokeWidth={1.8} />
-                <span className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1.5px] uppercase text-[#a1a1aa]">HOY</span>
+                <Calendar className="w-[18px] h-[18px] text-[var(--neutral-400)]" strokeWidth={1.8} />
+                <span className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1.5px] uppercase text-[var(--neutral-400)]">HOY</span>
               </div>
               <div className="flex flex-col gap-1 mt-4">
                 <p className="font-['Manrope:ExtraBold',sans-serif] font-extrabold text-[40px] tracking-[-1.5px] leading-none" style={{ color: "var(--text-1)" }}>{totalItems}</p>
@@ -821,16 +821,16 @@ export function EmergenciasPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all"
               style={{
                 fontFamily: "Inter, sans-serif",
-                background: !hasActiveFilter ? RED : "#f4f4f5",
-                color: !hasActiveFilter ? "#fff" : "#71717a",
-                border: !hasActiveFilter ? `1px solid ${RED}` : "1px solid #e4e4e7",
+                background: !hasActiveFilter ? RED : "var(--neutral-100)",
+                color: !hasActiveFilter ? "#fff" : "var(--neutral-500)",
+                border: !hasActiveFilter ? `1px solid ${RED}` : "1px solid var(--neutral-200)",
               }}
             >
               <CheckCircle2 className="w-3 h-3 shrink-0" strokeWidth={2.5} />
               Historial Completo
             </button>
 
-            <div className="w-px h-5 bg-[#e4e4e7] mx-0.5 shrink-0" />
+            <div className="w-px h-5 bg-[var(--neutral-200)] mx-0.5 shrink-0" />
 
             {([
               { id: "hoy", label: "Hoy", Icon: Calendar },
@@ -845,9 +845,9 @@ export function EmergenciasPage() {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all"
                   style={{
                     fontFamily: "Inter, sans-serif",
-                    background: active ? "#1b2e4b" : "#f4f4f5",
-                    color: active ? "#fff" : "#71717a",
-                    border: active ? "1px solid #1b2e4b" : "1px solid #e4e4e7",
+                    background: active ? "#1b2e4b" : "var(--neutral-100)",
+                    color: active ? "#fff" : "var(--neutral-500)",
+                    border: active ? "1px solid #1b2e4b" : "1px solid var(--neutral-200)",
                   }}
                 >
                   <Icon className="w-3 h-3 shrink-0" strokeWidth={2.5} />
@@ -864,8 +864,8 @@ export function EmergenciasPage() {
               style={{
                 fontFamily: "Inter, sans-serif",
                 background: showAdvanced ? "#f0f0f0" : "transparent",
-                color: showAdvanced ? "#3f3f46" : "#9ca3af",
-                border: "1px solid #e4e4e7",
+                color: showAdvanced ? "var(--neutral-700)" : "var(--neutral-400)",
+                border: "1px solid var(--neutral-200)",
               }}
             >
               <SlidersHorizontal className="w-3 h-3 shrink-0" strokeWidth={2.5} />
@@ -874,13 +874,13 @@ export function EmergenciasPage() {
           </div>
 
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[17px] h-[17px] pointer-events-none" style={{ color: query ? RED : "#a1a1aa" }} strokeWidth={2.5} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[17px] h-[17px] pointer-events-none" style={{ color: query ? RED : "var(--neutral-400)" }} strokeWidth={2.5} />
             <input
               type="text"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setPage(1); }}
               placeholder="Buscar por Paciente, Solicitante, Dirección o # Incidente..."
-              className="w-full pl-12 pr-10 py-3.5 rounded-xl border text-[14px] text-[#1b1b1c] placeholder-[#c4c4c8] outline-none transition-all"
+              className="w-full pl-12 pr-10 py-3.5 rounded-xl border text-[14px] text-[var(--text-1)] placeholder-[#c4c4c8] outline-none transition-all"
               style={{
                 fontFamily: "Inter, sans-serif",
                 borderColor: query ? RED : "var(--border)",
@@ -890,20 +890,20 @@ export function EmergenciasPage() {
               }}
             />
             {query && (
-              <button onClick={() => setQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded text-[#a1a1aa] hover:text-[#3f3f46] transition-colors">
+              <button onClick={() => setQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded text-[var(--neutral-400)] hover:text-[var(--neutral-700)] transition-colors">
                 <X size={14} />
               </button>
             )}
           </div>
 
           {showAdvanced && (
-            <div className="flex gap-3 pt-1 border-t border-[#f4f4f5]" style={{ paddingTop: "12px" }}>
+            <div className="flex gap-3 pt-1 border-t border-[var(--neutral-100)]" style={{ paddingTop: "12px" }}>
               <div className="grid grid-cols-3 gap-3 flex-1">
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[#71717a]">Unidad</label>
+                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Unidad</label>
                   <SelectWrapper>
                     <select value={unidad} onChange={(e) => { setUnidad(e.target.value); setPage(1); }}
-                      className="w-full px-3 py-[9px] pr-8 rounded-lg border border-[#e4e4e7] bg-[#fafafa] text-[12px] text-[#3f3f46] outline-none focus:border-[#c11d1d] appearance-none cursor-pointer transition-colors">
+                      className="w-full px-3 py-[9px] pr-8 rounded-lg border border-[var(--neutral-200)] bg-[var(--neutral-50)] text-[12px] text-[var(--neutral-700)] outline-none focus:border-[var(--red)] appearance-none cursor-pointer transition-colors">
                       <option value="">Todas las unidades</option>
                       {catalogos.unidades.map((u) => (
                         <option key={u.id} value={u.nombre}>{u.nombre}</option>
@@ -912,10 +912,10 @@ export function EmergenciasPage() {
                   </SelectWrapper>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[#71717a]">Tipo de Incidente</label>
+                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Tipo de Incidente</label>
                   <SelectWrapper>
                     <select value={tipo} onChange={(e) => { setTipo(e.target.value); setPage(1); }}
-                      className="w-full px-3 py-[9px] pr-8 rounded-lg border border-[#e4e4e7] bg-[#fafafa] text-[12px] text-[#3f3f46] outline-none focus:border-[#c11d1d] appearance-none cursor-pointer transition-colors">
+                      className="w-full px-3 py-[9px] pr-8 rounded-lg border border-[var(--neutral-200)] bg-[var(--neutral-50)] text-[12px] text-[var(--neutral-700)] outline-none focus:border-[var(--red)] appearance-none cursor-pointer transition-colors">
                       <option value="">Todos los tipos</option>
                       {tipoOptions.map((t) => (
                         <option key={t} value={t}>{t}</option>
@@ -924,10 +924,10 @@ export function EmergenciasPage() {
                   </SelectWrapper>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[#71717a]">Personal / Piloto</label>
+                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Personal / Piloto</label>
                   <SelectWrapper>
                     <select value={piloto} onChange={(e) => { setPiloto(e.target.value); setPage(1); }}
-                      className="w-full px-3 py-[9px] pr-8 rounded-lg border border-[#e4e4e7] bg-[#fafafa] text-[12px] text-[#3f3f46] outline-none focus:border-[#c11d1d] appearance-none cursor-pointer transition-colors">
+                      className="w-full px-3 py-[9px] pr-8 rounded-lg border border-[var(--neutral-200)] bg-[var(--neutral-50)] text-[12px] text-[var(--neutral-700)] outline-none focus:border-[var(--red)] appearance-none cursor-pointer transition-colors">
                       <option value="">Todos</option>
                       {catalogos.personal.map((p) => (
                         <option key={p.personalId} value={p.nombreCompleto}>{p.nombreCompleto}</option>
@@ -939,17 +939,17 @@ export function EmergenciasPage() {
 
               <div className="grid grid-cols-2 gap-3 shrink-0" style={{ width: "240px" }}>
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[#71717a]">Desde</label>
+                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Desde</label>
                   <input type="date" value={desde} onChange={(e) => { setDesde(e.target.value); setPreset(null); setPage(1); }}
-                    className="w-full px-3 py-[9px] rounded-lg border text-[12px] text-[#3f3f46] outline-none transition-colors"
-                    style={{ borderColor: preset ? "#1b2e4b" : "#e4e4e7", background: preset ? "#f8faff" : "#fafafa" }}
+                    className="w-full px-3 py-[9px] rounded-lg border text-[12px] text-[var(--neutral-700)] outline-none transition-colors"
+                    style={{ borderColor: preset ? "#1b2e4b" : "var(--neutral-200)", background: preset ? "#f8faff" : "var(--neutral-50)" }}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[#71717a]">Hasta</label>
+                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Hasta</label>
                   <input type="date" value={hasta} onChange={(e) => { setHasta(e.target.value); setPreset(null); setPage(1); }}
-                    className="w-full px-3 py-[9px] rounded-lg border text-[12px] text-[#3f3f46] outline-none transition-colors"
-                    style={{ borderColor: preset ? "#1b2e4b" : "#e4e4e7", background: preset ? "#f8faff" : "#fafafa" }}
+                    className="w-full px-3 py-[9px] rounded-lg border text-[12px] text-[var(--neutral-700)] outline-none transition-colors"
+                    style={{ borderColor: preset ? "#1b2e4b" : "var(--neutral-200)", background: preset ? "#f8faff" : "var(--neutral-50)" }}
                   />
                 </div>
               </div>
@@ -958,15 +958,15 @@ export function EmergenciasPage() {
 
           {hasActiveFilter && (
             <div className="flex items-center justify-between pt-0.5">
-              <span className="font-['Inter:Regular',sans-serif] text-[12px]" style={{ color: "#71717a" }}>
+              <span className="font-['Inter:Regular',sans-serif] text-[12px]" style={{ color: "var(--neutral-500)" }}>
                 {query ? (
-                  <>Resultados para <strong style={{ color: "#3f3f46" }}>"{query}"</strong>:{" "}
-                    <strong style={{ color: totalItems === 0 ? RED : "#3f3f46" }}>{totalItems} servicio{totalItems !== 1 ? "s" : ""}</strong></>
+                  <>Resultados para <strong style={{ color: "var(--neutral-700)" }}>"{query}"</strong>:{" "}
+                    <strong style={{ color: totalItems === 0 ? RED : "var(--neutral-700)" }}>{totalItems} servicio{totalItems !== 1 ? "s" : ""}</strong></>
                 ) : (
-                  <>{preset ? PRESET_LABELS[preset] : "Filtro activo"} — <strong style={{ color: totalItems === 0 ? RED : "#3f3f46" }}>{totalItems} resultado{totalItems !== 1 ? "s" : ""}</strong></>
+                  <>{preset ? PRESET_LABELS[preset] : "Filtro activo"} — <strong style={{ color: totalItems === 0 ? RED : "var(--neutral-700)" }}>{totalItems} resultado{totalItems !== 1 ? "s" : ""}</strong></>
                 )}
               </span>
-              <button onClick={handleLimpiar} className="font-['Inter:Bold',sans-serif] font-bold text-[11px] tracking-[0.5px] uppercase text-[#a1a1aa] hover:text-[#71717a] transition-colors">
+              <button onClick={handleLimpiar} className="font-['Inter:Bold',sans-serif] font-bold text-[11px] tracking-[0.5px] uppercase text-[var(--neutral-400)] hover:text-[var(--neutral-500)] transition-colors">
                 Limpiar todo
               </button>
             </div>
@@ -975,9 +975,9 @@ export function EmergenciasPage() {
 
         {/* Data table */}
         <div className="flex flex-col">
-          <div className="flex items-end gap-4 px-4 pb-3 border-b border-[#f4f4f5]">
+          <div className="flex items-end gap-4 px-4 pb-3 border-b border-[var(--neutral-100)]">
             {TABLE_COLS.map((col) => (
-              <span key={col.label} className={`font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[#a1a1aa] ${col.width}`}>
+              <span key={col.label} className={`font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-400)] ${col.width}`}>
                 {col.label}
               </span>
             ))}
@@ -986,18 +986,18 @@ export function EmergenciasPage() {
           {loading && emergencias.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <Loader2 className="w-8 h-8 animate-spin" style={{ color: RED }} />
-              <p className="text-[13px] text-[#a1a1aa]">Cargando emergencias…</p>
+              <p className="text-[13px] text-[var(--neutral-400)]">Cargando emergencias…</p>
             </div>
           ) : emergencias.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-5">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "#f4f4f5", border: "1px solid #ebebeb" }}>
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "var(--neutral-100)", border: "1px solid #ebebeb" }}>
                 <CalendarX2 style={{ color: "#c4c4c8" }} className="w-8 h-8" strokeWidth={1.5} />
               </div>
               <div className="flex flex-col items-center gap-1.5 text-center">
-                <h3 className="font-bold text-[16px] text-[#3f3f46] tracking-[-0.2px]" style={{ fontFamily: "Manrope, sans-serif" }}>
+                <h3 className="font-bold text-[16px] text-[var(--neutral-700)] tracking-[-0.2px]" style={{ fontFamily: "Manrope, sans-serif" }}>
                   {hasActiveFilter ? "Sin registros para esta búsqueda" : "No hay emergencias registradas"}
                 </h3>
-                <p className="text-[13px] text-[#a1a1aa] leading-relaxed max-w-[400px]" style={{ fontFamily: "Inter, sans-serif" }}>
+                <p className="text-[13px] text-[var(--neutral-400)] leading-relaxed max-w-[400px]" style={{ fontFamily: "Inter, sans-serif" }}>
                   {hasActiveFilter ? "No se encontraron reportes para el periodo o filtro seleccionado." : "Registre un nuevo servicio para comenzar."}
                 </p>
               </div>
@@ -1037,18 +1037,18 @@ export function EmergenciasPage() {
                 MOSTRANDO {emergencias.length} DE {totalItems} SERVICIOS
               </span>
               <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                className="px-2 py-1 rounded border border-[#e4e4e7] text-[12px] text-[#3f3f46] outline-none">
+                className="px-2 py-1 rounded border border-[var(--neutral-200)] text-[12px] text-[var(--neutral-700)] outline-none">
                 {[10, 25, 50].map((s) => (
                   <option key={s} value={s}>{s} / página</option>
                 ))}
               </select>
             </div>
             <div className="flex items-center gap-1">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="w-8 h-8 flex items-center justify-center rounded text-[#a1a1aa] hover:bg-[#f4f4f5] transition-colors disabled:opacity-40">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="w-8 h-8 flex items-center justify-center rounded text-[var(--neutral-400)] hover:bg-[var(--neutral-100)] transition-colors disabled:opacity-40">
                 <ChevronLeft className="w-4 h-4" strokeWidth={2} />
               </button>
-              <span className="px-2 text-[13px] font-bold" style={{ color: "#71717a" }}>{page} / {Math.max(1, totalPaginas)}</span>
-              <button onClick={() => setPage((p) => (totalPaginas > 0 ? Math.min(totalPaginas, p + 1) : p + 1))} disabled={totalPaginas > 0 && page >= totalPaginas} className="w-8 h-8 flex items-center justify-center rounded text-[#a1a1aa] hover:bg-[#f4f4f5] transition-colors disabled:opacity-40">
+              <span className="px-2 text-[13px] font-bold" style={{ color: "var(--neutral-500)" }}>{page} / {Math.max(1, totalPaginas)}</span>
+              <button onClick={() => setPage((p) => (totalPaginas > 0 ? Math.min(totalPaginas, p + 1) : p + 1))} disabled={totalPaginas > 0 && page >= totalPaginas} className="w-8 h-8 flex items-center justify-center rounded text-[var(--neutral-400)] hover:bg-[var(--neutral-100)] transition-colors disabled:opacity-40">
                 <ChevronRight className="w-4 h-4" strokeWidth={2} />
               </button>
             </div>

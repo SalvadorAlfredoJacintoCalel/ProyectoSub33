@@ -303,7 +303,7 @@ export function FinanzasPage() {
         <button
           onClick={openModal}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
-          style={{ backgroundColor: "#c11d1d" }}
+          style={{ backgroundColor: "var(--red)" }}
         >
           <Plus size={16} /> Nueva Transacción
         </button>
@@ -318,7 +318,7 @@ export function FinanzasPage() {
       </div>
 
       {/* ── SECTION 2: Tabs ── */}
-      <div className="flex gap-1 mb-4 bg-white border rounded-lg p-1 w-fit" style={{ borderColor: "#e4e4e7", boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
+      <div className="flex gap-1 mb-4 bg-white border rounded-lg p-1 w-fit" style={{ borderColor: "var(--neutral-200)", boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
         {TABS.map(tab => (
           <button
             key={tab}
@@ -328,7 +328,7 @@ export function FinanzasPage() {
                 ? "text-white shadow-sm"
                 : "text-gray-600 hover:bg-gray-100"
             }`}
-            style={activeTab === tab ? { backgroundColor: "#c11d1d" } : {}}
+            style={activeTab === tab ? { backgroundColor: "var(--red)" } : {}}
           >
             {tab}
           </button>
@@ -339,7 +339,7 @@ export function FinanzasPage() {
       <div className="bg-white rounded-xl overflow-hidden" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 p-4 border-b" style={{ borderColor: "#e4e4e7" }}>
+        <div className="flex flex-wrap gap-3 p-4 border-b" style={{ borderColor: "var(--neutral-200)" }}>
           <div className="relative flex-1 min-w-48">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -347,14 +347,14 @@ export function FinanzasPage() {
               onChange={e => { setSearch(e.target.value); setPage(1); }}
               placeholder="Buscar descripción, responsable…"
               className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-red-200"
-              style={{ borderColor: "#e4e4e7" }}
+              style={{ borderColor: "var(--neutral-200)" }}
             />
           </div>
           <select
             value={filterTipo}
             onChange={e => { setFilterTipo(e.target.value as TipoTx | ""); setPage(1); }}
             className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-white"
-            style={{ borderColor: "#e4e4e7" }}
+            style={{ borderColor: "var(--neutral-200)" }}
           >
             <option value="">Todos los tipos</option>
             <option>Ingreso</option>
@@ -365,7 +365,7 @@ export function FinanzasPage() {
             value={filterCat}
             onChange={e => { setFilterCat(e.target.value); setPage(1); }}
             className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-white"
-            style={{ borderColor: "#e4e4e7" }}
+            style={{ borderColor: "var(--neutral-200)" }}
           >
             <option value="">Todas las categorías</option>
             <option value="Vehículo/Combustible">Vehículo / Combustible</option>
@@ -379,7 +379,7 @@ export function FinanzasPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-xs font-semibold text-gray-500 uppercase tracking-wide" style={{ borderColor: "#e4e4e7", backgroundColor: "#f5f5f6" }}>
+              <tr className="border-b text-xs font-semibold text-gray-500 uppercase tracking-wide" style={{ borderColor: "var(--neutral-200)", backgroundColor: "#f5f5f6" }}>
                 {["Fecha","Tipo","Descripción","Categoría","Método de Pago","Comprobante","No. Documento","Entrada (Q)","Salida (Q)","Saldo Acum. (Q)","Responsable","Acciones"].map(h => (
                   <th key={h} className="px-3 py-3 text-left whitespace-nowrap">{h}</th>
                 ))}
@@ -396,7 +396,7 @@ export function FinanzasPage() {
                 <tr
                   key={r.id}
                   className={`border-b transition-colors hover:bg-gray-50 ${i % 2 === 0 ? "" : "bg-gray-50/50"}`}
-                  style={{ borderColor: "#e4e4e7" }}
+                  style={{ borderColor: "var(--neutral-200)" }}
                 >
                   <td className="px-3 py-3 whitespace-nowrap text-gray-700">{r.fecha}</td>
                   <td className="px-3 py-3">
@@ -429,14 +429,14 @@ export function FinanzasPage() {
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-500" style={{ borderColor: "#e4e4e7" }}>
+        <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-500" style={{ borderColor: "var(--neutral-200)" }}>
           <span>{filtered.length} registro{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}</span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
               className="p-1.5 rounded-md border disabled:opacity-40 hover:bg-gray-100 transition-colors"
-              style={{ borderColor: "#e4e4e7" }}
+              style={{ borderColor: "var(--neutral-200)" }}
             >
               <ChevronLeft size={15} />
             </button>
@@ -445,7 +445,7 @@ export function FinanzasPage() {
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
               className="p-1.5 rounded-md border disabled:opacity-40 hover:bg-gray-100 transition-colors"
-              style={{ borderColor: "#e4e4e7" }}
+              style={{ borderColor: "var(--neutral-200)" }}
             >
               <ChevronRight size={15} />
             </button>
@@ -457,7 +457,7 @@ export function FinanzasPage() {
       {showModal && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "#e4e4e7" }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--neutral-200)" }}>
               <h2 className="text-lg font-semibold text-gray-900">Nueva Transacción</h2>
               <button onClick={closeModal} className="p-1 rounded hover:bg-gray-100"><X size={18} /></button>
             </div>
@@ -466,7 +466,7 @@ export function FinanzasPage() {
               {/* Tipo toggle */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Tipo</label>
-                <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: "#e4e4e7" }}>
+                <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: "var(--neutral-200)" }}>
                   {(["Ingreso","Gasto","Donación"] as TipoTx[]).map(t => (
                     <button
                       key={t}
@@ -488,13 +488,13 @@ export function FinanzasPage() {
                 <Field label="Fecha" error={errors.fecha}>
                   <input type="date" value={form.fecha} onChange={e => setField("fecha", e.target.value)}
                     className={`w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 ${errors.fecha ? "border-red-400" : ""}`}
-                    style={!errors.fecha ? { borderColor: "#e4e4e7" } : {}} />
+                    style={!errors.fecha ? { borderColor: "var(--neutral-200)" } : {}} />
                 </Field>
                 <Field label="Monto (Q)" error={errors.monto}>
                   <input type="number" min="0" step="0.01" value={form.monto} onChange={e => setField("monto", e.target.value)}
                     placeholder="0.00"
                     className={`w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 ${errors.monto ? "border-red-400" : ""}`}
-                    style={!errors.monto ? { borderColor: "#e4e4e7" } : {}} />
+                    style={!errors.monto ? { borderColor: "var(--neutral-200)" } : {}} />
                 </Field>
               </div>
 
@@ -502,7 +502,7 @@ export function FinanzasPage() {
                 <input value={form.descripcion} onChange={e => setField("descripcion", e.target.value)}
                   placeholder="Ej. Combustible unidad B-01"
                   className={`w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 ${errors.descripcion ? "border-red-400" : ""}`}
-                  style={!errors.descripcion ? { borderColor: "#e4e4e7" } : {}} />
+                  style={!errors.descripcion ? { borderColor: "var(--neutral-200)" } : {}} />
               </Field>
 
               <div className="grid grid-cols-2 gap-4">
@@ -525,7 +525,7 @@ export function FinanzasPage() {
                   <input value={form.noDocumento} onChange={e => setField("noDocumento", e.target.value)}
                     placeholder="Ej. FAC-1234"
                     className="w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200"
-                    style={{ borderColor: "#e4e4e7" }} />
+                    style={{ borderColor: "var(--neutral-200)" }} />
                 </Field>
               </div>
 
@@ -533,14 +533,14 @@ export function FinanzasPage() {
                 <input value={form.responsable} onChange={e => setField("responsable", e.target.value)}
                   placeholder="Ej. Cap. Ramírez"
                   className={`w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 ${errors.responsable ? "border-red-400" : ""}`}
-                  style={!errors.responsable ? { borderColor: "#e4e4e7" } : {}} />
+                  style={!errors.responsable ? { borderColor: "var(--neutral-200)" } : {}} />
               </Field>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: "#e4e4e7" }}>
-              <button onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-lg hover:bg-gray-50" style={{ borderColor: "#e4e4e7" }}>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: "var(--neutral-200)" }}>
+              <button onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-lg hover:bg-gray-50" style={{ borderColor: "var(--neutral-200)" }}>
                 Cancelar
               </button>
-              <button onClick={handleSave} className="px-4 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ backgroundColor: "#c11d1d" }}>
+              <button onClick={handleSave} className="px-4 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ backgroundColor: "var(--red)" }}>
                 Guardar Registro
               </button>
             </div>
@@ -558,7 +558,7 @@ export function FinanzasPage() {
             </div>
             <p className="text-sm text-gray-600 mb-5">¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteId(null)} className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-lg hover:bg-gray-50" style={{ borderColor: "#e4e4e7" }}>
+              <button onClick={() => setDeleteId(null)} className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-lg hover:bg-gray-50" style={{ borderColor: "var(--neutral-200)" }}>
                 Cancelar
               </button>
               <button onClick={handleDelete} className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
@@ -573,7 +573,7 @@ export function FinanzasPage() {
       {viewRow && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "#e4e4e7" }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--neutral-200)" }}>
               <h3 className="text-base font-semibold text-gray-900">Detalle de Transacción</h3>
               <button onClick={() => setViewRow(null)} className="p-1 rounded hover:bg-gray-100"><X size={18} /></button>
             </div>
@@ -602,32 +602,32 @@ export function FinanzasPage() {
                 <p style={{ fontSize: 13, color: "#92400e", fontWeight: 700, marginBottom: 6, fontFamily: "Inter, sans-serif" }}>¿Marcar como Inactivo?</p>
                 <p style={{ fontSize: 12, color: "#92400e", marginBottom: 10, fontFamily: "Inter, sans-serif" }}>El estado de esta transacción cambiará a Inactivo.</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setConfirmDesactivarTx(false)} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #e4e4e7", background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
+                  <button onClick={() => setConfirmDesactivarTx(false)} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid var(--neutral-200)", background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
                   <button onClick={() => {
                     if (!viewRow) return;
                     setRows((prev) => prev.map((r) => r.id === viewRow.id ? { ...r, estado: "Inactivo" } : r));
                     setConfirmDesactivarTx(false);
                     setViewRow(null);
                     showToastMsg("Transacción marcada como inactiva.");
-                  }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
+                  }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
                 </div>
               </div>
             )}
-            <div className="flex items-center justify-between px-6 py-4 border-t" style={{ borderColor: "#e4e4e7" }}>
+            <div className="flex items-center justify-between px-6 py-4 border-t" style={{ borderColor: "var(--neutral-200)" }}>
               <div style={{ display: "flex", gap: 8 }}>
                 {viewRow?.estado !== "Inactivo" && !confirmDesactivarTx && (
                   <button onClick={() => setConfirmDesactivarTx(true)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid #dc2626", background: "#fff", color: "#dc2626", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "#fff", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
                     <Power size={14} /> Desactivar
                   </button>
                 )}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setViewRow(null); setConfirmDesactivarTx(false); }} className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-lg hover:bg-gray-50" style={{ borderColor: "#e4e4e7" }}>
+                <button onClick={() => { setViewRow(null); setConfirmDesactivarTx(false); }} className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-lg hover:bg-gray-50" style={{ borderColor: "var(--neutral-200)" }}>
                   Cerrar
                 </button>
                 <button onClick={() => { if (viewRow) { openEditModal(viewRow); setViewRow(null); setConfirmDesactivarTx(false); } }}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "none", background: "#D32F2F", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "none", background: "var(--red)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
                   <Pencil size={14} /> Editar
                 </button>
               </div>
@@ -834,7 +834,7 @@ function KpiCard({
   up: boolean;
 }) {
   return (
-    <div className="bg-white rounded-xl p-5 flex items-start gap-4" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
+    <div className="bg-white rounded-xl p-5 flex items-start gap-4 transition-transform duration-200 hover:-translate-y-0.5" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
       <div className={`p-2.5 rounded-xl ${iconBg} ${iconColor} shrink-0`}>{icon}</div>
       <div className="min-w-0">
         <p className="text-xs text-gray-500 font-medium mb-1">{label}</p>
@@ -894,7 +894,7 @@ function Select({
       value={value}
       onChange={e => onChange(e.target.value)}
       className="w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-white"
-      style={{ borderColor: "#e4e4e7" }}
+      style={{ borderColor: "var(--neutral-200)" }}
     >
       {options.map(o => <option key={o}>{o}</option>)}
     </select>

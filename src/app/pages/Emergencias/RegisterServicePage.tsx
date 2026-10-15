@@ -401,7 +401,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 style={{
                   ...selectBase,
                   paddingRight: 32,
-                  boxShadow: errors.tipoEmergenciaId ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                  boxShadow: errors.tipoEmergenciaId ? "0 0 0 3px var(--red, var(--red))40" : "none",
                 }}
               >
                 <option value="">Seleccionar tipo de emergencia…</option>
@@ -531,7 +531,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 }
               }}
               placeholder="Escriba o seleccione..."
-              style={{ ...inputBase, boxShadow: errors.tiposAsistencia ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
+              style={{ ...inputBase, boxShadow: errors.tiposAsistencia ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
             />
             <datalist id="tiposAsistenciaList">
               {catalogos.tiposAsistencia
@@ -574,7 +574,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 style={{
                   ...inputBase,
                   paddingLeft: 32,
-                  boxShadow: errors.ubicacion ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                  boxShadow: errors.ubicacion ? "0 0 0 3px var(--red, var(--red))40" : "none",
                 }}
               />
             </div>
@@ -598,7 +598,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 style={{
                   ...selectBase,
                   paddingRight: 32,
-                  boxShadow: errors.hospitalDestinoId ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                  boxShadow: errors.hospitalDestinoId ? "0 0 0 3px var(--red, var(--red))40" : "none",
                 }}
               >
                 <option value="">Seleccionar hospital…</option>
@@ -642,7 +642,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                   placeholder="Nombre del paciente"
                   style={{
                     ...inputBase,
-                    boxShadow: errors.nombrePaciente ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                    boxShadow: errors.nombrePaciente ? "0 0 0 3px var(--red, var(--red))40" : "none",
                   }}
                 />
               </div>
@@ -665,7 +665,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                     style={{
                       ...inputBase,
                       width: 80,
-                      boxShadow: errors.edad ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                      boxShadow: errors.edad ? "0 0 0 3px var(--red, var(--red))40" : "none",
                     }}
                   />
                 </div>
@@ -714,7 +714,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                       padding: "6px 18px",
                       borderRadius: 999,
                       border: !fallecido ? "none" : "1px solid var(--border)",
-                      background: !fallecido ? "#16a34a" : "var(--bg-input)",
+                      background: !fallecido ? "var(--success-600)" : "var(--bg-input)",
                       color: !fallecido ? "#fff" : "var(--text-2)",
                       fontSize: 13,
                       fontWeight: !fallecido ? 600 : 400,
@@ -775,7 +775,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                   placeholder="72"
                   style={{
                     ...inputBase,
-                    boxShadow: errors.frecuenciaCardiaca ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                    boxShadow: errors.frecuenciaCardiaca ? "0 0 0 3px var(--red, var(--red))40" : "none",
                   }}
                 />
               </div>
@@ -807,7 +807,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                   placeholder="98"
                   style={{
                     ...inputBase,
-                    boxShadow: errors.saturacion ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                    boxShadow: errors.saturacion ? "0 0 0 3px var(--red, var(--red))40" : "none",
                   }}
                 />
               </div>
@@ -873,7 +873,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                   style={{
                     ...selectBase,
                     paddingRight: 32,
-                    boxShadow: errors.unidadAsignadaId ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                    boxShadow: errors.unidadAsignadaId ? "0 0 0 3px var(--red, var(--red))40" : "none",
                   }}
                 >
                   <option value="">Seleccionar unidad…</option>
@@ -918,8 +918,8 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                           padding: "6px 10px",
                           borderRadius: 8,
                           border: selected ? "1px solid var(--red)" : "1px solid var(--border)",
-                          background: selected ? "#fef2f2" : "var(--bg-input)",
-                          boxShadow: errors.personalAsignado && !selected ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                          background: selected ? "var(--brand-50)" : "var(--bg-input)",
+                          boxShadow: errors.personalAsignado && !selected ? "0 0 0 3px var(--red, var(--red))40" : "none",
                         }}
                       >
                         <button

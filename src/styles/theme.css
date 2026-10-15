@@ -3,6 +3,69 @@
 :root {
   --font-size: 16px;
 
+  /* ── Brand Colors (color institucional) ── */
+  --brand-50: #FEF2F2;
+  --brand-100: #FEE2E2;
+  --brand-200: #FECACA;
+  --brand-300: #FCA5A5;
+  --brand-400: #F87171;
+  --brand-500: #EF4444;
+  --brand-600: #DC2626;
+  --brand-700: #B91C1C;
+  --brand-900: #7F1D1D;
+
+  /* ── Colores Semánticos ── */
+  --success-50: #F0FDF4;
+  --success-100: #DCFCE7;
+  --success-500: #22C55E;
+  --success-600: #16A34A;
+  --success-700: #15803D;
+
+  --warning-50: #FFFBEB;
+  --warning-100: #FEF3C7;
+  --warning-500: #F59E0B;
+  --warning-600: #D97706;
+  --warning-700: #B45309;
+
+  --info-50: #EFF6FF;
+  --info-100: #DBEAFE;
+  --info-500: #3B82F6;
+  --info-600: #2563EB;
+  --info-700: #1D4ED8;
+
+  /* ── Neutros Refinados ── */
+  --neutral-0: #FFFFFF;
+  --neutral-50: #FAFAFA;
+  --neutral-100: #F4F4F5;
+  --neutral-200: #E4E4E7;
+  --neutral-300: #D4D4D8;
+  --neutral-400: #A1A1AA;
+  --neutral-500: #71717A;
+  --neutral-600: #52525B;
+  --neutral-700: #3F3F46;
+  --neutral-800: #27272A;
+  --neutral-900: #18181B;
+  --neutral-950: #09090B;
+
+  /* ── Sombras Sistemáticas ── */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 8px -2px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.03);
+  --shadow-lg: 0 12px 24px -4px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.03);
+  --shadow-xl: 0 20px 40px -8px rgba(0,0,0,0.1), 0 8px 16px -4px rgba(0,0,0,0.08);
+
+  /* Focus ring unificado */
+  --focus-ring: 0 0 0 3px var(--brand-200);
+
+  /* ── Radio scale ── */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
   /* ── App-level design tokens (light mode only) ── */
   --bg-page:  #F8FAFC;
   --bg-card:  #FFFFFF;
@@ -52,6 +115,75 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* ── Motion & Easing ── */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-circ: cubic-bezier(0.08, 0.82, 0.17, 1);
+  --duration-1: 150ms;
+  --duration-2: 200ms;
+  --duration-3: 300ms;
+  --duration-4: 400ms;
+
+  /* ── Elevation System ── */
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --elevation-2: 0 4px 8px -2px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.04);
+  --elevation-3: 0 12px 24px -4px rgba(0,0,0,0.12), 0 4px 6px -2px rgba(0,0,0,0.06);
+  --elevation-4: 0 20px 40px -8px rgba(0,0,0,0.15), 0 8px 16px -4px rgba(0,0,0,0.08);
+  --elevation-5: 0 32px 64px -12px rgba(0,0,0,0.18), 0 16px 24px -6px rgba(0,0,0,0.1);
+
+  /* ── Glassmorphism ── */
+  --glass-bg: rgba(255,255,255,0.7);
+  --glass-border: rgba(255,255,255,0.3);
+  --glass-blur: blur(20px);
+
+  /* ── Brand Gradients ── */
+  --grad-brand: linear-gradient(135deg, var(--brand-600), var(--brand-700));
+  --grad-brand-soft: linear-gradient(135deg, var(--brand-100), var(--brand-200));
+  --grad-hero: linear-gradient(135deg, var(--neutral-900), var(--brand-900));
+
+  /* ── Z-index Scale ── */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-topbar: 200;
+  --z-sidebar: 100;
+  --z-drawer: 400;
+  --z-modal: 500;
+  --z-toast: 1000;
+  --z-tooltip: 1100;
+
+  /* ── Radius Scale Extended ── */
+  --radius-card: 16px;
+  --radius-modal: 20px;
+  --radius-xl: 24px;
+
+  /* ── Glassmorphism System ── */
+  --glass-bg-strong: rgba(255,255,255,0.85);
+  --glass-bg-subtle: rgba(255,255,255,0.6);
+  --glass-border: rgba(211,47,47,0.15);
+  --glass-blur: blur(24px);
+  --glass-blur-strong: blur(40px);
+
+  /* ── Brand Gradient System ── */
+  --grad-primary: linear-gradient(135deg, #D32F2F 0%, #B91C1C 100%);
+  --grad-primary-soft: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+  --grad-hero: linear-gradient(135deg, #1E293B 0%, #D32F2F 100%);
+  --grad-card-hover: linear-gradient(145deg, #FFFFFF 0%, #FEF2F2 100%);
+
+  /* ── Elevation with Brand Tint ── */
+  --elevation-brand-1: 0 2px 8px rgba(211,47,47,0.08), 0 1px 3px rgba(0,0,0,0.04);
+  --elevation-brand-2: 0 8px 24px rgba(211,47,47,0.12), 0 4px 8px rgba(0,0,0,0.06);
+  --elevation-brand-3: 0 16px 48px rgba(211,47,47,0.15), 0 8px 16px rgba(0,0,0,0.08);
+
+  /* ── Motion Tokens Premium ── */
+  --spring-gentle: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-snappy: cubic-bezier(0.25, 1.2, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-micro: 120ms;
+  --duration-short: 200ms;
+  --duration-medium: 300ms;
+  --duration-long: 450ms;
+  --duration-xl: 600ms;
 }
 
 .dark {
@@ -88,10 +220,73 @@
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Dark mode glassmorphism */
+  --glass-bg-strong: rgba(30,41,59,0.85);
+  --glass-bg-subtle: rgba(30,41,59,0.6);
+  --glass-border: rgba(211,47,47,0.2);
+  --glass-blur: blur(24px);
+  --glass-blur-strong: blur(40px);
+
+  /* Dark mode gradients */
+  --grad-primary: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  --grad-primary-soft: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%);
+  --grad-hero: linear-gradient(135deg, #0F172A 0%, #D32F2F 100%);
+  --grad-card-hover: linear-gradient(145deg, #1E293B 0%, #7F1D1D 100%);
+
+  /* Dark mode elevation */
+  --elevation-brand-1: 0 2px 8px rgba(211,47,47,0.15), 0 1px 3px rgba(0,0,0,0.2);
+  --elevation-brand-2: 0 8px 24px rgba(211,47,47,0.2), 0 4px 8px rgba(0,0,0,0.15);
+  --elevation-brand-3: 0 16px 48px rgba(211,47,47,0.25), 0 8px 16px rgba(0,0,0,0.2);
 }
 
 @theme inline {
+  /* Brand Colors */
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-900: var(--brand-900);
+
+  /* Semantic Colors */
+  --color-success-50: var(--success-50);
+  --color-success-100: var(--success-100);
+  --color-success-500: var(--success-500);
+  --color-success-600: var(--success-600);
+  --color-success-700: var(--success-700);
+
+  --color-warning-50: var(--warning-50);
+  --color-warning-100: var(--warning-100);
+  --color-warning-500: var(--warning-500);
+  --color-warning-600: var(--warning-600);
+  --color-warning-700: var(--warning-700);
+
+  --color-info-50: var(--info-50);
+  --color-info-100: var(--info-100);
+  --color-info-500: var(--info-500);
+  --color-info-600: var(--info-600);
+  --color-info-700: var(--info-700);
+
+  /* Neutral Colors */
+  --color-neutral-0: var(--neutral-0);
+  --color-neutral-50: var(--neutral-50);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+  --color-neutral-950: var(--neutral-950);
+
+  /* App-level design tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -122,6 +317,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-card: var(--radius-card);
+  --radius-modal: var(--radius-modal);
+  --radius-xl: var(--radius-xl);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -142,9 +340,9 @@
   }
 
   /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
+   * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+   * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+   */
 
   html {
     font-size: var(--font-size);

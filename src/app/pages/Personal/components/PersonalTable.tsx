@@ -1,6 +1,8 @@
 import { useMemo, memo } from "react";
+import { Users } from "lucide-react";
 import type { Miembro, RangoItem, RolItem, Estado } from "@/types/personal";
 import { formatDate } from "@/utils/format";
+import { EmptyState } from "@/app/components/ui/empty-state";
 
 interface TableProps {
   members: Miembro[];
@@ -22,13 +24,18 @@ interface TableProps {
 interface RowProps {
   m: Miembro;
   onView: (m: Miembro) => void;
+  index: number;
 }
 
-const MemoizedRow = memo(function MemoizedRow({ m, onView }: RowProps) {
+const MemoizedRow = memo(function MemoizedRow({ m, onView, index }: RowProps) {
   return (
     <tr
       className="transition-colors"
-      style={{ borderBottom: "1px solid var(--divider)" }}
+      style={{
+        borderBottom: "1px solid var(--divider)",
+        animation: "fade-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        animationDelay: `${index * 40}ms`,
+      }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
@@ -103,13 +110,17 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
         <tbody>
           {pageRows.length === 0 && (
             <tr key="empty">
-              <td colSpan={7} className="py-12 text-center text-sm" style={{ color: "var(--text-3)" }}>
-                No se encontraron miembros.
+              <td colSpan={7}>
+                <EmptyState
+                  icon={Users}
+                  title="No se encontraron miembros"
+                  description="No hay registros que coincidan con los filtros de búsqueda seleccionados."
+                />
               </td>
             </tr>
           )}
-          {pageRows.map((m) => (
-            <MemoizedRow key={m.personalId} m={m} onView={onView} />
+          {pageRows.map((m, index) => (
+            <MemoizedRow key={m.personalId} m={m} onView={onView} index={index} />
           ))}
         </tbody>
       </table>

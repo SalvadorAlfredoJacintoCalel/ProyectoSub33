@@ -377,7 +377,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
               <select
                 value={tipoEmergenciaId}
                 onChange={(e) => { setTipoEmergenciaId(e.target.value); setErrors((prev) => ({ ...prev, tipoEmergenciaId: false })); }}
-                style={{ ...selectBase, paddingRight: 32, boxShadow: errors.tipoEmergenciaId ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
+                style={{ ...selectBase, paddingRight: 32, boxShadow: errors.tipoEmergenciaId ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
               >
                 <option value="">Seleccionar tipo de emergencia…</option>
                 {catalogos.tiposEmergencia.map((t) => (
@@ -432,7 +432,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                         padding: "6px 14px", borderRadius: 999, border: selected ? "none" : "1px solid var(--border)",
                         background: selected ? "var(--red)" : "var(--bg-input)", color: selected ? "#fff" : "var(--text-2)",
                         fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
-                        boxShadow: errors.tiposAsistencia && !selected ? "0 0 0 3px var(--red, #c11d1d)40" : "none",
+                        boxShadow: errors.tiposAsistencia && !selected ? "0 0 0 3px var(--red, var(--red))40" : "none",
                       }}
                     >
                       {t.nombre}
@@ -456,7 +456,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                 value={ubicacion}
                 onChange={(e) => { setUbicacion(e.target.value); setErrors((prev) => ({ ...prev, ubicacion: false })); }}
                 placeholder="Aldea, sector o punto de referencia"
-                style={{ ...inputBase, paddingLeft: 32, boxShadow: errors.ubicacion ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
+                style={{ ...inputBase, paddingLeft: 32, boxShadow: errors.ubicacion ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
               />
             </div>
           </section>
@@ -471,7 +471,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
               <select
                 value={hospitalDestinoId}
                 onChange={(e) => { setHospitalDestinoId(e.target.value); setErrors((prev) => ({ ...prev, hospitalDestinoId: false })); }}
-                style={{ ...selectBase, paddingRight: 32, boxShadow: errors.hospitalDestinoId ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
+                style={{ ...selectBase, paddingRight: 32, boxShadow: errors.hospitalDestinoId ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
               >
                 <option value="">Seleccionar hospital…</option>
                 {catalogos.hospitales.map((h) => (
@@ -495,7 +495,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                   value={nombrePaciente}
                   onChange={(e) => { setNombrePaciente(e.target.value); setErrors((prev) => ({ ...prev, nombrePaciente: false })); }}
                   placeholder="Nombre del paciente"
-                  style={{ ...inputBase, boxShadow: errors.nombrePaciente ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
+                  style={{ ...inputBase, boxShadow: errors.nombrePaciente ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
                 />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px" }}>
@@ -505,7 +505,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                     type="number" inputMode="numeric" value={edad}
                     onChange={(e) => { setEdad(e.target.value); setErrors((prev) => ({ ...prev, edad: false })); }}
                     placeholder="—" min={0} max={120}
-                    style={{ ...inputBase, width: 80, boxShadow: errors.edad ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
+                    style={{ ...inputBase, width: 80, boxShadow: errors.edad ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
                   />
                 </div>
                 <div>
@@ -535,7 +535,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     onClick={() => setFallecido(false)}
-                    style={{ padding: "6px 18px", borderRadius: 999, border: !fallecido ? "none" : "1px solid var(--border)", background: !fallecido ? "#16a34a" : "var(--bg-input)", color: !fallecido ? "#fff" : "var(--text-2)", fontSize: 13, fontWeight: !fallecido ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}
+                    style={{ padding: "6px 18px", borderRadius: 999, border: !fallecido ? "none" : "1px solid var(--border)", background: !fallecido ? "var(--success-600)" : "var(--bg-input)", color: !fallecido ? "#fff" : "var(--text-2)", fontSize: 13, fontWeight: !fallecido ? 600 : 400, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}
                   >
                     No
                   </button>
@@ -563,7 +563,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
               </div>
               <div>
                 <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Frecuencia Cardíaca (BPM)</label>
-                <input type="number" inputMode="numeric" value={frecuenciaCardiaca} onChange={(e) => { setFrecuenciaCardiaca(e.target.value); setErrors((prev) => ({ ...prev, frecuenciaCardiaca: false })); }} placeholder="72" style={{ ...inputBase, boxShadow: errors.frecuenciaCardiaca ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }} />
+                <input type="number" inputMode="numeric" value={frecuenciaCardiaca} onChange={(e) => { setFrecuenciaCardiaca(e.target.value); setErrors((prev) => ({ ...prev, frecuenciaCardiaca: false })); }} placeholder="72" style={{ ...inputBase, boxShadow: errors.frecuenciaCardiaca ? "0 0 0 3px var(--red, var(--red))40" : "none" }} />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Frecuencia Respiratoria (resp/min)</label>
@@ -571,7 +571,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
               </div>
               <div>
                 <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Saturación de Oxígeno (%SpO₂)</label>
-                <input type="number" inputMode="numeric" value={saturacion} onChange={(e) => { setSaturacion(e.target.value); setErrors((prev) => ({ ...prev, saturacion: false })); }} placeholder="98" style={{ ...inputBase, boxShadow: errors.saturacion ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }} />
+                <input type="number" inputMode="numeric" value={saturacion} onChange={(e) => { setSaturacion(e.target.value); setErrors((prev) => ({ ...prev, saturacion: false })); }} placeholder="98" style={{ ...inputBase, boxShadow: errors.saturacion ? "0 0 0 3px var(--red, var(--red))40" : "none" }} />
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -606,7 +606,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                 <select
                   value={unidadAsignadaId}
                   onChange={(e) => { setUnidadAsignadaId(e.target.value); setErrors((prev) => ({ ...prev, unidadAsignadaId: false })); }}
-                  style={{ ...selectBase, paddingRight: 32, boxShadow: errors.unidadAsignadaId ? "0 0 0 3px var(--red, #c11d1d)40" : "none" }}
+                  style={{ ...selectBase, paddingRight: 32, boxShadow: errors.unidadAsignadaId ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
                 >
                   <option value="">Seleccionar unidad…</option>
                   {catalogos.unidades.map((u) => (
@@ -633,7 +633,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                         style={{
                           display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 8,
                           border: selected ? "1px solid var(--red)" : "1px solid var(--border)",
-                          background: selected ? "#fef2f2" : "var(--bg-input)",
+                          background: selected ? "var(--brand-50)" : "var(--bg-input)",
                         }}
                       >
                         <button

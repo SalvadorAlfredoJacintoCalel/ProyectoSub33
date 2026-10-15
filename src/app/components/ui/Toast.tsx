@@ -14,10 +14,10 @@ export interface ToastData {
 }
 
 export const TOAST_COLORS: Record<ToastType, string> = {
-  success: "#10B981",
-  error: "#DC2626",
-  warning: "#F59E0B",
-  info: "#2563EB",
+  success: "var(--success-500)",
+  error: "var(--brand-600)",
+  warning: "var(--warning-500)",
+  info: "var(--info-600)",
 };
 
 const TOAST_ICONS: Record<ToastType, React.ReactNode> = {
@@ -34,45 +34,65 @@ interface ToastItemProps {
 
 function ToastItem({ toast, onDismiss }: ToastItemProps) {
   const [exiting, setExiting] = React.useState(false);
+  const startXRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setExiting(true);
-      setTimeout(() => onDismiss(toast.id), 200);
+      setTimeout(() => onDismiss(toast.id), 300);
     }, toast.duration);
     return () => clearTimeout(timer);
   }, [toast.id, toast.duration, onDismiss]);
 
   const color = TOAST_COLORS[toast.type];
 
+  const dismiss = () => {
+    setExiting(true);
+    setTimeout(() => onDismiss(toast.id), 300);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    startXRef.current = e.clientX;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (startXRef.current !== null && e.clientX - startXRef.current > 80) dismiss();
+    startXRef.current = null;
+  };
+
   return (
     <div
       role="alert"
       aria-live="polite"
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
       className={cn(
-        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border px-4 py-3 shadow-xl backdrop-blur-sm",
-        "animate-in slide-in-from-right duration-300",
-        exiting && "animate-out fade-out-80 slide-out-to-right duration-200"
+        "pointer-events-auto relative flex w-full max-w-sm cursor-grab items-start gap-3 overflow-hidden rounded-xl border border-[var(--divider)] bg-[var(--bg-card)] px-4 py-3 shadow-[var(--elevation-3)]",
+        exiting ? "animate-toast-slide-exit" : "animate-toast-slide-enter",
       )}
-      style={{ background: "#ffffff", borderColor: "#e2e8f0" }}
     >
-      <span className="mt-0.5 shrink-0" style={{ color }} aria-hidden="true">
+      <span className="mt-0.5 shrink-0 animate-icon-bounce" style={{ color }} aria-hidden="true">
         {TOAST_ICONS[toast.type]}
       </span>
-      <p className="flex-1 text-sm font-medium leading-snug" style={{ color: "#1e293b" }}>
+      <p className="flex-1 text-sm font-medium leading-snug text-[var(--text-1)]">
         {toast.message}
       </p>
       <button
-        onClick={() => {
-          setExiting(true);
-          setTimeout(() => onDismiss(toast.id), 200);
-        }}
-        className="shrink-0 rounded p-1 transition-colors hover:bg-slate-100"
+        onClick={dismiss}
+        className="shrink-0 rounded-md p-1 text-[var(--text-3)] transition-colors duration-150 hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]"
         aria-label="Cerrar"
-        style={{ color: "#94a3b8" }}
       >
         <X className="h-4 w-4" />
       </button>
+      {!exiting && (
+        <span
+          className="absolute bottom-0 left-0 h-0.5 w-full origin-left"
+          style={{
+            background: color,
+            animation: `toast-progress ${toast.duration}ms linear forwards`,
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -84,14 +104,15 @@ interface ToastContainerProps {
 
 export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
   if (toasts.length === 0) return null;
+  const visible = toasts.slice(-4);
 
   return (
     <div
-      className="pointer-events-none fixed top-4 right-4 z-[100] flex w-full max-w-sm flex-col gap-2"
+      className="pointer-events-none fixed top-4 right-4 z-[var(--z-toast)] flex w-full max-w-sm flex-col gap-2"
       role="region"
       aria-live="polite"
     >
-      {toasts.map((toast) => (
+      {visible.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}
     </div>
