@@ -7,6 +7,7 @@ import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import {
   getRangos,
@@ -519,23 +520,12 @@ export function PersonalPage() {
 
       {/* ── Search & Filters Bar ──────────────────────────────────────────────── */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[240px] flex-1">
-          <Search
-            size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
-            style={{ color: "var(--text-3)" }}
-          />
-          <input
-            type="text"
+        <div className="min-w-[240px] flex-1">
+          <Input
+            startIcon={<Search size={15} />}
             placeholder="Buscar por nombre, código o DPI..."
             value={searchInput}
             onChange={(e) => { setSearchInput(e.target.value); setPage(1); }}
-            className="w-full rounded-lg py-2 pl-9 pr-3 text-sm outline-none"
-            style={{
-              background: "var(--bg-input)",
-              color: "var(--text-1)",
-              border: "1px solid var(--border)",
-            }}
           />
         </div>
 
@@ -687,20 +677,12 @@ export function PersonalPage() {
                 del registro?
               </p>
               <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setDeleteId(null)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-2)", background: "var(--bg-input)" }}
-                >
+                <Button variant="brand-outline" onClick={() => setDeleteId(null)}>
                   Cancelar
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ background: BRAND }}
-                >
+                </Button>
+                <Button variant="brand" onClick={handleDelete}>
                   Sí, desactivar
-                </button>
+                </Button>
               </div>
             </div>
           </div>

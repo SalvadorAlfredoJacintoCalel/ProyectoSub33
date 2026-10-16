@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { Shield, Lock, Plus, X, Pencil, Trash2, Save } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertContext";
+import { Button } from "@/app/components/ui/button";
 import {
   getParametros,
   guardarParametros,
@@ -154,26 +155,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-const btnPrimary: React.CSSProperties = {
-  padding: "8px 16px",
-  borderRadius: 8,
-  border: "none",
-  background: RED,
-  color: "#fff",
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: "pointer",
-};
 
-const btnSecondary: React.CSSProperties = {
-  padding: "8px 16px",
-  borderRadius: 8,
-  border: "1px solid var(--border)",
-  background: "var(--bg-input)",
-  color: "var(--text-2)",
-  fontSize: 13,
-  cursor: "pointer",
-};
 
 function CatalogoModal({
   title,
@@ -206,8 +188,8 @@ function CatalogoModal({
         ))}
       </div>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-        <button onClick={onClose} style={btnSecondary}>Cancelar</button>
-        <button onClick={() => onSave(valores)} style={btnPrimary}>Guardar</button>
+            <Button variant="brand-outline" onClick={onClose}>Cancelar</Button>
+            <Button variant="brand" onClick={() => onSave(valores)}>Guardar</Button>
       </div>
     </Modal>
   );
@@ -667,9 +649,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                   >
                     <Plus size={14} /> Agregar Parámetro
                   </button>
-                  <button onClick={handleGuardarParametros} style={{ ...btnPrimary, display: "flex", alignItems: "center", gap: 6 }}>
-                    <Save size={14} /> Guardar Cambios
-                  </button>
+          <Button variant="brand" onClick={handleGuardarParametros}>
+            <Save size={14} /> Guardar Cambios
+          </Button>
                 </div>
               </>
             )}
@@ -689,9 +671,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                   </select>
                 </Field>
               </div>
-              <button onClick={abrirCrearCatalogo} style={{ ...btnPrimary, display: "flex", alignItems: "center", gap: 6, marginTop: 22 }}>
-                <Plus size={14} /> Nuevo
-              </button>
+            <Button variant="brand" onClick={abrirCrearCatalogo}>
+              <Plus size={14} /> Nuevo
+            </Button>
             </div>
 
             {loadingCatalogos ? (
@@ -839,9 +821,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
               </div>
             )}
 
-            <button onClick={handleGuardarPermisos} style={{ ...btnPrimary, marginTop: 20, width: "100%", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Button variant="brand" onClick={handleGuardarPermisos} className="mt-5 w-full">
               <Save size={14} /> Guardar Permisos
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -859,8 +841,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             </Field>
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <button onClick={() => setModalParametro(false)} style={btnSecondary}>Cancelar</button>
-            <button onClick={handleAgregarParametro} style={btnPrimary}>Agregar</button>
+            <Button variant="brand-outline" onClick={() => setModalParametro(false)}>Cancelar</Button>
+            <Button variant="brand" onClick={handleAgregarParametro}>Agregar</Button>
           </div>
         </Modal>
       )}
@@ -885,8 +867,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             </Field>
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <button onClick={() => setModalCatalogo(false)} style={btnSecondary}>Cancelar</button>
-            <button onClick={guardarCatalogo} style={btnPrimary}>{editandoItem ? "Guardar" : "Agregar"}</button>
+            <Button variant="brand-outline" onClick={() => setModalCatalogo(false)}>Cancelar</Button>
+            <Button variant="brand" onClick={guardarCatalogo}>{editandoItem ? "Guardar" : "Agregar"}</Button>
           </div>
         </Modal>
       )}
@@ -910,8 +892,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             ¿Está seguro de que desea eliminar <strong style={{ color: "var(--text-1)" }}>{modalEliminar.nombre}</strong>?
           </p>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <button onClick={() => setModalEliminar(null)} style={btnSecondary}>Cancelar</button>
-            <button onClick={confirmarEliminarCatalogo} style={btnPrimary}>Eliminar</button>
+            <Button variant="brand-outline" onClick={() => setModalEliminar(null)}>Cancelar</Button>
+            <Button variant="brand" onClick={confirmarEliminarCatalogo}>Eliminar</Button>
           </div>
         </Modal>
       )}
@@ -933,8 +915,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             />
           </Field>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <button onClick={() => setModalUsername(null)} style={btnSecondary}>Cancelar</button>
-            <button onClick={handleCambiarUsername} style={btnPrimary}>Guardar</button>
+            <Button variant="brand-outline" onClick={() => setModalUsername(null)}>Cancelar</Button>
+            <Button variant="brand" onClick={handleCambiarUsername}>Guardar</Button>
           </div>
         </Modal>
       )}
@@ -956,8 +938,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             />
           </Field>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <button onClick={() => setModalPassword(null)} style={btnSecondary}>Cancelar</button>
-            <button onClick={handleCambiarPassword} style={btnPrimary}>Guardar</button>
+            <Button variant="brand-outline" onClick={() => setModalPassword(null)}>Cancelar</Button>
+            <Button variant="brand" onClick={handleCambiarPassword}>Guardar</Button>
           </div>
         </Modal>
       )}

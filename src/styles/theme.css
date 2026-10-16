@@ -73,7 +73,8 @@
   --bg-hover: #F1F5F9;
   --text-1:   #0F172A;
   --text-2:   #64748B;
-  --text-3:   #94A3B8;
+  --text-3:   #6B7280;
+  --navy:     #1B2A4A;
   --divider:  rgba(0,0,0,0.06);
   --red:      #D32F2F;
   --red-bg:   #FFF1F0;
@@ -94,7 +95,7 @@
   --accent-foreground: #ffffff;
   --destructive: #D32F2F;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.08);
+  --border: rgba(0, 0, 0, 0.15);
   --input: transparent;
   --input-background: #F1F3F5;
   --switch-background: #cbced4;
@@ -166,6 +167,7 @@
 
   /* ── Brand Gradient System ── */
   --grad-primary: linear-gradient(135deg, #D32F2F 0%, #B91C1C 100%);
+  --grad-primary-solid: #D32F2F;
   --grad-primary-soft: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
   --grad-hero: linear-gradient(135deg, #1E293B 0%, #D32F2F 100%);
   --grad-card-hover: linear-gradient(145deg, #FFFFFF 0%, #FEF2F2 100%);
@@ -230,7 +232,8 @@
   --glass-blur-strong: blur(40px);
 
   /* Dark mode gradients */
-  --grad-primary: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  --grad-primary: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+  --grad-primary-solid: #DC2626;
   --grad-primary-soft: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%);
   --grad-hero: linear-gradient(135deg, #0F172A 0%, #D32F2F 100%);
   --grad-card-hover: linear-gradient(145deg, #1E293B 0%, #7F1D1D 100%);
@@ -247,10 +250,12 @@
   --bg-hover: #2D3748;
   --text-1: #F0F6FC;
   --text-2: #8B949E;
-  --text-3: #6E7681;
+  --text-3: #4B5563;
+  --navy: #1B2A4A;
   --divider: #2D3748;
   --red: #EF4444;
   --red-bg: #3A1D1D;
+  --input-background: oklch(0.269 0 0);
   --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03);
 
   /* Dark mode neutral scale (inverted) */

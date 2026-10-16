@@ -11,22 +11,22 @@ const buttonVariants = cva(
     variants: {
       variant: {
         brand:
-          "bg-[var(--grad-primary)] text-white hover:shadow-[var(--elevation-brand-2)] hover:scale-[1.02]",
+          "text-white hover:shadow-[var(--elevation-brand-2)] hover:scale-[1.02]",
         "brand-outline":
-          "border-2 border-[var(--brand-500)] text-[var(--brand-600)] bg-transparent hover:bg-[var(--brand-50)] hover:shadow-[var(--elevation-brand-1)]",
+          "border-2 border-[var(--brand-500)] text-[var(--brand-600)] bg-[var(--brand-50)] hover:shadow-[var(--elevation-brand-1)] dark:bg-[var(--brand-500)]/20 dark:text-[var(--brand-400)]",
         "brand-ghost":
-          "text-[var(--brand-600)] bg-transparent hover:bg-[var(--brand-50)] hover:shadow-[var(--elevation-brand-1)]",
+          "text-[var(--brand-600)] bg-transparent hover:bg-[var(--brand-50)] hover:shadow-[var(--elevation-brand-1)] dark:text-[var(--brand-400)] dark:hover:bg-[var(--brand-500)]/20",
         glass:
           "bg-[var(--glass-bg-strong)] backdrop-blur-[12px] border border-[var(--glass-border)] text-[var(--text-1)] hover:bg-[var(--glass-bg-subtle)] hover:shadow-[var(--elevation-brand-1)]",
         destructive:
-          "bg-[var(--grad-primary)] text-white hover:shadow-[var(--elevation-brand-2)] hover:scale-[1.02]",
+          "text-white hover:shadow-[var(--elevation-brand-2)] hover:scale-[1.02]",
         outline:
           "border border-[var(--border)] bg-background text-foreground hover:bg-[var(--bg-hover)] hover:shadow-[var(--elevation-1)] dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
         secondary:
           "bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:bg-[var(--secondary)]/80 hover:shadow-[var(--elevation-1)]",
         ghost:
           "hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] dark:hover:bg-accent/50",
-        link: "text-[var(--brand-600)] underline-offset-4 hover:underline",
+        link: "text-[var(--brand-600)] underline-offset-4 hover:underline dark:text-[var(--brand-400)]",
       },
       size: {
         default: "h-10 px-4 py-2 has-[>svg]:px-3",
@@ -77,6 +77,7 @@ function Button({
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      style={variant === "brand" || variant === "destructive" ? { background: "var(--grad-primary-solid)", backgroundImage: "var(--grad-primary)" } : undefined}
       onClick={handleClick}
       disabled={disabled || loading}
       {...props}

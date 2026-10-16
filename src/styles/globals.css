@@ -13,6 +13,12 @@ body { @apply bg-background text-foreground; min-height: 100vh; }
 /* ── Selection ── */
 ::selection { background: var(--brand-200); color: var(--brand-900); }
 
+/* ── Placeholder legibility ── */
+input::placeholder,
+textarea::placeholder { color: var(--text-3); opacity: 1; }
+input:disabled,
+textarea:disabled { opacity: 0.7; }
+
 /* ── Scrollbar Branded ── */
 * { scrollbar-width: thin; scrollbar-color: var(--brand-300) transparent; }
 *::-webkit-scrollbar { width: 10px; height: 10px; }

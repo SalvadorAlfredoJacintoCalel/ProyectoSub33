@@ -1297,12 +1297,12 @@ function AnalyticasTab() {
                 <p style={{ fontSize: 13, color: "#92400e", fontWeight: 600, marginBottom: 8, fontFamily: "Inter, sans-serif" }}>¿Marcar como Inactivo?</p>
                 <p style={{ fontSize: 12, color: "#92400e", marginBottom: 12, fontFamily: "Inter, sans-serif" }}>Esta acción cambiará el estado del vehículo a Inactivo.</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setConfirmInactivateFleet(null)} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-                  <button onClick={() => {
+                  <Button variant="brand-outline" size="sm" onClick={() => setConfirmInactivateFleet(null)}>Cancelar</Button>
+                  <Button variant="brand" size="sm" onClick={() => {
                     setFleetData((prev) => prev.map((v) => v.code === detailVehicle.code ? { ...v, estado: "Inactivo" } : v));
                     setDetailVehicle((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
                     setConfirmInactivateFleet(null);
-                  }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
+                  }}>Confirmar</Button>
                 </div>
               </div>
             )}
@@ -1310,21 +1310,18 @@ function AnalyticasTab() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
               <div style={{ display: "flex", gap: 8 }}>
                 {detailVehicle.estado === "Activo" && confirmInactivateFleet !== detailVehicle.code && (
-                  <button onClick={() => setConfirmInactivateFleet(detailVehicle.code)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "var(--bg-card)", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                  <Button variant="brand-outline" size="sm" onClick={() => setConfirmInactivateFleet(detailVehicle.code)}>
                     <Power size={14} /> Desactivar
-                  </button>
+                  </Button>
                 )}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setDetailVehicle(null); setConfirmInactivateFleet(null); }}
-                  style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                <Button variant="brand-outline" size="sm" onClick={() => { setDetailVehicle(null); setConfirmInactivateFleet(null); }}>
                   Cerrar
-                </button>
-                <button onClick={() => { setEditingFleet({ ...detailVehicle }); setDetailVehicle(null); setConfirmInactivateFleet(null); }}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                </Button>
+                <Button variant="brand" size="sm" onClick={() => { setEditingFleet({ ...detailVehicle }); setDetailVehicle(null); setConfirmInactivateFleet(null); }}>
                   <Pencil size={14} /> Editar
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -1362,14 +1359,14 @@ function AnalyticasTab() {
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
-              <button onClick={() => setEditingFleet(null)} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-              <button onClick={() => {
+              <Button variant="brand-outline" onClick={() => setEditingFleet(null)}>Cancelar</Button>
+              <Button variant="brand" onClick={() => {
                 if (!editingFleet) return;
                 setFleetData((prev) => prev.map((v) => v.code === editingFleet.code ? editingFleet : v));
                 setExportToast("Vehículo actualizado exitosamente.");
                 setTimeout(() => setExportToast(null), 3000);
                 setEditingFleet(null);
-              }} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Guardar</button>
+              }}>Guardar</Button>
             </div>
           </div>
         </div>
@@ -1411,31 +1408,30 @@ function AnalyticasTab() {
               <div style={{ margin: "0 24px 12px", padding: 14, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10 }}>
                 <p style={{ fontSize: 13, color: "#92400e", fontWeight: 600, marginBottom: 8, fontFamily: "Inter, sans-serif" }}>¿Marcar este registro como Inactivo?</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setConfirmInactivateFuel(null)} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-                  <button onClick={() => {
+                  <Button variant="brand-outline" size="sm" onClick={() => setConfirmInactivateFuel(null)}>Cancelar</Button>
+                  <Button variant="brand" size="sm" onClick={() => {
                     setFuelData((prev) => prev.map((f) => f.id === detailFuel.id ? { ...f, estado: "Inactivo" } : f));
                     setDetailFuel((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
                     setConfirmInactivateFuel(null);
-                  }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
+                  }}>Confirmar</Button>
                 </div>
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
               <div style={{ display: "flex", gap: 8 }}>
                 {detailFuel.estado === "Activo" && confirmInactivateFuel !== detailFuel.id && (
-                  <button onClick={() => setConfirmInactivateFuel(detailFuel.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "var(--bg-card)", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                  <Button variant="brand-outline" size="sm" onClick={() => setConfirmInactivateFuel(detailFuel.id)}>
                     <Power size={14} /> Desactivar
-                  </button>
+                  </Button>
                 )}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setDetailFuel(null); setConfirmInactivateFuel(null); }}
-                  style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cerrar</button>
-                <button onClick={() => { setEditingFuel({ ...detailFuel }); setDetailFuel(null); setConfirmInactivateFuel(null); }}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                <Button variant="brand-outline" size="sm" onClick={() => { setDetailFuel(null); setConfirmInactivateFuel(null); }}>
+                  Cerrar
+                </Button>
+                <Button variant="brand" size="sm" onClick={() => { setEditingFuel({ ...detailFuel }); setDetailFuel(null); setConfirmInactivateFuel(null); }}>
                   <Pencil size={14} /> Editar
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -1478,15 +1474,15 @@ function AnalyticasTab() {
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
-              <button onClick={() => setEditingFuel(null)} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-              <button onClick={() => {
+              <Button variant="brand-outline" onClick={() => setEditingFuel(null)}>Cancelar</Button>
+              <Button variant="brand" onClick={() => {
                 if (!editingFuel) return;
                 const updated = { ...editingFuel, totalCupones: editingFuel.cuponAl - editingFuel.cuponDel + 1 };
                 setFuelData((prev) => prev.map((f) => f.id === updated.id ? updated : f));
                 setExportToast("Registro de combustible actualizado.");
                 setTimeout(() => setExportToast(null), 3000);
                 setEditingFuel(null);
-              }} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Guardar</button>
+              }}>Guardar</Button>
             </div>
           </div>
         </div>

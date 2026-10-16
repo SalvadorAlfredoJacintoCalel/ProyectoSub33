@@ -77,8 +77,8 @@ function Input({
             startIcon && "pl-10",
             endIcon && "pr-10",
             success && !error && !endIcon && "pr-10",
-            "placeholder:text-transparent",
-            "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-[var(--bg-hover)]",
+            "placeholder:text-[var(--text-3)]",
+            "disabled:cursor-not-allowed disabled:opacity-70 disabled:bg-[var(--bg-hover)]",
             className,
           )}
           placeholder={label ? " " : placeholder}

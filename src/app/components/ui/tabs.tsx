@@ -25,7 +25,7 @@ interface TabsProps {
 const INDICATOR_VARIANT: Record<TabsVariant, string> = {
   default: "bg-[var(--bg-card)] shadow-[var(--shadow-sm)]",
   brand: "bg-[var(--brand-600)] shadow-[var(--elevation-brand-1)]",
-  glass: "bg-[var(--glass-bg-strong)] shadow-[var(--shadow-sm)] backdrop-blur",
+  glass: "bg-[var(--bg-card)] shadow-[var(--shadow-sm)]",
 };
 
 export function Tabs({
@@ -91,7 +91,7 @@ export function Tabs({
                   ? variant === "brand"
                     ? "text-white"
                     : "text-[var(--brand-700)]"
-                  : "text-[var(--text-2)] hover:bg-[var(--brand-50)] hover:text-[var(--text-1)]",
+                  : "text-[var(--text-1)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-1)]",
               )}
             >
               {isActive && (

@@ -33,7 +33,7 @@ import { AlertProvider } from "@/app/components/ui/AlertContext";
 
 const C = {
   pageBg:        "var(--bg-page)",
-  sidebarBg:     "var(--neutral-900)",
+  sidebarBg:     "var(--navy)",
   sidebarActive: "var(--red)",
   topbarBg:      "var(--bg-card)",
   topbarBorder:  "var(--divider)",
@@ -110,7 +110,7 @@ const HISTORIAL = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function NavIcon({ icon, active }: { icon: NavIconDef; active: boolean }) {
-  const col = active ? "#fff" : "rgba(255,255,255,0.45)";
+  const col = active ? "#fff" : "rgba(255,255,255,0.7)";
   if (icon.type === "lucide") {
     return <icon.Icon style={{ width: 17, height: 17, color: col, flexShrink: 0 }} />;
   }
@@ -262,7 +262,7 @@ function AppContent() {
           {!sidebarCollapsed && (
             <div className="min-w-0">
               <p className="font-extrabold text-[13px] text-white leading-tight truncate" style={{ fontFamily: "Manrope, sans-serif" }}>33ª Compañía</p>
-              <p className="text-[10px] text-[#94A3B8] leading-tight" style={{ fontFamily: "Inter, sans-serif" }}>San Lucas Tolimán</p>
+              <p className="text-[10px] text-[#B0C4DE] leading-tight" style={{ fontFamily: "Inter, sans-serif" }}>San Lucas Tolimán</p>
             </div>
           )}
         </div>
@@ -294,7 +294,7 @@ function AppContent() {
                 title={sidebarCollapsed ? label : undefined}>
                 <NavIcon icon={icon} active={active} />
                 {!sidebarCollapsed && (
-                  <span className="text-[13.5px] font-semibold leading-5 truncate" style={{ fontFamily: "Inter, sans-serif", color: active ? "#fff" : "rgba(255,255,255,0.55)" }}>
+                  <span className="text-[13.5px] font-semibold leading-5 truncate" style={{ fontFamily: "Inter, sans-serif", color: active ? "#fff" : "#E2E8F0" }}>
                     {label}
                   </span>
                 )}

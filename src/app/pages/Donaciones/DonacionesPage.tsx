@@ -673,13 +673,10 @@ export function DonacionesPage() {
             33ª Compañía de Bomberos Voluntarios — Gestión de donaciones recibidas
           </p>
         </div>
-        <button
-          onClick={() => { setEditTarget(null); setShowForm(true); }}
-          style={{ background: RED, color: "#fff", border: "none", borderRadius: 12, padding: "10px 20px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
-        >
+        <Button variant="brand" onClick={() => { setEditTarget(null); setShowForm(true); }}>
           <Plus size={16} />
           Nueva Donación
-        </button>
+        </Button>
       </div>
 
       <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>

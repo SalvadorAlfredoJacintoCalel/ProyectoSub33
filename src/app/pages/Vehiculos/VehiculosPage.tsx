@@ -560,12 +560,9 @@ export function VehiculosPage() {
       <section style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--neutral-900)", margin: 0, fontFamily: "Manrope, sans-serif" }}>Estado de la Flota</h2>
-          <button
-            onClick={openNewVehicle}
-            style={{ display: "flex", alignItems: "center", gap: 6, background: RED, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}
-          >
+          <Button variant="brand" onClick={openNewVehicle}>
             <Plus size={15} /> Nuevo Vehículo
-          </button>
+          </Button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
           {vehicles.map((v) => (
@@ -612,12 +609,9 @@ export function VehiculosPage() {
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--neutral-900)", margin: 0, display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
             <Fuel size={16} color={RED} /> Control de Combustible — Cupones Shell
           </h2>
-          <button
-            onClick={openAddFuel}
-            style={{ display: "flex", alignItems: "center", gap: 6, background: RED, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}
-          >
+          <Button variant="brand" onClick={openAddFuel}>
             <Plus size={15} /> Nuevo Cupón
-          </button>
+          </Button>
         </div>
 
         {/* Search + filter bar */}
@@ -834,10 +828,10 @@ export function VehiculosPage() {
               <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginTop: 20 }}>
                 <button onClick={() => setVehicleStep(1)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>← Atrás</button>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => setShowVehicleModal(false)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-                  <button onClick={handleVehicleSave} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
+                  <Button variant="brand-outline" onClick={() => setShowVehicleModal(false)}>Cancelar</Button>
+                  <Button variant="brand" onClick={handleVehicleSave}>
                     <Check size={14} /> Registrar Vehículo
-                  </button>
+                  </Button>
                 </div>
               </div>
             </>
@@ -973,10 +967,10 @@ export function VehiculosPage() {
           </div>
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <button onClick={() => setShowMaintModal(false)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-            <button onClick={handleMaintSave} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
+            <Button variant="brand-outline" onClick={() => setShowMaintModal(false)}>Cancelar</Button>
+            <Button variant="brand" onClick={handleMaintSave}>
               <Check size={14} /> Guardar Mantenimiento
-            </button>
+            </Button>
           </div>
         </Overlay>
       )}
@@ -1105,10 +1099,10 @@ export function VehiculosPage() {
           )}
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <button onClick={closeFuelModal} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-            <button onClick={handleFuelSave} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
+            <Button variant="brand-outline" onClick={closeFuelModal}>Cancelar</Button>
+            <Button variant="brand" onClick={handleFuelSave}>
               <Check size={14} /> Guardar
-            </button>
+            </Button>
           </div>
         </Overlay>
       )}
@@ -1305,13 +1299,13 @@ export function VehiculosPage() {
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
-              <button onClick={() => setEditingVehicle(null)} style={{ padding: "9px 20px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-              <button onClick={() => {
+              <Button variant="brand-outline" onClick={() => setEditingVehicle(null)}>Cancelar</Button>
+              <Button variant="brand" onClick={() => {
                 if (!editingVehicle) return;
                 setVehicles((prev) => prev.map((v) => v.code === editingVehicle.code ? editingVehicle : v));
                 toast.success("Vehículo actualizado exitosamente.");
                 setEditingVehicle(null);
-              }} style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Guardar</button>
+              }}>Guardar</Button>
             </div>
           </div>
         </div>

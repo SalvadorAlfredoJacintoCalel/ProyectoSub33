@@ -42,7 +42,7 @@ function IconInput({
       </div>
       <input
         {...props}
-        className="flex-1 px-4 py-[14px] text-[14px] text-[#1b1b1c] outline-none bg-white placeholder:text-[#a1a1aa]"
+        className="flex-1 px-4 py-[14px] text-[14px] text-[#1b1b1c] outline-none bg-white placeholder:text-[var(--text-3)]"
         style={{ fontFamily: "Inter, sans-serif" }}
       />
       {rightSlot}

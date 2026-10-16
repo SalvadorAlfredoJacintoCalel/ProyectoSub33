@@ -882,7 +882,7 @@ export function EmergenciasPage() {
               value={query}
               onChange={(e) => { setQuery(e.target.value); setPage(1); }}
               placeholder="Buscar por Paciente, Solicitante, Dirección o # Incidente..."
-              className="w-full pl-12 pr-10 py-3.5 rounded-xl border text-[14px] text-[var(--text-1)] placeholder-[#c4c4c8] outline-none transition-all"
+              className="w-full pl-12 pr-10 py-3.5 rounded-xl border text-[14px] text-[var(--text-1)] placeholder-[var(--text-3)] outline-none transition-all"
               style={{
                 fontFamily: "Inter, sans-serif",
                 borderColor: query ? RED : "var(--border)",

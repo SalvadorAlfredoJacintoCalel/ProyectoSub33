@@ -3,6 +3,7 @@ import {
   X, Lock, Phone, User, MapPin, ChevronDown, Truck, Heart, Loader2, Package,
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
+import { Button } from "@/app/components/ui/button";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { inventarioService } from "@/services/inventarioService";
 import type { PersonalAsignado } from "@/types/emergencia";
@@ -36,6 +37,17 @@ const inputBase: React.CSSProperties = {
   outline: "none",
   boxSizing: "border-box",
   fontFamily: "inherit",
+  transition: "border-color 0.2s, box-shadow 0.2s",
+};
+
+const inputFocus = {
+  borderColor: "var(--brand-500)",
+  boxShadow: "0 0 0 3px var(--brand-100)",
+};
+
+const inputDisabled = {
+  opacity: 0.7,
+  cursor: "not-allowed",
 };
 
 const selectBase: React.CSSProperties = {
@@ -1036,43 +1048,10 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             flexShrink: 0,
           }}
         >
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            style={{
-              padding: "9px 20px",
-              borderRadius: 8,
-              border: "1px solid var(--border)",
-              background: "transparent",
-              color: "var(--text-2)",
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: submitting ? "not-allowed" : "pointer",
-              fontFamily: "inherit",
-              opacity: submitting ? 0.6 : 1,
-            }}
-          >
+          <Button variant="brand-outline" onClick={onClose} disabled={submitting}>
             Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            style={{
-              padding: "9px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: "var(--red)",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: submitting ? "not-allowed" : "pointer",
-              fontFamily: "inherit",
-              opacity: submitting ? 0.7 : 1,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+          </Button>
+          <Button variant="brand" onClick={handleSubmit} disabled={submitting}>
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} />
@@ -1081,7 +1060,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             ) : (
               "Registrar Emergencia"
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </>

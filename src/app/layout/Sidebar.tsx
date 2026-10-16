@@ -12,7 +12,7 @@ import { ROLE_LABELS, ROLE_BADGE, ROLE_NAV } from "@/constants/roles";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/app/components/ui/tooltip";
 
 function NavIcon({ icon, active }: { icon: NavIconDef; active: boolean }) {
-  const col = active ? "#fff" : "rgba(255,255,255,0.45)";
+  const col = active ? "#fff" : "rgba(255,255,255,0.7)";
   if (icon.type === "lucide") {
     const IconComponent = icon.Icon;
     return <IconComponent style={{ width: 17, height: 17, color: col, flexShrink: 0 }} />;
@@ -49,7 +49,7 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
   return (
     <motion.aside
       className="fixed left-0 top-0 bottom-0 z-20 flex flex-col overflow-hidden"
-      style={{ background: "var(--neutral-900)", borderRight: "1px solid var(--divider)" }}
+      style={{ background: "var(--navy)", borderRight: "1px solid var(--divider)" }}
       animate={{ width }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
@@ -73,7 +73,7 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
             <p className="font-extrabold text-[13px] text-white leading-tight truncate" style={{ fontFamily: "Manrope, sans-serif" }}>
               33ª Compañía
             </p>
-            <p className="text-[10px] text-[#94A3B8] leading-tight" style={{ fontFamily: "Inter, sans-serif" }}>
+            <p className="text-[10px] text-[#B0C4DE] leading-tight" style={{ fontFamily: "Inter, sans-serif" }}>
               San Lucas Tolimán
             </p>
           </motion.div>
@@ -117,7 +117,7 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
               {!collapsed && (
                 <span
                   className="text-[13.5px] font-semibold leading-5 truncate"
-                  style={{ fontFamily: "Inter, sans-serif", color: active ? "#fff" : "rgba(255,255,255,0.55)" }}
+                  style={{ fontFamily: "Inter, sans-serif", color: active ? "#fff" : "#E2E8F0" }}
                 >
                   {label}
                 </span>
@@ -147,11 +147,11 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "")}
         >
           {collapsed ? (
-            <ChevronRight style={{ width: 15, height: 15, color: "rgba(255,255,255,0.4)" }} />
+            <ChevronRight style={{ width: 15, height: 15, color: "rgba(255,255,255,0.7)" }} />
           ) : (
             <>
-              <ChevronLeft style={{ width: 15, height: 15, color: "rgba(255,255,255,0.4)", flexShrink: 0 }} />
-              <span className="text-[11px] font-semibold text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "Inter, sans-serif" }}>
+              <ChevronLeft style={{ width: 15, height: 15, color: "rgba(255,255,255,0.7)", flexShrink: 0 }} />
+              <span className="text-[11px] font-semibold text-[rgba(255,255,255,0.7)]" style={{ fontFamily: "Inter, sans-serif" }}>
                 Contraer
               </span>
             </>
