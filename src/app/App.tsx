@@ -511,9 +511,9 @@ function AppContent() {
               <div>
                 <h2 className="font-bold text-[11px] tracking-widest uppercase mb-4" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Acciones Rápidas</h2>
                 <div className="grid grid-cols-3 gap-4">
-                  <QuickCard Icon={Zap}     label="Registrar Servicio"   sub="Nuevo reporte de emergencia"     onClick={() => setActiveNav("emergencias")} />
-                  <QuickCard Icon={Package} label="Consultar Inventario"  sub="Equipos, insumos y medicamentos" onClick={() => setActiveNav("inventario")}  />
-                  <QuickCard Icon={Truck}   label="Ver Vehículos"         sub="Estado de flota y combustible"   onClick={() => setActiveNav("vehiculos")}   />
+                  <div className="animate-slide-up-stagger stagger-1"><QuickCard Icon={Zap}     label="Registrar Servicio"   sub="Nuevo reporte de emergencia"     onClick={() => setActiveNav("emergencias")} /></div>
+                  <div className="animate-slide-up-stagger stagger-2"><QuickCard Icon={Package} label="Consultar Inventario"  sub="Equipos, insumos y medicamentos" onClick={() => setActiveNav("inventario")}  /></div>
+                  <div className="animate-slide-up-stagger stagger-3"><QuickCard Icon={Truck}   label="Ver Vehículos"         sub="Estado de flota y combustible"   onClick={() => setActiveNav("vehiculos")}   /></div>
                 </div>
               </div>
 
@@ -591,8 +591,8 @@ function AppContent() {
                   { label: "Personal activo",   value: "0",     accent: "#16a34a", sub: "0 Activos · 0 Inactivos" },
                   { label: "Flota operativa",   value: "0 / 0",  accent: "#1565c0", sub: "" },
                   { label: "Donaciones / mes",  value: "Q0",     accent: "#D97706", sub: "↑ vs Q0 anterior" },
-                ].map(k => (
-                  <div key={k.label} className="p-5 rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
+                ].map((k, i) => (
+                  <div key={k.label} className={`p-5 rounded-2xl animate-slide-up-stagger stagger-${i + 1}`} style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
                     <div className="h-1 w-8 rounded-full mb-4" style={{ background: k.accent }} />
                     <p className="font-extrabold text-[28px] leading-tight" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>{k.value}</p>
                     <p className="font-bold text-[10px] mt-1 uppercase tracking-wide" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{k.label}</p>
@@ -658,8 +658,8 @@ function AppContent() {
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.redLight, color: C.red }}>{NOTIFICATIONS.length}</span>
                   </div>
                   <div className="flex-1 divide-y overflow-y-auto" style={{ borderColor: C.border }}>
-                    {NOTIFICATIONS.map(n => (
-                      <div key={n.id} className="flex items-start gap-3 px-5 py-3.5 transition-colors"
+                    {NOTIFICATIONS.map((n, i) => (
+                      <div key={n.id} className={`flex items-start gap-3 px-5 py-3.5 transition-colors animate-slide-up-stagger stagger-${Math.min(i + 1, 6)}`}
                         onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
                         <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: n.dot }} />

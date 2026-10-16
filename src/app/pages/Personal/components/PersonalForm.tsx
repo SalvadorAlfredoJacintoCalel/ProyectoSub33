@@ -1,87 +1,197 @@
-import { Eye, X, Check, EyeOff, RefreshCw, KeyRound, Shield, ChevronDown } from "lucide-react";
-import { type ElementType } from "react";
-import type { Estado, Miembro, FormState, RangoItem, RolItem } from "@/types/personal";
-import { formatDate } from "@/utils/format";
-import { emptyFormState, miembroToForm } from "@/utils/formHelpers";
+import { useState } from "react";
+import type { Dispatch, SetStateAction, ElementType } from "react";
+import { Eye, EyeOff, RefreshCw, KeyRound, Shield, ChevronDown, User, Award, Phone, AlertTriangle } from "lucide-react";
+import type { FormState, RangoItem, RolItem } from "@/types/personal";
+import { Modal } from "@/app/components/ui/modal";
+import { Input } from "@/app/components/ui/input";
+import { Button } from "@/app/components/ui/button";
 
 interface FormProps {
-  showModal: boolean;
-  setShowModal: (v: boolean) => void;
-  editingId: string | null;
-  setEditingId: (id: string | null) => void;
-  form: FormState;
-  setForm: (f: FormState) => void;
-  errors: Record<string, string>;
-  setErrors: (e: Record<string, string>) => void;
-  credOpen: boolean;
-  setCredOpen: (v: boolean) => void;
-  showPw: boolean;
-  setShowPw: (v: boolean) => void;
-  rangos: RangoItem[];
-  setRangos: (r: RangoItem[]) => void;
-  roles: RolItem[];
-  setRoles: (r: RolItem[]) => void;
+  open: boolean;
   onClose: () => void;
-  isLoadingRangos?: boolean;
-  isLoadingRoles?: boolean;
-  onSubmit?: () => void;
+  editingId: string | null;
+  form: FormState;
+  setForm: Dispatch<SetStateAction<FormState>>;
+  errors: Record<string, string>;
+  setErrors: Dispatch<SetStateAction<Record<string, string>>>;
+  credOpen: boolean;
+  setCredOpen: Dispatch<SetStateAction<boolean>>;
+  showPw: boolean;
+  setShowPw: Dispatch<SetStateAction<boolean>>;
+  rangos: RangoItem[];
+  roles: RolItem[];
+  saving: boolean;
+  onSubmit: () => void;
 }
-
-const RED = "var(--brand-600)";
-
-const estadoBadge: Record<Estado, string> = {
-  Activo: "bg-green-100 text-green-800 border border-green-200",
-  Inactivo: "bg-gray-100 text-gray-600 border border-gray-200",
-};
-
-type AlertType = "warning" | "error" | "success";
-
-const alertIconConfig: Record<AlertType, { bg: string; color: string; icon: ElementType }> = {
-  warning: { bg: "bg-amber-100", color: "text-amber-600", icon: X },
-  error: { bg: "bg-red-100", color: "text-red-600", icon: X },
-  success: { bg: "bg-green-100", color: "text-green-600", icon: Check },
-};
 
 function slugify(s: string): string {
-  return s.toLowerCase().split('').filter(c => /[a-z0-9\s]/.test(c)).join('').replace(/\s+/g, ' ').trim();
+  return s.toLowerCase().split("").filter((c) => /[a-z0-9\s]/.test(c)).join("").replace(/\s+/g, " ").trim();
 }
 
-function inputStyle(hasError: boolean) {
-  return {
-    width: "100%",
-    background: "var(--bg-input)",
-    color: "var(--text-1)",
-    border: hasError ? "1px solid var(--red)" : "1px solid var(--border)",
-    borderRadius: 8,
-    padding: "8px 12px",
-    fontSize: 13,
-    outline: "none",
-    boxSizing: "border-box",
-  };
+function generateRandomPassword(): string {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
-function SectionLabel({ label }: { label: string }) {
+function CollapsibleSection({
+  label,
+  icon: Icon,
+  defaultOpen = true,
+  children,
+}: {
+  label: string;
+  icon: ElementType;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "20px 0 12px", marginTop: 20 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-3)", whiteSpace: "nowrap" }}>
-        {label}
-      </span>
-      <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+    <div style={{ marginBottom: 14 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors"
+        style={{
+          background: open ? "var(--glass-bg-subtle)" : "var(--bg-hover)",
+          border: "1px solid var(--glass-border)",
+        }}
+      >
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+          style={{ background: "var(--grad-primary-soft)", color: "var(--brand-600)" }}
+        >
+          <Icon size={16} />
+        </span>
+        <span className="flex-1 text-xs font-bold uppercase tracking-[0.08em]" style={{ color: "var(--text-1)" }}>
+          {label}
+        </span>
+        <ChevronDown
+          size={15}
+          style={{
+            color: "var(--text-3)",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s",
+            flexShrink: 0,
+          }}
+        />
+      </button>
+      {open && (
+        <div style={{ paddingTop: 16, animation: "slide-up 200ms var(--spring-gentle) both" }}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
 
-function AlertIcon({ type }: { type: AlertType }) {
-  const cfg = alertIconConfig[type];
-  const IconEl = cfg.icon;
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  error,
+  placeholder,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  options: { id: number; nombre: string }[];
+  error?: string;
+  placeholder: string;
+}) {
   return (
-    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${cfg.bg}`}>
-      <IconEl className={`h-6 w-6 ${cfg.color}`} />
+    <div className="w-full">
+      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
+        {label} <span style={{ color: "var(--brand-600)" }}>*</span>
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
+        style={{
+          background: "var(--bg-input)",
+          color: "var(--text-1)",
+          border: error ? "1px solid var(--brand-500)" : "1px solid var(--border)",
+        }}
+      >
+        <option value={0}>{placeholder}</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.nombre}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <p className="mt-1 text-xs font-medium" style={{ color: "var(--brand-600)" }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 
-export function PersonalForm({ showModal, setShowModal, editingId, setEditingId, form, setForm, errors, setErrors, credOpen, setCredOpen, showPw, setShowPw, rangos, setRangos, roles, setRoles, onClose, isLoadingRangos = false, isLoadingRoles = false, onSubmit }: FormProps) {
+function PasswordInput({
+  id,
+  label,
+  value,
+  onChange,
+  error,
+  show,
+  onToggle,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  error?: string;
+  show: boolean;
+  onToggle: () => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        label={label}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        error={error}
+        className="pr-11 font-mono"
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        tabIndex={-1}
+        title={show ? "Ocultar contraseña" : "Mostrar contraseña"}
+        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 transition-colors"
+        style={{ color: "var(--text-3)", background: "transparent", border: "none", cursor: "pointer" }}
+      >
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+}
+
+export function PersonalForm({
+  open,
+  onClose,
+  editingId,
+  form,
+  setForm,
+  errors,
+  setErrors,
+  credOpen,
+  setCredOpen,
+  showPw,
+  setShowPw,
+  rangos,
+  roles,
+  saving,
+  onSubmit,
+}: FormProps) {
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
@@ -91,447 +201,273 @@ export function PersonalForm({ showModal, setShowModal, editingId, setEditingId,
       return next;
     });
     if (errors[field as string]) {
-      setErrors((prev) => { const n = { ...prev }; delete n[field as string]; return n; });
+      setErrors((prev) => {
+        const n = { ...prev };
+        delete n[field as string];
+        return n;
+      });
     }
   }
 
-  function handleSubmit() {
-    if (onSubmit) {
-      onSubmit();
-    }
+  function handleGeneratePassword() {
+    const pw = generateRandomPassword();
+    setForm((prev) => ({ ...prev, contrasena: pw, confirmarContrasena: pw }));
+    setShowPw(true);
   }
-
-  function closeModal() {
-    setShowModal(false);
-    setEditingId(null);
-    setForm(emptyFormState());
-    setErrors({});
-    setCredOpen(false);
-    setShowPw(false);
-  }
-
-  function togglePasswordVisibility() {
-    setShowPw((v) => !v);
-  }
-
-  function generateRandomPassword() {
-    const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-    return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-  }
-
-  // Modal is rendered conditionally by Parent (PersonalPage)
-  // This component always renders its content, Parent controls visibility
-  const modalClass = "fixed inset-0 z-40 flex items-center justify-center p-4";
-  const modalStyle = { background: "rgba(0,0,0,0.55)" };
 
   return (
-    <div className={modalClass} style={modalStyle}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl shadow-2xl" style={{ maxHeight: "90vh", background: "var(--bg-card)" }}>
-        {/* Modal header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: "var(--bg-input)", borderBottom: "1px solid var(--border)" }}>
-          <div className="flex items-center gap-2">
-            <Shield size={18} style={{ color: "var(--text-1)" }} />
-            <h2 className="text-lg font-semibold" style={{ color: "var(--text-1)" }}>
-              {editingId ? "Editar Miembro" : "Nuevo Miembro"}
-            </h2>
-          </div>
-          <button onClick={closeModal} className="rounded p-1 transition-colors" style={{ color: "var(--text-3)" }}>
-            <X size={18} />
-          </button>
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="xl"
+      variant="glass"
+      title={editingId ? "Editar Miembro" : "Nuevo Miembro"}
+      description={
+        editingId
+          ? "Actualiza la información del miembro de la compañía."
+          : "Registra un nuevo miembro de la 33ª Compañía."
+      }
+      icon={<Shield className="size-6" />}
+      className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
+      footer={
+        <>
+          <Button variant="brand-outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button variant="brand" loading={saving} onClick={onSubmit}>
+            {editingId ? "Guardar Cambios" : "Registrar Miembro"}
+          </Button>
+        </>
+      }
+    >
+      {/* Error summary */}
+      {Object.keys(errors).length > 0 && (
+        <div
+          className="mb-5 flex items-start gap-3 rounded-xl border p-3 text-sm"
+          style={{
+            borderColor: "var(--brand-300)",
+            background: "var(--brand-100)",
+            color: "var(--brand-700)",
+          }}
+        >
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--brand-600)" }} />
+          <span>Por favor corrige los campos marcados antes de continuar.</span>
         </div>
+      )}
 
-        {/* Modal body */}
-        <div className="overflow-y-auto px-6 py-5" style={{ maxHeight: "calc(90vh - 130px)", background: "var(--bg-card)" }}>
-          {/* Error summary */}
-          {Object.keys(errors).length > 0 && (
-            <div className="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              <AlertIcon type="warning" />
-              <span>Por favor corrige los campos marcados en rojo antes de continuar.</span>
-            </div>
-          )}
+      {/* ── Datos Personales ── */}
+      <CollapsibleSection label="Datos Personales" icon={User}>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Primer Nombre *"
+            placeholder="Ej. Carlos"
+            value={form.primerNombre}
+            onChange={(e) => setField("primerNombre", e.target.value)}
+            error={errors.primerNombre}
+          />
+          <Input
+            label="Segundo Nombre"
+            placeholder="Ej. Humberto (opcional)"
+            value={form.segundoNombre}
+            onChange={(e) => setField("segundoNombre", e.target.value)}
+          />
+          <Input
+            label="Primer Apellido *"
+            placeholder="Ej. Tzintzún"
+            value={form.primerApellido}
+            onChange={(e) => setField("primerApellido", e.target.value)}
+            error={errors.primerApellido}
+          />
+          <Input
+            label="Segundo Apellido"
+            placeholder="Ej. Ajú (opcional)"
+            value={form.segundoApellido}
+            onChange={(e) => setField("segundoApellido", e.target.value)}
+          />
+          <Input
+            type="text"
+            inputMode="numeric"
+            maxLength={13}
+            label="DPI *"
+            placeholder="0000000000000"
+            value={form.dpi}
+            onChange={(e) => setField("dpi", e.target.value.replace(/\D/g, ""))}
+            error={errors.dpi}
+            className="font-mono"
+          />
+          <Input
+            type="date"
+            label="Fecha de Nacimiento"
+            value={form.fechaNacimiento}
+            onChange={(e) => setField("fechaNacimiento", e.target.value)}
+          />
+        </div>
+      </CollapsibleSection>
 
-          {/* ── Datos Personales ── */}
-          <SectionLabel label="Datos Personales" />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Primer Nombre <span style={{ color: RED }}>*</span>
-              </label>
-              <input
+      {/* ── Información de Bombero ── */}
+      <CollapsibleSection label="Información de Bombero" icon={Award}>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Código de Bombero"
+            placeholder="Ej. SEC-001 (opcional)"
+            value={form.codigoBombero}
+            onChange={(e) => setField("codigoBombero", e.target.value)}
+          />
+          <SelectField
+            label="Rango"
+            value={form.rangoId}
+            onChange={(v) => setField("rangoId", v)}
+            options={rangos}
+            error={errors.rangoId}
+            placeholder="Seleccionar rango..."
+          />
+          <Input
+            type="text"
+            label="Teléfono *"
+            placeholder="+502 XXXX-XXXX"
+            value={form.telefono}
+            onChange={(e) => setField("telefono", e.target.value)}
+            error={errors.telefono}
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* ── Contacto de Emergencia ── */}
+      <CollapsibleSection label="Contacto de Emergencia" icon={Phone}>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Nombre del Contacto *"
+            placeholder="Nombre completo"
+            value={form.contactoEmergencia}
+            onChange={(e) => setField("contactoEmergencia", e.target.value)}
+            error={errors.contactoEmergencia}
+          />
+          <Input
+            type="text"
+            label="Teléfono de Emergencia *"
+            placeholder="+502 XXXX-XXXX"
+            value={form.telEmergencia}
+            onChange={(e) => setField("telEmergencia", e.target.value)}
+            error={errors.telEmergencia}
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* ── Acceso al Sistema ── */}
+      <div style={{ marginTop: 4 }}>
+        <button
+          type="button"
+          onClick={() => setCredOpen((o) => !o)}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors"
+          style={{
+            background: credOpen ? "var(--glass-bg-subtle)" : "var(--bg-hover)",
+            border: "1px solid var(--glass-border)",
+          }}
+        >
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+            style={{
+              background: credOpen ? "var(--grad-primary)" : "var(--grad-primary-soft)",
+              color: credOpen ? "#FFFFFF" : "var(--brand-600)",
+            }}
+          >
+            <KeyRound size={16} />
+          </span>
+          <span className="flex-1 text-xs font-bold uppercase tracking-[0.08em]" style={{ color: "var(--text-1)" }}>
+            Acceso al Sistema <span style={{ color: "var(--text-3)", textTransform: "none", fontWeight: 400 }}>(opcional)</span>
+          </span>
+          <ChevronDown
+            size={15}
+            style={{
+              color: "var(--text-3)",
+              transform: credOpen ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s",
+              flexShrink: 0,
+            }}
+          />
+        </button>
+
+        {credOpen && (
+          <div
+            className="flex flex-col gap-4 rounded-xl p-4"
+            style={{
+              marginTop: 8,
+              background: "var(--glass-bg-subtle)",
+              border: "1px solid var(--glass-border)",
+              animation: "slide-up 200ms var(--spring-gentle) both",
+            }}
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <Input
                 type="text"
-                placeholder="Ej. Carlos"
-                value={form.primerNombre}
-                onChange={(e) => setField("primerNombre", e.target.value)}
-                style={{ ...inputStyle(!!errors.primerNombre) }}
+                label="Usuario *"
+                placeholder="cgarcia"
+                value={form.usuario}
+                onChange={(e) => setField("usuario", e.target.value.toLowerCase().replace(/\s/g, ""))}
+                error={errors.usuario}
+                className="font-mono"
               />
-              {errors.primerNombre && <p className="mt-0.5 text-xs text-red-600">{errors.primerNombre}</p>}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Segundo Nombre <span style={{ color: "var(--text-3)" }}>(opcional)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Ej. Humberto"
-                value={form.segundoNombre}
-                onChange={(e) => setField("segundoNombre", e.target.value)}
-                style={{ ...inputStyle(false) }}
+              <SelectField
+                label="Rol del Sistema"
+                value={form.rolId}
+                onChange={(v) => setField("rolId", v)}
+                options={roles}
+                error={errors.rolId}
+                placeholder="Seleccionar rol..."
               />
             </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Primer Apellido <span style={{ color: RED }}>*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Ej. Tzintzún"
-                value={form.primerApellido}
-                onChange={(e) => setField("primerApellido", e.target.value)}
-                style={{ ...inputStyle(!!errors.primerApellido) }}
-              />
-              {errors.primerApellido && <p className="mt-0.5 text-xs text-red-600">{errors.primerApellido}</p>}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Segundo Apellido <span style={{ color: "var(--text-3)" }}>(opcional)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Ej. Ajú"
-                value={form.segundoApellido}
-                onChange={(e) => setField("segundoApellido", e.target.value)}
-                style={{ ...inputStyle(false) }}
-              />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                DPI <span style={{ color: RED }}>*</span>
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="0000000000000"
-                maxLength={13}
-                value={form.dpi}
-                onChange={(e) => setField("dpi", e.target.value.replace(/\D/g, ""))}
-                style={{ ...inputStyle(!!errors.dpi), fontFamily: "monospace" }}
-              />
-              {errors.dpi && <p className="mt-0.5 text-xs text-red-600">{errors.dpi}</p>}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Fecha de Nacimiento
-              </label>
-              <input
-                type="date"
-                value={form.fechaNacimiento}
-                onChange={(e) => setField("fechaNacimiento", e.target.value)}
-                style={{ ...inputStyle(false) }}
-              />
-            </div>
-          </div>
-
-          {/* ── Información de Bombero ── */}
-          <SectionLabel label="Información de Bombero" />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Código de Bombero <span style={{ color: "var(--text-3)" }}>(opcional)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: SEC-001, BVOL-001 (Opcional)"
-                value={form.codigoBombero}
-                onChange={(e) => setField("codigoBombero", e.target.value)}
-                style={{ ...inputStyle(false) }}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Rango <span style={{ color: RED }}>*</span>
-              </label>
-              <select
-                value={form.rangoId}
-                onChange={(e) => setField("rangoId", Number(e.target.value))}
-                style={{ ...inputStyle(!!errors.rangoId), flex: 1 }}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <PasswordInput
+                  id="contrasena"
+                  label={editingId ? "Contraseña" : "Contraseña *"}
+                  placeholder={editingId ? "Nueva contraseña (opcional)" : "Mínimo 8 caracteres"}
+                  value={form.contrasena}
+                  onChange={(v) => setField("contrasena", v)}
+                  error={errors.contrasena}
+                  show={showPw}
+                  onToggle={() => setShowPw((v) => !v)}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleGeneratePassword}
+                title="Generar contraseña aleatoria"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition-colors"
+                style={{ borderColor: "var(--border)", background: "var(--bg-hover)", color: "var(--text-2)" }}
               >
-                <option value={0}>Seleccionar rango...</option>
-                {(isLoadingRangos ? [] : (rangos || [])).map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.nombre}
-                  </option>
-                ))}
-              </select>
-              {errors.rangoId && <p className="mt-0.5 text-xs text-red-600">{errors.rangoId}</p>}
+                <RefreshCw size={16} />
+              </button>
             </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Teléfono <span style={{ color: RED }}>*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="+502 XXXX-XXXX"
-                value={form.telefono}
-                onChange={(e) => setField("telefono", e.target.value)}
-                style={{ ...inputStyle(!!errors.telefono) }}
+            {(form.contrasena.length > 0 || !editingId) && (
+              <PasswordInput
+                id="confirmarContrasena"
+                label={editingId ? "Confirmar Contraseña" : "Confirmar Contraseña *"}
+                placeholder="Repetir contraseña"
+                value={form.confirmarContrasena}
+                onChange={(v) => setField("confirmarContrasena", v)}
+                error={errors.confirmarContrasena}
+                show={showPw}
+                onToggle={() => setShowPw((v) => !v)}
               />
-              {errors.telefono && <p className="mt-0.5 text-xs text-red-600">{errors.telefono}</p>}
-            </div>
-          </div>
-
-          {/* Contacto de Emergencia */}
-          <SectionLabel label="Contacto de Emergencia" />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Nombre del Contacto <span style={{ color: RED }}>*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Nombre completo"
-                value={form.contactoEmergencia}
-                onChange={(e) => setField("contactoEmergencia", e.target.value)}
-                style={{ ...inputStyle(!!errors.contactoEmergencia) }}
-              />
-              {errors.contactoEmergencia && <p className="mt-0.5 text-xs text-red-600">{errors.contactoEmergencia}</p>}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                Teléfono de Emergencia <span style={{ color: RED }}>*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="+502 XXXX-XXXX"
-                value={form.telEmergencia}
-                onChange={(e) => setField("telEmergencia", e.target.value)}
-                style={{ ...inputStyle(!!errors.telEmergencia) }}
-              />
-              {errors.telEmergencia && <p className="mt-0.5 text-xs text-red-600">{errors.telEmergencia}</p>}
-            </div>
-          </div>
-
-          {/* Credenciales del Sistema (Accordion) */}
-          <div style={{ margin: "20px 0 0" }}>
-            <button
-              type="button"
-              onClick={() => setCredOpen((o) => !o)}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "10px 14px",
-                borderRadius: credOpen ? "10px 10px 0 0" : 10,
-                border: "1px solid var(--border)",
-                borderBottom: credOpen ? "1px solid var(--border)" : "1px solid var(--border)",
-                background: credOpen ? "var(--bg-input)" : "var(--bg-card)",
-                cursor: "pointer",
-                transition: "background 0.15s",
-              }}
-            >
-              <div style={{
-                width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: credOpen ? "var(--red-bg)" : "var(--bg-hover)",
-              }}>
-                <KeyRound size={14} style={{ color: credOpen ? "var(--red)" : "var(--text-3)" }} />
-              </div>
-              <div style={{ flex: 1, textAlign: "left" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: credOpen ? "var(--text-1)" : "var(--text-2)" }}>
-                  Acceso al Sistema
-                </span>
-                <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 8 }}>
-                  (opcional)
-                </span>
-              </div>
-              <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", marginRight: 4 }}>
-                {credOpen ? "Ocultar" : "Gestionar usuario y contraseña"}
-              </span>
-              <ChevronDown
-                size={15}
-                style={{
-                  color: "var(--text-3)",
-                  transform: credOpen ? "rotate(180deg)" : "rotate(0deg)",
-                  transition: "transform 0.2s",
-                  flexShrink: 0,
-                }}
-              />
-            </button>
-
-            {credOpen && (
-              <div
-                style={{
-                  borderRadius: "0 0 10px 10px",
-                  border: "1px solid var(--border)",
-                  borderTop: "none",
-                  padding: 16,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 14,
-                  background: "var(--bg-input)",
-                }}
-              >
-                {/* Usuario + Rol */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                      Usuario <span style={{ color: "var(--red)" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="cgarcia"
-                      value={form.usuario}
-                      onChange={(e) => setField("usuario", e.target.value.toLowerCase().replace(/\s/g, ""))}
-                      style={{ ...inputStyle(!!errors.usuario), fontFamily: "monospace" }}
-                    />
-                    {errors.usuario && <p className="mt-0.5 text-xs text-red-600">{errors.usuario}</p>}
-                  </div>
-
-                  <div>
-                    <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                      Rol del Sistema <span style={{ color: "var(--red)" }}>*</span>
-                    </label>
-                    <select
-                      value={form.rolId}
-                      onChange={(e) => setField("rolId", Number(e.target.value))}
-                      style={{ ...inputStyle(!!errors.rolId), flex: 1 }}
-                    >
-                      <option value={0}>Seleccionar rol...</option>
-                      {(isLoadingRoles ? [] : (roles || [])).map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {errors.rolId && <p className="mt-0.5 text-xs text-red-600">{errors.rolId}</p>}
-                </div>
-
-                {/* Contraseña */}
-                <div>
-                  <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                    Contraseña Temporal
-                    {!editingId && <span style={{ color: "var(--red)" }}> *</span>}
-                  </label>
-                  {editingId && <span style={{ color: "var(--text-3)", fontWeight: 400 }}> (dejar vacío para no cambiar)</span>}
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <div style={{ position: "relative", flex: 1 }}>
-                      <input
-                        type={showPw ? "text" : "password"}
-                        placeholder={editingId ? "Nueva contraseña (opcional)" : "Mínimo 8 caracteres"}
-                        value={form.contrasena}
-                        onChange={(e) => setField("contrasena", e.target.value)}
-                        style={{ ...inputStyle(!!errors.contrasena), fontFamily: "monospace", paddingRight: 36 }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPw((v) => !v)}
-                        style={{
-                          position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
-                          background: "none", border: "none", cursor: "pointer",
-                          color: "var(--text-3)", display: "flex", alignItems: "center",
-                        }}
-                        tabIndex={-1}
-                        title={showPw ? "Ocultar" : "Ver contraseña"}
-                      >
-                        {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const pw = generateRandomPassword();
-                        setForm((prev) => ({ ...prev, contrasena: pw, confirmarContrasena: pw }));
-                        setShowPw(true);
-                      }}
-                      style={{
-                        background: "var(--bg-card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 8,
-                        padding: 8,
-                        color: "var(--text-3)",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                      title="Generar contraseña aleatoria"
-                    >
-                      <RefreshCw size={15} />
-                    </button>
-                  </div>
-                  {errors.contrasena && <p className="mt-0.5 text-xs text-red-600">{errors.contrasena}</p>}
-                </div>
-
-                {/* Confirmar contraseña */}
-                {(form.contrasena.length > 0 || !editingId) && (
-                  <div>
-                    <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                      Confirmar Contraseña {!editingId && <span style={{ color: "var(--red)" }}> *</span>}
-                    </label>
-                    <input
-                      type={showPw ? "text" : "password"}
-                      placeholder="Repetir contraseña"
-                      value={form.confirmarContrasena}
-                      onChange={(e) => setField("confirmarContrasena", e.target.value)}
-                      style={{ ...inputStyle(!!errors.confirmarContrasena), fontFamily: "monospace" }}
-                    />
-                    {errors.confirmarContrasena && <p className="mt-0.5 text-xs text-red-600">{errors.confirmarContrasena}</p>}
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 8,
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: "var(--bg-card)",
-                    padding: "8px 12px",
-                    fontSize: 12,
-                    color: "var(--text-3)",
-                  }}
-                >
-                  <Shield size={13} style={{ marginTop: 2, flexShrink: 0, color: "var(--text-3)" }} />
-                  <span>
-                    {editingId
-                      ? "Deja la contraseña vacía si no deseas cambiarla. Solo los campos que modifiques serán actualizados."
-                      : "Al crear la cuenta, el bombero recibirá sus credenciales de acceso al sistema."}
-                  </span>
-                </div>
-              </div>
             )}
-          </div>
-        </div>
 
-          {/* Modal footer */}
-          <div className="flex justify-end gap-2 px-6 py-4" style={{ borderTop: "1px solid var(--border)", background: "var(--bg-input)" }}>
-            <button
-              onClick={closeModal}
-              className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-              style={{ border: "1px solid var(--border)", color: "var(--text-2)", background: "var(--bg-card)" }}
+            <div
+              className="flex items-start gap-2 rounded-lg p-3 text-xs"
+              style={{ background: "var(--bg-hover)", color: "var(--text-2)" }}
             >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSubmit}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
-              style={{ background: RED }}
-            >
-              <Check size={15} />
-              {editingId ? "Guardar Cambios" : "Registrar Miembro"}
-            </button>
+              <Shield size={13} style={{ marginTop: 2, flexShrink: 0, color: "var(--text-3)" }} />
+              <span>
+                {editingId
+                  ? "Deja la contraseña vacía si no deseas cambiarla. Solo los campos que modifiques serán actualizados."
+                  : "Al crear la cuenta, el bombero recibirá sus credenciales de acceso al sistema."}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
-    );
+    </Modal>
+  );
 }

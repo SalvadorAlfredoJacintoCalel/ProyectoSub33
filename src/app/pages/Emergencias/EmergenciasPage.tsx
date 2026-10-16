@@ -3,12 +3,18 @@ import {
   Calendar, CheckCircle2, Plus, Search,
   ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown,
   X, Printer, Clock, Zap, CalendarX2, Pencil, Power, Loader2,
+  User, Users, FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import imgCvbLogo from "@/imports/DashboardPrincipalDesktop/382ba90f17ab58630c2735b72b71bff037f7ba87.png";
 import { RegisterServicePage } from "@/app/pages/Emergencias/RegisterServicePage";
 import { EditServicePage } from "@/app/pages/Emergencias/EditServicePage";
 import { AlertDialog } from "@/app/components/AlertDialog";
+import { Drawer } from "@/app/components/ui/drawer";
+import { Tabs, type TabItem } from "@/app/components/ui/tabs";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { EmptyState } from "@/app/components/ui/empty-state";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
 import type { Emergencia, EmergenciaListItem, EmergenciaFiltros } from "@/types/emergencia";
@@ -535,92 +541,42 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
     };
   }, []);
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: "rgba(0,0,0,0.5)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <PrintForm service={service} />
-
-      <div className="srm-card rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ width: "min(860px, 96vw)", maxHeight: "90vh", background: "var(--bg-card)" }}>
-        <div className="flex items-center justify-between px-8 py-5 shrink-0" style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-input)" }}>
-          <div className="flex flex-col gap-0.5">
-            <h2 className="font-extrabold text-[17px] tracking-[-0.3px]" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>
-              REPORTE DE SERVICIO — 33ª COMPAÑÍA
-            </h2>
-            <span className="font-bold text-[12px] tracking-[1px] uppercase" style={{ color: RED, fontFamily: "Inter, sans-serif" }}>
-              {service.id}
-            </span>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-lg transition-colors" style={{ color: "var(--text-3)" }}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-8 py-6 flex flex-col gap-7">
-          <div className="grid grid-cols-3 gap-4 p-5 rounded-xl" style={{ background: "#fef8f8", border: "1px solid rgba(193,29,29,0.1)" }}>
-            <div className="flex flex-col gap-1">
-              <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Solicitud</span>
-              <span className="inline-flex items-center self-start px-3 py-1 rounded-full text-[12px] font-bold text-white" style={{ background: RED, fontFamily: "Inter, sans-serif" }}>
-                {service.solicitud}
-              </span>
+  const tabs: TabItem[] = [
+    {
+      id: "paciente",
+      label: "Info Paciente",
+      icon: <User size={15} />,
+      content: (
+        <div className="flex flex-col gap-5">
+          <SectionHeading>Datos del Paciente &amp; Solicitante</SectionHeading>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <FieldRow label="Nombre del Solicitante" value={service.solicitante} />
+            <FieldRow label="Nombre del Paciente" value={service.paciente} />
+            <FieldRow label="Acompañante" value={service.acompanante} />
+            <FieldRow label="Domicilio" value={service.domicilio} />
+            <FieldRow label="Edad" value={service.edad} />
+            <div className="flex flex-col gap-0.5">
+              <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Falleció</span>
+              <Badge variant={service.fallecio ? "error" : "success"}>{service.fallecio ? "SÍ" : "NO"}</Badge>
             </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "servicio",
+      label: "Servicio",
+      icon: <Zap size={15} />,
+      content: (
+        <div className="flex flex-col gap-5">
+          <SectionHeading>Información del Servicio</SectionHeading>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <FieldRow label="Solicitud" value={service.solicitud} />
             <FieldRow label="Hora de Salida" value={service.horaSalida} />
             <FieldRow label="Hora de Entrada" value={service.horaEntrada} />
-          </div>
-
-          <div>
-            <SectionHeading>Datos del Paciente &amp; Solicitante</SectionHeading>
-            <div className="grid grid-cols-2 gap-x-10 gap-y-5">
-              <FieldRow label="Nombre del Solicitante" value={service.solicitante} />
-              <FieldRow label="Nombre del Paciente" value={service.paciente} />
-              <FieldRow label="Acompañante" value={service.acompanante} />
-              <FieldRow label="Domicilio" value={service.domicilio} />
-              <FieldRow label="Edad" value={service.edad} />
-              <div className="flex flex-col gap-0.5">
-                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Falleció</span>
-                <span className="inline-flex items-center self-start px-3 py-1 rounded-full text-[12px] font-bold"
-                  style={{ background: service.fallecio ? "var(--brand-50)" : "var(--success-50)", color: service.fallecio ? "var(--brand-700)" : "var(--success-700)", fontFamily: "Inter, sans-serif" }}>
-                  {service.fallecio ? "SÍ" : "NO"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <SectionHeading>Asistencia / Tipo de Servicio</SectionHeading>
             <FieldRow label="Tipo de Servicio" value={service.tiposServicio.join(", ")} />
+            <FieldRow label="Lugar de Traslado" value={service.lugarTraslado} />
           </div>
-
-          <div>
-            <SectionHeading>Lugar de Traslado</SectionHeading>
-            <FieldRow label="Centro / Hospital" value={service.lugarTraslado} />
-          </div>
-
-          <div>
-            <SectionHeading>Personal y Unidades</SectionHeading>
-            <div className="grid grid-cols-2 gap-x-10 gap-y-5">
-              <div className="flex flex-col gap-1.5">
-                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Unidad(es) Destacada(s)</span>
-                <div className="flex gap-1.5 flex-wrap">
-                  {service.unidades.map((u) => (
-                    <span key={u} className="px-2.5 py-1 rounded text-[12px] font-bold text-white" style={{ background: "#1b2e4b", fontFamily: "Inter, sans-serif" }}>{u}</span>
-                  ))}
-                </div>
-              </div>
-              <FieldRow label="Formulado por (Responsable)" value={service.formuladoPor} />
-              <div className="flex flex-col gap-1">
-                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Piloto(s)</span>
-                {service.pilotos.map((p) => <span key={p} className="text-[13px] text-[var(--neutral-700)]" style={{ fontFamily: "Inter, sans-serif" }}>{p}</span>)}
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Camillero(s)</span>
-                {service.camilleros.map((c) => <span key={c} className="text-[13px] text-[var(--neutral-700)]" style={{ fontFamily: "Inter, sans-serif" }}>{c}</span>)}
-              </div>
-            </div>
-          </div>
-
           {service.resumen && (
             <div>
               <SectionHeading>Resumen del Incidente</SectionHeading>
@@ -628,43 +584,87 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
             </div>
           )}
         </div>
-
-        <div className="flex items-center justify-between gap-4 px-8 py-5 shrink-0 flex-wrap" style={{ borderTop: "1px solid #f0f0f0", background: "var(--neutral-50)" }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-2.5 px-5 py-2.5 rounded-lg text-white font-bold text-[13px] transition-opacity hover:opacity-90"
-              style={{ background: RED, fontFamily: "Inter, sans-serif", boxShadow: "0 4px 12px rgba(193,29,29,0.25)" }}
-            >
-              <Printer size={16} />
-              IMPRIMIR
-            </button>
-            {service.estado !== "Inactivo" && onDesactivar && (
-              <button onClick={onDesactivar}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-[13px] transition-colors hover:bg-red-50"
-                style={{ border: "1.5px solid var(--brand-600)", color: "var(--brand-600)", background: "#fff", fontFamily: "Inter, sans-serif" }}>
-                <Power size={14} /> DESACTIVAR
-              </button>
-            )}
-            {service.estado === "Inactivo" && (
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--neutral-400)", background: "#f3f4f6", padding: "6px 12px", borderRadius: 8, fontFamily: "Inter, sans-serif" }}>INACTIVO</span>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {onEdit && (
-              <button onClick={onEdit}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-[13px] transition-colors hover:bg-blue-50"
-                style={{ border: "1.5px solid #1d4ed8", color: "#1d4ed8", background: "#fff", fontFamily: "Inter, sans-serif" }}>
-                <Pencil size={14} /> EDITAR
-              </button>
-            )}
-            <button onClick={onClose} className="px-5 py-2.5 rounded-lg bg-[var(--neutral-100)] text-[var(--neutral-700)] font-bold text-[13px] hover:bg-[var(--neutral-200)] transition-colors" style={{ fontFamily: "Inter, sans-serif" }}>
-              CERRAR
-            </button>
+      ),
+    },
+    {
+      id: "personal",
+      label: "Personal",
+      icon: <Users size={15} />,
+      content: (
+        <div className="flex flex-col gap-5">
+          <SectionHeading>Personal y Unidades</SectionHeading>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <FieldRow label="Unidad(es) Destacada(s)" value={service.unidades.join(", ")} />
+            <FieldRow label="Formulado por (Responsable)" value={service.formuladoPor} />
+            <FieldRow label="Piloto(s)" value={service.pilotos.join(", ")} />
+            <FieldRow label="Camillero(s)" value={service.camilleros.join(", ")} />
           </div>
         </div>
-      </div>
-    </div>
+      ),
+    },
+    {
+      id: "documentos",
+      label: "Documentos",
+      icon: <FileText size={15} />,
+      content: (
+        <EmptyState
+          icon={FileText}
+          title="Sin documentos adjuntos"
+          description="Los documentos asociados a este servicio aparecerán aquí."
+        />
+      ),
+    },
+    {
+      id: "imprimir",
+      label: "Imprimir",
+      icon: <Printer size={15} />,
+      content: (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm leading-relaxed" style={{ color: "var(--text-2)" }}>
+            Genera el reporte oficial del servicio en formato carta para imprimir o guardar como PDF.
+          </p>
+          <Button variant="brand" onClick={() => window.print()}>
+            <Printer className="size-4" /> Imprimir Reporte
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      side="right"
+      size="xl"
+      title="REPORTE DE SERVICIO"
+      icon={<Calendar className="size-6" />}
+      statusBadge={
+        <Badge variant={service.estado === "Inactivo" ? "default" : "success"} dot>
+          {service.estado === "Inactivo" ? "Inactivo" : "Activo"}
+        </Badge>
+      }
+      footer={
+        <>
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="size-4" /> Imprimir
+          </Button>
+          {service.estado !== "Inactivo" && onDesactivar && (
+            <Button variant="brand-outline" onClick={onDesactivar}>
+              <Power className="size-4" /> Desactivar
+            </Button>
+          )}
+          {onEdit && (
+            <Button variant="brand" onClick={onEdit}>
+              <Pencil className="size-4" /> Editar
+            </Button>
+          )}
+        </>
+      }
+    >
+      <PrintForm service={service} />
+      <Tabs variant="glass" tabs={tabs} />
+    </Drawer>
   );
 }
 
@@ -1075,16 +1075,16 @@ export function EmergenciasPage() {
       )}
 
       {editingId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setEditingId(null)}>
-          <div className="rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setEditingId(null)}>
+          <div className="animate-morph-enter rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)", boxShadow: "var(--elevation-brand-3)" }} onClick={(e) => e.stopPropagation()}>
             <EditServicePage serviceId={editingId} onClose={() => setEditingId(null)} onSaved={() => setEditingId(null)} />
           </div>
         </div>
       )}
 
       {showRegister && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setShowRegister(false)}>
-          <div className="rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setShowRegister(false)}>
+          <div className="animate-morph-enter rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)", boxShadow: "var(--elevation-brand-3)" }} onClick={(e) => e.stopPropagation()}>
             <RegisterServicePage onClose={() => setShowRegister(false)} currentUser={user?.name ?? ""} />
           </div>
         </div>

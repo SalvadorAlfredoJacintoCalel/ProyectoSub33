@@ -2,7 +2,6 @@ import { useState, useMemo, type ReactNode } from "react";
 import {
   Pencil,
   Trash2,
-  Eye,
   Plus,
   Search,
   X,
@@ -15,8 +14,30 @@ import {
   DollarSign,
   Wallet,
   Power,
+  Printer,
+  Info,
+  FileText,
+  Link2,
+  Receipt,
+  User,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import { AlertDialog } from "../../components/AlertDialog";
+import { Drawer } from "@/app/components/ui/drawer";
+import { Tabs, type TabItem } from "@/app/components/ui/tabs";
+import { Modal } from "@/app/components/ui/modal";
+import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { EmptyState } from "@/app/components/ui/empty-state";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,10 +90,10 @@ const fmt = (n: number) =>
   "Q " +
   n.toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const TIPO_BADGE: Record<TipoTx, string> = {
-  Ingreso:  "bg-green-100 text-green-800",
-  Gasto:    "bg-red-100 text-red-800",
-  Donación: "bg-blue-100 text-blue-800",
+const TIPO_BADGE: Record<TipoTx, BadgeVariant> = {
+  Ingreso:  "success",
+  Gasto:    "error",
+  Donación: "info",
 };
 
 const BLANK_FORM: FormState = {
@@ -311,10 +332,30 @@ export function FinanzasPage() {
 
       {/* ── SECTION 1: KPI Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <KpiCard icon={<TrendingUp size={20} />} label="Total Ingresos"   value={totalIngresos}   iconBg="bg-green-50" iconColor="text-green-600" trend="+8.2%" up />
-        <KpiCard icon={<TrendingDown size={20} />} label="Total Gastos"   value={totalGastos}     iconBg="bg-red-50"   iconColor="text-red-600"   trend="+3.1%" up={false} />
-        <KpiCard icon={<Wallet size={20} />}       label="Saldo Caja Chica" value={cajachica}     iconBg="bg-blue-50"  iconColor="text-blue-600"  trend="-1.5%" up={false} />
-        <KpiCard icon={<DollarSign size={20} />}   label="Total Donaciones" value={totalDonaciones} iconBg="bg-amber-50" iconColor="text-amber-600" trend="+15.4%" up />
+        <div className="animate-slide-up-stagger stagger-1"><KpiCard icon={<TrendingUp size={20} />} label="Total Ingresos"   value={totalIngresos}   iconBg="bg-green-50" iconColor="text-green-600" trend="+8.2%" up /></div>
+        <div className="animate-slide-up-stagger stagger-2"><KpiCard icon={<TrendingDown size={20} />} label="Total Gastos"   value={totalGastos}     iconBg="bg-red-50"   iconColor="text-red-600"   trend="+3.1%" up={false} /></div>
+        <div className="animate-slide-up-stagger stagger-3"><KpiCard icon={<Wallet size={20} />}       label="Saldo Caja Chica" value={cajachica}     iconBg="bg-blue-50"  iconColor="text-blue-600"  trend="-1.5%" up={false} /></div>
+        <div className="animate-slide-up-stagger stagger-4"><KpiCard icon={<DollarSign size={20} />}   label="Total Donaciones" value={totalDonaciones} iconBg="bg-amber-50" iconColor="text-amber-600" trend="+15.4%" up /></div>
+      </div>
+
+      {/* ── Chart ── */}
+      <div className="animate-slide-up-stagger stagger-2 mb-6 rounded-xl p-5" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", border: "1px solid var(--border)" }}>
+        <p className="mb-4 text-sm font-bold" style={{ color: "var(--text-1)" }}>Resumen Financiero</p>
+        <div style={{ height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={[
+              { name: "Ingresos", total: totalIngresos },
+              { name: "Gastos", total: totalGastos },
+              { name: "Donaciones", total: totalDonaciones },
+            ]}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--divider)" />
+              <XAxis dataKey="name" stroke="var(--text-3)" fontSize={12} />
+              <YAxis stroke="var(--text-3)" fontSize={12} />
+              <Tooltip formatter={(v: number) => fmt(v)} />
+              <Bar dataKey="total" fill="var(--brand-500)" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* ── SECTION 2: Tabs ── */}
@@ -395,12 +436,13 @@ export function FinanzasPage() {
               ) : pageRows.map((r, i) => (
                 <tr
                   key={r.id}
-                  className={`border-b transition-colors hover:bg-gray-50 ${i % 2 === 0 ? "" : "bg-gray-50/50"}`}
+                  className={`cursor-pointer border-b transition-colors hover:bg-gray-50 ${i % 2 === 0 ? "" : "bg-gray-50/50"}`}
                   style={{ borderColor: "var(--neutral-200)" }}
+                  onClick={() => setViewRow(r)}
                 >
                   <td className="px-3 py-3 whitespace-nowrap text-gray-700">{r.fecha}</td>
                   <td className="px-3 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${TIPO_BADGE[r.tipo]}`}>{r.tipo}</span>
+                    <Badge variant={TIPO_BADGE[r.tipo]} size="sm">{r.tipo}</Badge>
                   </td>
                   <td className="px-3 py-3 max-w-48 truncate text-gray-800" title={r.descripcion}>{r.descripcion}</td>
                   <td className="px-3 py-3 whitespace-nowrap text-gray-600">{r.categoria}</td>
@@ -417,9 +459,8 @@ export function FinanzasPage() {
                   <td className="px-3 py-3 whitespace-nowrap text-gray-600">{r.responsable}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-1">
-                      <ActionBtn icon={<Eye size={14} />}    title="Ver"      color="text-blue-600"  onClick={() => setViewRow(r)} />
-                      <ActionBtn icon={<Pencil size={14} />} title="Editar"   color="text-amber-600" onClick={() => openEditModal(r)} />
-                      <ActionBtn icon={<Trash2 size={14} />} title="Eliminar" color="text-red-600"   onClick={() => setDeleteId(r.id)} />
+                      <ActionBtn icon={<Pencil size={14} />} title="Editar"   color="text-amber-600" onClick={(e) => { e.stopPropagation(); openEditModal(r); }} />
+                      <ActionBtn icon={<Trash2 size={14} />} title="Eliminar" color="text-red-600"   onClick={(e) => { e.stopPropagation(); setDeleteId(r.id); }} />
                     </div>
                   </td>
                 </tr>
@@ -454,99 +495,63 @@ export function FinanzasPage() {
       </div>
 
       {/* ── Modal: Nueva Transacción ── */}
-      {showModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--neutral-200)" }}>
-              <h2 className="text-lg font-semibold text-gray-900">Nueva Transacción</h2>
-              <button onClick={closeModal} className="p-1 rounded hover:bg-gray-100"><X size={18} /></button>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-
-              {/* Tipo toggle */}
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Tipo</label>
-                <div className="flex rounded-lg border overflow-hidden" style={{ borderColor: "var(--neutral-200)" }}>
-                  {(["Ingreso","Gasto","Donación"] as TipoTx[]).map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setField("tipo", t)}
-                      className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                        form.tipo === t
-                          ? t === "Ingreso" ? "bg-green-600 text-white"
-                          : t === "Gasto"   ? "bg-red-600 text-white"
-                          : "bg-blue-600 text-white"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >{t}</button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Two-col grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Fecha" error={errors.fecha}>
-                  <input type="date" value={form.fecha} onChange={e => setField("fecha", e.target.value)}
-                    className={`w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 ${errors.fecha ? "border-red-400" : ""}`}
-                    style={!errors.fecha ? { borderColor: "var(--neutral-200)" } : {}} />
-                </Field>
-                <Field label="Monto (Q)" error={errors.monto}>
-                  <input type="number" min="0" step="0.01" value={form.monto} onChange={e => setField("monto", e.target.value)}
-                    placeholder="0.00"
-                    className={`w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 ${errors.monto ? "border-red-400" : ""}`}
-                    style={!errors.monto ? { borderColor: "var(--neutral-200)" } : {}} />
-                </Field>
-              </div>
-
-              <Field label="Descripción" error={errors.descripcion}>
-                <input value={form.descripcion} onChange={e => setField("descripcion", e.target.value)}
-                  placeholder="Ej. Combustible unidad B-01"
-                  className={`w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 ${errors.descripcion ? "border-red-400" : ""}`}
-                  style={!errors.descripcion ? { borderColor: "var(--neutral-200)" } : {}} />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Categoría">
-                  <Select value={form.categoria} onChange={v => setField("categoria", v as Categoria)}
-                    options={["Combustible","Mantenimiento","Apoyo Social","Recaudación","Equipamiento","Otros"]} />
-                </Field>
-                <Field label="Método de Pago">
-                  <Select value={form.metodoPago} onChange={v => setField("metodoPago", v as MetodoPago)}
-                    options={["Efectivo","Transferencia","Depósito","Vale"]} />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Comprobante">
-                  <Select value={form.comprobante} onChange={v => setField("comprobante", v as Comprobante)}
-                    options={["Factura","Recibo","Ninguno"]} />
-                </Field>
-                <Field label="No. Documento (opcional)">
-                  <input value={form.noDocumento} onChange={e => setField("noDocumento", e.target.value)}
-                    placeholder="Ej. FAC-1234"
-                    className="w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200"
-                    style={{ borderColor: "var(--neutral-200)" }} />
-                </Field>
-              </div>
-
-              <Field label="Responsable" error={errors.responsable}>
-                <input value={form.responsable} onChange={e => setField("responsable", e.target.value)}
-                  placeholder="Ej. Cap. Ramírez"
-                  className={`w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 ${errors.responsable ? "border-red-400" : ""}`}
-                  style={!errors.responsable ? { borderColor: "var(--neutral-200)" } : {}} />
-              </Field>
-            </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: "var(--neutral-200)" }}>
-              <button onClick={closeModal} className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-lg hover:bg-gray-50" style={{ borderColor: "var(--neutral-200)" }}>
-                Cancelar
-              </button>
-              <button onClick={handleSave} className="px-4 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ backgroundColor: "var(--red)" }}>
-                Guardar Registro
-              </button>
-            </div>
+      <Modal
+        open={showModal}
+        onClose={closeModal}
+        size="lg"
+        variant="glass"
+        title="Nueva Transacción"
+        icon={<DollarSign className="size-6" />}
+        className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
+        footer={
+          <>
+            <Button variant="brand-outline" onClick={closeModal}>Cancelar</Button>
+            <Button variant="brand" onClick={handleSave}>Guardar Registro</Button>
+          </>
+        }
+      >
+        <div className="mb-4 flex items-center gap-3">
+          <span className="text-xs font-bold uppercase tracking-[0.08em]" style={{ color: "var(--text-3)" }}>Datos</span>
+          <div className="h-px flex-1" style={{ background: "var(--border)" }} />
+        </div>
+        <div className="mb-4 flex overflow-hidden rounded-lg" style={{ border: "1px solid var(--border)" }}>
+          {(["Ingreso","Gasto","Donación"] as TipoTx[]).map(t => (
+            <button key={t} type="button" onClick={() => setField("tipo", t)}
+              className="flex-1 py-2.5 text-sm font-semibold transition"
+              style={{ background: form.tipo === t ? "var(--grad-primary)" : "var(--bg-input)", color: form.tipo === t ? "var(--neutral-0)" : "var(--text-2)" }}>
+              {t}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input type="date" label="Fecha *" value={form.fecha} onChange={e => setField("fecha", e.target.value)} error={errors.fecha} />
+          <Input type="number" min={0} step="0.01" label="Monto (Q) *" placeholder="0.00" value={form.monto} onChange={e => setField("monto", e.target.value)} error={errors.monto} />
+          <div className="col-span-2">
+            <Input label="Descripción *" placeholder="Ej. Combustible unidad B-01" value={form.descripcion} onChange={e => setField("descripcion", e.target.value)} error={errors.descripcion} />
           </div>
         </div>
-      )}
+
+        <div className="mt-5 mb-4 flex items-center gap-3">
+          <span className="text-xs font-bold uppercase tracking-[0.08em]" style={{ color: "var(--text-3)" }}>Cuenta</span>
+          <div className="h-px flex-1" style={{ background: "var(--border)" }} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Select value={form.categoria} onChange={v => setField("categoria", v as Categoria)} options={["Combustible","Mantenimiento","Apoyo Social","Recaudación","Equipamiento","Otros"]} />
+          <Select value={form.metodoPago} onChange={v => setField("metodoPago", v as MetodoPago)} options={["Efectivo","Transferencia","Depósito","Vale"]} />
+        </div>
+
+        <div className="mt-5 mb-4 flex items-center gap-3">
+          <span className="text-xs font-bold uppercase tracking-[0.08em]" style={{ color: "var(--text-3)" }}>Comprobante</span>
+          <div className="h-px flex-1" style={{ background: "var(--border)" }} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Select value={form.comprobante} onChange={v => setField("comprobante", v as Comprobante)} options={["Factura","Recibo","Ninguno"]} />
+          <Input label="No. Documento" placeholder="Ej. FAC-1234" value={form.noDocumento} onChange={e => setField("noDocumento", e.target.value)} />
+        </div>
+        <div className="mt-4">
+          <Input label="Responsable *" placeholder="Ej. Cap. Ramírez" value={form.responsable} onChange={e => setField("responsable", e.target.value)} error={errors.responsable} />
+        </div>
+      </Modal>
 
       {/* ── Delete confirmation dialog ── */}
       {deleteId !== null && (
@@ -569,245 +574,200 @@ export function FinanzasPage() {
         </div>
       )}
 
-      {/* ── View detail dialog ── */}
-      {viewRow && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--neutral-200)" }}>
-              <h3 className="text-base font-semibold text-gray-900">Detalle de Transacción</h3>
-              <button onClick={() => setViewRow(null)} className="p-1 rounded hover:bg-gray-100"><X size={18} /></button>
-            </div>
-            <div className="px-6 py-5 space-y-3 text-sm">
-              {([
-                ["Fecha",         viewRow.fecha],
-                ["Tipo",          viewRow.tipo],
-                ["Descripción",   viewRow.descripcion],
-                ["Categoría",     viewRow.categoria],
-                ["Método de Pago",viewRow.metodoPago],
-                ["Comprobante",   viewRow.comprobante],
-                ["No. Documento", viewRow.noDocumento || "—"],
-                ["Entrada",       viewRow.entrada > 0 ? fmt(viewRow.entrada) : "—"],
-                ["Salida",        viewRow.salida  > 0 ? fmt(viewRow.salida)  : "—"],
-                ["Saldo Acum.",   fmt(viewRow.saldoAcumulado)],
-                ["Responsable",   viewRow.responsable],
-              ] as [string, string][]).map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-4">
-                  <span className="text-gray-500 font-medium">{k}</span>
-                  <span className="text-gray-900 text-right">{v}</span>
-                </div>
-              ))}
-            </div>
-            {confirmDesactivarTx && (
-              <div style={{ margin: "0 24px 12px", padding: 14, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10 }}>
-                <p style={{ fontSize: 13, color: "#92400e", fontWeight: 700, marginBottom: 6, fontFamily: "Inter, sans-serif" }}>¿Marcar como Inactivo?</p>
-                <p style={{ fontSize: 12, color: "#92400e", marginBottom: 10, fontFamily: "Inter, sans-serif" }}>El estado de esta transacción cambiará a Inactivo.</p>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setConfirmDesactivarTx(false)} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid var(--neutral-200)", background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-                  <button onClick={() => {
-                    if (!viewRow) return;
-                    setRows((prev) => prev.map((r) => r.id === viewRow.id ? { ...r, estado: "Inactivo" } : r));
-                    setConfirmDesactivarTx(false);
-                    setViewRow(null);
-                    showToastMsg("Transacción marcada como inactiva.");
-                  }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
-                </div>
-              </div>
+      {/* ── View detail Drawer ── */}
+      <Drawer
+        open={viewRow !== null}
+        onClose={() => { setViewRow(null); setConfirmDesactivarTx(false); }}
+        side="right"
+        size="lg"
+        title={viewRow?.descripcion}
+        icon={<Receipt className="size-6" />}
+        statusBadge={viewRow ? <Badge variant={TIPO_BADGE[viewRow.tipo]} dot>{viewRow.tipo}</Badge> : undefined}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => window.print()}><Printer className="size-4" /> Imprimir</Button>
+            {viewRow?.estado !== "Inactivo" && (
+              <Button variant="brand-outline" onClick={() => setConfirmDesactivarTx(true)}><Power className="size-4" /> Desactivar</Button>
             )}
-            <div className="flex items-center justify-between px-6 py-4 border-t" style={{ borderColor: "var(--neutral-200)" }}>
-              <div style={{ display: "flex", gap: 8 }}>
-                {viewRow?.estado !== "Inactivo" && !confirmDesactivarTx && (
-                  <button onClick={() => setConfirmDesactivarTx(true)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "#fff", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
-                    <Power size={14} /> Desactivar
-                  </button>
-                )}
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setViewRow(null); setConfirmDesactivarTx(false); }} className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-lg hover:bg-gray-50" style={{ borderColor: "var(--neutral-200)" }}>
-                  Cerrar
-                </button>
-                <button onClick={() => { if (viewRow) { openEditModal(viewRow); setViewRow(null); setConfirmDesactivarTx(false); } }}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "none", background: "var(--red)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
-                  <Pencil size={14} /> Editar
-                </button>
-              </div>
+            <Button variant="brand" onClick={() => { if (viewRow) { openEditModal(viewRow); setViewRow(null); setConfirmDesactivarTx(false); } }}>
+              <Pencil className="size-4" /> Editar
+            </Button>
+          </>
+        }
+      >
+        {confirmDesactivarTx && viewRow && (
+          <div className="mb-4 flex flex-col gap-2 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--warning-500)", background: "var(--warning-50)", color: "var(--warning-700)" }}>
+            <span className="font-semibold">¿Marcar como Inactivo?</span>
+            <span>El estado de esta transacción cambiará a Inactivo.</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setConfirmDesactivarTx(false)}>Cancelar</Button>
+              <Button variant="brand" size="sm" onClick={() => {
+                if (!viewRow) return;
+                setRows((prev) => prev.map((r) => r.id === viewRow.id ? { ...r, estado: "Inactivo" } : r));
+                setConfirmDesactivarTx(false);
+                setViewRow(null);
+                showToastMsg("Transacción marcada como inactiva.");
+              }}>Confirmar</Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+        {viewRow && (
+          <Tabs
+            variant="glass"
+            tabs={[
+              {
+                id: "transaccion",
+                label: "Transacción",
+                icon: <Info size={15} />,
+                content: (
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                    {([
+                      ["Fecha", viewRow.fecha],
+                      ["Tipo", viewRow.tipo],
+                      ["Descripción", viewRow.descripcion],
+                      ["Categoría", viewRow.categoria],
+                      ["Método de Pago", viewRow.metodoPago],
+                      ["Responsable", viewRow.responsable],
+                      ["Entrada", viewRow.entrada > 0 ? fmt(viewRow.entrada) : "—"],
+                      ["Salida", viewRow.salida > 0 ? fmt(viewRow.salida) : "—"],
+                      ["Saldo Acumulado", fmt(viewRow.saldoAcumulado)],
+                    ] as [string, string][]).map(([k, v]) => (
+                      <div key={k} className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.07em]" style={{ color: "var(--text-3)" }}>{k}</span>
+                        <span className="text-sm font-medium" style={{ color: "var(--text-1)" }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              },
+              {
+                id: "comprobante",
+                label: "Comprobante",
+                icon: <FileText size={15} />,
+                content: (
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                    {([
+                      ["Comprobante", viewRow.comprobante],
+                      ["No. Documento", viewRow.noDocumento || "—"],
+                      ["Método de Pago", viewRow.metodoPago],
+                    ] as [string, string][]).map(([k, v]) => (
+                      <div key={k} className="flex flex-col gap-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.07em]" style={{ color: "var(--text-3)" }}>{k}</span>
+                        <span className="text-sm font-medium" style={{ color: "var(--text-1)" }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                ),
+              },
+              {
+                id: "relacionados",
+                label: "Relacionados",
+                icon: <Link2 size={15} />,
+                content: <EmptyState icon={Link2} title="Sin registros relacionados" description="Las transacciones relacionadas aparecerán aquí." />,
+              },
+            ]}
+          />
+        )}
+      </Drawer>
 
       {/* ── Modal: Editar Transacción ── */}
-      {editRow && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(4px)" }}
-          onClick={closeEditModal}>
-          <div className="rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col"
-            style={{ maxWidth: 560, maxHeight: "92vh", background: "var(--bg-card)" }}
-            onClick={e => e.stopPropagation()}>
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b"
-              style={{ borderColor: "var(--border)", background: "var(--bg-input)" }}>
-              <div>
-                <h3 className="font-bold text-[16px]" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>
-                  Editar Transacción
-                </h3>
-                <p className="text-[12px] mt-0.5" style={{ color: "var(--text-3)", fontFamily: "Inter, sans-serif" }}>
-                  #{editRow.id} — {editRow.descripcion}
-                </p>
-              </div>
-              <button onClick={closeEditModal} style={{ color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="overflow-y-auto flex-1 p-6 flex flex-col gap-4" style={{ fontFamily: "Inter, sans-serif" }}>
-              {/* Row 1: Fecha + Tipo */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Fecha *</label>
-                  <input type="date" value={editForm.fecha} onChange={e => setEditForm(f => ({...f, fecha: e.target.value}))}
-                    className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                    style={{ background: "var(--bg-input)", border: `1px solid ${editErrors.fecha ? "var(--red)" : "var(--border)"}`, color: "var(--text-1)" }} />
-                  {editErrors.fecha && <p className="text-[11px] mt-1" style={{ color: "var(--red)" }}>{editErrors.fecha}</p>}
-                </div>
-                <div>
-                  <label className="block mb-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Tipo</label>
-                  <select value={editForm.tipo} onChange={e => setEditForm(f => ({...f, tipo: e.target.value as TipoTx}))}
-                    className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                    style={{ background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-1)" }}>
-                    <option value="Ingreso">Ingreso</option>
-                    <option value="Gasto">Gasto</option>
-                    <option value="Donación">Donación</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Descripción */}
-              <div>
-                <label className="block mb-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Descripción *</label>
-                <input type="text" value={editForm.descripcion} onChange={e => setEditForm(f => ({...f, descripcion: e.target.value}))}
-                  className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                  style={{ background: "var(--bg-input)", border: `1px solid ${editErrors.descripcion ? "var(--red)" : "var(--border)"}`, color: "var(--text-1)" }} />
-                {editErrors.descripcion && <p className="text-[11px] mt-1" style={{ color: "var(--red)" }}>{editErrors.descripcion}</p>}
-              </div>
-
-              {/* Categoría + Método de Pago */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Categoría</label>
-                  <select value={editForm.categoria} onChange={e => setEditForm(f => ({...f, categoria: e.target.value as Categoria}))}
-                    className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                    style={{ background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-1)" }}>
-                    <option value="Combustible">Combustible</option>
-                    <option value="Mantenimiento">Mantenimiento</option>
-                    <option value="Apoyo Social">Apoyo Social</option>
-                    <option value="Recaudación">Recaudación</option>
-                    <option value="Equipamiento">Equipamiento</option>
-                    <option value="Otros">Otros</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Método de Pago</label>
-                  <select value={editForm.metodoPago} onChange={e => setEditForm(f => ({...f, metodoPago: e.target.value as MetodoPago}))}
-                    className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                    style={{ background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-1)" }}>
-                    <option value="Efectivo">Efectivo</option>
-                    <option value="Transferencia">Transferencia</option>
-                    <option value="Depósito">Depósito</option>
-                    <option value="Vale">Vale</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Comprobante + No. Documento */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Comprobante</label>
-                  <select value={editForm.comprobante} onChange={e => setEditForm(f => ({...f, comprobante: e.target.value as Comprobante}))}
-                    className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                    style={{ background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-1)" }}>
-                    <option value="Factura">Factura</option>
-                    <option value="Recibo">Recibo</option>
-                    <option value="Ninguno">Ninguno</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>No. Documento</label>
-                  <input type="text" value={editForm.noDocumento} onChange={e => setEditForm(f => ({...f, noDocumento: e.target.value}))}
-                    className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                    placeholder="Ej. FAC-001"
-                    style={{ background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-1)" }} />
-                </div>
-              </div>
-
-              {/* Monto + Responsable */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Monto (Q) *</label>
-                  <input type="number" min="0" value={editForm.monto} onChange={e => setEditForm(f => ({...f, monto: e.target.value}))}
-                    className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                    style={{ background: "var(--bg-input)", border: `1px solid ${editErrors.monto ? "var(--red)" : "var(--border)"}`, color: "var(--text-1)" }} />
-                  {editErrors.monto && <p className="text-[11px] mt-1" style={{ color: "var(--red)" }}>{editErrors.monto}</p>}
-                </div>
-                <div>
-                  <label className="block mb-1.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>Responsable *</label>
-                  <input type="text" value={editForm.responsable} onChange={e => setEditForm(f => ({...f, responsable: e.target.value}))}
-                    className="w-full rounded-lg px-3 py-2 text-[13px] outline-none"
-                    style={{ background: "var(--bg-input)", border: `1px solid ${editErrors.responsable ? "var(--red)" : "var(--border)"}`, color: "var(--text-1)" }} />
-                  {editErrors.responsable && <p className="text-[11px] mt-1" style={{ color: "var(--red)" }}>{editErrors.responsable}</p>}
-                </div>
-              </div>
-
-              {/* Delete confirmation inline */}
-              {showDeleteConfirm && (
-                <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: "var(--red-bg)", border: "1px solid var(--red)" }}>
-                  <p className="font-bold text-[13px]" style={{ color: "var(--red)", fontFamily: "Inter, sans-serif" }}>
-                    ¿Eliminar esta transacción? Esta acción no se puede deshacer.
-                  </p>
-                  <div className="flex gap-3">
-                    <button onClick={() => setShowDeleteConfirm(false)}
-                      className="flex-1 rounded-lg py-2 text-[12px] font-semibold border"
-                      style={{ borderColor: "var(--border)", color: "var(--text-2)", background: "var(--bg-input)" }}>
-                      No, cancelar
-                    </button>
-                    <button onClick={handleEditDelete}
-                      className="flex-1 rounded-lg py-2 text-[12px] font-bold text-white"
-                      style={{ background: "var(--red)" }}>
-                      Sí, eliminar
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between px-6 py-4 border-t"
-              style={{ borderColor: "var(--border)", background: "var(--bg-input)" }}>
-              {!showDeleteConfirm ? (
-                <button onClick={() => setShowDeleteConfirm(true)}
-                  className="flex items-center gap-2 text-[12px] font-semibold rounded-lg px-3 py-2"
-                  style={{ color: "var(--red)", background: "var(--red-bg)", border: "1px solid var(--red)" }}>
-                  <Trash2 size={13} /> Eliminar
-                </button>
-              ) : <div />}
-              <div className="flex gap-3">
-                <button onClick={closeEditModal}
-                  className="px-4 py-2 rounded-lg text-[13px] font-medium border"
-                  style={{ borderColor: "var(--border)", color: "var(--text-2)", background: "var(--bg-input)" }}>
-                  Cancelar
-                </button>
-                <button onClick={handleEditSave}
-                  className="px-4 py-2 rounded-lg text-[13px] font-bold text-white"
-                  style={{ background: "var(--red)" }}>
-                  Guardar cambios
-                </button>
-              </div>
+      <Modal
+        open={editRow !== null}
+        onClose={closeEditModal}
+        size="lg"
+        variant="glass"
+        title="Editar Transacción"
+        description={editRow ? `#${editRow.id} — ${editRow.descripcion}` : undefined}
+        icon={<Pencil className="size-6" />}
+        className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
+        footer={
+          <>
+            {!showDeleteConfirm && (
+              <Button variant="brand-outline" onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="size-4" /> Eliminar
+              </Button>
+            )}
+            <Button variant="brand-outline" onClick={closeEditModal}>Cancelar</Button>
+            <Button variant="brand" onClick={handleEditSave}>Guardar cambios</Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4" style={{ fontFamily: "Inter, sans-serif" }}>
+          <div className="grid grid-cols-2 gap-4">
+            <Input type="date" label="Fecha *" value={editForm.fecha} onChange={e => setEditForm(f => ({ ...f, fecha: e.target.value }))} error={editErrors.fecha} />
+            <div>
+              <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Tipo</label>
+              <select value={editForm.tipo} onChange={e => setEditForm(f => ({ ...f, tipo: e.target.value as TipoTx }))}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
+                style={{ background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-1)" }}>
+                <option value="Ingreso">Ingreso</option>
+                <option value="Gasto">Gasto</option>
+                <option value="Donación">Donación</option>
+              </select>
             </div>
           </div>
+
+          <Input label="Descripción *" value={editForm.descripcion} onChange={e => setEditForm(f => ({ ...f, descripcion: e.target.value }))} error={editErrors.descripcion} />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Categoría</label>
+              <select value={editForm.categoria} onChange={e => setEditForm(f => ({ ...f, categoria: e.target.value as Categoria }))}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
+                style={{ background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-1)" }}>
+                <option value="Combustible">Combustible</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Apoyo Social">Apoyo Social</option>
+                <option value="Recaudación">Recaudación</option>
+                <option value="Equipamiento">Equipamiento</option>
+                <option value="Otros">Otros</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Método de Pago</label>
+              <select value={editForm.metodoPago} onChange={e => setEditForm(f => ({ ...f, metodoPago: e.target.value as MetodoPago }))}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
+                style={{ background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-1)" }}>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Depósito">Depósito</option>
+                <option value="Vale">Vale</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Comprobante</label>
+              <select value={editForm.comprobante} onChange={e => setEditForm(f => ({ ...f, comprobante: e.target.value as Comprobante }))}
+                className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
+                style={{ background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-1)" }}>
+                <option value="Factura">Factura</option>
+                <option value="Recibo">Recibo</option>
+                <option value="Ninguno">Ninguno</option>
+              </select>
+            </div>
+            <Input label="No. Documento" placeholder="Ej. FAC-001" value={editForm.noDocumento} onChange={e => setEditForm(f => ({ ...f, noDocumento: e.target.value }))} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input type="number" min={0} label="Monto (Q) *" value={editForm.monto} onChange={e => setEditForm(f => ({ ...f, monto: e.target.value }))} error={editErrors.monto} />
+            <Input label="Responsable *" value={editForm.responsable} onChange={e => setEditForm(f => ({ ...f, responsable: e.target.value }))} error={editErrors.responsable} />
+          </div>
+
+          {showDeleteConfirm && (
+            <div className="flex flex-col gap-3 rounded-xl p-4" style={{ background: "var(--red-bg)", border: "1px solid var(--red)" }}>
+              <p className="font-bold text-[13px]" style={{ color: "var(--red)", fontFamily: "Inter, sans-serif" }}>
+                ¿Eliminar esta transacción? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>No, cancelar</Button>
+                <Button variant="brand" onClick={handleEditDelete}>Sí, eliminar</Button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </Modal>
 
       <AlertDialog
         isOpen={alertModal.isOpen}

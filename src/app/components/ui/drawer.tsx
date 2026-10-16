@@ -24,6 +24,7 @@ interface DrawerProps {
   open: boolean;
   onClose: () => void;
   size?: DrawerSize;
+  side?: "left" | "right";
   title?: string;
   icon?: React.ReactNode;
   statusBadge?: React.ReactNode;
@@ -36,6 +37,7 @@ export function Drawer({
   open,
   onClose,
   size = "lg",
+  side = "left",
   title,
   icon,
   statusBadge,
@@ -43,6 +45,7 @@ export function Drawer({
   children,
   className,
 }: DrawerProps) {
+  const isRight = side === "right";
   const panelRef = React.useRef<HTMLDivElement>(null);
   const restoreRef = React.useRef<HTMLElement | null>(null);
   const startXRef = React.useRef<number | null>(null);
@@ -100,7 +103,7 @@ export function Drawer({
   const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     if (startXRef.current === null) return;
     const delta = e.changedTouches[0].clientX - startXRef.current;
-    if (delta > 80) onClose();
+    if (isRight ? delta < -80 : delta > 80) onClose();
     startXRef.current = null;
   };
 
@@ -134,16 +137,20 @@ export function Drawer({
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
             className={cn(
-              "fixed inset-y-0 left-0 z-[var(--z-drawer)] flex h-full w-full flex-col overflow-hidden",
-              "bg-[var(--glass-bg-strong)] backdrop-blur-[24px] border-r border-[var(--glass-border)]",
+              "fixed inset-y-0 z-[var(--z-drawer)] flex h-full w-full flex-col overflow-hidden",
+              isRight ? "right-0 border-l" : "left-0 border-r",
+              "border-[var(--glass-border)]",
+              "bg-[var(--glass-bg-strong)] backdrop-blur-[24px]",
               "shadow-[var(--elevation-brand-3)]",
-              "before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-[var(--grad-primary)] before:rounded-tr-[24px]",
+              isRight
+                ? "before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-[var(--grad-primary)] before:rounded-tl-[24px]"
+                : "before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-[var(--grad-primary)] before:rounded-tr-[24px]",
               SIZE_WIDTHS[size],
               className,
             )}
-            initial={{ x: "-100%" }}
+            initial={{ x: isRight ? "100%" : "-100%" }}
             animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
+            exit={{ x: isRight ? "100%" : "-100%" }}
             transition={{ ease: SPRING_GENTLE, duration: 0.45 }}
           >
             {title && (

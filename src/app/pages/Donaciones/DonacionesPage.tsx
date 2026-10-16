@@ -2,20 +2,31 @@ import { useState, useEffect, type ReactNode } from "react";
 import {
   Plus,
   Search,
-  Eye,
   Pencil,
   Trash2,
   X,
-  Check,
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
   DollarSign,
   Package,
   Loader2,
+  Printer,
+  Info,
+  FileText,
+  History,
+  Gift,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog } from "@/app/components/AlertDialog";
+import { Drawer } from "@/app/components/ui/drawer";
+import { Tabs, type TabItem } from "@/app/components/ui/tabs";
+import { Modal } from "@/app/components/ui/modal";
+import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { EmptyState } from "@/app/components/ui/empty-state";
 import { useDonaciones } from "@/hooks/useDonaciones";
 import type {
   Donacion,
@@ -82,18 +93,9 @@ function KpiCard({ label, value, color, icon }: { label: string; value: string; 
   );
 }
 
-function Badge({ estado }: { estado: EstadoDonacion }) {
-  const map: Record<EstadoDonacion, { bg: string; color: string }> = {
-    Confirmado: { bg: "var(--success-100)", color: "var(--success-700)" },
-    Pendiente: { bg: "#fef9c3", color: "#92400e" },
-    Procesado: { bg: "var(--info-100)", color: "#1d4ed8" },
-  };
-  const s = map[estado] ?? map.Pendiente;
-  return (
-    <span style={{ background: s.bg, color: s.color, borderRadius: 9999, padding: "2px 10px", fontSize: 12, fontWeight: 600, fontFamily: "Inter, sans-serif" }}>
-      {estado}
-    </span>
-  );
+function EstadoBadge({ estado }: { estado: EstadoDonacion }) {
+  const variant: BadgeVariant = estado === "Confirmado" ? "success" : estado === "Procesado" ? "info" : "warning";
+  return <Badge variant={variant} dot>{estado}</Badge>;
 }
 
 function getElementoLabel(d: Donacion): "Dinero" | "Vehículo" | "Insumos" {
@@ -104,84 +106,60 @@ function getElementoLabel(d: Donacion): "Dinero" | "Vehículo" | "Insumos" {
 
 function ElementoBadge({ donacion }: { donacion: Donacion }) {
   const label = getElementoLabel(donacion);
-  const styles = {
-    Dinero: { bg: "#fef9c3", color: "#854d0e" },
-    Vehículo: { bg: "var(--info-100)", color: "#1e40af" },
-    Insumos: { bg: "var(--success-100)", color: "var(--success-700)" },
-  };
-  const s = styles[label];
-  return (
-    <span style={{ background: s.bg, color: s.color, borderRadius: 9999, padding: "2px 10px", fontSize: 12, fontWeight: 600, fontFamily: "Inter, sans-serif" }}>
-      {label}
-    </span>
-  );
+  const variant: BadgeVariant = label === "Dinero" ? "warning" : label === "Vehículo" ? "info" : "success";
+  return <Badge variant={variant}>{label}</Badge>;
 }
 
 function TipoBadge({ tipo }: { tipo: TipoDonacion }) {
   const isMonetaria = tipo === "Monetaria";
   return (
-    <span
-      style={{
-        background: isMonetaria ? "var(--warning-100)" : "#ede9fe", color: isMonetaria ? "#b45309" : "#6d28d9",
-        borderRadius: 9999, padding: "2px 10px", fontSize: 12, fontWeight: 600,
-        fontFamily: "Inter, sans-serif", display: "inline-flex", alignItems: "center", gap: 4,
-      }}
-    >
+    <Badge variant={isMonetaria ? "warning" : "info"}>
       {isMonetaria ? <DollarSign size={11} /> : <Package size={11} />}
       {tipo}
-    </span>
+    </Badge>
   );
 }
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 
-function DetailModal({ donacion, onClose }: { donacion: Donacion; onClose: () => void }) {
+function DField({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-        <div style={{ padding: "24px 28px", borderBottom: "1px solid var(--bg-hover)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0, fontFamily: "Manrope, sans-serif", fontSize: 18, fontWeight: 700, color: "var(--neutral-900)" }}>Detalle de Donación</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-2)", padding: 4 }}><X size={20} /></button>
-        </div>
-        <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
-          {[
-            ["No. Recibo", donacion.noRecibo],
-            ["Fecha", donacion.fecha ? donacion.fecha.split("T")[0] : "—"],
-            ["Donante", donacion.donante],
-            ["DPI / NIT", donacion.dpiNit ?? "—"],
-            ["Teléfono", donacion.telefono ?? "—"],
-            ["Elemento", getElementoLabel(donacion)],
-            ["Tipo", donacion.tipo],
-            ["Categoría", donacion.categoria ?? "—"],
-            ["Estado", donacion.estado],
-          ].map(([label, value]) => (
-            <div key={label} style={{ display: "flex", gap: 8 }}>
-              <span style={{ minWidth: 130, color: "var(--text-2)", fontSize: 13, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>{label}:</span>
-              <span style={{ color: "var(--neutral-900)", fontSize: 13, fontFamily: "Inter, sans-serif" }}>{value}</span>
-            </div>
-          ))}
-          {donacion.tipo === "Monetaria" && (
-            <>
-              <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ minWidth: 130, color: "var(--text-2)", fontSize: 13, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>Monto:</span>
-                <span style={{ color: "var(--neutral-900)", fontSize: 13, fontFamily: "Inter, sans-serif", fontWeight: 700 }}>{formatQ(donacion.monto)}</span>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <span style={{ minWidth: 130, color: "var(--text-2)", fontSize: 13, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>Método Pago:</span>
-                <span style={{ color: "var(--neutral-900)", fontSize: 13, fontFamily: "Inter, sans-serif" }}>{donacion.metodoPago}</span>
-              </div>
-              {donacion.noComprobante && (
-                <div style={{ display: "flex", gap: 8 }}>
-                  <span style={{ minWidth: 130, color: "var(--text-2)", fontSize: 13, fontFamily: "Inter, sans-serif", fontWeight: 500 }}>No. Comprobante:</span>
-                  <span style={{ color: "var(--neutral-900)", fontSize: 13, fontFamily: "Inter, sans-serif" }}>{donacion.noComprobante}</span>
-                </div>
-              )}
-            </>
-          )}
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1)" }}>{value ?? "—"}</span>
+    </div>
+  );
+}
+
+function DetailModal({ donacion, onClose, onEdit }: { donacion: Donacion; onClose: () => void; onEdit?: () => void }) {
+  const tabs: TabItem[] = [
+    {
+      id: "informacion",
+      label: "Información",
+      icon: <Info size={15} />,
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+            <DField label="No. Recibo" value={donacion.noRecibo} />
+            <DField label="Fecha" value={donacion.fecha ? donacion.fecha.split("T")[0] : "—"} />
+            <DField label="Donante" value={donacion.donante} />
+            <DField label="DPI / NIT" value={donacion.dpiNit ?? "—"} />
+            <DField label="Teléfono" value={donacion.telefono ?? "—"} />
+            <DField label="Elemento" value={getElementoLabel(donacion)} />
+            <DField label="Tipo" value={donacion.tipo} />
+            <DField label="Categoría" value={donacion.categoria ?? "—"} />
+            {donacion.tipo === "Monetaria" && (
+              <>
+                <DField label="Monto" value={formatQ(donacion.monto)} />
+                <DField label="Método de Pago" value={donacion.metodoPago} />
+                <DField label="No. Comprobante" value={donacion.noComprobante ?? "—"} />
+              </>
+            )}
+          </div>
           {donacion.tipo === "Material" && donacion.materiales && donacion.materiales.length > 0 && (
             <div>
-              <div style={{ color: "var(--text-2)", fontSize: 13, fontFamily: "Inter, sans-serif", fontWeight: 500, marginBottom: 8 }}>Artículos donados:</div>
-              <div style={{ border: "1px solid var(--neutral-200)", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>Artículos donados</div>
+              <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: "Inter, sans-serif" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-input)" }}>
@@ -192,26 +170,61 @@ function DetailModal({ donacion, onClose }: { donacion: Donacion; onClose: () =>
                   </thead>
                   <tbody>
                     {donacion.materiales.map((m, i) => (
-                      <tr key={i} style={{ borderTop: "1px solid var(--neutral-200)" }}>
-                        <td style={{ padding: "8px 12px", color: "var(--neutral-900)" }}>{m.descripcion}</td>
-                        <td style={{ padding: "8px 12px", textAlign: "center", color: "var(--neutral-900)" }}>{m.cantidad}</td>
-                        <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--neutral-900)" }}>{formatQ(m.valorEstimado)}</td>
+                      <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
+                        <td style={{ padding: "8px 12px", color: "var(--text-1)" }}>{m.descripcion}</td>
+                        <td style={{ padding: "8px 12px", textAlign: "center", color: "var(--text-1)" }}>{m.cantidad}</td>
+                        <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-1)" }}>{formatQ(m.valorEstimado)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div style={{ textAlign: "right", marginTop: 8, fontWeight: 700, fontSize: 13, color: "var(--neutral-900)", fontFamily: "Inter, sans-serif" }}>
+              <div style={{ textAlign: "right", marginTop: 8, fontWeight: 700, fontSize: 13, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
                 Total estimado: {formatQ(donacion.monto)}
               </div>
             </div>
           )}
         </div>
-        <div style={{ padding: "16px 28px", borderTop: "1px solid var(--bg-hover)", display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={onClose} style={{ background: "var(--bg-hover)", border: "none", borderRadius: 10, padding: "9px 22px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer" }}>Cerrar</button>
-        </div>
-      </div>
-    </div>
+      ),
+    },
+    {
+      id: "documentos",
+      label: "Documentos",
+      icon: <FileText size={15} />,
+      content: <EmptyState icon={FileText} title="Sin documentos" description="Los documentos asociados a esta donación aparecerán aquí." />,
+    },
+    {
+      id: "historial",
+      label: "Historial",
+      icon: <History size={15} />,
+      content: <EmptyState icon={History} title="Sin historial" description="El historial de cambios de esta donación aparecerá aquí." />,
+    },
+  ];
+
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      side="right"
+      size="lg"
+      title={donacion.donante}
+      icon={<Gift className="size-6" />}
+      statusBadge={<Badge variant={donacion.tipo === "Monetaria" ? "warning" : "info"} dot>{donacion.tipo}</Badge>}
+      footer={
+        <>
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="size-4" /> Imprimir
+          </Button>
+          {onEdit && (
+            <Button variant="brand" onClick={onEdit}>
+              <Pencil className="size-4" /> Editar
+            </Button>
+          )}
+        </>
+      }
+    >
+      <Tabs variant="glass" tabs={tabs} />
+    </Drawer>
   );
 }
 
@@ -281,7 +294,7 @@ function DonacionModal({
 }) {
   const [form, setForm] = useState<DonacionForm>(initial ?? emptyForm());
   const [errors, setErrors] = useState<FormErrors>({});
-  const [showErrors, setShowErrors] = useState(false);
+  const [step, setStep] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   function setField<K extends keyof DonacionForm>(key: K, val: DonacionForm[K]) {
@@ -303,212 +316,217 @@ function DonacionModal({
     setForm((prev) => ({ ...prev, materiales: prev.materiales.filter((_, i) => i !== idx) }));
   }
 
-  function validate(): FormErrors {
+  function validateStep(s: number): boolean {
     const errs: FormErrors = {};
-    if (!form.donante.trim()) errs.donante = "El nombre del donante es requerido.";
-    if (!form.dpiNit.trim()) errs.dpiNit = "DPI/NIT es requerido.";
-    if (!form.telefono.trim()) errs.telefono = "El teléfono es requerido.";
-    if (!form.fecha) errs.fecha = "La fecha es requerida.";
-    if (form.tipo === "Monetaria") {
-      if (!form.monto || isNaN(Number(form.monto)) || Number(form.monto) <= 0) {
-        errs.monto = "Ingrese un monto válido mayor a 0.";
-      }
-    } else {
-      const hasEmpty = form.materiales.some((m) => !m.descripcion.trim());
-      if (hasEmpty) errs.descripcion = "Todos los artículos deben tener descripción.";
+    if (s === 0) {
+      if (!form.donante.trim()) errs.donante = "El nombre del donante es requerido.";
+      if (!form.dpiNit.trim()) errs.dpiNit = "DPI/NIT es requerido.";
+      if (!form.telefono.trim()) errs.telefono = "El teléfono es requerido.";
+      if (!form.fecha) errs.fecha = "La fecha es requerida.";
     }
-    return errs;
+    if (s === 1) {
+      if (form.tipo === "Monetaria") {
+        if (!form.monto || isNaN(Number(form.monto)) || Number(form.monto) <= 0) {
+          errs.monto = "Ingrese un monto válido mayor a 0.";
+        }
+      } else if (form.materiales.some((m) => !m.descripcion.trim())) {
+        errs.descripcion = "Todos los artículos deben tener descripción.";
+      }
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  function next() {
+    if (validateStep(step)) setStep((s) => Math.min(2, s + 1));
+  }
+
+  function prev() {
+    setStep((s) => Math.max(0, s - 1));
   }
 
   function handleSubmit() {
-    const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      setShowErrors(true);
-      return;
-    }
-    onSave(form);
+    if (validateStep(0) && validateStep(1)) onSave(form);
   }
-
-  const inputStyle: React.CSSProperties = {
-    width: "100%", border: "1px solid var(--neutral-200)", borderRadius: 10, padding: "9px 12px",
-    fontSize: 14, fontFamily: "Inter, sans-serif", color: "var(--neutral-900)", background: "#fff", outline: "none", boxSizing: "border-box",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: 13, fontWeight: 600, color: "#374151", fontFamily: "Inter, sans-serif", marginBottom: 4, display: "block",
-  };
 
   const totalMaterial = form.materiales.reduce((s, m) => s + (Number(m.valorEstimado) || 0), 0);
 
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 620, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-        <div style={{ padding: "22px 28px", borderBottom: "1px solid var(--bg-hover)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0, fontFamily: "Manrope, sans-serif", fontSize: 18, fontWeight: 700, color: "var(--neutral-900)" }}>
-            {initial ? "Editar Donación" : "Nueva Donación"}
-          </h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-2)", padding: 4 }}><X size={20} /></button>
-        </div>
+  const STEPS = ["Donante", "Detalle", "Confirmar"];
 
-        <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 18 }}>
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      size="xl"
+      variant="glass"
+      title={initial ? "Editar Donación" : "Nueva Donación"}
+      icon={<Gift className="size-6" />}
+      className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
+      footer={
+        <div className="flex w-full items-center justify-between gap-3">
           <div>
-            <label style={labelStyle}>Tipo de Donación</label>
-            <div style={{ display: "flex", gap: 0, border: "1px solid var(--neutral-200)", borderRadius: 10, overflow: "hidden", width: "fit-content" }}>
+            {initial && onDelete && !confirmDelete && (
+              <Button variant="brand-outline" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="size-4" /> Eliminar
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {step === 0 ? (
+              <Button variant="brand-outline" onClick={onClose}>Cancelar</Button>
+            ) : (
+              <Button variant="outline" onClick={prev}>Atrás</Button>
+            )}
+            {step < 2 ? (
+              <Button variant="brand" onClick={next}>Siguiente</Button>
+            ) : (
+              <Button variant="brand" loading={saving} onClick={handleSubmit}>
+                {initial ? "Guardar Cambios" : "Registrar Donación"}
+              </Button>
+            )}
+          </div>
+        </div>
+      }
+    >
+      {/* Stepper */}
+      <div className="mb-6 flex items-center">
+        {STEPS.map((label, i) => (
+          <div key={label} className="flex items-center" style={{ flex: i === STEPS.length - 1 ? "0 0 auto" : 1 }}>
+            <div className="flex items-center gap-2">
+              <span
+                className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
+                style={{
+                  background: i <= step ? "var(--grad-primary)" : "var(--bg-hover)",
+                  color: i <= step ? "var(--neutral-0)" : "var(--text-3)",
+                  boxShadow: i <= step ? "var(--elevation-brand-1)" : "none",
+                }}
+              >
+                {i < step ? <CheckCircle2 size={14} /> : i + 1}
+              </span>
+              <span className="text-xs font-semibold" style={{ color: i <= step ? "var(--brand-700)" : "var(--text-3)" }}>{label}</span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className="mx-3 h-0.5 flex-1 rounded" style={{ background: i < step ? "var(--grad-primary)" : "var(--bg-hover)" }} />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {confirmDelete && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--brand-300)", background: "var(--brand-100)", color: "var(--brand-700)" }}>
+          <AlertTriangle size={16} className="shrink-0" style={{ color: "var(--brand-600)" }} />
+          <span>¿Eliminar esta donación? Esta acción no se puede deshacer.</span>
+        </div>
+      )}
+
+      {step === 0 && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Tipo de Donación</span>
+            <div className="flex w-fit overflow-hidden rounded-lg" style={{ border: "1px solid var(--border)" }}>
               {(["Monetaria", "Material"] as TipoDonacion[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => {
-                    setField("tipo", t);
-                    if (t === "Monetaria") setField("categoria", "Efectivo");
-                    if (t === "Material") setField("categoria", "Insumos Médicos");
-                  }}
-                  style={{
-                    padding: "8px 22px", border: "none", cursor: "pointer", fontFamily: "Inter, sans-serif",
-                    fontSize: 13, fontWeight: 600, background: form.tipo === t ? RED : "#fff",
-                    color: form.tipo === t ? "#fff" : "var(--text-2)", transition: "all 0.15s",
-                  }}
-                >
+                <button key={t} type="button"
+                  onClick={() => { setField("tipo", t); if (t === "Monetaria") setField("categoria", "Efectivo"); if (t === "Material") setField("categoria", "Insumos Médicos"); }}
+                  className="px-6 py-2.5 text-sm font-semibold transition"
+                  style={{ background: form.tipo === t ? "var(--grad-primary)" : "var(--bg-input)", color: form.tipo === t ? "var(--neutral-0)" : "var(--text-2)" }}>
                   {t}
                 </button>
               ))}
             </div>
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Donante *" placeholder="Nombre o razón social" value={form.donante} onChange={(e) => setField("donante", e.target.value)} error={errors.donante} />
+            <Input label="DPI / NIT *" placeholder="DPI o NIT del donante" value={form.dpiNit} onChange={(e) => setField("dpiNit", e.target.value)} error={errors.dpiNit} />
+            <Input label="Teléfono *" placeholder="xxxx-xxxx" value={form.telefono} onChange={(e) => setField("telefono", e.target.value)} error={errors.telefono} />
+            <Input type="date" label="Fecha *" value={form.fecha} onChange={(e) => setField("fecha", e.target.value)} error={errors.fecha} />
+            <Input label="No. Recibo" value={form.noRecibo} readOnly />
             <div>
-              <label style={labelStyle}>Donante <span style={{ color: RED }}>*</span></label>
-              <input style={inputStyle} value={form.donante} onChange={(e) => setField("donante", e.target.value)} placeholder="Nombre o razón social" />
-              {errors.donante && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--brand-500)" }}>{errors.donante}</p>}
-            </div>
-            <div>
-              <label style={labelStyle}>DPI / NIT <span style={{ color: RED }}>*</span></label>
-              <input style={inputStyle} value={form.dpiNit} onChange={(e) => setField("dpiNit", e.target.value)} placeholder="DPI o NIT del donante" />
-              {errors.dpiNit && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--brand-500)" }}>{errors.dpiNit}</p>}
-            </div>
-            <div>
-              <label style={labelStyle}>Teléfono <span style={{ color: RED }}>*</span></label>
-              <input style={inputStyle} value={form.telefono} onChange={(e) => setField("telefono", e.target.value)} placeholder="xxxx-xxxx" />
-              {errors.telefono && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--brand-500)" }}>{errors.telefono}</p>}
-            </div>
-            <div>
-              <label style={labelStyle}>Fecha <span style={{ color: RED }}>*</span></label>
-              <input type="date" style={inputStyle} value={form.fecha} onChange={(e) => setField("fecha", e.target.value)} />
-              {errors.fecha && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--brand-500)" }}>{errors.fecha}</p>}
-            </div>
-            <div>
-              <label style={labelStyle}>No. Recibo</label>
-              <input style={{ ...inputStyle, background: "var(--bg-input)", color: "var(--text-2)" }} value={form.noRecibo} readOnly />
-            </div>
-            <div>
-              <label style={labelStyle}>Estado</label>
-              <select style={inputStyle} value={form.estado} onChange={(e) => setField("estado", e.target.value as EstadoDonacion)}>
+              <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Estado</label>
+              <select value={form.estado} onChange={(e) => setField("estado", e.target.value as EstadoDonacion)}
+                className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus-ring-premium"
+                style={{ background: "var(--bg-input)", color: "var(--text-1)", border: "1px solid var(--border)" }}>
                 {(["Pendiente", "Confirmado", "Procesado"] as EstadoDonacion[]).map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
+        </div>
+      )}
 
-          {form.tipo === "Monetaria" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+      {step === 1 && (
+        <div className="flex flex-col gap-4">
+          {form.tipo === "Monetaria" ? (
+            <div className="grid grid-cols-3 gap-4">
+              <Input type="number" min={0} step="0.01" label="Monto (Q) *" placeholder="0.00" value={form.monto} onChange={(e) => setField("monto", e.target.value)} error={errors.monto} />
               <div>
-                <label style={labelStyle}>Monto (Q) <span style={{ color: RED }}>*</span></label>
-                <input type="number" min="0" step="0.01" style={inputStyle} value={form.monto} onChange={(e) => setField("monto", e.target.value)} placeholder="0.00" />
-                {errors.monto && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--brand-500)" }}>{errors.monto}</p>}
-              </div>
-              <div>
-                <label style={labelStyle}>Método de Pago</label>
-                <select style={inputStyle} value={form.metodoPago} onChange={(e) => setField("metodoPago", e.target.value as MetodoPago)}>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Método de Pago</label>
+                <select value={form.metodoPago} onChange={(e) => setField("metodoPago", e.target.value as MetodoPago)}
+                  className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus-ring-premium"
+                  style={{ background: "var(--bg-input)", color: "var(--text-1)", border: "1px solid var(--border)" }}>
                   {(["Efectivo", "Transferencia", "Cheque"] as MetodoPago[]).map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
-              <div>
-                <label style={labelStyle}>No. Comprobante</label>
-                <input style={inputStyle} value={form.noComprobante} onChange={(e) => setField("noComprobante", e.target.value)} placeholder="Opcional" />
-              </div>
+              <Input label="No. Comprobante" placeholder="Opcional" value={form.noComprobante} onChange={(e) => setField("noComprobante", e.target.value)} />
             </div>
-          )}
-
-          {form.tipo === "Material" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          ) : (
+            <div className="flex flex-col gap-4">
               <div>
-                <label style={labelStyle}>Categoría</label>
-                <select style={inputStyle} value={form.categoria} onChange={(e) => setField("categoria", e.target.value as CategoriaDonacion)}>
+                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Categoría</label>
+                <select value={form.categoria} onChange={(e) => setField("categoria", e.target.value as CategoriaDonacion)}
+                  className="w-full rounded-lg border px-3 py-2.5 text-sm outline-none focus-ring-premium"
+                  style={{ background: "var(--bg-input)", color: "var(--text-1)", border: "1px solid var(--border)" }}>
                   {(["Insumos Médicos", "Equipo/Herramientas", "Vehículos"] as CategoriaDonacion[]).map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-
               {form.categoria === "Vehículos" && (
-                <div style={{ background: "var(--info-50)", border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#1d4ed8", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="flex items-center gap-2 rounded-lg p-3 text-sm" style={{ background: "var(--info-50)", color: "var(--info-700)" }}>
                   <AlertTriangle size={15} />
                   Se vinculará automáticamente al módulo de Vehículos al confirmar.
                 </div>
               )}
-
               <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <label style={{ ...labelStyle, margin: 0 }}>Artículos donados <span style={{ color: RED }}>*</span></label>
-                  <button onClick={addMaterial} style={{ background: "var(--bg-hover)", border: "none", borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: "#475569", cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
-                    + Añadir
-                  </button>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold" style={{ color: "var(--text-2)" }}>Artículos donados *</span>
+                  <Button variant="outline" size="sm" onClick={addMaterial}>+ Añadir</Button>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="flex flex-col gap-2">
                   {form.materiales.map((m, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 120px 32px", gap: 8, alignItems: "center" }}>
-                      <input style={inputStyle} value={m.descripcion} onChange={(e) => setMaterialField(i, "descripcion", e.target.value)} placeholder="Descripción del artículo" />
-                      <input type="number" min="1" style={inputStyle} value={m.cantidad} onChange={(e) => setMaterialField(i, "cantidad", Number(e.target.value))} placeholder="Cant." />
-                      <input type="number" min="0" step="0.01" style={inputStyle} value={m.valorEstimado || ""} onChange={(e) => setMaterialField(i, "valorEstimado", Number(e.target.value))} placeholder="Valor est. (Q)" />
-                      <button onClick={() => removeMaterial(i)} disabled={form.materiales.length === 1} style={{ background: "none", border: "none", cursor: form.materiales.length === 1 ? "not-allowed" : "pointer", color: form.materiales.length === 1 ? "var(--neutral-300)" : "var(--brand-500)", padding: 4 }}>
+                    <div key={i} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 80px 120px 32px" }}>
+                      <Input placeholder="Descripción del artículo" value={m.descripcion} onChange={(e) => setMaterialField(i, "descripcion", e.target.value)} />
+                      <Input type="number" min={1} placeholder="Cant." value={m.cantidad} onChange={(e) => setMaterialField(i, "cantidad", Number(e.target.value))} />
+                      <Input type="number" min={0} step="0.01" placeholder="Valor est. (Q)" value={m.valorEstimado || ""} onChange={(e) => setMaterialField(i, "valorEstimado", Number(e.target.value))} />
+                      <button type="button" onClick={() => removeMaterial(i)} disabled={form.materiales.length === 1} className="rounded p-1" style={{ color: form.materiales.length === 1 ? "var(--neutral-300)" : "var(--brand-500)", cursor: form.materiales.length === 1 ? "not-allowed" : "pointer" }}>
                         <X size={16} />
                       </button>
                     </div>
                   ))}
                 </div>
-                {errors.descripcion && <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--brand-500)" }}>{errors.descripcion}</p>}
-                <div style={{ textAlign: "right", marginTop: 6, fontSize: 13, fontWeight: 700, color: "var(--neutral-900)", fontFamily: "Inter, sans-serif" }}>
-                  Total estimado: {formatQ(totalMaterial)}
-                </div>
+                {errors.descripcion && <p className="mt-2 text-xs font-medium" style={{ color: "var(--brand-600)" }}>{errors.descripcion}</p>}
+                <div className="mt-2 text-right text-sm font-bold" style={{ color: "var(--text-1)" }}>Total estimado: {formatQ(totalMaterial)}</div>
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {form.tipo === "Material" && (
-            <div>
-              <label style={labelStyle}>Origen</label>
-              <span style={{ display: "inline-block", background: "var(--success-100)", color: "var(--success-700)", borderRadius: 9999, padding: "3px 12px", fontSize: 12, fontWeight: 700, fontFamily: "Inter, sans-serif" }}>
-                Donado
-              </span>
-            </div>
+      {step === 2 && (
+        <div className="flex flex-col gap-3">
+          <DField label="Donante" value={form.donante} />
+          <DField label="DPI / NIT" value={form.dpiNit} />
+          <DField label="Teléfono" value={form.telefono} />
+          <DField label="Fecha" value={form.fecha} />
+          <DField label="No. Recibo" value={form.noRecibo} />
+          <DField label="Tipo" value={form.tipo} />
+          {form.tipo === "Monetaria" ? (
+            <DField label="Monto" value={formatQ(Number(form.monto) || 0)} />
+          ) : (
+            <DField label="Total estimado" value={formatQ(totalMaterial)} />
           )}
-        </div>
-
-        {confirmDelete && (
-          <div style={{ margin: "0 28px 0", padding: "14px 16px", background: "var(--brand-50)", border: "1px solid var(--brand-200)", borderRadius: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: RED, fontFamily: "Inter, sans-serif" }}>¿Eliminar esta donación? Esta acción no se puede deshacer.</p>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, background: "var(--bg-hover)", border: "none", borderRadius: 8, padding: "8px 0", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: "#475569", cursor: "pointer" }}>No, cancelar</button>
-              <button onClick={onDelete} style={{ flex: 1, background: RED, border: "none", borderRadius: 8, padding: "8px 0", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer" }}>Sí, eliminar</button>
-            </div>
-          </div>
-        )}
-
-        <div style={{ padding: "16px 28px", borderTop: "1px solid var(--bg-hover)", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            {initial && onDelete && !confirmDelete && (
-              <button onClick={() => setConfirmDelete(true)} style={{ background: "var(--brand-50)", border: "1px solid var(--brand-200)", borderRadius: 10, padding: "9px 16px", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, color: RED, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                <Trash2 size={14} /> Eliminar
-              </button>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={onClose} style={{ background: "var(--bg-hover)", border: "none", borderRadius: 10, padding: "9px 22px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer" }}>Cancelar</button>
-            <button onClick={handleSubmit} disabled={saving} style={{ background: RED, border: "none", borderRadius: 10, padding: "9px 22px", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, opacity: saving ? 0.7 : 1 }}>
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-              {initial ? "Guardar Cambios" : "Registrar Donación"}
-            </button>
+          <div className="mt-2 rounded-xl p-3 text-sm" style={{ background: "var(--success-50)", color: "var(--success-700)" }}>
+            Revisa los datos antes de confirmar la donación.
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 }
 
@@ -727,7 +745,8 @@ export function DonacionesPage() {
                 </tr>
               ) : (
                 donaciones.map((d) => (
-                  <tr key={d.donacionId} style={{ transition: "background 0.1s" }}
+                  <tr key={d.donacionId} style={{ transition: "background 0.1s", cursor: "pointer" }}
+                    onClick={() => setViewTarget(d)}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--neutral-50)"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
                   >
@@ -745,12 +764,11 @@ export function DonacionesPage() {
                           : (d.materiales?.map((m) => m.descripcion).join(", ") ?? "") + ` (est. ${formatQ(d.monto)})`}
                       </div>
                     </td>
-                    <td style={tdStyle}><Badge estado={d.estado} /></td>
+                    <td style={tdStyle}><EstadoBadge estado={d.estado} /></td>
                     <td style={{ ...tdStyle, textAlign: "center" }}>
                       <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                        <button title="Ver detalle" onClick={() => setViewTarget(d)} style={{ background: "var(--bg-hover)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#475569", display: "flex", alignItems: "center" }}><Eye size={15} /></button>
-                        <button title="Editar" onClick={() => { setEditTarget(d); setShowForm(true); }} style={{ background: "var(--info-50)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#1d4ed8", display: "flex", alignItems: "center" }}><Pencil size={15} /></button>
-                        <button title="Eliminar" onClick={() => setDeleteTarget(d)} style={{ background: "var(--brand-50)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: RED, display: "flex", alignItems: "center" }}><Trash2 size={15} /></button>
+                        <button title="Editar" onClick={(e) => { e.stopPropagation(); setEditTarget(d); setShowForm(true); }} style={{ background: "var(--info-50)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "var(--info-700)", display: "flex", alignItems: "center" }}><Pencil size={15} /></button>
+                        <button title="Eliminar" onClick={(e) => { e.stopPropagation(); setDeleteTarget(d); }} style={{ background: "var(--brand-50)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: RED, display: "flex", alignItems: "center" }}><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>
@@ -785,7 +803,13 @@ export function DonacionesPage() {
           saving={saving}
         />
       )}
-      {viewTarget && <DetailModal donacion={viewTarget} onClose={() => setViewTarget(null)} />}
+      {viewTarget && (
+        <DetailModal
+          donacion={viewTarget}
+          onClose={() => setViewTarget(null)}
+          onEdit={() => { setEditTarget(viewTarget); setViewTarget(null); setShowForm(true); }}
+        />
+      )}
       {deleteTarget && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }} onClick={() => setDeleteTarget(null)}>
           <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>

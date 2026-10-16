@@ -40,6 +40,8 @@ import {
   Printer,
   Power,
 } from "lucide-react";
+import { Modal } from "@/app/components/ui/modal";
+import { Button } from "@/app/components/ui/button";
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const RED = "var(--red)";
@@ -859,6 +861,7 @@ function AnalyticasTab() {
   const [desde, setDesde] = useState("2026-01-01");
   const [hasta, setHasta] = useState("2026-08-28");
   const [exportToast, setExportToast] = useState<string | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Vehiculos sub-view state
   const [vehiculosSubView, setVehiculosSubView] = useState<VehiculosSubView>("analytics");
@@ -1067,22 +1070,9 @@ function AnalyticasTab() {
 
           {/* Export buttons */}
           <div className="flex gap-3 pb-0.5 ml-auto">
-            <button
-              onClick={() => handleExport("PDF")}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-red-50"
-              style={{ border: `1.5px solid ${RED}`, color: RED }}
-            >
-              <Printer size={15} />
-              Imprimir / PDF
-            </button>
-            <button
-              onClick={() => handleExport("Excel")}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-green-50"
-              style={{ border: "1.5px solid #059669", color: "#059669" }}
-            >
-              <FileSpreadsheet size={15} />
-              Exportar Excel
-            </button>
+            <Button variant="brand" size="sm" onClick={() => setShowExportModal(true)}>
+              <Download size={15} /> Exportar
+            </Button>
           </div>
         </div>
       </Card>
@@ -1514,6 +1504,50 @@ function AnalyticasTab() {
           {exportToast}
         </div>
       )}
+
+      {/* Export Modal */}
+      <Modal
+        open={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        size="sm"
+        variant="glass"
+        title="Exportar Reporte"
+        description="Selecciona el formato de exportación."
+        icon={<Download className="size-6" />}
+        className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
+        footer={
+          <Button variant="brand-outline" onClick={() => setShowExportModal(false)}>Cerrar</Button>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => { setShowExportModal(false); handleExport("PDF"); }}
+            className="flex items-center gap-3 rounded-xl border p-4 text-left transition hover:bg-[var(--brand-50)]"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--grad-primary-soft)", color: "var(--brand-600)" }}>
+              <Printer size={18} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-1)" }}>Imprimir / PDF</p>
+              <p className="text-xs" style={{ color: "var(--text-3)" }}>Genera el reporte en formato carta listo para imprimir.</p>
+            </div>
+          </button>
+          <button
+            onClick={() => { setShowExportModal(false); handleExport("Excel"); }}
+            className="flex items-center gap-3 rounded-xl border p-4 text-left transition hover:bg-[var(--success-50)]"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--success-100)", color: "var(--success-700)" }}>
+              <FileSpreadsheet size={18} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "var(--text-1)" }}>Exportar Excel</p>
+              <p className="text-xs" style={{ color: "var(--text-3)" }}>Descarga los datos en hoja de cálculo.</p>
+            </div>
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

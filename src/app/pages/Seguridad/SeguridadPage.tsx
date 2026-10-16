@@ -129,11 +129,12 @@ function inputStyle(hasError = false): React.CSSProperties {
 function Modal({ children, width = 440, onClose }: { children: ReactNode; width?: number; onClose: () => void }) {
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}
+      style={{ position: "fixed", inset: 0, background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}
       onClick={onClose}
     >
       <div
-        style={{ background: "var(--bg-card)", borderRadius: 16, padding: 24, width, maxWidth: "100%", boxShadow: "0 16px 48px rgba(0,0,0,0.35)" }}
+        className="animate-morph-enter"
+        style={{ background: "var(--bg-card)", borderRadius: 16, padding: 24, width, maxWidth: "100%", boxShadow: "var(--elevation-brand-3)" }}
         onClick={(e) => e.stopPropagation()}
       >
         {children}

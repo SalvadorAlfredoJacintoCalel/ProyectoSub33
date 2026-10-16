@@ -1,442 +1,65 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Search, X, Check, AlertTriangle, Users, Shield, Phone, KeyRound, EyeOff, Pencil, Trash2, Eye, UserCheck, UserX, CheckCircle, AlertCircle, AlertTriangle as AlertTriangleIcon, Info, Loader2, ChevronDown } from "lucide-react";
+import { Plus, Search, Users, UserCheck, UserX, ChevronDown, Printer, Pencil, History, FileText, Info, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { PersonalTable } from "@/app/pages/Personal/components/PersonalTable";
 import { PersonalForm } from "@/app/pages/Personal/components/PersonalForm";
+import { Drawer } from "@/app/components/ui/drawer";
+import { Tabs, type TabItem } from "@/app/components/ui/tabs";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { EmptyState } from "@/app/components/ui/empty-state";
 import {
   getRangos,
   crearRango,
   getRoles,
   crearRol,
   getPersonal,
-  getPersonalById,
-
   registrarPersonal,
   actualizarPersonal,
-  cambiarEstadoPersonal,
   eliminarPersonal,
   type CrearPersonalDto,
   type ActualizarPersonalDto,
-  type PersonalResponse,
 } from "../../../services/personalService";
 import type { Estado, Miembro, FormState, RangoItem, RolItem } from "@/types/personal";
 import { formatDate } from "@/utils/format";
-import { emptyFormState, miembroToForm, formToMiembro } from "@/utils/formHelpers";
+import { emptyFormState, miembroToForm } from "@/utils/formHelpers";
 import { useAlert } from "@/app/components/ui/AlertContext";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const RED = "var(--brand-600)";
+const BRAND = "var(--brand-600)";
 const PAGE_SIZE = 8;
 
-const estadoBadge: Record<Estado, string> = {
-  Activo: "bg-green-100 text-green-800 border border-green-200",
-  Inactivo: "bg-gray-100 text-gray-600 border border-gray-200",
-};
-
-function inputStyle(hasError: boolean) {
-  return {
-    width: "100%",
-    background: "var(--bg-input)",
-    color: "var(--text-1)",
-    border: hasError ? "1px solid var(--red)" : "1px solid var(--border)",
-    borderRadius: 8,
-    padding: "8px 12px",
-    fontSize: 13,
-    outline: "none",
-    boxSizing: "border-box",
-  };
+function slugify(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "");
 }
 
-function SectionLabel({ label }: { label: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "20px 0 12px", marginTop: 20 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-3)", whiteSpace: "nowrap" }}>
-        {label}
-      </span>
-      <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-    </div>
-  );
-}
-
-// ── Detail/Edit Modal ──────────────────────────────────────────────────────────
-interface DetailModalProps {
-  member: PersonalResponse | null;
-  rangos: RangoItem[];
-  roles: RolItem[];
-  onClose: () => void;
-  onUpdate: (id: string, dto: ActualizarPersonalDto) => Promise<void>;
-}
-
-function DetailModal({ member, rangos, roles, onClose, onUpdate }: DetailModalProps) {
-  const { toast } = useAlert();
-  const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState<FormState>(emptyFormState());
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [showPw, setShowPw] = useState(false);
-  const [credOpen, setCredOpen] = useState(false);
-
-  useEffect(() => {
-    if (member) {
-      setForm(miembroToForm(member));
-      setIsEditing(false);
-      setErrors({});
-      setCredOpen(false);
-      setShowPw(false);
-    }
-  }, [member]);
-
-  if (!member) return null;
-
-  const nombreCompleto = member.nombreCompleto || [member.primerNombre, member.segundoNombre, member.primerApellido, member.segundoApellido].filter(Boolean).join(" ");
-
-  function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
-    setForm((prev) => {
-      const next = { ...prev, [field]: value };
-      if (field === "primerNombre" || field === "primerApellido") {
-        next.usuario = slugify(next.primerNombre + next.primerApellido);
-      }
-      return next;
-    });
-    if (errors[field as string]) {
-      setErrors((prev) => { const n = { ...prev }; delete n[field as string]; return n; });
-    }
-  }
-
-  async function handleSave() {
-    const errs: Record<string, string> = {};
-    if (!form.primerNombre.trim()) errs.primerNombre = "Primer nombre requerido";
-    if (!form.primerApellido.trim()) errs.primerApellido = "Primer apellido requerido";
-    const dpiDigits = form.dpi.replace(/\D/g, "");
-    if (dpiDigits.length !== 13) errs.dpi = "DPI debe tener exactamente 13 dígitos";
-    if (!form.telefono.trim()) errs.telefono = "Teléfono requerido";
-    if (!form.contactoEmergencia.trim()) errs.contactoEmergencia = "Nombre del contacto requerido";
-    if (!form.telEmergencia.trim()) errs.telEmergencia = "Teléfono de emergencia requerido";
-    if (form.rangoId === 0) errs.rangoId = "Rango requerido";
-    // Solo validar credenciales si el acordeón está abierto
-    if (credOpen) {
-      if (!form.usuario.trim()) errs.usuario = "Usuario requerido";
-      if (!form.rolId) errs.rolId = "Rol del sistema requerido";
-    }
-
-    const pwEntered = form.contrasena.length > 0;
-    if (pwEntered) {
-      if (form.contrasena.length < 8) errs.contrasena = "Mínimo 8 caracteres";
-      if (form.confirmarContrasena !== form.contrasena) errs.confirmarContrasena = "Las contraseñas no coinciden";
-    }
-
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) {
-      toast.warning("Por favor completa los campos obligatorios.");
-      return;
-    }
-
-    // Detectar si cambiaron las credenciales del sistema
-    const originalUser = member.usuario?.username || "";
-    const originalRolId = member.usuario?.rolId || 0;
-    const credencialesCambiaron =
-      form.usuario !== originalUser ||
-      form.rolId !== originalRolId ||
-      (form.contrasena && form.contrasena.length > 0);
-
-    setSaving(true);
-    try {
-      const payload: ActualizarPersonalDto = {
-        primerNombre: form.primerNombre,
-        segundoNombre: form.segundoNombre,
-        primerApellido: form.primerApellido,
-        segundoApellido: form.segundoApellido,
-        dpi: form.dpi,
-        fechaNacimiento: form.fechaNacimiento || null,
-        rangoId: form.rangoId,
-        fechaIngreso: form.fechaIngreso,
-        telefono: form.telefono,
-        estado: form.estado === "Activo",
-        contactoEmergenciaNombre: form.contactoEmergencia,
-        contactoEmergenciaTelefono: form.telEmergencia,
-      };
-      // Solo enviar accesoSistema si cambiaron las credenciales
-      if (credencialesCambiaron && form.usuario && form.rolId) {
-        payload.accesoSistema = {
-          username: form.usuario,
-          password: form.contrasena || undefined, // solo si se ingresó nueva contraseña
-          rolId: form.rolId,
-        };
-      }
-      await onUpdate(member.personalId, payload);
-      setIsEditing(false);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Error desconocido";
-      const isDuplicate = msg.includes("duplicate") || msg.includes("duplicado") || msg.includes("DPI") || msg.includes("username") || msg.includes("usuario");
-      toast.error(isDuplicate ? "El DPI o nombre de usuario ya se encuentra registrado." : msg);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const detailFields = [
+// ── Detail Info ────────────────────────────────────────────────────────────────
+function MemberInfo({ member }: { member: Miembro }) {
+  const fields: { label: string; value: string }[] = [
     { label: "Código Bombero", value: member.codigoBombero || "Sin asignar" },
     { label: "DPI", value: member.dpi },
-    { label: "Rango", value: member.rangoNombre || "" },
-    { label: "Estado", value: member.estado ? "Activo" : "Inactivo" },
-    { label: "Teléfono", value: member.telefono },
-    { label: "Fecha de Nacimiento", value: member.fechaNacimiento ? formatDate(member.fechaNacimiento) : "No registrada" },
+    { label: "Rango", value: member.rangoNombre || "—" },
+    { label: "Teléfono", value: member.telefono || "—" },
     { label: "Fecha de Ingreso", value: formatDate(member.fechaIngreso) },
-    { label: "Contacto Emergencia", value: member.contactoEmergenciaNombre || "" },
-    { label: "Tel. Emergencia", value: member.contactoEmergenciaTelefono || "" },
+    { label: "Contacto de Emergencia", value: member.contactoEmergenciaNombre || "—" },
+    { label: "Tel. de Emergencia", value: member.contactoEmergenciaTelefono || "—" },
     { label: "Usuario del Sistema", value: member.usuario?.username || "Sin cuenta" },
-    { label: "Rol del Sistema", value: member.usuario?.rol || "Sin rol" },
+    { label: "Rol del Sistema", value: member.usuario?.rol || member.rolNombre || "Sin rol" },
     { label: "Acceso al Sistema", value: member.usuario ? "Sí" : "No" },
   ];
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl shadow-2xl" style={{ maxHeight: "90vh", background: "var(--bg-card)" }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 text-white" style={{ background: RED }}>
-          <div>
-            <p className="text-xs font-medium opacity-80">{member.codigo}</p>
-            <h2 className="text-lg font-semibold leading-tight">{nombreCompleto}</h2>
-          </div>
-          <button onClick={onClose} className="rounded p-1 transition-colors hover:bg-white/20">
-            <X size={18} />
-          </button>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+      {fields.map(({ label, value }) => (
+        <div key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>
+            {label}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1)" }}>{value || "—"}</span>
         </div>
-
-        {/* Body */}
-        <div className="overflow-y-auto px-6 py-5" style={{ maxHeight: "calc(90vh - 140px)" }}>
-          {!isEditing ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
-              {detailFields.map(({ label, value }) => (
-                <div key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>
-                    {label}
-                  </span>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1)" }}>{value || "—"}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              {/* Error summary */}
-              {Object.keys(errors).length > 0 && (
-                <div className="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                  <span>Por favor corrige los campos marcados en rojo antes de continuar.</span>
-                </div>
-              )}
-
-              <SectionLabel label="Datos Personales" />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Primer Nombre <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input type="text" value={form.primerNombre} onChange={(e) => setField("primerNombre", e.target.value)} style={{ ...inputStyle(!!errors.primerNombre) }} />
-                  {errors.primerNombre && <p className="mt-0.5 text-xs text-red-600">{errors.primerNombre}</p>}
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Segundo Nombre <span style={{ color: "var(--text-3)" }}>(opcional)</span>
-                  </label>
-                  <input type="text" value={form.segundoNombre} onChange={(e) => setField("segundoNombre", e.target.value)} style={{ ...inputStyle(false) }} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Primer Apellido <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input type="text" value={form.primerApellido} onChange={(e) => setField("primerApellido", e.target.value)} style={{ ...inputStyle(!!errors.primerApellido) }} />
-                  {errors.primerApellido && <p className="mt-0.5 text-xs text-red-600">{errors.primerApellido}</p>}
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Segundo Apellido <span style={{ color: "var(--text-3)" }}>(opcional)</span>
-                  </label>
-                  <input type="text" value={form.segundoApellido} onChange={(e) => setField("segundoApellido", e.target.value)} style={{ ...inputStyle(false) }} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    DPI <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input type="text" inputMode="numeric" maxLength={13} value={form.dpi} onChange={(e) => setField("dpi", e.target.value.replace(/\D/g, ""))} style={{ ...inputStyle(!!errors.dpi), fontFamily: "monospace" }} />
-                  {errors.dpi && <p className="mt-0.5 text-xs text-red-600">{errors.dpi}</p>}
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Fecha de Nacimiento
-                  </label>
-                  <input type="date" value={form.fechaNacimiento} onChange={(e) => setField("fechaNacimiento", e.target.value)} style={{ ...inputStyle(false) }} />
-                </div>
-              </div>
-
-              <SectionLabel label="Información de Bombero" />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Rango <span style={{ color: RED }}>*</span>
-                  </label>
-                  <select value={form.rangoId} onChange={(e) => setField("rangoId", Number(e.target.value))} style={{ ...inputStyle(!!errors.rangoId) }}>
-                    <option value={0}>Seleccionar rango...</option>
-                    {rangos.map((r) => (
-                      <option key={r.id} value={r.id}>{r.nombre}</option>
-                    ))}
-                  </select>
-                  {errors.rangoId && <p className="mt-0.5 text-xs text-red-600">{errors.rangoId}</p>}
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Teléfono <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input type="text" value={form.telefono} onChange={(e) => setField("telefono", e.target.value)} style={{ ...inputStyle(!!errors.telefono) }} />
-                  {errors.telefono && <p className="mt-0.5 text-xs text-red-600">{errors.telefono}</p>}
-                </div>
-              </div>
-
-              <SectionLabel label="Contacto de Emergencia" />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Nombre del Contacto <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input type="text" value={form.contactoEmergencia} onChange={(e) => setField("contactoEmergencia", e.target.value)} style={{ ...inputStyle(!!errors.contactoEmergencia) }} />
-                  {errors.contactoEmergencia && <p className="mt-0.5 text-xs text-red-600">{errors.contactoEmergencia}</p>}
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium" style={{ color: "var(--text-2)" }}>
-                    Teléfono de Emergencia <span style={{ color: RED }}>*</span>
-                  </label>
-                  <input type="text" value={form.telEmergencia} onChange={(e) => setField("telEmergencia", e.target.value)} style={{ ...inputStyle(!!errors.telEmergencia) }} />
-                  {errors.telEmergencia && <p className="mt-0.5 text-xs text-red-600">{errors.telEmergencia}</p>}
-                </div>
-              </div>
-
-              {/* Credenciales */}
-              <div style={{ margin: "20px 0 0" }}>
-                <button
-                  type="button"
-                  onClick={() => setCredOpen((o) => !o)}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 14px", borderRadius: credOpen ? "10px 10px 0 0" : 10,
-                    border: "1px solid var(--border)", background: credOpen ? "var(--bg-input)" : "var(--bg-card)",
-                    cursor: "pointer", transition: "background 0.15s",
-                  }}
-                >
-                  <div style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: credOpen ? "var(--red-bg)" : "var(--bg-hover)" }}>
-                    <KeyRound size={14} style={{ color: credOpen ? "var(--red)" : "var(--text-3)" }} />
-                  </div>
-                  <div style={{ flex: 1, textAlign: "left" }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: credOpen ? "var(--text-1)" : "var(--text-2)" }}>
-                      Acceso al Sistema
-                    </span>
-                    <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 8 }}>(opcional)</span>
-                  </div>
-                  <ChevronDownIcon open={credOpen} />
-                </button>
-
-                {credOpen && (
-                  <div style={{ borderRadius: "0 0 10px 10px", border: "1px solid var(--border)", borderTop: "none", padding: 16, display: "flex", flexDirection: "column", gap: 14, background: "var(--bg-input)" }}>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                          Usuario <span style={{ color: "var(--red)" }}>*</span>
-                        </label>
-                        <input type="text" value={form.usuario} onChange={(e) => setField("usuario", e.target.value.toLowerCase().replace(/\s/g, ""))} style={{ ...inputStyle(!!errors.usuario), fontFamily: "monospace" }} />
-                        {errors.usuario && <p className="mt-0.5 text-xs text-red-600">{errors.usuario}</p>}
-                      </div>
-                      <div>
-                        <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                          Rol del Sistema <span style={{ color: "var(--red)" }}>*</span>
-                        </label>
-                        <select value={form.rolId} onChange={(e) => setField("rolId", Number(e.target.value))} style={{ ...inputStyle(!!errors.rolId) }}>
-                          <option value={0}>Seleccionar rol...</option>
-                          {roles.map((r) => (
-                            <option key={r.id} value={r.id}>{r.nombre}</option>
-                          ))}
-                        </select>
-                        {errors.rolId && <p className="mt-0.5 text-xs text-red-600">{errors.rolId}</p>}
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                        Contraseña <span style={{ color: "var(--text-3)", fontWeight: 400 }}>(dejar vacío para no cambiar)</span>
-                      </label>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <div style={{ position: "relative", flex: 1 }}>
-                          <input type={showPw ? "text" : "password"} placeholder="Nueva contraseña (opcional)" value={form.contrasena} onChange={(e) => setField("contrasena", e.target.value)} style={{ ...inputStyle(!!errors.contrasena), fontFamily: "monospace", paddingRight: 36 }} />
-                          <button type="button" onClick={() => setShowPw((v) => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", display: "flex", alignItems: "center" }} tabIndex={-1}>
-                            {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
-                          </button>
-                        </div>
-                      </div>
-                      {errors.contrasena && <p className="mt-0.5 text-xs text-red-600">{errors.contrasena}</p>}
-                    </div>
-                    {form.contrasena.length > 0 && (
-                      <div>
-                        <label style={{ display: "block", marginBottom: 4, fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>
-                          Confirmar Contraseña <span style={{ color: "var(--red)" }}>*</span>
-                        </label>
-                        <input type={showPw ? "text" : "password"} placeholder="Repetir contraseña" value={form.confirmarContrasena} onChange={(e) => setField("confirmarContrasena", e.target.value)} style={{ ...inputStyle(!!errors.confirmarContrasena), fontFamily: "monospace" }} />
-                        {errors.confirmarContrasena && <p className="mt-0.5 text-xs text-red-600">{errors.confirmarContrasena}</p>}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-2 px-6 py-4" style={{ borderTop: "1px solid var(--border)", background: "var(--bg-input)" }}>
-          {!isEditing ? (
-            <>
-
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ background: RED }}
-              >
-                <Pencil size={15} />
-                Actualizar Datos
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => { setIsEditing(false); setErrors({}); }}
-                className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                style={{ border: "1px solid var(--border)", color: "var(--text-2)", background: "var(--bg-card)" }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: RED }}
-              >
-                <Check size={15} />
-                {saving ? "Guardando..." : "Guardar Cambios"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      ))}
     </div>
   );
-}
-
-function ChevronDownIcon({ open }: { open: boolean }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-3)", transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s", flexShrink: 0 }}>
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-function slugify(s: string): string {
-  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "");
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -451,18 +74,19 @@ export function PersonalPage() {
   const [filterEstado, setFilterEstado] = useState<Estado | "">("Activo");
   const [page, setPage] = useState(1);
 
-  const [showModal, setShowModal] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyFormState());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   const [credOpen, setCredOpen] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<Miembro | null>(null);
+
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [viewId, setViewId] = useState<string | null>(null);
-  const [viewMember, setViewMember] = useState<PersonalResponse | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const { toast, alert } = useAlert();
   const [rangos, setRangos] = useState<RangoItem[]>([]);
   const [roles, setRoles] = useState<RolItem[]>([]);
@@ -482,11 +106,12 @@ export function PersonalPage() {
       const q = search.toLowerCase().trim();
       const qDigits = q.replace(/\D/g, "");
 
-      const matchNombre = m.nombreCompleto.toLowerCase().includes(q) ||
-        m.nombreCompleto.toLowerCase().split(" ").some(p => p.startsWith(q));
+      const matchNombre =
+        m.nombreCompleto.toLowerCase().includes(q) ||
+        m.nombreCompleto.toLowerCase().split(" ").some((p) => p.startsWith(q));
 
-      const matchCodigo = m.codigo.toLowerCase().includes(q) ||
-        (m.codigoBombero && m.codigoBombero.toLowerCase().includes(q));
+      const matchCodigo =
+        m.codigo.toLowerCase().includes(q) || (m.codigoBombero && m.codigoBombero.toLowerCase().includes(q));
 
       const matchDpi = qDigits.length >= 2 && m.dpi.replace(/\D/g, "").includes(qDigits);
 
@@ -504,14 +129,12 @@ export function PersonalPage() {
   }, [members, search, filterRango, filterEstado]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const totalEfectivos = members.length;
-const activos = members.filter((m) => m.estado === true).length;
-
+  const activos = members.filter((m) => m.estado === true).length;
   const inactivos = members.filter((m) => m.estado === false).length;
-  // Load rangos, roles, and personal from backend on mount
+
+  // ── Data loading ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -550,12 +173,11 @@ const activos = members.filter((m) => m.estado === true).length;
   const fetchPersonal = useCallback(async () => {
     try {
       const data = await getPersonal();
-      if (!Array.isArray(data)) { setMembers([]); return; }
-      const mapped = data.map((m: any) => ({
-        ...m,
-        usuario: m.Username ? { username: m.Username, rol: m.RolNombre, estado: true } : undefined,
-      }));
-      setMembers(mapped);
+      if (!Array.isArray(data)) {
+        setMembers([]);
+        return;
+      }
+      setMembers(data);
     } catch (error) {
       console.error("Error fetching personal:", error);
       setMembers([]);
@@ -583,10 +205,7 @@ const activos = members.filter((m) => m.estado === true).length;
     try {
       setIsLoadingRangos(true);
       setIsLoadingRoles(true);
-      const [rangosData, rolesData] = await Promise.all([
-        getRangos(),
-        getRoles(),
-      ]);
+      const [rangosData, rolesData] = await Promise.all([getRangos(), getRoles()]);
       setRangos(rangosData);
       setRoles(rolesData);
     } catch (error) {
@@ -603,21 +222,32 @@ const activos = members.filter((m) => m.estado === true).length;
     setEditingId(null);
     setForm(emptyFormState());
     setErrors({});
-    fetchCatalogos().then(() => setShowModal(true));
+    fetchCatalogos().then(() => setEditModalOpen(true));
   }
 
   function openEditModal(m: Miembro) {
     setEditingId(m.personalId);
     setForm(miembroToForm(m));
     setErrors({});
-    fetchCatalogos().then(() => setShowModal(true));
+    fetchCatalogos().then(() => setEditModalOpen(true));
   }
 
   function closeModal() {
-    setShowModal(false);
+    setEditModalOpen(false);
     setEditingId(null);
     setForm(emptyFormState());
     setErrors({});
+  }
+
+  function closeDetail() {
+    setDetailOpen(false);
+  }
+
+  function handleEditFromDetail() {
+    if (!selectedRecord) return;
+    const record = selectedRecord;
+    setDetailOpen(false);
+    openEditModal(record);
   }
 
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
@@ -629,7 +259,11 @@ const activos = members.filter((m) => m.estado === true).length;
       return next;
     });
     if (errors[field as string]) {
-      setErrors((prev) => { const n = { ...prev }; delete n[field as string]; return n; });
+      setErrors((prev) => {
+        const n = { ...prev };
+        delete n[field as string];
+        return n;
+      });
     }
   }
 
@@ -644,7 +278,6 @@ const activos = members.filter((m) => m.estado === true).length;
     if (!form.telEmergencia.trim()) errs.telEmergencia = "Teléfono de emergencia requerido";
     if (form.rangoId === 0) errs.rangoId = "Rango requerido";
 
-    // Solo validar credenciales si el acordeón está abierto
     if (credOpen) {
       if (!form.usuario.trim()) errs.usuario = "Usuario requerido";
       if (!form.rolId) errs.rolId = "Rol del sistema requerido";
@@ -682,7 +315,6 @@ const activos = members.filter((m) => m.estado === true).length;
       contactoEmergenciaTelefono: form.telEmergencia,
     };
 
-    // Solo enviar accesoSistema si el acordeón está abierto Y se llenaron credenciales
     if (credOpen && form.usuario && form.rolId) {
       payload.accesoSistema = {
         username: form.usuario,
@@ -691,6 +323,7 @@ const activos = members.filter((m) => m.estado === true).length;
       };
     }
 
+    setSaving(true);
     try {
       if (editingId !== null) {
         await actualizarPersonal(editingId, payload as ActualizarPersonalDto);
@@ -708,11 +341,9 @@ const activos = members.filter((m) => m.estado === true).length;
       const isDuplicateError =
         msg.includes("duplicate") || msg.includes("duplicado") || msg.includes("DPI") ||
         msg.includes("username") || msg.includes("usuario");
-      toast.error(
-        isDuplicateError
-          ? "El DPI o nombre de usuario ya se encuentra registrado."
-          : msg
-      );
+      toast.error(isDuplicateError ? "El DPI o nombre de usuario ya se encuentra registrado." : msg);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -724,42 +355,11 @@ const activos = members.filter((m) => m.estado === true).length;
         prev.map((m) => (m.personalId === deleteId ? { ...m, estado: false } : m))
       );
       setDeleteId(null);
-      setViewId(null);
-      setViewMember(null);
       toast.success("Miembro desactivado correctamente.");
     } catch (error) {
       console.error("Error eliminando personal:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";
       toast.error(msg);
-    }
-  }
-
-  async function handleViewDetail(id: string) {
-    setViewId(id);
-    setLoadingDetail(true);
-    try {
-      const data = await getPersonalById(id);
-      setViewMember(data);
-    } catch (error) {
-      console.error("Error loading member detail:", error);
-      toast.error("No se pudo cargar la información del miembro.");
-      setViewId(null);
-    } finally {
-      setLoadingDetail(false);
-    }
-  }
-
-  async function handleUpdateFromDetail(id: string, dto: ActualizarPersonalDto) {
-    try {
-      await actualizarPersonal(id, dto);
-      toast.success("Datos actualizados exitosamente.");
-      const updated = await getPersonalById(id);
-      setViewMember(updated);
-      await fetchPersonal();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Error desconocido";
-      const isDuplicate = msg.includes("duplicate") || msg.includes("duplicado") || msg.includes("DPI") || msg.includes("username") || msg.includes("usuario");
-      throw new Error(isDuplicate ? "El DPI o nombre de usuario ya se encuentra registrado." : msg);
     }
   }
 
@@ -806,12 +406,47 @@ const activos = members.filter((m) => m.estado === true).length;
       setNuevoRolNombre("");
       setNuevoRolOpen(false);
       toast.success("Rol agregado correctamente.");
-} catch (error) {
-      console.error("Error eliminando personal:", error);
+    } catch (error) {
+      console.error("Error creando rol:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";
       toast.error(msg);
     }
   }
+
+  const detailTabs: TabItem[] = selectedRecord
+    ? [
+        {
+          id: "info",
+          label: "Info",
+          icon: <Info size={15} />,
+          content: <MemberInfo member={selectedRecord} />,
+        },
+        {
+          id: "historial",
+          label: "Historial",
+          icon: <History size={15} />,
+          content: (
+            <EmptyState
+              icon={History}
+              title="Sin historial"
+              description="El historial de servicio de este miembro aparecerá aquí."
+            />
+          ),
+        },
+        {
+          id: "documentos",
+          label: "Documentos",
+          icon: <FileText size={15} />,
+          content: (
+            <EmptyState
+              icon={FileText}
+              title="Sin documentos"
+              description="Los documentos del miembro aparecerán aquí."
+            />
+          ),
+        },
+      ]
+    : [];
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -825,14 +460,10 @@ const activos = members.filter((m) => m.estado === true).length;
             Bomberos Voluntarios San Lucas Tolimán
           </p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-95"
-          style={{ background: RED }}
-        >
-          <Plus size={16} />
+        <Button variant="brand" onClick={openAddModal}>
+          <Plus className="size-4" />
           Nuevo Miembro
-        </button>
+        </Button>
       </div>
 
       {/* ── Stat Cards ───────────────────────────────────────────────────────── */}
@@ -840,12 +471,12 @@ const activos = members.filter((m) => m.estado === true).length;
         <div
           className="flex items-center gap-4 rounded-2xl p-4"
           style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)"; }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "var(--elevation-brand-2)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "var(--shadow)"; }}
           onClick={() => { setFilterEstado(""); setPage(1); }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
-            <Users size={20} style={{ color: RED }} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--brand-50)" }}>
+            <Users size={20} style={{ color: BRAND }} />
           </div>
           <div>
             <p className="text-xs" style={{ color: "var(--text-3)" }}>Total Efectivos</p>
@@ -856,32 +487,32 @@ const activos = members.filter((m) => m.estado === true).length;
         <div
           className="flex items-center gap-4 rounded-2xl p-4"
           style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)"; }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "var(--elevation-brand-2)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "var(--shadow)"; }}
           onClick={() => { setFilterEstado("Activo"); setPage(1); }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50">
-            <UserCheck size={20} className="text-green-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--success-50)" }}>
+            <UserCheck size={20} style={{ color: "var(--success-600)" }} />
           </div>
           <div>
             <p className="text-xs" style={{ color: "var(--text-3)" }}>Activos</p>
-            <p className="text-2xl font-bold text-green-600">{activos}</p>
+            <p className="text-2xl font-bold" style={{ color: "var(--success-600)" }}>{activos}</p>
           </div>
         </div>
 
         <div
           className="flex items-center gap-4 rounded-2xl p-4"
           style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)"; }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "var(--elevation-brand-2)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "var(--shadow)"; }}
           onClick={() => { setFilterEstado("Inactivo"); setPage(1); }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
-            <UserX size={20} className="text-red-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--brand-50)" }}>
+            <UserX size={20} style={{ color: BRAND }} />
           </div>
           <div>
             <p className="text-xs" style={{ color: "var(--text-3)" }}>Inactivos</p>
-            <p className="text-2xl font-bold text-red-600">{inactivos}</p>
+            <p className="text-2xl font-bold" style={{ color: BRAND }}>{inactivos}</p>
           </div>
         </div>
       </div>
@@ -935,7 +566,7 @@ const activos = members.filter((m) => m.estado === true).length;
                 width: 10,
                 height: 10,
                 borderRadius: "50%",
-                background: filterEstado === "Activo" ? "var(--success-600)" : filterEstado === "Inactivo" ? RED : "var(--neutral-400)",
+                background: filterEstado === "Activo" ? "var(--success-600)" : filterEstado === "Inactivo" ? BRAND : "var(--neutral-400)",
               }}
             />
             {filterEstado === "Activo" ? "Activos" : filterEstado === "Inactivo" ? "Inactivos" : "Todos"}
@@ -945,7 +576,7 @@ const activos = members.filter((m) => m.estado === true).length;
             <div
               style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 30, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "var(--shadow)", minWidth: 140, overflow: "hidden" }}
             >
-              {([["Activo", "Activos", "var(--success-600)"], ["Inactivo", "Inactivos", RED], ["", "Todos", "var(--neutral-400)"]] as const).map(([val, label, color]) => (
+              {([["Activo", "Activos", "var(--success-600)"], ["Inactivo", "Inactivos", BRAND], ["", "Todos", "var(--neutral-400)"]] as const).map(([val, label, color]) => (
                 <button
                   key={label}
                   onClick={() => { setFilterEstado(val); setPage(1); setEstadoDropdownOpen(false); }}
@@ -975,44 +606,73 @@ const activos = members.filter((m) => m.estado === true).length;
         PAGE_SIZE={PAGE_SIZE}
         rangos={rangos}
         roles={roles}
-        onView={(m) => m.personalId ? handleViewDetail(m.personalId) : console.error("Error: personalId undefined", m)}
+        onRowClick={(m) => {
+          setSelectedRecord(m);
+          setDetailOpen(true);
+        }}
       />
 
       {/* ── Add / Edit Modal ───────────────────────────────────────────────────── */}
-      {showModal && (
-        <PersonalForm
-          showModal={showModal}
-          setShowModal={setShowModal}
-          editingId={editingId}
-          setEditingId={setEditingId}
-          form={form}
-          setForm={setForm}
-          errors={errors}
-          setErrors={setErrors}
-          credOpen={credOpen}
-          setCredOpen={setCredOpen}
-          showPw={showPw}
-          setShowPw={setShowPw}
-          rangos={rangos}
-          setRangos={setRangos}
-          roles={roles}
-          setRoles={setRoles}
-          onClose={closeModal}
-          onSubmit={handleSubmit}
-        />
-      )}
+      <PersonalForm
+        open={editModalOpen}
+        onClose={closeModal}
+        editingId={editingId}
+        form={form}
+        setForm={setForm}
+        errors={errors}
+        setErrors={setErrors}
+        credOpen={credOpen}
+        setCredOpen={setCredOpen}
+        showPw={showPw}
+        setShowPw={setShowPw}
+        rangos={rangos}
+        roles={roles}
+        saving={saving}
+        onSubmit={handleSubmit}
+      />
+
+      {/* ── Detail Drawer ───────────────────────────────────────────────────────── */}
+      <Drawer
+        open={detailOpen}
+        onClose={closeDetail}
+        side="right"
+        size="lg"
+        title={selectedRecord?.nombreCompleto}
+        icon={<Users className="size-6" />}
+        statusBadge={
+          selectedRecord ? (
+            <Badge variant={selectedRecord.estado ? "success" : "default"} dot>
+              {selectedRecord.estado ? "Activo" : "Inactivo"}
+            </Badge>
+          ) : undefined
+        }
+        footer={
+          <>
+            <Button variant="brand-outline" onClick={() => window.print()}>
+              <Printer className="size-4" />
+              Imprimir
+            </Button>
+            <Button variant="brand" onClick={handleEditFromDetail}>
+              <Pencil className="size-4" />
+              Editar
+            </Button>
+          </>
+        }
+      >
+        {selectedRecord && <Tabs variant="glass" tabs={detailTabs} />}
+      </Drawer>
 
       {/* ── Delete Confirmation ────────────────────────────────────────────────── */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
           <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl" style={{ background: "var(--bg-card)" }}>
-            <div className="flex items-center justify-between px-6 py-4 text-white" style={{ background: RED }}>
-              <h3 className="font-semibold" style={{ color: "var(--text-1)" }}>Desactivar Miembro</h3>
+            <div className="flex items-center justify-between px-6 py-4" style={{ background: BRAND }}>
+              <h3 className="font-semibold text-white">Desactivar Miembro</h3>
             </div>
             <div className="p-6">
               <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                  <AlertTriangle size={20} className="text-red-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "var(--brand-100)" }}>
+                  <AlertTriangle size={20} style={{ color: BRAND }} />
                 </div>
                 <div>
                   <h3 className="font-semibold" style={{ color: "var(--text-1)" }}>Desactivar Miembro</h3>
@@ -1037,7 +697,7 @@ const activos = members.filter((m) => m.estado === true).length;
                 <button
                   onClick={handleDelete}
                   className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ background: RED }}
+                  style={{ background: BRAND }}
                 >
                   Sí, desactivar
                 </button>
@@ -1046,27 +706,6 @@ const activos = members.filter((m) => m.estado === true).length;
           </div>
         </div>
       )}
-
-      {/* ── Detail / Edit Modal ───────────────────────────────────────────────── */}
-      {viewId && !loadingDetail && viewMember && (
-<DetailModal
-        member={viewMember}
-        rangos={rangos}
-        roles={roles}
-        onClose={() => { setViewId(null); setViewMember(null); }}
-        onUpdate={handleUpdateFromDetail}
-      />
-      )}
-
-      {/* Loading overlay for detail */}
-      {loadingDetail && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.55)" }}>
-          <div className="rounded-2xl p-6" style={{ background: "var(--bg-card)" }}>
-            <p className="text-sm" style={{ color: "var(--text-2)" }}>Cargando información...</p>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

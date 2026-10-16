@@ -1,11 +1,19 @@
 import { useState, useEffect } from "react";
+import type { ElementType, ReactNode } from "react";
 import {
-  Pencil, Trash2, Eye, Plus, Search, X, Package, Boxes, ArrowLeftRight, Truck, Loader2, ChevronLeft, ChevronRight,
+  Pencil, Trash2, Plus, Search, X, Package, Boxes, ArrowLeftRight, Truck, ChevronLeft, ChevronRight,
+  Printer, Info, History, MapPin, ListChecks, User, Gift, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog } from "@/app/components/AlertDialog";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Skeleton } from "@/app/components/ui/skeleton";
+import { Drawer } from "@/app/components/ui/drawer";
+import { Tabs, type TabItem } from "@/app/components/ui/tabs";
+import { Modal } from "@/app/components/ui/modal";
+import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
 import { donacionService } from "@/services/donacionService";
 import { MovimientosPage } from "@/app/pages/Inventario/MovimientosPage";
@@ -15,16 +23,130 @@ import type { InventarioItem, InventarioItemCreate, InventarioItemUpdate } from 
 import type { Donacion, DonacionCreate } from "@/types/donacion";
 
 const CARD_STYLE: React.CSSProperties = {
-  background: "#fff",
+  background: "var(--bg-card)",
   borderRadius: "1rem",
-  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-  border: "1px solid rgba(0,0,0,0.05)",
+  boxShadow: "var(--shadow)",
+  border: "1px solid var(--border)",
 };
 
 const PAGE_SIZE = 8;
 
-const inputCls =
-  "w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-2 border-gray-200 focus:border-red-400 focus:ring-red-100";
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function stockStatus(it: InventarioItem): { variant: BadgeVariant; label: string } {
+  if (it.stockActual <= 0) return { variant: "error", label: "Agotado" };
+  if (it.stockActual <= it.stockMinimo) return { variant: "warning", label: "Stock bajo" };
+  return { variant: "success", label: "Normal" };
+}
+
+function InfoField({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1)" }}>{value ?? "—"}</span>
+    </div>
+  );
+}
+
+function CollapsibleSection({
+  label,
+  icon: Icon,
+  defaultOpen = true,
+  children,
+}: {
+  label: string;
+  icon: ElementType;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors"
+        style={{
+          background: open ? "var(--glass-bg-subtle)" : "var(--bg-hover)",
+          border: "1px solid var(--glass-border)",
+        }}
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: "var(--grad-primary-soft)", color: "var(--brand-600)" }}>
+          <Icon size={16} />
+        </span>
+        <span className="flex-1 text-xs font-bold uppercase tracking-[0.08em]" style={{ color: "var(--text-1)" }}>
+          {label}
+        </span>
+        <ChevronLeft
+          size={15}
+          style={{
+            color: "var(--text-3)",
+            transform: open ? "rotate(-90deg)" : "rotate(0deg)",
+            transition: "transform 0.2s",
+            flexShrink: 0,
+          }}
+        />
+      </button>
+      {open && (
+        <div style={{ paddingTop: 16, animation: "slide-up 200ms var(--spring-gentle) both" }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  required = false,
+  value,
+  onChange,
+  options,
+  error,
+  placeholder,
+}: {
+  label: string;
+  required?: boolean;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  error?: string;
+  placeholder: string;
+}) {
+  return (
+    <div className="w-full">
+      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
+        {label} {required && <span style={{ color: "var(--brand-600)" }}>*</span>}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
+        style={{
+          background: "var(--bg-input)",
+          color: "var(--text-1)",
+          border: error ? "1px solid var(--brand-500)" : "1px solid var(--border)",
+        }}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {error && (
+        <p className="mt-1 text-xs font-medium" style={{ color: "var(--brand-600)" }}>
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Item form state ────────────────────────────────────────────────────────────
 
 interface ItemFormState {
   categoriaInvId: string;
@@ -80,7 +202,9 @@ function ItemsTab() {
   const [categoriaFilter, setCategoriaFilter] = useState("");
   const [page, setPage] = useState(1);
 
-  const [modal, setModal] = useState<null | { mode: "add" | "edit" | "view"; item?: InventarioItem }>(null);
+  const [editModal, setEditModal] = useState<null | { mode: "add" | "edit"; item?: InventarioItem }>(null);
+  const [selectedItem, setSelectedItem] = useState<InventarioItem | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [form, setForm] = useState<ItemFormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof ItemFormState, string>>>({});
   const [deleteTarget, setDeleteTarget] = useState<InventarioItem | null>(null);
@@ -183,19 +307,30 @@ function ItemsTab() {
   function openAdd() {
     setForm(EMPTY_FORM);
     setErrors({});
-    setModal({ mode: "add" });
+    setEditModal({ mode: "add" });
   }
 
   function openEdit(item: InventarioItem) {
     setForm(itemToForm(item));
     setErrors({});
-    setModal({ mode: "edit", item });
+    setEditModal({ mode: "edit", item });
   }
 
-  function openView(item: InventarioItem) {
-    setForm(itemToForm(item));
+  function closeModal() {
+    setEditModal(null);
     setErrors({});
-    setModal({ mode: "view", item });
+  }
+
+  function openDetail(item: InventarioItem) {
+    setSelectedItem(item);
+    setDetailOpen(true);
+  }
+
+  function handleEditFromDetail() {
+    if (!selectedItem) return;
+    const item = selectedItem;
+    setDetailOpen(false);
+    openEdit(item);
   }
 
   function setField(k: keyof ItemFormState, v: string) {
@@ -208,7 +343,7 @@ function ItemsTab() {
     if (!form.categoriaInvId) errs.categoriaInvId = "Campo obligatorio";
     if (!form.nombre.trim()) errs.nombre = "Campo obligatorio";
     if (!form.unidadMedida.trim()) errs.unidadMedida = "Campo obligatorio";
-    if (modal?.mode === "add") {
+    if (editModal?.mode === "add") {
       if (form.stockActual === "" || Number(form.stockActual) < 0) errs.stockActual = "Debe ser >= 0";
     }
     if (form.stockMinimo === "" || Number(form.stockMinimo) < 0) errs.stockMinimo = "Debe ser >= 0";
@@ -221,7 +356,7 @@ function ItemsTab() {
 
     setSubmitting(true);
     try {
-      if (modal?.mode === "add") {
+      if (editModal?.mode === "add") {
         const dto: InventarioItemCreate = {
           categoriaInvId: Number(form.categoriaInvId),
           proveedorId: form.proveedorId ? Number(form.proveedorId) : null,
@@ -237,7 +372,7 @@ function ItemsTab() {
         };
         await createItem(dto);
         toast.success("Item registrado correctamente");
-      } else if (modal?.mode === "edit" && modal.item) {
+      } else if (editModal?.mode === "edit" && editModal.item) {
         const dto: InventarioItemUpdate = {
           categoriaInvId: Number(form.categoriaInvId),
           proveedorId: form.proveedorId ? Number(form.proveedorId) : null,
@@ -250,10 +385,11 @@ function ItemsTab() {
           nombreDonante: form.origen === "Donado" ? form.nombreDonante : undefined,
           noRecibo: form.origen === "Donado" ? form.noRecibo : undefined,
         };
-        await updateItem(modal.item.itemId, dto);
+        await updateItem(editModal.item.itemId, dto);
         toast.success("Item actualizado correctamente");
       }
-      setModal(null);
+      setEditModal(null);
+      setSelectedItem(null);
       loadItems({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error desconocido";
@@ -270,6 +406,8 @@ function ItemsTab() {
       await deleteItem(deleteTarget.itemId);
       toast.success("Item eliminado correctamente");
       setDeleteTarget(null);
+      setDetailOpen(false);
+      setSelectedItem(null);
       loadItems({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al eliminar";
@@ -280,17 +418,86 @@ function ItemsTab() {
     }
   }
 
-  const cols = ["Código", "Nombre", "Categoría", "Stock", "Stock Mín.", "Unidad", "Acciones"];
+  const cols = ["Código", "Nombre", "Categoría", "Stock", "Stock Mín.", "Unidad"];
+
+  const detailTabs: TabItem[] = selectedItem
+    ? [
+        {
+          id: "info",
+          label: "Info",
+          icon: <Info size={15} />,
+          content: (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+              <InfoField label="Código de Barras" value={selectedItem.codigoBarras || "—"} />
+              <InfoField label="Nombre" value={selectedItem.nombre} />
+              <InfoField label="Categoría" value={selectedItem.categoriaNombre} />
+              <InfoField label="Proveedor" value={selectedItem.proveedorNombre || "—"} />
+              <InfoField label="Stock Actual" value={`${selectedItem.stockActual} ${selectedItem.unidadMedida}`} />
+              <InfoField label="Stock Mínimo" value={`${selectedItem.stockMinimo} ${selectedItem.unidadMedida}`} />
+              <InfoField label="Unidad de Medida" value={selectedItem.unidadMedida} />
+              <InfoField label="Origen" value={selectedItem.origen || "Compra Propia"} />
+              <InfoField label="Donante" value={selectedItem.nombreDonante || "—"} />
+              <InfoField label="No. Recibo" value={selectedItem.noRecibo || "—"} />
+            </div>
+          ),
+        },
+        {
+          id: "kardex",
+          label: "Kardex",
+          icon: <History size={15} />,
+          content: (
+            <EmptyState
+              icon={History}
+              title="Sin movimientos"
+              description="El historial de movimientos (kardex) de este item aparecerá aquí."
+            />
+          ),
+        },
+        {
+          id: "ubicaciones",
+          label: "Ubicaciones",
+          icon: <MapPin size={15} />,
+          content: (
+            <EmptyState
+              icon={MapPin}
+              title="Sin ubicaciones"
+              description="Las unidades y servicios donde se encuentra este item aparecerán aquí."
+            />
+          ),
+        },
+        {
+          id: "acciones",
+          label: "Acciones",
+          icon: <ListChecks size={15} />,
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <InfoField label="Estado de stock" value={stockStatus(selectedItem).label} />
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button variant="brand" size="sm" onClick={handleEditFromDetail}>
+                  <Pencil className="size-4" /> Editar
+                </Button>
+                <Button variant="brand-outline" size="sm" onClick={() => window.print()}>
+                  <Printer className="size-4" /> Imprimir
+                </Button>
+                <Button variant="brand-outline" size="sm" onClick={() => setDeleteTarget(selectedItem)}>
+                  <Trash2 className="size-4" /> Eliminar
+                </Button>
+              </div>
+            </div>
+          ),
+        },
+      ]
+    : [];
 
   return (
     <div style={CARD_STYLE}>
-      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--neutral-200)" }}>
+      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3">
           <div className="relative w-72">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--neutral-500)" }} />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
             <input
               className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"
-              style={{ borderColor: "var(--neutral-200)", color: "var(--text-1)", fontFamily: "Inter, sans-serif", background: "var(--bg-input)" }}
+              style={{ borderColor: "var(--border)", color: "var(--text-1)", fontFamily: "Inter, sans-serif", background: "var(--bg-input)" }}
               placeholder="Buscar por código o nombre…"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -300,7 +507,7 @@ function ItemsTab() {
             value={categoriaFilter}
             onChange={(e) => { setCategoriaFilter(e.target.value); setPage(1); }}
             className="rounded-lg border px-3 py-2 text-sm outline-none"
-            style={{ borderColor: "var(--neutral-200)", color: "var(--text-1)", background: "var(--bg-input)" }}
+            style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}
           >
             <option value="">Todas las categorías</option>
             {catalogos.categorias.map((c) => (
@@ -308,28 +515,24 @@ function ItemsTab() {
             ))}
           </select>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-          style={{ background: "var(--red)", fontFamily: "Inter, sans-serif" }}
-        >
-          <Plus size={16} /> Nuevo Item
-        </button>
+        <Button variant="brand" onClick={openAdd}>
+          <Plus className="size-4" /> Nuevo Item
+        </Button>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-left" style={{ fontFamily: "Inter, sans-serif" }}>
           <thead>
-            <tr style={{ background: "var(--bg-input)", borderBottom: "1px solid var(--neutral-200)" }}>
+            <tr style={{ background: "var(--bg-input)", borderBottom: "1px solid var(--border)" }}>
               {cols.map((h) => (
-                <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--neutral-500)" }}>{h}</th>
+                <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading && items.length === 0 ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={`skeleton-${i}`} style={{ borderBottom: "1px solid var(--neutral-200)" }}>
+                <tr key={`skeleton-${i}`} style={{ borderBottom: "1px solid var(--divider)" }}>
                   {cols.map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <Skeleton className="h-4 w-full bg-neutral-200" style={{ maxWidth: j === 1 ? 200 : 120 }} />
@@ -345,243 +548,301 @@ function ItemsTab() {
                     title="No hay items registrados"
                     description="Registre un nuevo insumo o equipo para comenzar a gestionar el inventario."
                     action={
-                      <button
-                        onClick={openAdd}
-                        className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                        style={{ background: "var(--red)", fontFamily: "Inter, sans-serif" }}
-                      >
-                        <Plus size={16} /> Nuevo Item
-                      </button>
+                      <Button variant="brand" onClick={openAdd}>
+                        <Plus className="size-4" /> Nuevo Item
+                      </Button>
                     }
                   />
                 </td>
               </tr>
             ) : (
-              items.map((it) => (
-                <tr key={it.itemId} className="border-b transition hover:bg-gray-50" style={{ borderColor: "var(--neutral-200)" }}>
-                  <td className="px-4 py-3 text-sm font-mono font-medium" style={{ color: "var(--text-1)" }}>{it.codigoBarras || "—"}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "var(--text-1)", maxWidth: 240 }}>{it.nombre}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "var(--neutral-500)" }}>{it.categoriaNombre}</td>
-                  <td className="px-4 py-3 text-sm font-medium" style={{ color: it.stockActual <= it.stockMinimo ? "var(--red)" : "var(--text-1)" }}>{it.stockActual}</td>
-                  <td className="px-4 py-3 text-sm text-center" style={{ color: "var(--neutral-500)" }}>{it.stockMinimo}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "var(--neutral-500)" }}>{it.unidadMedida}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => openView(it)} title="Ver" className="rounded p-1.5 text-blue-600 transition hover:bg-blue-50"><Eye size={15} /></button>
-                      <button onClick={() => openEdit(it)} title="Editar" className="rounded p-1.5 transition hover:bg-gray-100" style={{ color: "var(--neutral-500)" }}><Pencil size={15} /></button>
-                      <button onClick={() => setDeleteTarget(it)} title="Eliminar" className="rounded p-1.5 transition hover:bg-red-50" style={{ color: "var(--red)" }}><Trash2 size={15} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+              items.map((it) => {
+                const status = stockStatus(it);
+                return (
+                  <tr
+                    key={it.itemId}
+                    className="cursor-pointer border-b transition-colors"
+                    style={{ borderColor: "var(--divider)" }}
+                    onClick={() => openDetail(it)}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <td className="px-4 py-3 text-sm font-mono font-medium" style={{ color: "var(--text-1)" }}>{it.codigoBarras || "—"}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: "var(--text-1)", maxWidth: 240 }}>{it.nombre}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: "var(--text-2)" }}>{it.categoriaNombre}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={status.variant} size="sm" dot>{status.label}</Badge>
+                        <span className="font-medium" style={{ color: "var(--text-1)" }}>{it.stockActual}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-center" style={{ color: "var(--text-2)" }}>{it.stockMinimo}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: "var(--text-2)" }}>{it.unidadMedida}</td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: "var(--neutral-200)", fontFamily: "Inter, sans-serif" }}>
-        <p className="text-xs" style={{ color: "var(--neutral-500)" }}>{total} registro{total !== 1 ? "s" : ""} — Página {page} de {totalPages}</p>
+      <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: "var(--border)", fontFamily: "Inter, sans-serif" }}>
+        <p className="text-xs" style={{ color: "var(--text-2)" }}>{total} registro{total !== 1 ? "s" : ""} — Página {page} de {totalPages}</p>
         <div className="flex items-center gap-1">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "var(--neutral-500)" }}><ChevronLeft size={16} /></button>
-          <span className="px-2 text-xs font-medium" style={{ color: "var(--neutral-500)" }}>{page} / {totalPages}</span>
-          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "var(--neutral-500)" }}><ChevronRight size={16} /></button>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "var(--text-3)" }}><ChevronLeft size={16} /></button>
+          <span className="px-2 text-xs font-medium" style={{ color: "var(--text-2)" }}>{page} / {totalPages}</span>
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "var(--text-3)" }}><ChevronRight size={16} /></button>
         </div>
       </div>
 
-      {/* Item Modal */}
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setModal(null)}>
-          <div className="w-full max-w-lg rounded-2xl" style={{ background: "var(--bg-card, #fff)", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))" }}>
-              <h2 className="text-base font-semibold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1, var(--text-1))" }}>
-                {modal.mode === "add" ? "Nuevo Item" : modal.mode === "edit" ? "Editar Item" : "Ver Item"}
-              </h2>
-              <button onClick={() => setModal(null)} className="rounded p-1 hover:bg-gray-100" style={{ color: "var(--neutral-500)" }}><X size={18} /></button>
+      {/* Item Create / Edit Modal */}
+      <Modal
+        open={editModal !== null}
+        onClose={closeModal}
+        size="xl"
+        variant="glass"
+        title={editModal?.mode === "add" ? "Nuevo Item" : "Editar Item"}
+        description={
+          editModal?.mode === "add"
+            ? "Registra un nuevo insumo o equipo en el inventario."
+            : "Actualiza los datos del item seleccionado."
+        }
+        icon={<Package className="size-6" />}
+        className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
+        footer={
+          <>
+            <Button variant="brand-outline" onClick={closeModal}>Cancelar</Button>
+            <Button variant="brand" loading={submitting} onClick={handleSave}>Guardar</Button>
+          </>
+        }
+      >
+        {/* Error summary */}
+        {Object.keys(errors).length > 0 && (
+          <div
+            className="mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm"
+            style={{ borderColor: "var(--brand-300)", background: "var(--brand-100)", color: "var(--brand-700)" }}
+          >
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--brand-600)" }} />
+            <span>Por favor corrige los campos marcados antes de continuar.</span>
+          </div>
+        )}
+
+        <CollapsibleSection label="Datos" icon={User}>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Nombre *"
+              placeholder="Nombre del insumo o equipo"
+              value={form.nombre}
+              onChange={(e) => setField("nombre", e.target.value)}
+              error={errors.nombre}
+            />
+            <SelectField
+              label="Categoría"
+              required
+              value={form.categoriaInvId}
+              onChange={(v) => setField("categoriaInvId", v)}
+              options={catalogos.categorias.map((c) => ({ value: String(c.id), label: c.nombre }))}
+              error={errors.categoriaInvId}
+              placeholder="Seleccionar…"
+            />
+            <Input
+              label="Código de Barras"
+              placeholder="Ej. MED-001"
+              value={form.codigoBarras}
+              onChange={(e) => setField("codigoBarras", e.target.value)}
+            />
+            <Input
+              label="Unidad de Medida *"
+              placeholder="comprimidos, bolsas…"
+              value={form.unidadMedida}
+              onChange={(e) => setField("unidadMedida", e.target.value)}
+              error={errors.unidadMedida}
+            />
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection label="Stock" icon={Boxes}>
+          <div className="grid grid-cols-2 gap-4">
+            {editModal?.mode === "add" && (
+              <Input
+                type="number"
+                min={0}
+                label="Stock Actual *"
+                placeholder="0"
+                value={form.stockActual}
+                onChange={(e) => setField("stockActual", e.target.value)}
+                error={errors.stockActual}
+              />
+            )}
+            <Input
+              type="number"
+              min={0}
+              label="Stock Mínimo *"
+              placeholder="5"
+              value={form.stockMinimo}
+              onChange={(e) => setField("stockMinimo", e.target.value)}
+              error={errors.stockMinimo}
+            />
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection label="Proveedor" icon={Truck}>
+          <SelectField
+            label="Proveedor"
+            value={form.proveedorId}
+            onChange={(v) => setField("proveedorId", v)}
+            options={catalogos.proveedores.map((p) => ({ value: String(p.id), label: p.nombre }))}
+            placeholder="Sin proveedor"
+          />
+        </CollapsibleSection>
+
+        <CollapsibleSection label="Origen" icon={Gift}>
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2">
+              {(["Compra Propia", "Donado"] as const).map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => setField("origen", o)}
+                  className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition"
+                  style={{
+                    borderColor: form.origen === o ? "var(--brand-500)" : "var(--border)",
+                    background: form.origen === o ? "var(--grad-primary)" : "var(--bg-input)",
+                    color: form.origen === o ? "var(--neutral-0)" : "var(--text-2)",
+                  }}
+                >
+                  {o}
+                </button>
+              ))}
             </div>
 
-            {modal.mode === "view" ? (
-              <div style={{ padding: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 24px", fontFamily: "Inter, sans-serif" }}>
-                {[
-                  { label: "Código de Barras", value: form.codigoBarras || "—" },
-                  { label: "Nombre", value: form.nombre },
-                  { label: "Categoría", value: catalogos.categorias.find((c) => c.id === Number(form.categoriaInvId))?.nombre || "—" },
-                  { label: "Proveedor", value: catalogos.proveedores.find((p) => p.id === Number(form.proveedorId))?.nombre || "—" },
-                  { label: "Stock Actual", value: form.stockActual },
-                  { label: "Stock Mínimo", value: form.stockMinimo },
-                  { label: "Unidad de Medida", value: form.unidadMedida },
-                ].map(({ label, value }) => (
-                  <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3, var(--neutral-500))" }}>{label}</span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1, var(--text-1))" }}>{value}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4 px-6 py-5" style={{ fontFamily: "Inter, sans-serif" }}>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Nombre <span style={{ color: "var(--red)" }}>*</span></label>
-                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.nombre} onChange={(e) => setField("nombre", e.target.value)} placeholder="Nombre del insumo o equipo" />
-                  {errors.nombre && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.nombre}</p>}
-                </div>
+            {form.origen === "Donado" && (
+              <div className="rounded-lg border p-3 space-y-3" style={{ borderColor: "var(--border)", background: "var(--success-50)" }}>
+                <SelectField
+                  label="Donación vinculada"
+                  value={form.donacionId}
+                  onChange={(v) => onSelectDonacion(v)}
+                  options={donacionesMaterial.map((d) => ({ value: String(d.donacionId), label: `${d.noRecibo} — ${d.donante}` }))}
+                  placeholder="Sin vincular"
+                />
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Categoría <span style={{ color: "var(--red)" }}>*</span></label>
-                    <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.categoriaInvId} onChange={(e) => setField("categoriaInvId", e.target.value)}>
-                      <option value="">Seleccionar…</option>
-                      {catalogos.categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                    </select>
-                    {errors.categoriaInvId && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.categoriaInvId}</p>}
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Proveedor</label>
-                    <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.proveedorId} onChange={(e) => setField("proveedorId", e.target.value)}>
-                      <option value="">Sin proveedor</option>
-                      {catalogos.proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                    </select>
-                  </div>
+                  <Input
+                    label="Donante"
+                    placeholder="Nombre del donante"
+                    value={form.nombreDonante}
+                    onChange={(e) => setField("nombreDonante", e.target.value)}
+                  />
+                  <Input
+                    label="No. Recibo"
+                    placeholder="No. recibo"
+                    value={form.noRecibo}
+                    onChange={(e) => setField("noRecibo", e.target.value)}
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Código de Barras</label>
-                    <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.codigoBarras} onChange={(e) => setField("codigoBarras", e.target.value)} placeholder="Ej. MED-001" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Unidad <span style={{ color: "var(--red)" }}>*</span></label>
-                    <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.unidadMedida} onChange={(e) => setField("unidadMedida", e.target.value)} placeholder="comprimidos, bolsas…" />
-                    {errors.unidadMedida && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.unidadMedida}</p>}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {modal.mode === "add" && (
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Stock Actual <span style={{ color: "var(--red)" }}>*</span></label>
-                      <input type="number" min="0" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.stockActual} onChange={(e) => setField("stockActual", e.target.value)} placeholder="0" />
-                      {errors.stockActual && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.stockActual}</p>}
-                    </div>
-                  )}
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Stock Mínimo <span style={{ color: "var(--red)" }}>*</span></label>
-                    <input type="number" min="0" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.stockMinimo} onChange={(e) => setField("stockMinimo", e.target.value)} placeholder="5" />
-                    {errors.stockMinimo && <p className="mt-1 text-xs" style={{ color: "var(--red)" }}>{errors.stockMinimo}</p>}
-                  </div>
-                </div>
-
-                {/* Origen */}
-                <div>
-                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Origen</label>
-                  <div className="flex gap-2">
-                    {(["Compra Propia", "Donado"] as const).map((o) => (
-                      <button
-                        key={o}
-                        type="button"
-                        onClick={() => setField("origen", o)}
-                        className="flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition"
-                        style={{
-                          borderColor: form.origen === o ? "var(--red)" : "var(--border, var(--neutral-200))",
-                          background: form.origen === o ? "var(--red)" : "var(--bg-input, #fff)",
-                          color: form.origen === o ? "#fff" : "var(--text-2, var(--neutral-500))",
-                        }}
-                      >
-                        {o}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {form.origen === "Donado" && (
-                  <div className="rounded-lg border p-3 space-y-3" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--success-50)" }}>
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Donación vinculada</label>
-                      <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.donacionId} onChange={(e) => onSelectDonacion(e.target.value)}>
-                        <option value="">Sin vincular</option>
-                        {donacionesMaterial.map((d) => (
-                          <option key={d.donacionId} value={d.donacionId}>{d.noRecibo} — {d.donante}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Donante</label>
-                        <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.nombreDonante} onChange={(e) => setField("nombreDonante", e.target.value)} placeholder="Nombre del donante" />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>No. Recibo</label>
-                        <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={form.noRecibo} onChange={(e) => setField("noRecibo", e.target.value)} placeholder="No. recibo" />
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowDonacionDrawer(true)}
-                      className="flex items-center gap-1 text-xs font-semibold transition"
-                      style={{ color: "var(--red)", background: "transparent", border: "none", cursor: "pointer" }}
-                    >
-                      <Plus size={13} /> Nueva donación
-                    </button>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setShowDonacionDrawer(true)}
+                  className="flex items-center gap-1 text-xs font-semibold transition"
+                  style={{ color: "var(--brand-600)", background: "transparent", border: "none", cursor: "pointer" }}
+                >
+                  <Plus size={13} /> Nueva donación
+                </button>
               </div>
             )}
-
-            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))", fontFamily: "Inter, sans-serif" }}>
-              <button onClick={() => setModal(null)} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50" style={{ borderColor: "var(--border, var(--neutral-200))", color: "var(--text-1)" }}>
-                {modal.mode === "view" ? "Cerrar" : "Cancelar"}
-              </button>
-              {modal.mode !== "view" && (
-                <button onClick={handleSave} disabled={submitting} className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90" style={{ background: "var(--red)", opacity: submitting ? 0.7 : 1 }}>
-                  {submitting ? "Guardando..." : "Guardar"}
-                </button>
-              )}
-            </div>
           </div>
-        </div>
-      )}
+        </CollapsibleSection>
+      </Modal>
 
+      {/* Item Detail Drawer */}
+      <Drawer
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        side="right"
+        size="lg"
+        title={selectedItem?.nombre}
+        icon={<Package className="size-6" />}
+        statusBadge={
+          selectedItem ? (
+            <Badge variant={stockStatus(selectedItem).variant} dot>
+              {stockStatus(selectedItem).label}
+            </Badge>
+          ) : undefined
+        }
+        footer={
+          <>
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="size-4" /> Imprimir
+            </Button>
+            <Button variant="brand-outline" onClick={() => selectedItem && setDeleteTarget(selectedItem)}>
+              <Trash2 className="size-4" /> Eliminar
+            </Button>
+            <Button variant="brand" onClick={handleEditFromDetail}>
+              <Pencil className="size-4" /> Editar
+            </Button>
+          </>
+        }
+      >
+        {selectedItem && <Tabs variant="glass" tabs={detailTabs} />}
+      </Drawer>
+
+      {/* Nueva Donación (overlay secundario, sobre el Modal) */}
       {showDonacionDrawer && (
-        <div className="fixed inset-0 z-[70]" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setShowDonacionDrawer(false)}>
+        <div className="fixed inset-0 z-[600]" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setShowDonacionDrawer(false)}>
           <div
-            className="absolute right-0 top-0 h-full w-full max-w-md shadow-2xl overflow-y-auto"
-            style={{ background: "var(--bg-card, #fff)" }}
+            className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto shadow-2xl"
+            style={{ background: "var(--bg-card)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))" }}>
+            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--bg-input)" }}>
               <h2 className="text-base font-semibold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>Nueva Donación (Material)</h2>
-              <button onClick={() => setShowDonacionDrawer(false)} className="rounded p-1 hover:bg-gray-100" style={{ color: "var(--neutral-500)" }}><X size={18} /></button>
+              <button onClick={() => setShowDonacionDrawer(false)} className="rounded p-1 hover:bg-gray-100" style={{ color: "var(--text-3)" }}><X size={18} /></button>
             </div>
             <div className="space-y-4 px-6 py-5" style={{ fontFamily: "Inter, sans-serif" }}>
-              <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Donante <span style={{ color: "var(--red)" }}>*</span></label>
-                <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.donante} onChange={(e) => setDonacionForm((p) => ({ ...p, donante: e.target.value }))} placeholder="Nombre del donante" />
-              </div>
+              <Input
+                label="Donante *"
+                placeholder="Nombre del donante"
+                value={donacionForm.donante}
+                onChange={(e) => setDonacionForm((p) => ({ ...p, donante: e.target.value }))}
+              />
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>DPI / NIT</label>
-                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.dpiNit} onChange={(e) => setDonacionForm((p) => ({ ...p, dpiNit: e.target.value }))} placeholder="DPI/NIT" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Teléfono</label>
-                  <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.telefono} onChange={(e) => setDonacionForm((p) => ({ ...p, telefono: e.target.value }))} placeholder="xxxx-xxxx" />
-                </div>
+                <Input
+                  label="DPI / NIT"
+                  placeholder="DPI/NIT"
+                  value={donacionForm.dpiNit}
+                  onChange={(e) => setDonacionForm((p) => ({ ...p, dpiNit: e.target.value }))}
+                />
+                <Input
+                  label="Teléfono"
+                  placeholder="xxxx-xxxx"
+                  value={donacionForm.telefono}
+                  onChange={(e) => setDonacionForm((p) => ({ ...p, telefono: e.target.value }))}
+                />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Categoría</label>
-                <select className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.categoria} onChange={(e) => setDonacionForm((p) => ({ ...p, categoria: e.target.value }))}>
-                  {["Insumos Médicos", "Equipo/Herramientas"].map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Descripción del artículo <span style={{ color: "var(--red)" }}>*</span></label>
-                <input className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.descripcion} onChange={(e) => setDonacionForm((p) => ({ ...p, descripcion: e.target.value }))} placeholder="Ej. Camillas plegables" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-3, var(--neutral-500))" }}>Cantidad</label>
-                <input type="number" min="1" className={inputCls} style={{ background: "var(--bg-input, #fff)", color: "var(--text-1)", border: "1px solid var(--border, var(--neutral-200))" }} value={donacionForm.cantidad} onChange={(e) => setDonacionForm((p) => ({ ...p, cantidad: e.target.value }))} placeholder="1" />
-              </div>
+              <SelectField
+                label="Categoría"
+                value={donacionForm.categoria}
+                onChange={(v) => setDonacionForm((p) => ({ ...p, categoria: v }))}
+                options={["Insumos Médicos", "Equipo/Herramientas"].map((c) => ({ value: c, label: c }))}
+                placeholder="Seleccionar…"
+              />
+              <Input
+                label="Descripción del artículo *"
+                placeholder="Ej. Camillas plegables"
+                value={donacionForm.descripcion}
+                onChange={(e) => setDonacionForm((p) => ({ ...p, descripcion: e.target.value }))}
+              />
+              <Input
+                type="number"
+                min={1}
+                label="Cantidad"
+                placeholder="1"
+                value={donacionForm.cantidad}
+                onChange={(e) => setDonacionForm((p) => ({ ...p, cantidad: e.target.value }))}
+              />
             </div>
-            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border, var(--neutral-200))", background: "var(--bg-input, var(--bg-input))", fontFamily: "Inter, sans-serif" }}>
-              <button onClick={() => setShowDonacionDrawer(false)} className="rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-gray-50" style={{ borderColor: "var(--border, var(--neutral-200))", color: "var(--text-1)" }}>Cancelar</button>
-              <button onClick={handleCrearDonacionRapida} disabled={donacionSaving} className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90" style={{ background: "var(--red)", opacity: donacionSaving ? 0.7 : 1 }}>
-                {donacionSaving ? "Creando..." : "Crear y vincular"}
-              </button>
+            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--bg-input)", fontFamily: "Inter, sans-serif" }}>
+              <Button variant="brand-outline" onClick={() => setShowDonacionDrawer(false)}>Cancelar</Button>
+              <Button variant="brand" loading={donacionSaving} onClick={handleCrearDonacionRapida}>Crear y vincular</Button>
             </div>
           </div>
         </div>
@@ -626,14 +887,14 @@ export function InventarioPage() {
   const [topTab, setTopTab] = useState<TopTab>("items");
 
   return (
-    <div className="min-h-screen p-6" style={{ background: "var(--bg-hover)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-screen p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
       <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--red)" }}>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--grad-primary)" }}>
           <Package size={20} className="text-white" />
         </div>
         <div>
           <h1 className="text-xl font-bold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>Inventario</h1>
-          <p className="text-xs" style={{ color: "var(--neutral-500)" }}>Gestión de insumos, equipos y movimientos de stock</p>
+          <p className="text-xs" style={{ color: "var(--text-3)" }}>Gestión de insumos, equipos y movimientos de stock</p>
         </div>
       </div>
 
@@ -647,10 +908,10 @@ export function InventarioPage() {
               className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition"
               style={{
                 fontFamily: "Manrope, sans-serif",
-                background: active ? "var(--red)" : "#fff",
-                color: active ? "#fff" : "var(--neutral-500)",
-                boxShadow: active ? "0 2px 8px rgba(211,47,47,0.25)" : "0 1px 4px rgba(0,0,0,0.06)",
-                border: active ? "none" : "1px solid rgba(0,0,0,0.08)",
+                background: active ? "var(--grad-primary)" : "var(--bg-card)",
+                color: active ? "var(--neutral-0)" : "var(--text-2)",
+                boxShadow: active ? "var(--elevation-brand-2)" : "var(--shadow)",
+                border: active ? "none" : "1px solid var(--border)",
               }}
             >
               <Icon size={16} />

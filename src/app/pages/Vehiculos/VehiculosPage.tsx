@@ -2,9 +2,14 @@ import { useState, useEffect, useMemo, type ReactNode } from "react";
 import {
   Pencil, Trash2, Eye, Plus, Search, X, Check,
   AlertTriangle, ChevronLeft, ChevronRight, Fuel, Truck,
-  Wrench, Info, Power,
+  Wrench, Info, Power, Printer, FileText, History, MapPin,
 } from "lucide-react";
 import { AlertDialog } from "../../components/AlertDialog";
+import { Drawer } from "@/app/components/ui/drawer";
+import { Tabs, type TabItem } from "@/app/components/ui/tabs";
+import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { EmptyState } from "@/app/components/ui/empty-state";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const RED = "var(--red)";
@@ -184,19 +189,13 @@ const INITIAL_FUEL: FuelEntry[] = [];
 
 // ─── Status badge helper ──────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: VehicleStatus }) {
-  const cfg: Record<VehicleStatus, { bg: string; label: string }> = {
-    Operativa:     { bg: "var(--success-600)", label: "Operativa"     },
-    "En Servicio": { bg: "#1565c0", label: "En Servicio"   },
-    Mantenimiento: { bg: "#D97706", label: "Mantenimiento" },
+  const cfg: Record<VehicleStatus, { variant: BadgeVariant; label: string }> = {
+    Operativa:     { variant: "success", label: "Operativa" },
+    "En Servicio": { variant: "info",    label: "En Servicio" },
+    Mantenimiento: { variant: "warning", label: "Mantenimiento" },
   };
-  const { bg, label } = cfg[status];
-  return (
-    <span
-      style={{ background: bg, color: "#fff", fontSize: 11, fontWeight: 600, borderRadius: 999, padding: "2px 10px", display: "inline-block", letterSpacing: "0.02em" }}
-    >
-      {label}
-    </span>
-  );
+  const { variant, label } = cfg[status];
+  return <Badge variant={variant} dot>{label}</Badge>;
 }
 
 // ─── Blank fuel form state ────────────────────────────────────────────────────
@@ -1155,8 +1154,7 @@ export function VehiculosPage() {
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Vehicle detail modal — Detalle de Unidad                            */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* Vehicle detail Drawer — Detalle de Unidad                            */}
       {detailVehicle && (() => {
         const det = VEHICLE_DETAILS[detailVehicle.code];
         const tireColor: Record<string, string> = { Bueno: "var(--success-600)", Regular: "#D97706", Crítico: "var(--red)" };
@@ -1180,164 +1178,126 @@ export function VehiculosPage() {
           ["Seguro Vigente hasta", det ? det.insuranceUntil : "—"],
         ];
 
-        return (
-          <div
-            onClick={(e) => { if (e.target === e.currentTarget) setDetailVehicle(null); }}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-          >
-            <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 12px 48px rgba(0,0,0,0.22)", width: "100%", maxWidth: 760, maxHeight: "92vh", overflowY: "auto", fontFamily: "Inter, sans-serif" }}>
-
-              {/* ── Header ───────────────────────────────────────────────── */}
-              <div style={{ background: RED, borderRadius: "20px 20px 0 0", padding: "22px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ background: "rgba(255,255,255,0.18)", borderRadius: 12, padding: "8px 10px", display: "flex" }}>
-                    <Truck size={22} color="#fff" />
-                  </div>
+        const tabs: TabItem[] = [
+          {
+            id: "informacion",
+            label: "Información",
+            icon: <Info size={15} />,
+            content: (
+              <div className="flex flex-col gap-6">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-5 rounded-xl p-5" style={{ background: "var(--bg-input)", border: `1px solid ${BORDER}` }}>
+                  {specs.map(([label, value]) => (
+                    <div key={label} className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.05em]" style={{ color: MUTED }}>{label}</span>
+                      {label === "Estado de Llantas" && det ? (
+                        <span className="inline-flex items-center gap-2">
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: tireColor[det.tireCondition] }} />
+                          <span className="text-sm font-semibold" style={{ color: tireColor[det.tireCondition] }}>{value}</span>
+                        </span>
+                      ) : (
+                        <span className="text-sm font-medium" style={{ color: "var(--text-1)" }}>{value}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {det && (
                   <div>
-                    <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#fff", fontFamily: "Manrope, sans-serif", letterSpacing: "-0.02em" }}>
-                      {detailVehicle.code}
-                    </h2>
-                    <p style={{ margin: "2px 0 0", fontSize: 13, color: "rgba(255,255,255,0.82)", fontWeight: 500 }}>
-                      {detailVehicle.type} · {detailVehicle.brand} {detailVehicle.model}
-                    </p>
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <StatusBadge status={detailVehicle.status} />
-                  <button onClick={() => setDetailVehicle(null)} style={{ background: "rgba(255,255,255,0.18)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "#fff", display: "flex", alignItems: "center" }}>
-                    <X size={17} />
-                  </button>
-                </div>
-              </div>
-
-              {/* ── Body ─────────────────────────────────────────────────── */}
-              <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 24 }}>
-
-                {/* Specifications grid */}
-                <section>
-                  <h3 style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 700, color: "var(--neutral-900)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "Manrope, sans-serif" }}>
-                    Especificaciones
-                  </h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px", background: "var(--bg-input)", borderRadius: 12, padding: "18px 20px", border: `1px solid ${BORDER}` }}>
-                    {specs.map(([label, value]) => (
-                      <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: MUTED, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
-                        {label === "Estado de Llantas" && det ? (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: tireColor[det.tireCondition], display: "inline-block" }} />
-                            <span style={{ fontSize: 13, fontWeight: 600, color: tireColor[det.tireCondition] }}>{value}</span>
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--neutral-900)" }}>{value}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                {/* Equipo Asignado */}
-                {det && (
-                  <section>
-                    <h3 style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 700, color: "var(--neutral-900)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "Manrope, sans-serif" }}>
-                      Equipo Asignado
-                    </h3>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.06em]" style={{ color: "var(--text-1)" }}>Equipo Asignado</h3>
+                    <div className="flex flex-wrap gap-2">
                       {det.equipment.map((eq) => (
-                        <div key={eq.item} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "7px 14px" }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: RED, display: "inline-block", flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, color: "var(--neutral-900)", fontWeight: 500 }}>{eq.item}</span>
-                          <span style={{ fontSize: 12, color: MUTED, fontWeight: 700 }}>{eq.qty}</span>
+                        <div key={eq.item} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "var(--bg-card)", border: `1px solid ${BORDER}` }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: RED }} />
+                          <span className="text-sm" style={{ color: "var(--text-1)" }}>{eq.item}</span>
+                          <span className="text-xs font-bold" style={{ color: MUTED }}>{eq.qty}</span>
                         </div>
                       ))}
                     </div>
-                  </section>
+                  </div>
                 )}
-
-                {/* Historial de Mantenimiento */}
-                {det && (
-                  <section>
-                    <h3 style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 700, color: "var(--neutral-900)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "Manrope, sans-serif" }}>
-                      Historial de Mantenimiento
-                    </h3>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                      {det.maintenance.map((m, idx) => (
-                        <div key={idx} style={{ display: "flex", gap: 16, position: "relative", paddingBottom: idx < det.maintenance.length - 1 ? 20 : 0 }}>
-                          {/* Timeline spine */}
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                            <div style={{ width: 10, height: 10, borderRadius: "50%", background: m.type === "Preventivo" ? "#1565c0" : "#c2410c", marginTop: 4, flexShrink: 0 }} />
-                            {idx < det.maintenance.length - 1 && (
-                              <div style={{ width: 2, flex: 1, background: BORDER, marginTop: 4 }} />
-                            )}
-                          </div>
-                          {/* Entry content */}
-                          <div style={{ background: "var(--neutral-50)", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--neutral-900)" }}>{m.date}</span>
-                                <span style={maintTypeStyle(m.type)}>{m.type}</span>
-                              </div>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--success-600)" }}>{m.cost}</span>
-                            </div>
-                            <p style={{ margin: 0, fontSize: 13, color: "var(--neutral-900)" }}>{m.desc}</p>
-                            <p style={{ margin: 0, fontSize: 11, color: MUTED, fontWeight: 500 }}>{m.taller}</p>
-                          </div>
+              </div>
+            ),
+          },
+          {
+            id: "mantenimiento",
+            label: "Mantenimiento",
+            icon: <Wrench size={15} />,
+            content: det && det.maintenance.length > 0 ? (
+              <div className="flex flex-col">
+                {det.maintenance.map((m, idx) => (
+                  <div key={idx} className="flex gap-4" style={{ paddingBottom: idx < det.maintenance.length - 1 ? 20 : 0 }}>
+                    <div className="flex shrink-0 flex-col items-center">
+                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: m.type === "Preventivo" ? "#1565c0" : "#c2410c", marginTop: 4 }} />
+                      {idx < det.maintenance.length - 1 && <div style={{ width: 2, flex: 1, background: BORDER, marginTop: 4 }} />}
+                    </div>
+                    <div className="flex flex-1 flex-col gap-1.5 rounded-xl p-3" style={{ background: "var(--bg-input)", border: `1px solid ${BORDER}` }}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold" style={{ color: "var(--text-1)" }}>{m.date}</span>
+                          <span style={maintTypeStyle(m.type)}>{m.type}</span>
                         </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Confirm inactivate */}
-                {confirmInactivate === detailVehicle.code && (
-                  <div style={{ marginTop: 12, padding: 14, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10 }}>
-                    <p style={{ fontSize: 13, color: "#92400e", fontWeight: 700, marginBottom: 6, fontFamily: "Inter, sans-serif" }}>¿Marcar como Inactivo?</p>
-                    <p style={{ fontSize: 12, color: "#92400e", marginBottom: 10, fontFamily: "Inter, sans-serif" }}>El vehículo cambiará de estado a Inactivo.</p>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => setConfirmInactivate(null)} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-                      <button onClick={() => {
-                        setVehicles((prev) => prev.map((v) => v.code === detailVehicle.code ? { ...v, estado: "Inactivo" } : v));
-                        setDetailVehicle((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
-                        setConfirmInactivate(null);
-                        setToast("Vehículo marcado como Inactivo.");
-                      }} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Confirmar</button>
+                        <span className="text-sm font-bold" style={{ color: "var(--success-600)" }}>{m.cost}</span>
+                      </div>
+                      <p className="m-0 text-sm" style={{ color: "var(--text-1)" }}>{m.desc}</p>
+                      <p className="m-0 text-xs" style={{ color: MUTED }}>{m.taller}</p>
                     </div>
                   </div>
-                )}
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon={Wrench} title="Sin mantenimientos" description="El historial de mantenimiento aparecerá aquí." />
+            ),
+          },
+          {
+            id: "combustible",
+            label: "Combustible",
+            icon: <Fuel size={15} />,
+            content: <EmptyState icon={Fuel} title="Sin registros de combustible" description="El historial de combustible aparecerá aquí." />,
+          },
+          {
+            id: "documentos",
+            label: "Documentos",
+            icon: <FileText size={15} />,
+            content: <EmptyState icon={FileText} title="Sin documentos" description="Los documentos del vehículo aparecerán aquí." />,
+          },
+        ];
 
-                {/* Action buttons */}
-                <div style={{ display: "flex", gap: 10, justifyContent: "space-between", paddingTop: 4, borderTop: `1px solid ${BORDER}` }}>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {detailVehicle.estado !== "Inactivo" && confirmInactivate !== detailVehicle.code && (
-                      <button onClick={() => setConfirmInactivate(detailVehicle.code)}
-                        style={{ padding: "9px 18px", borderRadius: 9, border: "1px solid var(--brand-600)", background: "#fff", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
-                        <Power size={13} /> Desactivar
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => setDetailVehicle(null)}
-                      style={{ padding: "9px 22px", borderRadius: 9, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}
-                    >
-                      Cerrar
-                    </button>
-                    <button
-                      onClick={() => { setEditingVehicle({ ...detailVehicle }); setDetailVehicle(null); setConfirmInactivate(null); }}
-                      style={{ padding: "9px 18px", borderRadius: 9, border: "none", background: "#1d4ed8", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}
-                    >
-                      <Pencil size={13} /> Editar
-                    </button>
-                    <button
-                      onClick={() => { setDetailVehicle(null); openMaintModal(detailVehicle.code); }}
-                      style={{ padding: "9px 18px", borderRadius: 9, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}
-                    >
-                      <Wrench size={14} /> Mantenimiento
-                    </button>
-                  </div>
+        return (
+          <Drawer
+            open
+            onClose={() => { setDetailVehicle(null); setConfirmInactivate(null); }}
+            side="right"
+            size="xl"
+            title={detailVehicle.code}
+            icon={<Truck className="size-6" />}
+            statusBadge={<StatusBadge status={detailVehicle.status} />}
+            footer={
+              <>
+                <Button variant="outline" onClick={() => window.print()}><Printer className="size-4" /> Imprimir</Button>
+                {detailVehicle.estado !== "Inactivo" && (
+                  <Button variant="brand-outline" onClick={() => setConfirmInactivate(detailVehicle.code)}><Power className="size-4" /> Desactivar</Button>
+                )}
+                <Button variant="brand-outline" onClick={() => { setDetailVehicle(null); openMaintModal(detailVehicle.code); }}><Wrench className="size-4" /> Mantenimiento</Button>
+                <Button variant="brand" onClick={() => { setEditingVehicle({ ...detailVehicle }); setDetailVehicle(null); setConfirmInactivate(null); }}><Pencil className="size-4" /> Editar</Button>
+              </>
+            }
+          >
+            {confirmInactivate === detailVehicle.code && (
+              <div className="mb-4 flex flex-col gap-2 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--warning-500)", background: "var(--warning-50)", color: "var(--warning-700)" }}>
+                <span className="font-semibold">¿Marcar como Inactivo?</span>
+                <span>El vehículo cambiará de estado a Inactivo.</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setConfirmInactivate(null)}>Cancelar</Button>
+                  <Button variant="brand" size="sm" onClick={() => {
+                    setVehicles((prev) => prev.map((v) => v.code === detailVehicle.code ? { ...v, estado: "Inactivo" } : v));
+                    setDetailVehicle((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
+                    setConfirmInactivate(null);
+                    setToast("Vehículo marcado como Inactivo.");
+                  }}>Confirmar</Button>
                 </div>
               </div>
-            </div>
-          </div>
+            )}
+            <Tabs variant="glass" tabs={tabs} />
+          </Drawer>
         );
       })()}
 

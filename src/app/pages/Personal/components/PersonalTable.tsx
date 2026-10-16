@@ -3,6 +3,7 @@ import { Users } from "lucide-react";
 import type { Miembro, RangoItem, RolItem, Estado } from "@/types/personal";
 import { formatDate } from "@/utils/format";
 import { EmptyState } from "@/app/components/ui/empty-state";
+import { Badge } from "@/app/components/ui/badge";
 
 interface TableProps {
   members: Miembro[];
@@ -18,57 +19,46 @@ interface TableProps {
   PAGE_SIZE: number;
   rangos: RangoItem[];
   roles: RolItem[];
-  onView: (m: Miembro) => void;
+  onRowClick: (m: Miembro) => void;
 }
 
 interface RowProps {
   m: Miembro;
-  onView: (m: Miembro) => void;
+  onRowClick: (m: Miembro) => void;
   index: number;
 }
 
-const MemoizedRow = memo(function MemoizedRow({ m, onView, index }: RowProps) {
+const MemoizedRow = memo(function MemoizedRow({ m, onRowClick, index }: RowProps) {
   return (
     <tr
-      className="transition-colors"
+      className="cursor-pointer transition-colors"
       style={{
         borderBottom: "1px solid var(--divider)",
         animation: "fade-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both",
         animationDelay: `${index * 40}ms`,
       }}
+      onClick={() => onRowClick(m)}
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
-      <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold">
-        <button
-          onClick={() => onView(m)}
-          className="text-inherit hover:text-blue-600 cursor-pointer"
-          style={{ background: "none", border: "none", padding: 0, font: "inherit" }}
-        >
-          {m.codigoBombero || "Sin código"}
-        </button>
+      <td className="whitespace-nowrap px-4 py-3 font-mono font-semibold" style={{ color: "var(--brand-600)" }}>
+        {m.codigoBombero || "Sin código"}
       </td>
-      <td className="px-4 py-3 font-medium">
-        <button
-          onClick={() => onView(m)}
-          className="text-inherit hover:text-blue-600 cursor-pointer"
-          style={{ background: "none", border: "none", padding: 0, font: "inherit" }}
-        >
-          {m.nombreCompleto}
-        </button>
+      <td className="px-4 py-3 font-medium" style={{ color: "var(--text-1)" }}>
+        {m.nombreCompleto}
       </td>
       <td className="whitespace-nowrap px-4 py-3 font-mono" style={{ color: "var(--text-2)" }}>
         {m.dpi}
       </td>
       <td className="px-4 py-3">
-        <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">
-          {m.rangoNombre}
-        </span>
+        <Badge variant="info" size="sm">
+          {m.rangoNombre || "Sin rango"}
+        </Badge>
       </td>
       <td className="px-4 py-3">
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${m.estado === true ? "bg-green-100 text-green-800 border border-green-200" : "bg-gray-100 text-gray-600 border border-gray-200"}`}>
+        <Badge variant={m.estado ? "success" : "default"} size="sm" dot>
           {m.estado ? "Activo" : "Inactivo"}
-        </span>
+        </Badge>
       </td>
       <td className="whitespace-nowrap px-4 py-3" style={{ color: "var(--text-2)" }}>
         {m.telefono}
@@ -80,11 +70,22 @@ const MemoizedRow = memo(function MemoizedRow({ m, onView, index }: RowProps) {
   );
 });
 
-export function PersonalTable({ members, search, setSearch, filterRango, setFilterRango, filterEstado, setFilterEstado, page, setPage, totalPages, PAGE_SIZE, rangos, roles, onView, onEdit, onDelete }: TableProps) {
+export function PersonalTable({
+  members,
+  search,
+  filterRango,
+  filterEstado,
+  page,
+  PAGE_SIZE,
+  onRowClick,
+}: TableProps) {
   const filtered = useMemo(() => {
     return members.filter((m) => {
       const q = search.toLowerCase();
-      const matchSearch = !search || m.nombreCompleto.toLowerCase().includes(q) || m.dpi.replace(/\D/g, "").includes(search.replace(/\D/g, ""));
+      const matchSearch =
+        !search ||
+        m.nombreCompleto.toLowerCase().includes(q) ||
+        m.dpi.replace(/\D/g, "").includes(search.replace(/\D/g, ""));
       const matchRango = !filterRango || m.rangoNombre === filterRango;
       const matchEstado = !filterEstado || (m.estado ? "Activo" : "Inactivo") === filterEstado;
       return matchSearch && matchRango && matchEstado;
@@ -100,7 +101,7 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
       <table className="w-full text-sm">
         <thead>
           <tr key="header" style={{ borderBottom: "1px solid var(--border)" }}>
-             {["Código", "Nombre Completo", "DPI", "Rango", "Estado", "Teléfono", "Fecha de Ingreso"].map((h) => (
+            {["Código", "Nombre Completo", "DPI", "Rango", "Estado", "Teléfono", "Fecha de Ingreso"].map((h) => (
               <th key={h} className="whitespace-nowrap px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--text-3)" }}>
                 {h}
               </th>
@@ -120,7 +121,7 @@ export function PersonalTable({ members, search, setSearch, filterRango, setFilt
             </tr>
           )}
           {pageRows.map((m, index) => (
-            <MemoizedRow key={m.personalId} m={m} onView={onView} index={index} />
+            <MemoizedRow key={m.personalId} m={m} onRowClick={onRowClick} index={index} />
           ))}
         </tbody>
       </table>
