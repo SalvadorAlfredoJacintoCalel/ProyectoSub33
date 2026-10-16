@@ -34,15 +34,16 @@ public class AuthController : ControllerBase
         }
 
         // 1. Consulta exacta contra la tabla usuarios utilizando username
+        //    (sin filtrar estado para poder distinguir entre "incorrectas" y "desactivada")
         var sqlUsuario = @"
             SELECT usuario_id, personal_id, username, password_hash, estado 
             FROM usuarios 
-            WHERE LOWER(username) = LOWER(@Username) AND estado = true 
+            WHERE LOWER(username) = LOWER(@Username) 
             LIMIT 1;";
 
         using var connection = _context.Database.GetDbConnection();
         connection.Open();
-        var transaction = connection.BeginTransaction();
+        using var transaction = connection.BeginTransaction();
 
         try
         {
@@ -51,13 +52,24 @@ public class AuthController : ControllerBase
                 new { Username = loginDto.Username },
                 transaction);
 
-            // Si no existe o no está activo, bloquear acceso de inmediato
+            // El usuario no existe: credenciales incorrectas
             if (usuarioDb == null)
             {
                 return Unauthorized(new AuthResponseDto
                 {
                     Exito = false,
-                    Mensaje = "Las credenciales ingresadas son incorrectas o la cuenta está desactivada."
+                    Mensaje = "Las credenciales ingresadas son incorrectas."
+                });
+            }
+
+            // El usuario existe pero la cuenta está desactivada
+            bool activo = (bool)usuarioDb.estado;
+            if (!activo)
+            {
+                return Unauthorized(new AuthResponseDto
+                {
+                    Exito = false,
+                    Mensaje = "La cuenta está desactivada o no cuenta con acceso al sistema."
                 });
             }
 
@@ -68,7 +80,7 @@ public class AuthController : ControllerBase
                 return Unauthorized(new AuthResponseDto
                 {
                     Exito = false,
-                    Mensaje = "Las credenciales ingresadas son incorrectas o la cuenta está desactivada."
+                    Mensaje = "Las credenciales ingresadas son incorrectas."
                 });
             }
 
@@ -79,12 +91,30 @@ public class AuthController : ControllerBase
 
             transaction.Commit();
 
+            var roles = await connection.QueryAsync<string>(
+                @"SELECT r.nombre FROM usuario_roles ur
+                  JOIN roles r ON r.rol_id = ur.rol_id
+                  WHERE ur.usuario_id = @UsuarioId;",
+                new { UsuarioId = (Guid)usuarioDb.usuario_id });
+
+            var permisos = await connection.QueryAsync<string>(
+                @"SELECT DISTINCT p.codigo FROM rol_permisos rp
+                  JOIN permisos p ON p.permiso_id = rp.permiso_id
+                  JOIN usuario_roles ur ON ur.rol_id = rp.rol_id
+                  WHERE ur.usuario_id = @UsuarioId;",
+                new { UsuarioId = (Guid)usuarioDb.usuario_id });
+
+            var token = GenerateJwtToken((Guid)usuarioDb.usuario_id, usuarioDb.username, roles, permisos);
+
             return Ok(new AuthResponseDto
             {
                 Exito = true,
                 Mensaje = "Inicio de sesión exitoso",
                 UsuarioId = (Guid)usuarioDb.usuario_id,
-                Username = usuarioDb.username
+                Username = usuarioDb.username,
+                Token = token,
+                Roles = roles.ToList(),
+                Permisos = permisos.ToList()
             });
         }
         catch
@@ -96,5 +126,29 @@ public class AuthController : ControllerBase
         {
             connection.Close();
         }
+    }
+
+    private string GenerateJwtToken(Guid usuarioId, string username, IEnumerable<string> roles, IEnumerable<string> permisos)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, usuarioId.ToString()),
+            new(JwtRegisteredClaimNames.UniqueName, username),
+            new("usuario_id", usuarioId.ToString()),
+        };
+
+        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        claims.AddRange(permisos.Select(p => new Claim("permiso", p)));
+
+        var token = new JwtSecurityToken(
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(8),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

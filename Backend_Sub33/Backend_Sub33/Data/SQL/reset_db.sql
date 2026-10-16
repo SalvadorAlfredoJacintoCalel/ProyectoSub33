@@ -255,4 +255,24 @@ created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 CONSTRAINT fk_svp_servicio FOREIGN KEY (servicio_id) REFERENCES emergencias_servicios(servicio_id) ON DELETE CASCADE
 );
 
-SELECT 'Base de datos reiniciada exitosamente. Todas las tablas están vacías.' AS resultado;
+-- ── SEED: Usuario administrador por defecto ────────────────────────────────────
+-- Username: admin | Password: Admin123!
+-- Hash BCrypt generado con costo 10
+INSERT INTO roles (rol_id, nombre, descripcion) VALUES (1, 'admin', 'Administrador del sistema') ON CONFLICT (rol_id) DO NOTHING;
+INSERT INTO roles (rol_id, nombre, descripcion) VALUES (2, 'voluntario', 'Voluntario') ON CONFLICT (rol_id) DO NOTHING;
+INSERT INTO roles (rol_id, nombre, descripcion) VALUES (3, 'secretario', 'Secretario') ON CONFLICT (rol_id) DO NOTHING;
+
+INSERT INTO usuarios (usuario_id, username, password_hash, estado, created_at, updated_at)
+VALUES (
+  gen_random_uuid(),
+  'admin',
+  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+  true,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+) ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO usuario_roles (usuario_id, rol_id)
+SELECT u.usuario_id, 1 FROM usuarios u WHERE u.username = 'admin' ON CONFLICT DO NOTHING;
+
+SELECT 'Base de datos reiniciada exitosamente. Usuario admin creado (admin / Admin123!).' AS resultado;

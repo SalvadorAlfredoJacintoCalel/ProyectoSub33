@@ -39,17 +39,7 @@ function LayoutShell({ children }: { children: ReactNode }) {
   }, [isDrawerOpen, isModalOpen]);
 
   if (!loggedIn) {
-    const handleLogin = () => {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          login("dev-token", JSON.parse(storedUser));
-        } catch {
-          /* invalid JSON */
-        }
-      }
-    };
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage onLogin={login} />;
   }
 
   const userName = `${profileForm.nombre} ${profileForm.apellido}`;

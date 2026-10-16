@@ -216,21 +216,7 @@ function AppContent() {
   }, [darkMode]);
 
   if (!loggedIn) {
-    const handleLogin = () => {
-      // LoginPage sets localStorage "user" before calling onLogin
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser);
-          // Use a dummy token since LoginPage doesn't set authToken
-          // The apiClient will read from localStorage "authToken" if available
-          login("dev-token", userData);
-        } catch {
-          // Invalid JSON, ignore
-        }
-      }
-    };
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage onLogin={login} />;
   }
 
   const userName = `${profileForm.nombre} ${profileForm.apellido}`;

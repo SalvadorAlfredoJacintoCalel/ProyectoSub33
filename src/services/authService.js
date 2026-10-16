@@ -13,19 +13,35 @@ export const login = async (username, password) => {
       }),
     });
 
+    const data = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Error en el servidor: ${response.status} - ${errorData.message || ''}`);
+      const mensaje = data?.mensaje || data?.Mensaje || data?.message || "Error de conexión";
+      throw new Error(mensaje);
     }
 
-    const data = await response.json();
-    
     // Extraer el token sin romper si la clave viene en mayúsculas o con otro nombre
     const token = data?.token || data?.Token || data?.accessToken || (typeof data === 'string' ? data : null);
 
     if (token) {
       localStorage.setItem("authToken", token);
-      return { success: true, token, user: data?.usuario || data?.user || { username } };
+      const roles = Array.isArray(data?.roles) ? data.roles : [];
+      const role = roles.includes("admin")
+        ? "admin"
+        : roles.includes("secretario")
+          ? "secretario"
+          : "voluntario";
+      return {
+        success: true,
+        token,
+        user: {
+          username: data?.username || data?.usuario || data?.user || username,
+          role,
+          name: data?.nombreCompleto || data?.username || username,
+          roles,
+          permisos: Array.isArray(data?.permisos) ? data.permisos : [],
+        },
+      };
     } else {
       throw new Error("Respuesta inválida del servidor: no se encontró el token");
     }

@@ -7,7 +7,9 @@ import {
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
 import imgCrossBadge from "@/imports/DashboardPrincipalDesktop/39b842ab5db9edc3f36b77dcb333e6063de137a7.png";
 import imgCvbLogo from "@/imports/DashboardPrincipalDesktop/382ba90f17ab58630c2735b72b71bff037f7ba87.png";
-import { useToast } from "@/components/ui/use-toast";
+import { useAlert } from "@/app/components/ui/AlertSystem";
+import { login as authLogin } from "@/services/authService";
+import type { UserRole } from "@/constants/roles";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -55,17 +57,20 @@ function RedButton({
   label,
   onClick,
   type = "submit",
+  disabled = false,
 }: {
   icon: ReactNode;
   label: string;
   onClick?: () => void;
   type?: "submit" | "button";
+  disabled?: boolean;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
-      className="flex items-center justify-center gap-3 w-full py-4 rounded-xl bg-[#c11d1d] hover:bg-[#a61818] active:bg-[#8b0009] transition-colors"
+      disabled={disabled}
+      className="flex items-center justify-center gap-3 w-full py-4 rounded-xl bg-[#c11d1d] hover:bg-[#a61818] active:bg-[#8b0009] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       style={{ boxShadow: "0 4px 16px rgba(193,29,29,0.35)" }}
     >
       {icon}
@@ -412,23 +417,43 @@ function SuccessStep({ onLogin }: { onLogin: () => void }) {
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-type Props = { onLogin: () => void };
+type LoginUser = {
+  username: string;
+  role: UserRole;
+  name: string;
+  roles?: string[];
+  permisos?: string[];
+};
+
+type Props = { onLogin: (token: string, user: LoginUser) => void };
 
 export function LoginPage({ onLogin }: Props) {
+  const { toast } = useAlert();
   const [step, setStep] = useState<Step>("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [loginError, setLoginError] = useState(""); // ERROR: mensaje de login fallido
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    // Bypass authentication for development
-    const fakeUser = { username: username || "Administrador", role: "admin", name: "Administrador" };
-    localStorage.setItem("user", JSON.stringify(fakeUser));
-    setLoginError("");
-    if (onLogin) onLogin();
+    setSubmitting(true);
+    const result = await authLogin(username, password);
+    setSubmitting(false);
+
+    if (result.success) {
+      onLogin(result.token, result.user);
+    } else {
+      const msg = (result.error || "").toLowerCase();
+      if (msg.includes("desactivada") || msg.includes("no cuenta")) {
+        toast.error("Este usuario no cuenta con usuario para ingresar al sistema");
+      } else if (msg.includes("incorrectas")) {
+        toast.error("Credenciales incorrectas, verifique su información");
+      } else {
+        toast.error(result.error || "Error de conexión");
+      }
+    }
   }
 
   return (
@@ -466,10 +491,6 @@ export function LoginPage({ onLogin }: Props) {
                 Inicia sesión para continuar
               </p>
             </div>
-
-            <p className="text-center mb-4 text-sm" style={{ fontFamily: "Inter, sans-serif", color: "#dc2626" }}>
-{loginError}
-</p>
 
             {/* Login form */}
             <form onSubmit={handleLogin} className="flex flex-col gap-4">
@@ -523,7 +544,7 @@ export function LoginPage({ onLogin }: Props) {
                 </button>
               </div>
 
-              <RedButton icon={<LogIn size={19} color="white" strokeWidth={2.5} />} label="INICIAR SESIÓN" />
+              <RedButton icon={<LogIn size={19} color="white" strokeWidth={2.5} />} label={submitting ? "INICIANDO SESIÓN..." : "INICIAR SESIÓN"} disabled={submitting} />
             </form>
           </>
         )}
