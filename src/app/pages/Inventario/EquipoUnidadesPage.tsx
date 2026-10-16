@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { Plus, Truck, Loader2, Printer, Info, FileText, AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
-import { AlertDialog } from "@/app/components/AlertDialog";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
@@ -82,6 +81,7 @@ function SelectField({
 export function EquipoUnidadesPage() {
   const { equipoUnidades, items, loading, catalogos, loadEquipoUnidades, loadItems, loadCatalogos, asignarEquipo } =
     useInventario();
+  const { alert, toast } = useAlert();
 
   const [unidadFilter, setUnidadFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -90,9 +90,6 @@ export function EquipoUnidadesPage() {
   const [form, setForm] = useState({ unidadId: "", itemId: "", cantidadAsignada: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [alertState, setAlertState] = useState<{ open: boolean; title: string; message: string; type: "error" }>({
-    open: false, title: "", message: "", type: "error",
-  });
 
   useEffect(() => {
     loadCatalogos();
@@ -134,7 +131,7 @@ export function EquipoUnidadesPage() {
       loadEquipoUnidades(unidadFilter ? Number(unidadFilter) : undefined);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al asignar equipo";
-      setAlertState({ open: true, title: "Error", message: msg, type: "error" });
+      alert.error("Error", msg);
     } finally {
       setSubmitting(false);
     }
@@ -306,14 +303,6 @@ export function EquipoUnidadesPage() {
       >
         {selected && <Tabs variant="glass" tabs={detailTabs} />}
       </Drawer>
-
-      <AlertDialog
-        isOpen={alertState.open}
-        onClose={() => setAlertState((s) => ({ ...s, open: false }))}
-        title={alertState.title}
-        message={alertState.message}
-        type={alertState.type}
-      />
     </div>
   );
 }

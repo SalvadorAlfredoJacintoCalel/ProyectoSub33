@@ -223,7 +223,7 @@ function Card({
 }) {
   return (
     <div
-      className={`bg-white rounded-2xl p-5 transition-transform duration-200 hover:-translate-y-0.5 ${className}`}
+      className={`bg-[var(--bg-card)] rounded-2xl p-5 transition-transform duration-200 hover:-translate-y-0.5 ${className}`}
       style={{ boxShadow: CARD_SHADOW, border: CARD_BORDER }}
     >
       {children}
@@ -250,12 +250,12 @@ function SectionTitle({
       </div>
       <div>
         <h3
-          className="text-sm font-semibold text-gray-800"
+          className="text-sm font-semibold text-[var(--text-1)]"
           style={{ fontFamily: "Manrope, sans-serif" }}
         >
           {title}
         </h3>
-        {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-[var(--text-3)] mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -278,16 +278,16 @@ function StatCard({
     <Card>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs text-gray-500 mb-1" style={{ fontFamily: "Inter, sans-serif" }}>
+          <p className="text-xs text-[var(--text-3)] mb-1" style={{ fontFamily: "Inter, sans-serif" }}>
             {label}
           </p>
           <p
-            className="text-2xl font-bold text-gray-900"
+            className="text-2xl font-bold text-[var(--text-1)]"
             style={{ fontFamily: "Manrope, sans-serif" }}
           >
             {value}
           </p>
-          {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+          {sub && <p className="text-xs text-[var(--text-3)] mt-1">{sub}</p>}
         </div>
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -602,13 +602,13 @@ function InventarioCharts() {
         </ResponsiveContainer>
         <div className="mt-2 space-y-1.5">
           {inventarioData.map((item, i) => (
-            <div key={item.name} className="flex items-center gap-2 text-xs text-gray-600">
+            <div key={item.name} className="flex items-center gap-2 text-xs text-[var(--text-2)]">
               <span
                 className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                 style={{ background: PIE_COLORS[i] }}
               />
               <span className="flex-1">{item.name}</span>
-              <span className="font-medium text-gray-800">{item.value}%</span>
+              <span className="font-medium text-[var(--text-1)]">{item.value}%</span>
             </div>
           ))}
         </div>
@@ -816,10 +816,10 @@ function TodosCharts() {
         </ResponsiveContainer>
         <div className="mt-2 space-y-1">
           {inventarioData.map((item, i) => (
-            <div key={item.name} className="flex items-center gap-2 text-xs text-gray-600">
+            <div key={item.name} className="flex items-center gap-2 text-xs text-[var(--text-2)]">
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PIE_COLORS[i] }} />
               <span className="flex-1">{item.name}</span>
-              <span className="font-medium text-gray-800">{item.value}%</span>
+              <span className="font-medium text-[var(--text-1)]">{item.value}%</span>
             </div>
           ))}
         </div>
@@ -890,7 +890,7 @@ function AnalyticasTab() {
   }
 
   const inputStyle =
-    "border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 text-gray-700 bg-white";
+    "border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 text-[var(--text-2)] bg-[var(--bg-card)]";
 
   function handleExport(type: "PDF" | "Excel") {
     if (type === "PDF") { window.print(); return; }
@@ -906,7 +906,7 @@ function AnalyticasTab() {
           {/* Module selector */}
           <div className="flex flex-col gap-1">
             <label
-              className="text-xs font-medium text-gray-600"
+              className="text-xs font-medium text-[var(--text-2)]"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
               Módulo
@@ -928,7 +928,7 @@ function AnalyticasTab() {
           {/* Date pickers */}
           <div className="flex flex-col gap-1">
             <label
-              className="text-xs font-medium text-gray-600"
+              className="text-xs font-medium text-[var(--text-2)]"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
               Desde
@@ -943,7 +943,7 @@ function AnalyticasTab() {
           </div>
           <div className="flex flex-col gap-1">
             <label
-              className="text-xs font-medium text-gray-600"
+              className="text-xs font-medium text-[var(--text-2)]"
               style={{ fontFamily: "Inter, sans-serif" }}
             >
               Hasta
@@ -1054,7 +1054,7 @@ function AnalyticasTab() {
 
           {/* Text search */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600" style={{ fontFamily: "Inter, sans-serif" }}>Buscar</label>
+            <label className="text-xs font-medium text-[var(--text-2)]" style={{ fontFamily: "Inter, sans-serif" }}>Buscar</label>
             <div style={{ position: "relative" }}>
               <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--neutral-400)" }} />
               <input
@@ -1263,7 +1263,7 @@ function AnalyticasTab() {
       {/* ── Detail modal: Fleet Vehicle ─────────────────────────────────────── */}
       {detailVehicle && !editingFleet && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             {/* header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1297,7 +1297,7 @@ function AnalyticasTab() {
                 <p style={{ fontSize: 13, color: "#92400e", fontWeight: 600, marginBottom: 8, fontFamily: "Inter, sans-serif" }}>¿Marcar como Inactivo?</p>
                 <p style={{ fontSize: 12, color: "#92400e", marginBottom: 12, fontFamily: "Inter, sans-serif" }}>Esta acción cambiará el estado del vehículo a Inactivo.</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setConfirmInactivateFleet(null)} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
+                  <button onClick={() => setConfirmInactivateFleet(null)} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
                   <button onClick={() => {
                     setFleetData((prev) => prev.map((v) => v.code === detailVehicle.code ? { ...v, estado: "Inactivo" } : v));
                     setDetailVehicle((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
@@ -1311,14 +1311,14 @@ function AnalyticasTab() {
               <div style={{ display: "flex", gap: 8 }}>
                 {detailVehicle.estado === "Activo" && confirmInactivateFleet !== detailVehicle.code && (
                   <button onClick={() => setConfirmInactivateFleet(detailVehicle.code)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "#fff", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "var(--bg-card)", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
                     <Power size={14} /> Desactivar
                   </button>
                 )}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => { setDetailVehicle(null); setConfirmInactivateFleet(null); }}
-                  style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                  style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
                   Cerrar
                 </button>
                 <button onClick={() => { setEditingFleet({ ...detailVehicle }); setDetailVehicle(null); setConfirmInactivateFleet(null); }}
@@ -1334,7 +1334,7 @@ function AnalyticasTab() {
       {/* ── Edit modal: Fleet Vehicle ────────────────────────────────────────── */}
       {editingFleet && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Editar Vehículo — {editingFleet.code}</span>
               <button onClick={() => setEditingFleet(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
@@ -1362,7 +1362,7 @@ function AnalyticasTab() {
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
-              <button onClick={() => setEditingFleet(null)} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
+              <button onClick={() => setEditingFleet(null)} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
               <button onClick={() => {
                 if (!editingFleet) return;
                 setFleetData((prev) => prev.map((v) => v.code === editingFleet.code ? editingFleet : v));
@@ -1378,7 +1378,7 @@ function AnalyticasTab() {
       {/* ── Detail modal: Fuel Entry ─────────────────────────────────────────── */}
       {detailFuel && !editingFuel && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Fuel size={18} style={{ color: RED }} />
@@ -1411,7 +1411,7 @@ function AnalyticasTab() {
               <div style={{ margin: "0 24px 12px", padding: 14, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10 }}>
                 <p style={{ fontSize: 13, color: "#92400e", fontWeight: 600, marginBottom: 8, fontFamily: "Inter, sans-serif" }}>¿Marcar este registro como Inactivo?</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setConfirmInactivateFuel(null)} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
+                  <button onClick={() => setConfirmInactivateFuel(null)} style={{ padding: "6px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
                   <button onClick={() => {
                     setFuelData((prev) => prev.map((f) => f.id === detailFuel.id ? { ...f, estado: "Inactivo" } : f));
                     setDetailFuel((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
@@ -1424,14 +1424,14 @@ function AnalyticasTab() {
               <div style={{ display: "flex", gap: 8 }}>
                 {detailFuel.estado === "Activo" && confirmInactivateFuel !== detailFuel.id && (
                   <button onClick={() => setConfirmInactivateFuel(detailFuel.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "#fff", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid var(--brand-600)", background: "var(--bg-card)", color: "var(--brand-600)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
                     <Power size={14} /> Desactivar
                   </button>
                 )}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => { setDetailFuel(null); setConfirmInactivateFuel(null); }}
-                  style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cerrar</button>
+                  style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cerrar</button>
                 <button onClick={() => { setEditingFuel({ ...detailFuel }); setDetailFuel(null); setConfirmInactivateFuel(null); }}
                   style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>
                   <Pencil size={14} /> Editar
@@ -1445,7 +1445,7 @@ function AnalyticasTab() {
       {/* ── Edit modal: Fuel Entry ───────────────────────────────────────────── */}
       {editingFuel && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Editar Registro de Combustible</span>
               <button onClick={() => setEditingFuel(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
@@ -1478,7 +1478,7 @@ function AnalyticasTab() {
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
-              <button onClick={() => setEditingFuel(null)} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
+              <button onClick={() => setEditingFuel(null)} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
               <button onClick={() => {
                 if (!editingFuel) return;
                 const updated = { ...editingFuel, totalCupones: editingFuel.cuponAl - editingFuel.cuponDel + 1 };
@@ -1498,7 +1498,7 @@ function AnalyticasTab() {
           className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl text-white text-sm font-medium shadow-xl"
           style={{ background: "var(--neutral-900)" }}
         >
-          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+          <div className="w-5 h-5 rounded-full bg-[var(--bg-card)]/20 flex items-center justify-center">
             <Download size={12} />
           </div>
           {exportToast}
@@ -1615,7 +1615,7 @@ function UsuariosTab() {
 
   const fieldClass = (key: keyof NuevoUsuarioForm) =>
     `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 ${
-      errors[key] ? "border-red-400 bg-red-50" : "border-gray-200"
+      errors[key] ? "border-red-400 bg-red-50" : "border-[var(--border)]"
     }`;
 
   return (
@@ -1624,12 +1624,12 @@ function UsuariosTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2
-            className="text-base font-semibold text-gray-800"
+            className="text-base font-semibold text-[var(--text-1)]"
             style={{ fontFamily: "Manrope, sans-serif" }}
           >
             Gestión de Usuarios
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-[var(--text-3)] mt-0.5">
             {usuarios.filter((u) => u.sesionActiva).length} sesiones activas ahora
           </p>
         </div>
@@ -1653,7 +1653,7 @@ function UsuariosTab() {
                   (col) => (
                     <th
                       key={col}
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                      className="px-4 py-3 text-left text-xs font-semibold text-[var(--text-3)] uppercase tracking-wide"
                       style={{ fontFamily: "Manrope, sans-serif" }}
                     >
                       {col}
@@ -1664,8 +1664,8 @@ function UsuariosTab() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {usuarios.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-gray-700">
+                <tr key={u.id} className="hover:bg-[var(--bg-hover)] transition-colors">
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-2)]">
                     <div className="flex items-center gap-2">
                       {u.username}
                       {u.sesionActiva && (
@@ -1676,8 +1676,8 @@ function UsuariosTab() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-medium text-gray-800">{u.nombre}</td>
-                  <td className="px-4 py-3 text-gray-600">{u.correo}</td>
+                  <td className="px-4 py-3 font-medium text-[var(--text-1)]">{u.nombre}</td>
+                  <td className="px-4 py-3 text-[var(--text-2)]">{u.correo}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-md text-xs font-medium ${rolStyles[u.rol]}`}>
                       {u.rol}
@@ -1692,19 +1692,19 @@ function UsuariosTab() {
                       />
                       <span
                         className={`text-xs font-medium ${
-                          u.estado === "Activo" ? "text-green-700" : "text-gray-500"
+                          u.estado === "Activo" ? "text-green-700" : "text-[var(--text-3)]"
                         }`}
                       >
                         {u.estado}
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{u.ultimaSesion}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--text-3)]">{u.ultimaSesion}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button
                         title="Ver detalle"
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 transition-colors"
+                        className="p-1.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-3)] transition-colors"
                       >
                         <Eye size={14} />
                       </button>
@@ -1743,9 +1743,9 @@ function UsuariosTab() {
 
       {/* New User Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div
-            className="bg-white rounded-2xl w-full max-w-md mx-4 overflow-hidden"
+            className="bg-[var(--bg-card)] rounded-2xl w-full max-w-md mx-4 overflow-hidden"
             style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
           >
             <div
@@ -1755,7 +1755,7 @@ function UsuariosTab() {
               <div className="flex items-center gap-2">
                 <Shield size={18} style={{ color: RED }} />
                 <h3
-                  className="font-semibold text-gray-800"
+                  className="font-semibold text-[var(--text-1)]"
                   style={{ fontFamily: "Manrope, sans-serif" }}
                 >
                   Nuevo Usuario
@@ -1763,7 +1763,7 @@ function UsuariosTab() {
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-3)] transition-colors"
               >
                 <X size={16} />
               </button>
@@ -1771,7 +1771,7 @@ function UsuariosTab() {
 
             <div className="px-6 py-5 space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1">
                   Nombre Completo
                 </label>
                 <input
@@ -1785,7 +1785,7 @@ function UsuariosTab() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Usuario</label>
+                  <label className="block text-xs font-medium text-[var(--text-2)] mb-1">Usuario</label>
                   <input
                     className={fieldClass("username")}
                     placeholder="Ej. jperez"
@@ -1797,7 +1797,7 @@ function UsuariosTab() {
                   {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Rol</label>
+                  <label className="block text-xs font-medium text-[var(--text-2)] mb-1">Rol</label>
                   <select
                     className={fieldClass("rol")}
                     value={form.rol}
@@ -1813,7 +1813,7 @@ function UsuariosTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-[var(--text-2)] mb-1">
                   Correo Electrónico
                 </label>
                 <input
@@ -1828,7 +1828,7 @@ function UsuariosTab() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Contraseña</label>
+                  <label className="block text-xs font-medium text-[var(--text-2)] mb-1">Contraseña</label>
                   <input
                     type="password"
                     className={fieldClass("password")}
@@ -1839,7 +1839,7 @@ function UsuariosTab() {
                   {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                  <label className="block text-xs font-medium text-[var(--text-2)] mb-1">
                     Confirmar Contraseña
                   </label>
                   <input
@@ -1860,7 +1860,7 @@ function UsuariosTab() {
             >
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--text-2)] hover:bg-[var(--bg-hover)] transition-colors"
               >
                 Cancelar
               </button>
@@ -1879,9 +1879,9 @@ function UsuariosTab() {
 
       {/* Delete Confirmation Dialog */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div
-            className="bg-white rounded-2xl w-full max-w-sm mx-4 p-6"
+            className="bg-[var(--bg-card)] rounded-2xl w-full max-w-sm mx-4 p-6"
             style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
           >
             <div className="flex items-center gap-3 mb-4">
@@ -1890,23 +1890,23 @@ function UsuariosTab() {
               </div>
               <div>
                 <h3
-                  className="font-semibold text-gray-800"
+                  className="font-semibold text-[var(--text-1)]"
                   style={{ fontFamily: "Manrope, sans-serif" }}
                 >
                   Eliminar Usuario
                 </h3>
-                <p className="text-xs text-gray-500">Esta acción no se puede deshacer</p>
+                <p className="text-xs text-[var(--text-3)]">Esta acción no se puede deshacer</p>
               </div>
             </div>
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-[var(--text-2)] mb-6">
               ¿Estás seguro de que deseas eliminar a{" "}
-              <span className="font-semibold text-gray-800">{deleteTarget.nombre}</span>? Se
+              <span className="font-semibold text-[var(--text-1)]">{deleteTarget.nombre}</span>? Se
               perderán todos los datos asociados.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-[var(--text-2)] border border-[var(--border)] hover:bg-[var(--bg-hover)] transition-colors"
               >
                 Cancelar
               </button>
@@ -1928,7 +1928,7 @@ function UsuariosTab() {
           className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl text-white text-sm font-medium shadow-xl"
           style={{ background: "#059669" }}
         >
-          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+          <div className="w-5 h-5 rounded-full bg-[var(--bg-card)]/20 flex items-center justify-center">
             <Check size={12} />
           </div>
           Usuario registrado exitosamente
@@ -1949,12 +1949,12 @@ export function ReportesPage() {
       {/* Page header */}
       <div className="mb-6">
         <h1
-          className="text-xl font-bold text-gray-900"
+          className="text-xl font-bold text-[var(--text-1)]"
           style={{ fontFamily: "Manrope, sans-serif" }}
         >
           Reportes
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-[var(--text-3)] mt-1">
           Compañía de Bomberos Voluntarios No. 33 — Panel de control
         </p>
       </div>

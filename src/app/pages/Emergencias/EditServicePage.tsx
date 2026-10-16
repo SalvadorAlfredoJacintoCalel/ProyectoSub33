@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import {
   X, Lock, Phone, User, MapPin, ChevronDown, Truck, Heart, Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { useEmergencias } from "@/hooks/useEmergencias";
-import { AlertDialog } from "@/app/components/AlertDialog";
 import type { PersonalAsignado } from "@/types/emergencia";
 
 interface Props {
@@ -62,6 +61,7 @@ interface PersonalSel {
 
 export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
   const { catalogos, cargarCatalogos, obtenerEmergencia, actualizarEmergencia } = useEmergencias();
+  const { alert, toast } = useAlert();
 
   const [numeroIncidente, setNumeroIncidente] = useState("");
   const [tipoSolicitud, setTipoSolicitud] = useState<"Telefónica" | "Personal">("Telefónica");
@@ -92,13 +92,6 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [alertState, setAlertState] = useState<{
-    open: boolean;
-    type: "error" | "warning";
-    title: string;
-    message: string;
-    details: string[];
-  }>({ open: false, type: "error", title: "", message: "", details: [] });
 
   useEffect(() => {
     let mounted = true;
@@ -195,13 +188,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      setAlertState({
-        open: true,
-        type: "warning",
-        title: "Campos Incompletos",
-        message: "Complete los datos obligatorios (*) antes de continuar.",
-        details: [],
-      });
+      alert.warning("Campos Incompletos", "Complete los datos obligatorios (*) antes de continuar.");
       return;
     }
 
@@ -246,29 +233,15 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
       const actualizada = await actualizarEmergencia(serviceId, dto);
 
       if (actualizada) {
-        toast.success("Cambios guardados", {
-          description: `Incidente ${actualizada.numeroIncidente}`,
-        });
+        toast.success(`Incidente ${actualizada.numeroIncidente} actualizado exitosamente`);
         onSaved?.();
         onClose();
       } else {
-        setAlertState({
-          open: true,
-          type: "error",
-          title: "Error al Guardar",
-          message: "No se pudieron guardar los cambios. Intente nuevamente.",
-          details: [],
-        });
+        alert.error("Error al Guardar", "No se pudieron guardar los cambios. Intente nuevamente.");
       }
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : "Error desconocido";
-      setAlertState({
-        open: true,
-        type: "error",
-        title: "Error de Servidor",
-        message: "No se pudo conectar con el servidor.",
-        details: [mensaje],
-      });
+      alert.error("Error de Servidor", mensaje);
     } finally {
       setSubmitting(false);
     }
@@ -697,15 +670,6 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
           </button>
         </div>
       </div>
-
-      <AlertDialog
-        isOpen={alertState.open}
-        onClose={() => setAlertState((s) => ({ ...s, open: false }))}
-        title={alertState.title}
-        message={alertState.message}
-        type={alertState.type}
-        details={alertState.details}
-      />
     </>
   );
 }

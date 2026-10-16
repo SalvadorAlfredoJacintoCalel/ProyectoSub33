@@ -239,6 +239,32 @@
   --elevation-brand-1: 0 2px 8px rgba(211,47,47,0.15), 0 1px 3px rgba(0,0,0,0.2);
   --elevation-brand-2: 0 8px 24px rgba(211,47,47,0.2), 0 4px 8px rgba(0,0,0,0.15);
   --elevation-brand-3: 0 16px 48px rgba(211,47,47,0.25), 0 8px 16px rgba(0,0,0,0.2);
+
+  /* Dark mode app-level tokens */
+  --bg-page: #161B22;
+  --bg-card: #1E2430;
+  --bg-input: #222938;
+  --bg-hover: #2D3748;
+  --text-1: #F0F6FC;
+  --text-2: #8B949E;
+  --text-3: #6E7681;
+  --divider: #2D3748;
+  --red: #EF4444;
+  --red-bg: #3A1D1D;
+  --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03);
+
+  /* Dark mode neutral scale (inverted) */
+  --neutral-50: #222938;
+  --neutral-100: #2D3748;
+  --neutral-200: #30363D;
+  --neutral-300: #3D4A5C;
+  --neutral-400: #6E7681;
+  --neutral-500: #8B949E;
+  --neutral-600: #A0AEC0;
+  --neutral-700: #C9D1D9;
+  --neutral-800: #E2E8F0;
+  --neutral-900: #F0F6FC;
+  --neutral-950: #FFFFFF;
 }
 
 @theme inline {

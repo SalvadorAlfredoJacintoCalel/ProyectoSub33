@@ -4,8 +4,7 @@ import {
   Pencil, Trash2, Plus, Search, X, Package, Boxes, ArrowLeftRight, Truck, ChevronLeft, ChevronRight,
   Printer, Info, History, MapPin, ListChecks, User, Gift, AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
-import { AlertDialog } from "@/app/components/AlertDialog";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Drawer } from "@/app/components/ui/drawer";
@@ -197,6 +196,7 @@ function itemToForm(item: InventarioItem): ItemFormState {
 function ItemsTab() {
   const { items, paginacion, loading, catalogos, loadItems, loadCatalogos, createItem, updateItem, deleteItem } =
     useInventario();
+  const { alert, toast } = useAlert();
 
   const [search, setSearch] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("");
@@ -207,15 +207,7 @@ function ItemsTab() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [form, setForm] = useState<ItemFormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof ItemFormState, string>>>({});
-  const [deleteTarget, setDeleteTarget] = useState<InventarioItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [alertState, setAlertState] = useState<{
-    open: boolean;
-    type: "success" | "warning" | "error";
-    title: string;
-    message: string;
-    details: string[];
-  }>({ open: false, type: "error", title: "", message: "", details: [] });
 
   // Donaciones (para origen "Donado")
   const [donacionesMaterial, setDonacionesMaterial] = useState<Donacion[]>([]);
@@ -288,7 +280,7 @@ function ItemsTab() {
       loadDonacionesMaterial();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al crear donación";
-      setAlertState({ open: true, type: "error", title: "Error", message: msg, details: [] });
+      alert.error("Error", msg);
     } finally {
       setDonacionSaving(false);
     }
@@ -350,7 +342,7 @@ function ItemsTab() {
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
-      setAlertState({ open: true, type: "warning", title: "Campos Incompletos", message: "Complete los datos obligatorios (*) antes de continuar.", details: [] });
+      alert.warning("Campos Incompletos", "Complete los datos obligatorios (*) antes de continuar.");
       return;
     }
 
@@ -393,26 +385,28 @@ function ItemsTab() {
       loadItems({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error desconocido";
-      setAlertState({ open: true, type: "error", title: "Error al Guardar", message: msg, details: [] });
+      alert.error("Error al Guardar", msg);
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleDelete() {
-    if (!deleteTarget) return;
+  async function requestDelete(item: InventarioItem) {
+    const ok = await alert.confirm(
+      "¿Eliminar este registro?",
+      "Esta acción no se puede deshacer. El registro será eliminado permanentemente."
+    );
+    if (!ok) return;
     setSubmitting(true);
     try {
-      await deleteItem(deleteTarget.itemId);
+      await deleteItem(item.itemId);
       toast.success("Item eliminado correctamente");
-      setDeleteTarget(null);
       setDetailOpen(false);
       setSelectedItem(null);
       loadItems({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al eliminar";
-      setDeleteTarget(null);
-      setAlertState({ open: true, type: "error", title: "No se pudo eliminar", message: msg, details: [] });
+      alert.error("No se pudo eliminar", msg);
     } finally {
       setSubmitting(false);
     }
@@ -479,7 +473,7 @@ function ItemsTab() {
                 <Button variant="brand-outline" size="sm" onClick={() => window.print()}>
                   <Printer className="size-4" /> Imprimir
                 </Button>
-                <Button variant="brand-outline" size="sm" onClick={() => setDeleteTarget(selectedItem)}>
+                <Button variant="brand-outline" size="sm" onClick={() => selectedItem && requestDelete(selectedItem)}>
                   <Trash2 className="size-4" /> Eliminar
                 </Button>
               </div>
@@ -589,9 +583,9 @@ function ItemsTab() {
       <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: "var(--border)", fontFamily: "Inter, sans-serif" }}>
         <p className="text-xs" style={{ color: "var(--text-2)" }}>{total} registro{total !== 1 ? "s" : ""} — Página {page} de {totalPages}</p>
         <div className="flex items-center gap-1">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "var(--text-3)" }}><ChevronLeft size={16} /></button>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded p-1.5 transition hover:bg-[var(--bg-hover)] disabled:opacity-40" style={{ color: "var(--text-3)" }}><ChevronLeft size={16} /></button>
           <span className="px-2 text-xs font-medium" style={{ color: "var(--text-2)" }}>{page} / {totalPages}</span>
-          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded p-1.5 transition hover:bg-gray-100 disabled:opacity-40" style={{ color: "var(--text-3)" }}><ChevronRight size={16} /></button>
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded p-1.5 transition hover:bg-[var(--bg-hover)] disabled:opacity-40" style={{ color: "var(--text-3)" }}><ChevronRight size={16} /></button>
         </div>
       </div>
 
@@ -773,7 +767,7 @@ function ItemsTab() {
             <Button variant="outline" onClick={() => window.print()}>
               <Printer className="size-4" /> Imprimir
             </Button>
-            <Button variant="brand-outline" onClick={() => selectedItem && setDeleteTarget(selectedItem)}>
+            <Button variant="brand-outline" onClick={() => selectedItem && requestDelete(selectedItem)}>
               <Trash2 className="size-4" /> Eliminar
             </Button>
             <Button variant="brand" onClick={handleEditFromDetail}>
@@ -795,7 +789,7 @@ function ItemsTab() {
           >
             <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--bg-input)" }}>
               <h2 className="text-base font-semibold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>Nueva Donación (Material)</h2>
-              <button onClick={() => setShowDonacionDrawer(false)} className="rounded p-1 hover:bg-gray-100" style={{ color: "var(--text-3)" }}><X size={18} /></button>
+              <button onClick={() => setShowDonacionDrawer(false)} className="rounded p-1 hover:bg-[var(--bg-hover)]" style={{ color: "var(--text-3)" }}><X size={18} /></button>
             </div>
             <div className="space-y-4 px-6 py-5" style={{ fontFamily: "Inter, sans-serif" }}>
               <Input
@@ -847,27 +841,6 @@ function ItemsTab() {
           </div>
         </div>
       )}
-
-      <AlertDialog
-        isOpen={deleteTarget != null}
-        onClose={() => setDeleteTarget(null)}
-        title="¿Eliminar este registro?"
-        message="Esta acción no se puede deshacer. El registro será eliminado permanentemente."
-        type="warning"
-        variant="confirm"
-        onConfirm={handleDelete}
-        confirmText="Sí, eliminar"
-        cancelText="Cancelar"
-      />
-
-      <AlertDialog
-        isOpen={alertState.open}
-        onClose={() => setAlertState((s) => ({ ...s, open: false }))}
-        title={alertState.title}
-        message={alertState.message}
-        type={alertState.type}
-        details={alertState.details}
-      />
     </div>
   );
 }

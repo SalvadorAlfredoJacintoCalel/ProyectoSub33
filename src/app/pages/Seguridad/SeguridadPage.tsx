@@ -129,7 +129,7 @@ function inputStyle(hasError = false): React.CSSProperties {
 function Modal({ children, width = 440, onClose }: { children: ReactNode; width?: number; onClose: () => void }) {
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}
+      style={{ position: "fixed", inset: 0, background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: "var(--z-modal)", padding: 16 }}
       onClick={onClose}
     >
       <div

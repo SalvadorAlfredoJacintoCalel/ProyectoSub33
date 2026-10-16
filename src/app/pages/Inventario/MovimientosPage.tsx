@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { Plus, ArrowLeftRight, Loader2, Printer, Info, FileText, Link2, AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
-import { AlertDialog } from "@/app/components/AlertDialog";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
@@ -94,6 +93,7 @@ function SelectField({
 export function MovimientosPage() {
   const { movimientos, items, loading, catalogos, loadMovimientos, loadItems, loadCatalogos, createMovimiento } =
     useInventario();
+  const { alert, toast } = useAlert();
 
   const [itemFilter, setItemFilter] = useState("");
   const [tipoFilter, setTipoFilter] = useState("");
@@ -103,9 +103,6 @@ export function MovimientosPage() {
   const [form, setForm] = useState({ itemId: "", tipoMovId: "", cantidad: "", motivo: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [alertState, setAlertState] = useState<{ open: boolean; title: string; message: string; type: "error" }>({
-    open: false, title: "", message: "", type: "error",
-  });
 
   useEffect(() => {
     loadCatalogos();
@@ -156,7 +153,7 @@ export function MovimientosPage() {
       loadItems({ pagina: 1, tamanio: 100 });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al registrar movimiento";
-      setAlertState({ open: true, title: "Error", message: msg, type: "error" });
+      alert.error("Error", msg);
     } finally {
       setSubmitting(false);
     }
@@ -360,14 +357,6 @@ export function MovimientosPage() {
       >
         {selectedMov && <Tabs variant="glass" tabs={detailTabs} />}
       </Drawer>
-
-      <AlertDialog
-        isOpen={alertState.open}
-        onClose={() => setAlertState((s) => ({ ...s, open: false }))}
-        title={alertState.title}
-        message={alertState.message}
-        type={alertState.type}
-      />
     </div>
   );
 }

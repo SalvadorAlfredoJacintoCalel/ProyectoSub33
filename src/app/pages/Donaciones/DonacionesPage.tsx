@@ -18,8 +18,7 @@ import {
   Gift,
   CheckCircle2,
 } from "lucide-react";
-import { toast } from "sonner";
-import { AlertDialog } from "@/app/components/AlertDialog";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Modal } from "@/app/components/ui/modal";
@@ -74,7 +73,7 @@ function KpiCard({ label, value, color, icon }: { label: string; value: string; 
   return (
     <div
       style={{
-        background: "#fff", borderRadius: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        background: "var(--bg-card)", borderRadius: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
         border: "1px solid rgba(0,0,0,0.05)", padding: "20px 24px", display: "flex",
         alignItems: "center", gap: 16, flex: 1, minWidth: 180,
         transition: "transform 0.15s ease, box-shadow 0.15s ease",
@@ -534,6 +533,7 @@ function DonacionModal({
 
 export function DonacionesPage() {
   const { donaciones, paginacion, loading, loadDonaciones, createDonacion, updateDonacion, deleteDonacion } = useDonaciones();
+  const { alert, toast } = useAlert();
 
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("Todos");
@@ -542,9 +542,7 @@ export function DonacionesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Donacion | null>(null);
   const [viewTarget, setViewTarget] = useState<Donacion | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Donacion | null>(null);
   const [saving, setSaving] = useState(false);
-  const [alertState, setAlertState] = useState<{ open: boolean; title: string; message: string; type: "error" }>({ open: false, title: "", message: "", type: "error" });
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -616,23 +614,25 @@ export function DonacionesPage() {
       loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al guardar la donación";
-      setAlertState({ open: true, title: "Error", message: msg, type: "error" });
+      alert.error("Error", msg);
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete() {
-    if (!deleteTarget) return;
+  async function requestDelete(d: Donacion) {
+    const ok = await alert.confirm(
+      "Eliminar Donación",
+      `¿Está seguro que desea eliminar el recibo ${d.noRecibo} de ${d.donante}? Esta acción no se puede deshacer.`
+    );
+    if (!ok) return;
     try {
-      await deleteDonacion(deleteTarget.donacionId);
+      await deleteDonacion(d.donacionId);
       toast.success("Donación eliminada.");
-      setDeleteTarget(null);
       loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al eliminar";
-      setDeleteTarget(null);
-      setAlertState({ open: true, title: "Error", message: msg, type: "error" });
+      alert.error("Error", msg);
     }
   }
 
@@ -646,7 +646,7 @@ export function DonacionesPage() {
       loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al eliminar";
-      setAlertState({ open: true, title: "Error", message: msg, type: "error" });
+      alert.error("Error", msg);
     }
   }
 
@@ -688,7 +688,7 @@ export function DonacionesPage() {
         <KpiCard label="Donaciones en Especie" value={formatQ(totalEspecie)} color="#1565c0" icon={<Package size={22} />} />
       </div>
 
-      <div style={{ background: "#fff", borderRadius: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden" }}>
         <div style={{ padding: "18px 20px 0", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ position: "relative", maxWidth: 340 }}>
             <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-3)" }} />
@@ -768,7 +768,7 @@ export function DonacionesPage() {
                     <td style={{ ...tdStyle, textAlign: "center" }}>
                       <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                         <button title="Editar" onClick={(e) => { e.stopPropagation(); setEditTarget(d); setShowForm(true); }} style={{ background: "var(--info-50)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "var(--info-700)", display: "flex", alignItems: "center" }}><Pencil size={15} /></button>
-                        <button title="Eliminar" onClick={(e) => { e.stopPropagation(); setDeleteTarget(d); }} style={{ background: "var(--brand-50)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: RED, display: "flex", alignItems: "center" }}><Trash2 size={15} /></button>
+                        <button title="Eliminar" onClick={(e) => { e.stopPropagation(); requestDelete(d); }} style={{ background: "var(--brand-50)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: RED, display: "flex", alignItems: "center" }}><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>
@@ -810,33 +810,6 @@ export function DonacionesPage() {
           onEdit={() => { setEditTarget(viewTarget); setViewTarget(null); setShowForm(true); }}
         />
       )}
-      {deleteTarget && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }} onClick={() => setDeleteTarget(null)}>
-          <div style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: "28px 28px 20px", textAlign: "center" }}>
-              <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--brand-50)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", color: RED }}>
-                <AlertTriangle size={26} />
-              </div>
-              <h3 style={{ margin: "0 0 8px", fontFamily: "Manrope, sans-serif", fontSize: 17, fontWeight: 700, color: "var(--neutral-900)" }}>Eliminar Donación</h3>
-              <p style={{ margin: 0, fontSize: 14, color: "var(--text-2)", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }}>
-                ¿Está seguro que desea eliminar el recibo <strong>{deleteTarget.noRecibo}</strong> de <strong>{deleteTarget.donante}</strong>? Esta acción no se puede deshacer.
-              </p>
-            </div>
-            <div style={{ padding: "0 28px 24px", display: "flex", gap: 10, justifyContent: "center" }}>
-              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, background: "var(--bg-hover)", border: "none", borderRadius: 10, padding: "10px 0", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer" }}>Cancelar</button>
-              <button onClick={handleDelete} style={{ flex: 1, background: RED, border: "none", borderRadius: 10, padding: "10px 0", fontFamily: "Inter, sans-serif", fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer" }}>Eliminar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <AlertDialog
-        isOpen={alertState.open}
-        onClose={() => setAlertState((s) => ({ ...s, open: false }))}
-        title={alertState.title}
-        message={alertState.message}
-        type={alertState.type}
-      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import {
   AlertTriangle, ChevronLeft, ChevronRight, Fuel, Truck,
   Wrench, Info, Power, Printer, FileText, History, MapPin,
 } from "lucide-react";
-import { AlertDialog } from "../../components/AlertDialog";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
@@ -252,6 +252,7 @@ const TALLERES = ["Taller Mecánico El Lago", "Taller González", "Taller San Lu
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function VehiculosPage() {
+  const { alert, toast } = useAlert();
   // ── Fleet state ───────────────────────────────────────────────────────────
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
 
@@ -290,18 +291,6 @@ export function VehiculosPage() {
   const [editingVehicle, setEditingVehicle]     = useState<Vehicle | null>(null);
   const [confirmInactivate, setConfirmInactivate] = useState<string | null>(null);
 
-  // ── Delete confirm ────────────────────────────────────────────────────────
-  const [deleteId, setDeleteId]                 = useState<number | null>(null);
-
-  // ── Toast ─────────────────────────────────────────────────────────────────
-  const [toast, setToast]                       = useState<string | null>(null);
-  const [alertModal, setAlertModal]             = useState<{
-    isOpen: boolean;
-    type: "success" | "warning";
-    title: string;
-    message: string;
-  }>({ isOpen: false, type: "warning", title: "", message: "" });
-
   // ── Computed fuel fields ──────────────────────────────────────────────────
   const totalCupones = useMemo(() => {
     const del = parseInt(fuelForm.cuponDel, 10);
@@ -331,13 +320,6 @@ export function VehiculosPage() {
 
   useEffect(() => { setPage(1); }, [search, gasFilter]);
 
-  // ── Toast auto-dismiss ────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
   // ── Open vehicle modal ────────────────────────────────────────────────────
   function openNewVehicle() {
     setVehicleStep(1);
@@ -360,12 +342,7 @@ export function VehiculosPage() {
     const errs = required.filter((k) => !vehicleForm[k]?.toString().trim());
     if (errs.length) {
       setVehicleErrors(errs);
-      setAlertModal({
-        isOpen: true,
-        type: "warning",
-        title: "Campos Incompletos",
-        message: "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.",
-      });
+      alert.warning("Campos Incompletos", "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
     setVehicleErrors([]);
@@ -382,12 +359,7 @@ export function VehiculosPage() {
     };
     setVehicles((prev) => [...prev, newVehicle]);
     setShowVehicleModal(false);
-    setAlertModal({
-      isOpen: true,
-      type: "success",
-      title: "Registro Exitoso",
-      message: "El vehículo ha sido registrado correctamente en el sistema.",
-    });
+    toast.success("El vehículo ha sido registrado correctamente en el sistema.");
   }
 
   // ── Open maintenance modal ────────────────────────────────────────────────
@@ -405,7 +377,7 @@ export function VehiculosPage() {
       prev.map((v) => v.code === maintForm.vehicleCode ? { ...v, status: "Mantenimiento" } : v)
     );
     setShowMaintModal(false);
-    setToast("Mantenimiento registrado. Vehículo en estado Mantenimiento.");
+    toast.success("Mantenimiento registrado. Vehículo en estado Mantenimiento.");
   }
 
   // ── Fuel modal helpers ────────────────────────────────────────────────────
@@ -449,12 +421,7 @@ export function VehiculosPage() {
     const errs = FUEL_REQUIRED.filter((k) => !fuelForm[k]?.toString().trim());
     if (errs.length) {
       setFuelErrors(errs);
-      setAlertModal({
-        isOpen: true,
-        type: "warning",
-        title: "Campos Incompletos",
-        message: "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.",
-      });
+      alert.warning("Campos Incompletos", "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
     setFuelErrors([]);
@@ -480,18 +447,18 @@ export function VehiculosPage() {
       setEntries((prev) => [entry, ...prev]);
     }
     closeFuelModal();
-    setAlertModal({
-      isOpen: true,
-      type: "success",
-      title: "Registro Exitoso",
-      message: "El cupón ha sido registrado correctamente.",
-    });
+    toast.success("El cupón ha sido registrado correctamente.");
   }
 
-  function handleDelete(id: number) {
-    setEntries((prev) => prev.filter((e) => e.id !== id));
-    setDeleteId(null);
-    setToast("Registro eliminado");
+  function requestDelete(id: number) {
+    alert.confirm(
+      "Eliminar Registro",
+      "Esta acción no se puede deshacer. ¿Está seguro de que desea eliminar este registro?"
+    ).then((ok) => {
+      if (!ok) return;
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+      toast.success("Registro eliminado");
+    });
   }
 
   // ── Fuel field helper ─────────────────────────────────────────────────────
@@ -579,13 +546,6 @@ export function VehiculosPage() {
   return (
     <div style={{ background: BG, minHeight: "100vh", fontFamily: "Inter, sans-serif", padding: "28px 24px" }}>
 
-      {/* ── Toast ──────────────────────────────────────────────────────────── */}
-      {toast && (
-        <div style={{ position: "fixed", top: 24, right: 24, zIndex: 9999, background: "var(--success-600)", color: "#fff", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-          <Check size={16} /> {toast}
-        </div>
-      )}
-
       {/* ── Page header ───────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--neutral-900)", margin: 0, display: "flex", alignItems: "center", gap: 10, fontFamily: "Manrope, sans-serif" }}>
@@ -612,7 +572,7 @@ export function VehiculosPage() {
             <div
               key={v.code}
               className="transition-transform duration-200 hover:-translate-y-0.5"
-              style={{ background: "#fff", borderRadius: 16, boxShadow: CARD_SHADOW, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}
+              style={{ background: "var(--bg-card)", borderRadius: 16, boxShadow: CARD_SHADOW, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -628,7 +588,7 @@ export function VehiculosPage() {
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button
                   onClick={() => setDetailVehicle(v)}
-                  style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: "6px 0", borderRadius: 7, border: `1px solid ${BORDER}`, background: "#fff", color: "var(--neutral-900)", cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                  style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: "6px 0", borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--bg-card)", color: "var(--neutral-900)", cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
                 >
                   <Eye size={12} /> Ver Detalle
                 </button>
@@ -674,14 +634,14 @@ export function VehiculosPage() {
           <select
             value={gasFilter}
             onChange={(e) => setGasFilter(e.target.value as GasolineraFilter)}
-            style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", fontFamily: "Inter, sans-serif", cursor: "pointer" }}
+            style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontFamily: "Inter, sans-serif", cursor: "pointer" }}
           >
             {(["Todas", "Shell Jireh", "Shell Atitlán"] as GasolineraFilter[]).map((g) => <option key={g}>{g}</option>)}
           </select>
         </div>
 
         {/* Table */}
-        <div style={{ background: "#fff", borderRadius: 16, boxShadow: CARD_SHADOW, overflowX: "auto" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 16, boxShadow: CARD_SHADOW, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "var(--neutral-50)", borderBottom: `1px solid ${BORDER}` }}>
@@ -717,7 +677,7 @@ export function VehiculosPage() {
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={() => setDetailEntry(e)} title="Ver" style={iconBtn("var(--info-50)","#1d4ed8")}><Eye size={13} /></button>
                       <button onClick={() => openEditFuel(e)} title="Editar" style={iconBtn("#fefce8","#b45309")}><Pencil size={13} /></button>
-                      <button onClick={() => setDeleteId(e.id)} title="Eliminar" style={iconBtn("#fff5f5","var(--brand-600)")}><Trash2 size={13} /></button>
+                      <button onClick={() => requestDelete(e.id)} title="Eliminar" style={iconBtn("#fff5f5","var(--brand-600)")}><Trash2 size={13} /></button>
                     </div>
                   </td>
                 </tr>
@@ -921,7 +881,7 @@ export function VehiculosPage() {
               <select
                 value={maintForm.taller}
                 onChange={(ev) => setMaintForm((f) => ({ ...f, taller: ev.target.value }))}
-                style={{ width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, border: `1px solid ${BORDER}`, background: "#fff", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}
+                style={{ width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}
               >
                 {TALLERES.map((t) => <option key={t}>{t}</option>)}
               </select>
@@ -1291,7 +1251,7 @@ export function VehiculosPage() {
                     setVehicles((prev) => prev.map((v) => v.code === detailVehicle.code ? { ...v, estado: "Inactivo" } : v));
                     setDetailVehicle((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
                     setConfirmInactivate(null);
-                    setToast("Vehículo marcado como Inactivo.");
+                    toast.info("Vehículo marcado como Inactivo.");
                   }}>Confirmar</Button>
                 </div>
               </div>
@@ -1303,29 +1263,10 @@ export function VehiculosPage() {
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* Delete confirmation dialog                                           */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {deleteId !== null && (
-        <Overlay onClose={() => setDeleteId(null)}>
-          <div style={{ textAlign: "center", padding: "8px 0" }}>
-            <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--brand-50)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
-              <Trash2 size={22} color="var(--brand-600)" />
-            </div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", margin: "0 0 8px", fontFamily: "Manrope, sans-serif" }}>Eliminar Registro</h3>
-            <p style={{ fontSize: 13, color: MUTED, margin: "0 0 22px" }}>Esta acción no se puede deshacer. ¿Está seguro de que desea eliminar este registro?</p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-              <button onClick={() => setDeleteId(null)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-              <button onClick={() => handleDelete(deleteId)} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "var(--brand-600)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 6 }}>
-                <Trash2 size={13} /> Eliminar
-              </button>
-            </div>
-          </div>
-        </Overlay>
-      )}
-
       {/* ── Edit Vehicle Modal ───────────────────────────────────────────────── */}
       {editingVehicle && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Editar Vehículo — {editingVehicle.code}</span>
               <button onClick={() => setEditingVehicle(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
@@ -1364,24 +1305,17 @@ export function VehiculosPage() {
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
-              <button onClick={() => setEditingVehicle(null)} style={{ padding: "9px 20px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "#fff", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
+              <button onClick={() => setEditingVehicle(null)} style={{ padding: "9px 20px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
               <button onClick={() => {
                 if (!editingVehicle) return;
                 setVehicles((prev) => prev.map((v) => v.code === editingVehicle.code ? editingVehicle : v));
-                setToast("Vehículo actualizado exitosamente.");
+                toast.success("Vehículo actualizado exitosamente.");
                 setEditingVehicle(null);
               }} style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: RED, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Guardar</button>
             </div>
           </div>
         </div>
       )}
-      <AlertDialog
-        isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
-        title={alertModal.title}
-        message={alertModal.message}
-        type={alertModal.type}
-      />
     </div>
   );
 }
@@ -1401,7 +1335,7 @@ function Overlay({ children, onClose, wide }: { children: ReactNode; onClose: ()
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
     >
-      <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", padding: "24px 28px", width: "100%", maxWidth: wide ? 720 : 480, maxHeight: "90vh", overflowY: "auto", fontFamily: "Inter, sans-serif" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", padding: "24px 28px", width: "100%", maxWidth: wide ? 720 : 480, maxHeight: "90vh", overflowY: "auto", fontFamily: "Inter, sans-serif" }}>
         {children}
       </div>
     </div>

@@ -480,7 +480,7 @@ function AppContent() {
           <div className="flex-1 overflow-y-auto animate-page-enter" style={{ background: C.pageBg }}>
 
             {/* Hero */}
-            <section className="relative overflow-hidden" style={{ background: "#FFFFFF", borderBottom: `1px solid ${C.topbarBorder}` }}>
+            <section className="relative overflow-hidden" style={{ background: "var(--bg-card)", borderBottom: `1px solid ${C.topbarBorder}` }}>
               <div className="relative flex items-center gap-10 px-12 py-10">
                 <div className="shrink-0 w-28 h-28">
                   <ImageWithFallback src={imgCvbLogo} alt="CVB" className="w-full h-full object-contain" />
@@ -759,7 +759,7 @@ function AppContent() {
       {historialOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,0.5)" }}
           onClick={() => setHistorialOpen(false)}>
-          <div className="rounded-2xl shadow-2xl w-full max-w-5xl max-h-[88vh] flex flex-col" style={{ background: "#FFFFFF" }}
+          <div className="rounded-2xl shadow-2xl w-full max-w-5xl max-h-[88vh] flex flex-col" style={{ background: "var(--bg-card)" }}
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-8 py-5 shrink-0 border-b" style={{ borderColor: C.border }}>
               <div>
@@ -815,7 +815,7 @@ function AppContent() {
       {logoutOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: "rgba(0,0,0,0.5)" }}
           onClick={() => setLogoutOpen(false)}>
-          <div className="rounded-2xl shadow-2xl w-full max-w-sm p-8 flex flex-col gap-6" style={{ background: "#FFFFFF" }}
+          <div className="rounded-2xl shadow-2xl w-full max-w-sm p-8 flex flex-col gap-6" style={{ background: "var(--bg-card)" }}
             onClick={e => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto" style={{ background: C.redLight }}>
               <LogOut style={{ width: 20, height: 20, color: C.red }} />

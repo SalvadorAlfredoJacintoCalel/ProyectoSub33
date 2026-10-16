@@ -1,226 +1,166 @@
-# PLAN REDESEÑO VISUAL SENIOR - ProyectoSub33
+# PLAN DE MEJORAS GLOBAL - Dark Mode + Modales + Alertas (TODOS LOS MÓDULOS)
 
-> **Objetivo**: UI premium, cohesiva, moderna - nivel senior/graphic designer
+> **Objetivo**: Corregir backdrop, estandarizar alertas y completar dark mode en TODOS los módulos
 > **Stack**: React 18 + Tailwind v4 + Radix UI + Framer Motion + Sonner
 > **Solo Frontend** - NO tocar: `src/services/*`, `src/hooks/*`, `src/types/*`, `Backend_Sub33/*`
-> **Colores**: Institucionales (#D32F2F brand) - logos en `/src/imports/`
-> **Dark mode**: Toggle usuario (opcional), persiste en localStorage, tokens `.dark` listos
+> **Colores**: Institucionales (#D32F2F brand)
 
 ---
 
-## ⚠️ HALLAZGO CRÍTICO (YA RESUELTO)
+## ⚠️ PROBLEMAS GLOBALES
 
-`main.tsx` renderiza **`App.tsx` directamente**. La carpeta `src/app/layout/` era código muerto.
-**App.tsx ES EL LAYOUT REAL**. Ya conectado: LayoutContext, auto-hide Topbar, page transitions, spring collapse, dark mode toggle.
-
----
-
-## ✅ ESTADO ACTUAL (COMPLETADO)
-
-| Fase | Archivos | Estado |
-|------|----------|--------|
-| **FASE 1: FOUNDATION** | 3/3 | ✅ Tokens, animaciones, reset global |
-| **FASE 2: COMPONENTES BASE** | 18/18 | ✅ TODOS PREMIUM |
-| **FASE 3: LAYOUT** | 4/4 | ✅ Conectado en App.tsx |
-| **FASE 4: POLISH** | 10/10 módulos | ✅ 369 colores → tokens, dark mode |
-
-**Build actual**: ✅ `npm run build` + `dotnet build` 0 errores
+1. **Backdrop/Overlay**: Varios módulos usan modales inline (`fixed inset-0`) sin Portal real → el backdrop NO cubre el Topbar/Header.
+2. **Alertas no estandarizadas**: Usan `AlertDialog` custom local en vez del `AlertSystem` global (`useAlert`/`useToast`).
+3. **Dark mode incompleto**: Fondos blancos hardcodeados, textos con contraste insuficiente, divisores claros.
 
 ---
 
-## 🎯 FASE 5: DETAIL DRAWERS + PREMIUM EDIT MODALS (EN EJECUCIÓN)
+## 📋 CAMBIOS REQUERIDOS (APLICAR A TODOS LOS MÓDULOS)
 
-### Objetivo
-- **Detail views**: Modal centrado → **Drawer derecho** (slide-in, tabs, footer sticky)
-- **Create/Edit modals**: Modal centrado → **Diseño premium** (mismo `Modal.tsx`)
+### 1. Backdrop/Overlay Correcto en Modales
+- Todo modal/drawer overlay debe usar Portal (`createPortal(..., document.body)`) o el componente `Modal`/`Drawer` premium que ya lo hace.
+- Backdrop: `fixed inset-0 z-[var(--z-modal)] bg-black/60 backdrop-blur-sm` con `onClick={onClose}` cubriendo TODO el viewport (incluye Topbar).
+- Panel centrado con `z-[var(--z-modal)]`.
 
-### Componentes premium YA listos
-`Drawer`, `Modal`, `Tabs`, `Badge`, `Button`, `DataTable`, `Input`, `Card`, `Toast`, `AlertSystem`
-
----
-
-## 📦 PLAN DE EJECUCIÓN - BATCHES (1 batch = 1 respuesta IA)
-
-| Batch | Módulo | Archivos | Est. |
-|-------|--------|----------|------|
-| **1** | Personal | `PersonalPage.tsx`, `PersonalTable.tsx`, `PersonalForm.tsx` | 45 min |
-| **2** | Inventario | `InventarioPage.tsx`, `ItemsTab`, `MovimientosPage` | 45 min |
-| **3** | Emergencias | `EmergenciasPage.tsx`, `ServiceReportModal`, `Register/EditServicePage` | 45 min |
-| **4** | Donaciones | `DonacionesPage.tsx` | 30 min |
-| **5** | Finanzas | `FinanzasPage.tsx` | 30 min |
-| **6** | Vehículos | `VehiculosPage.tsx` | 30 min |
-| **7** | Reportes | `ReportesPage.tsx` | 30 min |
-| **8** | Seguridad | `SeguridadPage.tsx` | 30 min |
-| **9** | Perfil | `ProfilePage.tsx` | 30 min |
-| **10** | Dashboard | `App.tsx` (analytics) | 30 min |
-
-**Total**: ~5 horas | **Build cada 2-3 batches** | **1 batch = 1 respuesta IA**
-
----
-
-## 📋 PATRÓN ÚNICO POR MÓDULO
-
-### 1. Detail View → Drawer Derecho
+### 2. Alertas Estandarizadas (AlertSystem global)
+- **Eliminar**: `import { AlertDialog } from "@/app/components/AlertDialog"` y estado local `alertState`.
+- **Usar**: `const { alert, toast } = useAlert()` de `src/app/components/ui/AlertSystem.tsx`.
+- **Patrón**:
 ```tsx
-// Estado en Page.tsx
-const [detailOpen, setDetailOpen] = useState(false);
-const [selectedRecord, setSelectedRecord] = useState(null);
-
-// DataTable onRowClick
-onRowClick={(row) => { setSelectedRecord(row); setDetailOpen(true); }}
-
-// Render
-<Drawer
-  open={detailOpen}
-  onClose={() => setDetailOpen(false)}
-  size="lg"
-  title={selectedRecord?.name}
-  icon={<IconComponent />}
-  statusBadge={<Badge variant={selectedRecord.status}>Label</Badge>}
-  footer={
-    <>
-      <Button variant="brand-outline" onClick={() => openEdit(selectedRecord)}>Editar</Button>
-      <Button variant="brand" onClick={print}>Imprimir</Button>
-    </>
-  }
->
-  <Tabs tabs={[
-    { id: 'info', label: 'Información', content: <DetailInfo record={selectedRecord} /> },
-    { id: 'history', label: 'Historial', content: <DetailHistory record={selectedRecord} /> },
-    { id: 'docs', label: 'Documentos', content: <DetailDocs record={selectedRecord} /> },
-  ]} />
-</Drawer>
+// Validación (bloqueante)
+alert.warning("Campos Incompletos", "Complete los datos obligatorios (*) antes de continuar.");
+// Error
+alert.error("Error al Guardar", "No se pudo guardar el registro.");
+// Éxito (no bloqueante)
+toast.success(`Registro creado correctamente`);
+// Confirmación destructiva
+alert.confirm("¿Eliminar registro?", "Esta acción no se puede deshacer.");
 ```
 
-### 2. Create/Edit Modal → Premium Centrado
-```tsx
-<Modal
-  open={editOpen}
-  onClose={closeEdit}
-  size="lg"
-  title={editing ? "Editar" : "Nuevo"}
-  icon={<IconComponent />}
-  description="Complete la información"
-  footer={
-    <>
-      <Button variant="brand-outline" onClick={closeEdit}>Cancelar</Button>
-      <Button variant="brand" loading={saving} onClick={save}>Guardar</Button>
-    </>
-  }
->
-  {/* Form con floating labels (Input premium), sections, validation */}
-</Modal>
+### 3. Dark Mode Completo
+- **theme.css**: Verificar/agregar tokens dark:
+```css
+.dark {
+  --bg-page: #161B22;
+  --bg-card: #1E2430;
+  --bg-input: #222938;
+  --bg-hover: #2D3748;
+  --text-1: #F0F6FC;
+  --text-2: #8B949E;
+  --text-3: #6E7681;
+  --border: #30363D;
+  --divider: #2D3748;
+}
 ```
+- **Eliminar fondos blancos**: `#fff` → `var(--bg-card)`, `bg-white` → `bg-[var(--bg-card)]`, `bg-gray-50` → `bg-[var(--bg-hover)]`.
+- **Textos principales**: `text-[var(--text-1)]` con `font-weight: 500/600`.
+- **Textos secundarios/headers tabla**: `text-[var(--text-3)]` con `font-weight: 600`.
+- **Divisores**: `border-[var(--divider)]`.
+- **Inputs/Selects**: `bg-[var(--bg-input)]`, `border-[var(--border)]`.
+- **Placeholders**: `placeholder-[var(--text-3)]`.
+- **Badges/chips**: usar `<Badge>` premium con variants semánticos (`success`/`warning`/`error`/`info`/`brand`).
 
-### Mejoras visuales AMBOS
-- Header: Glassmorphism + gradient border top 3px (`grad-primary`) + icono 48px/56px `animate-icon-bounce`
-- Close button: Glass-subtle + `whileHover={{scale:1.1, rotate:90}}`
-- Tabs: `Tabs` premium (animated indicator, lazy mount)
-- Footer sticky: Glass-strong, buttons `brand` / `brand-outline`
-- Animaciones: `animate-drawer-enter/exit` / `animate-morph-enter/exit`
-- Responsive: `<640px` full, `lg: max-w-[512px]`
-
----
-
-## ✅ CHECKLIST POR BATCH
-- [ ] DataTable `onRowClick` → abre Drawer
-- [ ] Drawer: Header (icono + título + badge + close) + Tabs + Footer sticky
-- [ ] Modal Create/Edit: Header premium + Form floating labels + Footer brand/brand-outline
-- [ ] Colores hardcodeados → tokens (verificar)
-- [ ] Dark mode: tokens `.dark` aplicados
-- [ ] `npm run build` ✅
-- [ ] Test manual: click fila → drawer derecho, click nuevo/editar → modal centrado premium
+### 4. Consistencia de Componentes
+- `<Badge>` premium en todos los estados/píldoras.
+- `<Button>` premium (`brand`/`brand-outline`/`brand-ghost`) en acciones.
+- `<EmptyState>` premium en listas vacías.
 
 ---
 
-## 🚀 PROMPT PARA IA DE PAGO (BATCH 1 - PERSONAL)
+## 📦 ARCHIVOS A MODIFICAR (POR MÓDULO)
 
-> **Contexto**: ProyectoSub33 - Sistema bomberos. React 18 + Tailwind v4 + Radix + Motion. Backend .NET (NO tocar: services, hooks, types, Backend_Sub33).
->
-> **Estado**: FASE 1-4 COMPLETAS. Tokens, 18 componentes premium, layout conectado, dark mode, 369 colores → tokens. Build ✅.
->
-> **Objetivo**: **FASE 5 - BATCH 1**: Convertir modales de Personal a **Detail Drawer derecho** + **Premium Edit Modal**.
->
-> **Archivos**: `src/app/pages/Personal/PersonalPage.tsx`, `PersonalTable.tsx`, `PersonalForm.tsx`
->
-> **Reglas**: NO tocar backend/servicios/hooks/types. NO hardcodear → `var(--token)`. NO `any`. Motion solo drawer/modal/tabs. Build al final del batch.
->
-> **Componentes premium disponibles**: `Drawer`, `Modal`, `Tabs`, `Badge`, `Button`, `DataTable`, `Input`, `Card`, `Toast`, `AlertSystem`.
->
-> **Tokens**: `--grad-primary`, `--glass-bg-strong`, `--elevation-brand-*`, `--spring-gentle`, `.animate-drawer-enter`, `.animate-morph-enter`, `.animate-icon-bounce`, `.stagger-1..6`
->
-> ---
->
-> **CAMBIOS REQUERIDOS**:
->
-> **1. PersonalPage.tsx**
-> - Reemplazar `detailModalOpen`/`selectedDetail` por `detailOpen`/`selectedRecord`
-> - `onRowClick` en DataTable → `setSelectedRecord(row); setDetailOpen(true)`
-> - Renderizar `<Drawer>` (ver patrón arriba) con tabs: Info | Historial | Documentos
-> - Footer: Editar (abre Edit Modal) + Imprimir
-> - Mantener `editModalOpen` para Create/Edit → usa `<Modal>` premium
->
-> **2. PersonalTable.tsx**
-> - Prop `onRowClick` (ya existe) → conectar a Page
-> - Eliminar `onView` si existe, usar `onRowClick`
->
-> **3. PersonalForm.tsx**
-> - Ya usa patrón modal, verificar usa `<Modal>` premium (no AlertDialog)
-> - Header: icono 48px bounce, glassmorphism, gradient border top
-> - Form: floating labels (Input premium), sections colapsables
-> - Footer: Cancel (brand-outline) + Guardar (brand, loading)
-> - Dark mode: tokens `.dark` aplicados
->
-> **Checklist visual Batch 1**:
-> - [ ] Click fila → Drawer derecho slide-in, tabs animados, footer sticky
-> - [ ] Click "Nuevo"/"Editar" → Modal centrado premium, floating labels, footer brand/brand-outline
-> [ ] 0 hardcodeados, dark mode OK
-> - [ ] `npm run build` ✅
->
-> **Entregable**: 3 archivos completos, production-ready, build ✅
+| Módulo | Archivos | AlertDialog | Modal inline |
+|--------|----------|:-----------:|:------------:|
+| **Personal** | `PersonalPage.tsx` | — | ✅ (z-50) |
+| **Inventario** | `InventarioPage.tsx`, `MovimientosPage.tsx`, `EquipoUnidadesPage.tsx` | ✅ (4) | ✅ (z-600) |
+| **Emergencias** | `EmergenciasPage.tsx`, `RegisterServicePage.tsx`, `EditServicePage.tsx` | ✅ (3) | ✅ (z-60/70) |
+| **Donaciones** | `DonacionesPage.tsx` | ✅ (1) | — |
+| **Finanzas** | `FinanzasPage.tsx` | ✅ (1) | ✅ (z-40) |
+| **Vehículos** | `VehiculosPage.tsx` | ✅ (1) | — |
+| **Reportes** | `ReportesPage.tsx` | — | ✅ (z-50 x2) |
+| **Seguridad** | `SeguridadPage.tsx` | — | — |
+| **Perfil** | `ProfilePage.tsx` | — | — |
+| **Dashboard** | `App.tsx` | — | ✅ (bienvenida/analytics) |
+
+**Total AlertDialog a migrar**: ~10 | **Total modales inline a corregir**: ~10
 
 ---
 
 ## 🔑 REGLAS ABSOLUTAS
-1. **Un batch por respuesta** - completar, `npm run build`, siguiente
-2. **Cero hardcodeados** - todo `var(--token)` o Tailwind con tokens
-3. **Motion con propósito** - drawer, modal, tabs, stagger, hover
-4. **TypeScript strict** - interfaces, NO `any`
-5. **Radix primitives** - base accesible, añadir diseño+motion
-6. **Build cada 2-3 batches** - catch errors early
-7. **NO tocar**: `src/services/*`, `src/hooks/*`, `src/types/*`, `Backend_Sub33/*`
+
+1. **NO tocar**: `src/services/*`, `src/hooks/*`, `src/types/*`, `Backend_Sub33/*`
+2. **NO romper lógica**: validación, estado, API calls, flujo de submit
+3. **Cero hardcodeados**: todo `var(--token)` o Tailwind con tokens
+4. **NO `any`**: TypeScript strict
+5. **PrintForm**: NO tocar (fondo blanco para impresión)
+6. **Build cada 2-3 módulos**: `npm run build`
+7. **Consistencia**: mismo patrón en TODOS los módulos
 
 ---
 
-## 🎨 TOKENS DISPONIBLES
-```css
---glass-bg-strong: rgba(255,255,255,0.85);
---glass-bg-subtle: rgba(255,255,255,0.6);
---glass-border: rgba(211,47,47,0.15);
---glass-blur: blur(24px);
---grad-primary: linear-gradient(135deg, #D32F2F 0%, #B91C1C 100%);
---grad-primary-soft: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
---elevation-brand-1: 0 2px 8px rgba(211,47,47,0.08), 0 1px 3px rgba(0,0,0,0.04);
---elevation-brand-2: 0 8px 24px rgba(211,47,47,0.12), 0 4px 8px rgba(0,0,0,0.06);
---elevation-brand-3: 0 16px 48px rgba(211,47,47,0.15), 0 8px 16px rgba(0,0,0,0.08);
---spring-gentle: cubic-bezier(0.34, 1.56, 0.64, 1);
---spring-snappy: cubic-bezier(0.25, 1.2, 0.5, 1);
---z-drawer: 400; --z-modal: 500; --z-topbar: 200;
-```
+## 🚀 PROMPT PARA IA DE PAGO
+
+> **Contexto**: ProyectoSub33 - Sistema bomberos. React 18 + Tailwind v4 + Radix + Motion. Backend .NET (NO tocar: services, hooks, types, Backend_Sub33).
+>
+> **Estado**: Sistema premium completado. Ahora corregir 3 problemas GLOBALES en TODOS los módulos.
+>
+> **Objetivo**: Corregir backdrop, estandarizar alertas, completar dark mode en los 10 módulos (Personal, Inventario, Emergencias, Donaciones, Finanzas, Vehículos, Reportes, Seguridad, Perfil, Dashboard).
+>
+> **Reglas**: NO romper lógica/estado/API. NO hardcodear → `var(--token)`. NO `any`. PrintForm NO tocar (fondo blanco impresión). Build cada 2-3 módulos: `npm run build`.
+>
+> ---
+>
+> **1. Backdrop/Overlay (todos los modales inline)**
+> - Todo `fixed inset-0` sin Portal → usar Portal (`createPortal(..., document.body)`) o componente `Modal`/`Drawer` premium.
+> - Backdrop: `fixed inset-0 z-[var(--z-modal)] bg-black/60 backdrop-blur-sm` con `onClick={onClose}`, cubriendo TODO el viewport (incluye Topbar).
+> - Panel: `z-[var(--z-modal)]` centrado.
+>
+> **2. Alertas Estandarizadas (AlertSystem global)**
+> - Eliminar TODO `import { AlertDialog } from "@/app/components/AlertDialog"` y estado `alertState`.
+> - Usar `const { alert, toast } = useAlert()` de `src/app/components/ui/AlertSystem.tsx`.
+> - Validación → `alert.warning(...)`, Error → `alert.error(...)`, Confirmación → `alert.confirm(...)`, Éxito → `toast.success(...)`.
+> - Eliminar `<AlertDialog ... />` del JSX.
+>
+> **3. Dark Mode Completo (todos los módulos)**
+> - Tokens dark en `theme.css` (ver plan).
+> - Eliminar fondos blancos: `#fff`→`var(--bg-card)`, `bg-white`→`bg-[var(--bg-card)]`, `bg-gray-50`→`bg-[var(--bg-hover)]`.
+> - Textos principales: `text-[var(--text-1)]` + `font-weight: 500/600`.
+> - Headers tabla: `text-[var(--text-3)]` + `font-weight: 600`.
+> - Divisores: `border-[var(--divider)]`.
+> - Inputs/Selects: `bg-[var(--bg-input)]`, `border-[var(--border)]`.
+> - Placeholders: `placeholder-[var(--text-3)]`.
+> - Badges: `<Badge>` premium con variants semánticos.
+> - Botones: `<Button>` premium (`brand`/`brand-outline`/`brand-ghost`).
+>
+> ---
+>
+> **Archivos por módulo** (ver tabla en PLAN_DISENO.md):
+> - Personal: `PersonalPage.tsx`
+> - Inventario: `InventarioPage.tsx`, `MovimientosPage.tsx`, `EquipoUnidadesPage.tsx`
+> - Emergencias: `EmergenciasPage.tsx`, `RegisterServicePage.tsx`, `EditServicePage.tsx`
+> - Donaciones: `DonacionesPage.tsx`
+> - Finanzas: `FinanzasPage.tsx`
+> - Vehículos: `VehiculosPage.tsx`
+> - Reportes: `ReportesPage.tsx`
+> - Dashboard: `App.tsx` (bienvenida/analytics)
+>
+> **Checklist final**:
+> - [ ] Backdrop cubre Topbar en todos los modales
+> - [ ] Alertas usan AlertSystem (0 AlertDialog local)
+> - [ ] Dark mode: fondos oscuros, textos legibles, divisores sutiles
+> - [ ] Badges/Botones premium en todos los módulos
+> - [ ] 0 hardcodeados, 0 `any`, PrintForm intacto
+> - [ ] `npm run build` ✅
+>
+> **Entregable**: Todos los archivos completos, production-ready, build ✅
 
 ---
 
-## 📋 ORDEN EJECUCIÓN FINAL
-```
-BATCH 1: Personal → build
-BATCH 2: Inventario → build
-BATCH 3: Emergencias → build
-BATCH 4: Donaciones → build
-BATCH 5: Finanzas → build
-BATCH 6: Vehículos → build
-BATCH 7: Reportes → build
-BATCH 8: Seguridad → build
-BATCH 9: Perfil → build
-BATCH 10: Dashboard → build
-QA FINAL: npm run build + dotnet build ✅ + terminal libre
-```
+## ✅ CHECKLIST FINAL
+
+- [ ] Backdrop cubre Topbar en todos los modales
+- [ ] 0 `AlertDialog` local (todo AlertSystem)
+- [ ] Dark mode completo en todos los módulos
+- [ ] Badges/Botones premium consistentes
+- [ ] 0 hardcodeados, 0 `any`
+- [ ] `npm run build` ✅ + `dotnet build` ✅

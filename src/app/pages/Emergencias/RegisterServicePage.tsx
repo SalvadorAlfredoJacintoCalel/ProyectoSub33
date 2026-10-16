@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import {
   X, Lock, Phone, User, MapPin, ChevronDown, Truck, Heart, Loader2, Package,
 } from "lucide-react";
-import { toast } from "sonner";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { inventarioService } from "@/services/inventarioService";
-import { AlertDialog } from "@/app/components/AlertDialog";
 import type { PersonalAsignado } from "@/types/emergencia";
 import type { InventarioItem } from "@/types/inventario";
 
@@ -63,6 +62,7 @@ interface PersonalSel {
 
 export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
   const { catalogos, cargarCatalogos, getSiguienteIncidente, crearEmergencia } = useEmergencias();
+  const { alert, toast } = useAlert();
 
   const [numeroIncidente, setNumeroIncidente] = useState("");
   const [tipoSolicitud, setTipoSolicitud] = useState<"Telefónica" | "Personal">("Telefónica");
@@ -95,13 +95,6 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [alertState, setAlertState] = useState<{
-    open: boolean;
-    type: "error" | "warning";
-    title: string;
-    message: string;
-    details: string[];
-  }>({ open: false, type: "error", title: "", message: "", details: [] });
 
   useEffect(() => {
     let mounted = true;
@@ -171,13 +164,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      setAlertState({
-        open: true,
-        type: "warning",
-        title: "Campos Incompletos",
-        message: "Complete los datos obligatorios (*) antes de continuar.",
-        details: [],
-      });
+      alert.warning("Campos Incompletos", "Complete los datos obligatorios (*) antes de continuar.");
       return;
     }
 
@@ -226,28 +213,14 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
       const resultado = await crearEmergencia(dto);
 
       if (resultado && resultado.exito) {
-        toast.success("Emergencia registrada", {
-          description: `Incidente ${resultado.numeroIncidente}`,
-        });
+        toast.success(`Incidente ${resultado.numeroIncidente} registrado exitosamente`);
         onClose();
       } else {
-        setAlertState({
-          open: true,
-          type: "error",
-          title: "Error al Registrar",
-          message: "No se pudo registrar la emergencia. Intente nuevamente.",
-          details: [],
-        });
+        alert.error("Error al Registrar", "No se pudo registrar la emergencia. Intente nuevamente.");
       }
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : "Error desconocido";
-      setAlertState({
-        open: true,
-        type: "error",
-        title: "Error de Servidor",
-        message: "No se pudo conectar con el servidor.",
-        details: [mensaje],
-      });
+      alert.error("Error de Servidor", mensaje);
     } finally {
       setSubmitting(false);
     }
@@ -1111,15 +1084,6 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
           </button>
         </div>
       </div>
-
-      <AlertDialog
-        isOpen={alertState.open}
-        onClose={() => setAlertState((s) => ({ ...s, open: false }))}
-        title={alertState.title}
-        message={alertState.message}
-        type={alertState.type}
-        details={alertState.details}
-      />
     </>
   );
 }

@@ -5,11 +5,10 @@ import {
   X, Printer, Clock, Zap, CalendarX2, Pencil, Power, Loader2,
   User, Users, FileText,
 } from "lucide-react";
-import { toast } from "sonner";
 import imgCvbLogo from "@/imports/DashboardPrincipalDesktop/382ba90f17ab58630c2735b72b71bff037f7ba87.png";
 import { RegisterServicePage } from "@/app/pages/Emergencias/RegisterServicePage";
 import { EditServicePage } from "@/app/pages/Emergencias/EditServicePage";
-import { AlertDialog } from "@/app/components/AlertDialog";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Badge } from "@/app/components/ui/badge";
@@ -698,6 +697,7 @@ export function EmergenciasPage() {
     obtenerEmergencia,
     cambiarEstado,
   } = useEmergencias();
+  const { alert, toast } = useAlert();
 
   const [query, setQuery] = useState("");
   const [unidad, setUnidad] = useState("");
@@ -713,7 +713,6 @@ export function EmergenciasPage() {
   const [showRegister, setShowRegister] = useState(false);
   const [selectedEmergencia, setSelectedEmergencia] = useState<Emergencia | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [deactivateId, setDeactivateId] = useState<number | null>(null);
 
   useEffect(() => {
     cargarCatalogos();
@@ -755,17 +754,20 @@ export function EmergenciasPage() {
     if (full) setSelectedEmergencia(full);
   }
 
-  async function handleDeactivate() {
-    if (deactivateId == null) return;
-    const ok = await cambiarEstado(deactivateId, "Inactivo");
-    if (ok) {
+  async function handleDesactivar(id: number) {
+    const ok = await alert.confirm(
+      "Confirmar Desactivación",
+      "¿Marcar este servicio como Inactivo? El estado del registro cambiará a Inactivo/Desactivado."
+    );
+    if (!ok) return;
+    const res = await cambiarEstado(id, "Inactivo");
+    if (res) {
       toast.success("Servicio desactivado");
       setSelectedEmergencia(null);
       cargarEmergencias({ pagina: page, tamanoPagina: pageSize, busqueda: query || undefined, unidad: unidad || undefined, tipo: tipo || undefined, piloto: piloto || undefined, desde: desde || undefined, hasta: hasta || undefined });
     } else {
       toast.error("No se pudo desactivar el servicio");
     }
-    setDeactivateId(null);
   }
 
   const hasActiveFilter = !!(query || unidad || tipo || piloto || desde || hasta);
@@ -1070,12 +1072,12 @@ export function EmergenciasPage() {
           emergencia={selectedEmergencia}
           onClose={() => setSelectedEmergencia(null)}
           onEdit={() => { setEditingId(selectedEmergencia.servicioId); setSelectedEmergencia(null); }}
-          onDesactivar={() => setDeactivateId(selectedEmergencia.servicioId)}
+          onDesactivar={() => handleDesactivar(selectedEmergencia.servicioId)}
         />
       )}
 
       {editingId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setEditingId(null)}>
+        <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setEditingId(null)}>
           <div className="animate-morph-enter rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)", boxShadow: "var(--elevation-brand-3)" }} onClick={(e) => e.stopPropagation()}>
             <EditServicePage serviceId={editingId} onClose={() => setEditingId(null)} onSaved={() => setEditingId(null)} />
           </div>
@@ -1083,24 +1085,12 @@ export function EmergenciasPage() {
       )}
 
       {showRegister && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setShowRegister(false)}>
+        <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setShowRegister(false)}>
           <div className="animate-morph-enter rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)", boxShadow: "var(--elevation-brand-3)" }} onClick={(e) => e.stopPropagation()}>
             <RegisterServicePage onClose={() => setShowRegister(false)} currentUser={user?.name ?? ""} />
           </div>
         </div>
       )}
-
-      <AlertDialog
-        isOpen={deactivateId != null}
-        onClose={() => setDeactivateId(null)}
-        title="Confirmar Desactivación"
-        message="¿Marcar este servicio como Inactivo? El estado del registro cambiará a Inactivo/Desactivado."
-        type="warning"
-        variant="confirm"
-        onConfirm={handleDeactivate}
-        confirmText="Sí, desactivar"
-        cancelText="Cancelar"
-      />
     </>
   );
 }

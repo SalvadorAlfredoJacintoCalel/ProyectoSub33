@@ -30,7 +30,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { AlertDialog } from "../../components/AlertDialog";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Modal } from "@/app/components/ui/modal";
@@ -113,6 +113,7 @@ const TABS: Array<TipoTx | "Todos"> = ["Todos", "Ingresos", "Gastos", "Donacione
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function FinanzasPage() {
+  const { alert, toast } = useAlert();
   const [rows, setRows] = useState<Transaccion[]>(INITIAL_DATA);
   const [activeTab, setActiveTab] = useState<TipoTx | "Todos">("Todos");
   const [search, setSearch] = useState("");
@@ -125,21 +126,6 @@ export function FinanzasPage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<FormState>(BLANK_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-  const [toast, setToast] = useState<string | null>(null);
-  const [alertModal, setAlertModal] = useState<{
-    isOpen: boolean;
-    type: "success" | "warning";
-    title: string;
-    message: string;
-  }>({ isOpen: false, type: "warning", title: "", message: "" });
-
-  function showToastMsg(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  }
-
-  // Delete dialog
-  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   // View dialog
   const [viewRow, setViewRow] = useState<Transaccion | null>(null);
@@ -232,7 +218,7 @@ export function FinanzasPage() {
       return updated.map(r => { running += r.entrada - r.salida; return { ...r, saldoAcumulado: running }; });
     });
     closeEditModal();
-    showToastMsg("Transacción actualizada exitosamente.");
+    toast.success("Transacción actualizada exitosamente.");
   };
 
   const handleEditDelete = () => {
@@ -242,7 +228,7 @@ export function FinanzasPage() {
       return filtered2.map(r => { running += r.entrada - r.salida; return { ...r, saldoAcumulado: running }; });
     });
     closeEditModal();
-    showToastMsg("Transacción eliminada.");
+    toast.success("Transacción eliminada.");
   };
 
   const setField = <K extends keyof FormState>(k: K, v: FormState[K]) => {
@@ -263,12 +249,7 @@ export function FinanzasPage() {
 
   const handleSave = () => {
     if (!validate()) {
-      setAlertModal({
-        isOpen: true,
-        type: "warning",
-        title: "Campos Incompletos",
-        message: "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.",
-      });
+      alert.warning("Campos Incompletos", "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
     const monto = parseFloat(form.monto);
@@ -290,36 +271,28 @@ export function FinanzasPage() {
     };
     setRows(r => [...r, newRow]);
     setShowModal(false);
-    setAlertModal({
-      isOpen: true,
-      type: "success",
-      title: "Registro Exitoso",
-      message: "La transacción ha sido registrada correctamente.",
-    });
+    toast.success("La transacción ha sido registrada correctamente.");
   };
 
-  const handleDelete = () => {
-    if (deleteId === null) return;
-    setRows(r => r.filter(x => x.id !== deleteId));
-    setDeleteId(null);
+  const requestDelete = async (id: number) => {
+    const ok = await alert.confirm(
+      "Confirmar eliminación",
+      "¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer."
+    );
+    if (!ok) return;
+    setRows(r => r.filter(x => x.id !== id));
+    toast.success("Transacción eliminada.");
   };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen p-6" style={{ backgroundColor: "#f5f5f6", fontFamily: "Inter, sans-serif" }}>
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-2 bg-green-600 text-white px-5 py-3 rounded-lg shadow-lg text-sm font-medium">
-          <Check size={16} /> {toast}
-        </div>
-      )}
+    <div className="min-h-screen p-6" style={{ backgroundColor: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Finanzas</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Gestión de ingresos, gastos y donaciones</p>
+          <h1 className="text-2xl font-bold text-[var(--text-1)]">Finanzas</h1>
+          <p className="text-sm text-[var(--text-3)] mt-0.5">Gestión de ingresos, gastos y donaciones</p>
         </div>
         <button
           onClick={openModal}
@@ -359,7 +332,7 @@ export function FinanzasPage() {
       </div>
 
       {/* ── SECTION 2: Tabs ── */}
-      <div className="flex gap-1 mb-4 bg-white border rounded-lg p-1 w-fit" style={{ borderColor: "var(--neutral-200)", boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
+      <div className="flex gap-1 mb-4 bg-[var(--bg-card)] border rounded-lg p-1 w-fit" style={{ borderColor: "var(--neutral-200)", boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
         {TABS.map(tab => (
           <button
             key={tab}
@@ -367,7 +340,7 @@ export function FinanzasPage() {
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
               activeTab === tab
                 ? "text-white shadow-sm"
-                : "text-gray-600 hover:bg-gray-100"
+                : "text-[var(--text-2)] hover:bg-[var(--bg-hover)]"
             }`}
             style={activeTab === tab ? { backgroundColor: "var(--red)" } : {}}
           >
@@ -377,12 +350,12 @@ export function FinanzasPage() {
       </div>
 
       {/* ── SECTION 3: Table Card ── */}
-      <div className="bg-white rounded-xl overflow-hidden" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
+      <div className="bg-[var(--bg-card)] rounded-xl overflow-hidden" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 p-4 border-b" style={{ borderColor: "var(--neutral-200)" }}>
           <div className="relative flex-1 min-w-48">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -394,7 +367,7 @@ export function FinanzasPage() {
           <select
             value={filterTipo}
             onChange={e => { setFilterTipo(e.target.value as TipoTx | ""); setPage(1); }}
-            className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-white"
+            className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-[var(--bg-card)]"
             style={{ borderColor: "var(--neutral-200)" }}
           >
             <option value="">Todos los tipos</option>
@@ -405,7 +378,7 @@ export function FinanzasPage() {
           <select
             value={filterCat}
             onChange={e => { setFilterCat(e.target.value); setPage(1); }}
-            className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-white"
+            className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-[var(--bg-card)]"
             style={{ borderColor: "var(--neutral-200)" }}
           >
             <option value="">Todas las categorías</option>
@@ -420,7 +393,7 @@ export function FinanzasPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-xs font-semibold text-gray-500 uppercase tracking-wide" style={{ borderColor: "var(--neutral-200)", backgroundColor: "#f5f5f6" }}>
+              <tr className="border-b text-xs font-semibold text-[var(--text-3)] uppercase tracking-wide" style={{ borderColor: "var(--neutral-200)", backgroundColor: "#f5f5f6" }}>
                 {["Fecha","Tipo","Descripción","Categoría","Método de Pago","Comprobante","No. Documento","Entrada (Q)","Salida (Q)","Saldo Acum. (Q)","Responsable","Acciones"].map(h => (
                   <th key={h} className="px-3 py-3 text-left whitespace-nowrap">{h}</th>
                 ))}
@@ -429,38 +402,38 @@ export function FinanzasPage() {
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={12} className="py-12 text-center text-[var(--text-3)] text-sm">
                     No se encontraron registros
                   </td>
                 </tr>
               ) : pageRows.map((r, i) => (
                 <tr
                   key={r.id}
-                  className={`cursor-pointer border-b transition-colors hover:bg-gray-50 ${i % 2 === 0 ? "" : "bg-gray-50/50"}`}
+                  className={`cursor-pointer border-b transition-colors hover:bg-[var(--bg-hover)] ${i % 2 === 0 ? "" : "bg-[var(--bg-hover)]/50"}`}
                   style={{ borderColor: "var(--neutral-200)" }}
                   onClick={() => setViewRow(r)}
                 >
-                  <td className="px-3 py-3 whitespace-nowrap text-gray-700">{r.fecha}</td>
+                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.fecha}</td>
                   <td className="px-3 py-3">
                     <Badge variant={TIPO_BADGE[r.tipo]} size="sm">{r.tipo}</Badge>
                   </td>
-                  <td className="px-3 py-3 max-w-48 truncate text-gray-800" title={r.descripcion}>{r.descripcion}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-gray-600">{r.categoria}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-gray-600">{r.metodoPago}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-gray-600">{r.comprobante}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-gray-600">{r.noDocumento || "—"}</td>
+                  <td className="px-3 py-3 max-w-48 truncate text-[var(--text-1)]" title={r.descripcion}>{r.descripcion}</td>
+                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.categoria}</td>
+                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.metodoPago}</td>
+                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.comprobante}</td>
+                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.noDocumento || "—"}</td>
                   <td className="px-3 py-3 whitespace-nowrap text-green-700 font-medium text-right">
                     {r.entrada > 0 ? fmt(r.entrada) : "—"}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap text-red-600 font-medium text-right">
                     {r.salida > 0 ? fmt(r.salida) : "—"}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap font-semibold text-gray-900 text-right">{fmt(r.saldoAcumulado)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-gray-600">{r.responsable}</td>
+                  <td className="px-3 py-3 whitespace-nowrap font-semibold text-[var(--text-1)] text-right">{fmt(r.saldoAcumulado)}</td>
+                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.responsable}</td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-1">
                       <ActionBtn icon={<Pencil size={14} />} title="Editar"   color="text-amber-600" onClick={(e) => { e.stopPropagation(); openEditModal(r); }} />
-                      <ActionBtn icon={<Trash2 size={14} />} title="Eliminar" color="text-red-600"   onClick={(e) => { e.stopPropagation(); setDeleteId(r.id); }} />
+                      <ActionBtn icon={<Trash2 size={14} />} title="Eliminar" color="text-red-600"   onClick={(e) => { e.stopPropagation(); requestDelete(r.id); }} />
                     </div>
                   </td>
                 </tr>
@@ -470,22 +443,22 @@ export function FinanzasPage() {
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-500" style={{ borderColor: "var(--neutral-200)" }}>
+        <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-[var(--text-3)]" style={{ borderColor: "var(--neutral-200)" }}>
           <span>{filtered.length} registro{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}</span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-1.5 rounded-md border disabled:opacity-40 hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-md border disabled:opacity-40 hover:bg-[var(--bg-hover)] transition-colors"
               style={{ borderColor: "var(--neutral-200)" }}
             >
               <ChevronLeft size={15} />
             </button>
-            <span className="px-2 font-medium text-gray-700">Página {page} / {totalPages}</span>
+            <span className="px-2 font-medium text-[var(--text-2)]">Página {page} / {totalPages}</span>
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="p-1.5 rounded-md border disabled:opacity-40 hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-md border disabled:opacity-40 hover:bg-[var(--bg-hover)] transition-colors"
               style={{ borderColor: "var(--neutral-200)" }}
             >
               <ChevronRight size={15} />
@@ -553,27 +526,6 @@ export function FinanzasPage() {
         </div>
       </Modal>
 
-      {/* ── Delete confirmation dialog ── */}
-      {deleteId !== null && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-red-50 rounded-full"><AlertTriangle size={20} className="text-red-600" /></div>
-              <h3 className="text-base font-semibold text-gray-900">Confirmar eliminación</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-5">¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteId(null)} className="px-4 py-2 text-sm font-medium text-gray-700 border rounded-lg hover:bg-gray-50" style={{ borderColor: "var(--neutral-200)" }}>
-                Cancelar
-              </button>
-              <button onClick={handleDelete} className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── View detail Drawer ── */}
       <Drawer
         open={viewRow !== null}
@@ -606,7 +558,7 @@ export function FinanzasPage() {
                 setRows((prev) => prev.map((r) => r.id === viewRow.id ? { ...r, estado: "Inactivo" } : r));
                 setConfirmDesactivarTx(false);
                 setViewRow(null);
-                showToastMsg("Transacción marcada como inactiva.");
+                toast.info("Transacción marcada como inactiva.");
               }}>Confirmar</Button>
             </div>
           </div>
@@ -768,14 +720,6 @@ export function FinanzasPage() {
           )}
         </div>
       </Modal>
-
-      <AlertDialog
-        isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
-        title={alertModal.title}
-        message={alertModal.message}
-        type={alertModal.type}
-      />
     </div>
   );
 }
@@ -794,11 +738,11 @@ function KpiCard({
   up: boolean;
 }) {
   return (
-    <div className="bg-white rounded-xl p-5 flex items-start gap-4 transition-transform duration-200 hover:-translate-y-0.5" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
+    <div className="bg-[var(--bg-card)] rounded-xl p-5 flex items-start gap-4 transition-transform duration-200 hover:-translate-y-0.5" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
       <div className={`p-2.5 rounded-xl ${iconBg} ${iconColor} shrink-0`}>{icon}</div>
       <div className="min-w-0">
-        <p className="text-xs text-gray-500 font-medium mb-1">{label}</p>
-        <p className="text-xl font-bold text-gray-900 leading-tight">{fmt(value)}</p>
+        <p className="text-xs text-[var(--text-3)] font-medium mb-1">{label}</p>
+        <p className="text-xl font-bold text-[var(--text-1)] leading-tight">{fmt(value)}</p>
         <p className={`text-xs font-semibold mt-1 ${up ? "text-green-600" : "text-red-500"}`}>
           {up ? "↑" : "↓"} {trend} vs mes anterior
         </p>
@@ -819,7 +763,7 @@ function ActionBtn({
     <button
       title={title}
       onClick={onClick}
-      className={`p-1.5 rounded-md hover:bg-gray-100 transition-colors ${color}`}
+      className={`p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors ${color}`}
     >
       {icon}
     </button>
@@ -835,7 +779,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">{label}</label>
+      <label className="text-xs font-semibold text-[var(--text-3)] uppercase tracking-wide mb-1.5 block">{label}</label>
       {children}
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
     </div>
@@ -853,7 +797,7 @@ function Select({
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-white"
+      className="w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-[var(--bg-card)]"
       style={{ borderColor: "var(--neutral-200)" }}
     >
       {options.map(o => <option key={o}>{o}</option>)}
