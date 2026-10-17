@@ -59,7 +59,6 @@ const selectBase: React.CSSProperties = {
 };
 
 const OpcionesGenero = ["Masculino", "Femenino"];
-const OpcionesEstadoEntrega = ["Estable", "Delicado", "Grave", "Fallecido en traslado"];
 
 function getNow() {
   const now = new Date();
@@ -815,9 +814,9 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                     style={{ ...selectBase, paddingRight: 32 }}
                   >
                     <option value="">Seleccionar estado…</option>
-                    {OpcionesEstadoEntrega.map((op) => (
-                      <option key={op} value={op}>
-                        {op}
+                    {catalogos.estadosEntrega.map((e) => (
+                      <option key={e.id} value={e.nombre}>
+                        {e.nombre}
                       </option>
                     ))}
                   </select>

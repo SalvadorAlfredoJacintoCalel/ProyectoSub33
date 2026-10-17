@@ -58,7 +58,6 @@ const selectBase: React.CSSProperties = {
 };
 
 const OpcionesGenero = ["Masculino", "Femenino"];
-const OpcionesEstadoEntrega = ["Estable", "Delicado", "Grave", "Fallecido en traslado"];
 
 function getNow() {
   const now = new Date();
@@ -569,8 +568,8 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                 <div style={{ position: "relative" }}>
                   <select value={estadoEntrega} onChange={(e) => setEstadoEntrega(e.target.value)} style={{ ...selectBase, paddingRight: 32 }}>
                     <option value="">Seleccionar estado…</option>
-                    {OpcionesEstadoEntrega.map((op) => (
-                      <option key={op} value={op}>{op}</option>
+                    {catalogos.estadosEntrega.map((e) => (
+                      <option key={e.id} value={e.nombre}>{e.nombre}</option>
                     ))}
                   </select>
                   <ChevronDown style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-3)", pointerEvents: "none" }} />

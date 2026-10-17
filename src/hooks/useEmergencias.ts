@@ -14,6 +14,7 @@ import type {
   Unidad,
   RolServicio,
   TipoUnidad,
+  EstadoEntrega,
   PersonalDisponible,
 } from "@/types/emergencia";
 
@@ -24,6 +25,7 @@ interface Catalogos {
   unidades: Unidad[];
   rolesServicio: RolServicio[];
   tiposUnidad: TipoUnidad[];
+  estadosEntrega: EstadoEntrega[];
   personal: PersonalDisponible[];
 }
 
@@ -34,6 +36,7 @@ const CATALOGOS_INICIALES: Catalogos = {
   unidades: [],
   rolesServicio: [],
   tiposUnidad: [],
+  estadosEntrega: [],
   personal: [],
 };
 
@@ -95,6 +98,8 @@ export function useEmergencias(): UseEmergenciasReturn {
           emergenciaService.getPersonalDisponible(),
         ]);
 
+      const estadosEntrega = await emergenciaService.getEstadosEntrega().catch(() => []);
+
       setCatalogos({
         tiposEmergencia,
         tiposAsistencia,
@@ -102,6 +107,7 @@ export function useEmergencias(): UseEmergenciasReturn {
         unidades,
         rolesServicio,
         tiposUnidad,
+        estadosEntrega,
         personal,
       });
     } catch (err) {

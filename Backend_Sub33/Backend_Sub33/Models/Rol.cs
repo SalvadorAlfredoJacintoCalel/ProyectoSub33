@@ -23,4 +23,5 @@ public class Rol
 
     public ICollection<UsuarioRol> UsuarioRoles { get; set; } = new List<UsuarioRol>();
     public ICollection<RolPermiso> RolPermisos { get; set; } = new List<RolPermiso>();
+    public ICollection<RolModulo> RolModulos { get; set; } = new List<RolModulo>();
 }

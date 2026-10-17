@@ -9,6 +9,7 @@ export type Hospital = CatalogoItem;
 export type Unidad = CatalogoItem;
 export type RolServicio = CatalogoItem;
 export type TipoUnidad = CatalogoItem;
+export type EstadoEntrega = CatalogoItem;
 
 export interface PersonalDisponible {
   personalId: string;

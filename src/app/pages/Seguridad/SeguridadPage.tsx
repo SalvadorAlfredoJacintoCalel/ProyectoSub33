@@ -51,6 +51,7 @@ const CATALOGOS_OPCIONES: { key: CatalogoTipo; label: string }[] = [
   { key: "categorias-inventario", label: "Categorías de Inventario" },
   { key: "proveedores", label: "Proveedores" },
   { key: "tipos-movimiento", label: "Tipos de Movimiento" },
+  { key: "estados-entrega", label: "Estados de Entrega Hospital" },
 ];
 
 const CATALOGOS_COMPLEJOS: Record<string, { fields: { name: string; label: string; type: string; required?: boolean }[] }> = {

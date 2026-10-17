@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<UsuarioRol> UsuarioRoles { get; set; }
     public DbSet<Rol> Roles { get; set; }
     public DbSet<RolPermiso> RolPermisos { get; set; }
+    public DbSet<RolModulo> RolModulos { get; set; }
     public DbSet<CatModulo> CatModulos { get; set; }
     public DbSet<Permiso> Permisos { get; set; }
     public DbSet<ParametroSistema> ParametrosSistema { get; set; }
@@ -241,6 +242,27 @@ public class AppDbContext : DbContext
                   .HasForeignKey(rp => rp.PermisoId)
                   .OnDelete(DeleteBehavior.Cascade)
                   .HasConstraintName("fk_rp_permiso");
+        });
+
+        // RolModulo (Many-to-Many rol <-> modulo)
+        modelBuilder.Entity<RolModulo>(entity =>
+        {
+            entity.ToTable("rol_modulo");
+            entity.HasKey(rm => new { rm.RolId, rm.ModuloId });
+            entity.Property(rm => rm.RolId).HasColumnName("rol_id");
+            entity.Property(rm => rm.ModuloId).HasColumnName("modulo_id");
+
+            entity.HasOne(rm => rm.Rol)
+                  .WithMany(r => r.RolModulos)
+                  .HasForeignKey(rm => rm.RolId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_rol_modulo_rol");
+
+            entity.HasOne(rm => rm.Modulo)
+                  .WithMany()
+                  .HasForeignKey(rm => rm.ModuloId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_rol_modulo_modulo");
         });
 
         // InventarioItem

@@ -13,6 +13,7 @@ import type {
   Unidad,
   RolServicio,
   TipoUnidad,
+  EstadoEntrega,
   PersonalDisponible,
 } from "@/types/emergencia";
 
@@ -37,6 +38,10 @@ export const emergenciaService = {
 
   getTiposAsistencia: async (): Promise<CatalogoItem[]> => {
     return apiClient.get<CatalogoItem[]>("/configuracion/catalogos/tipos-asistencia");
+  },
+
+  getEstadosEntrega: async (): Promise<EstadoEntrega[]> => {
+    return apiClient.get<EstadoEntrega[]>("/configuracion/catalogos/estados-entrega");
   },
 
   getHospitales: async (): Promise<Hospital[]> => {

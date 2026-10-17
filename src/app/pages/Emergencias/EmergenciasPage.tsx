@@ -25,6 +25,7 @@ const RED = "var(--red)";
 type Service = {
   id: string;
   fecha: string;
+  anio: string;
   hora: string;
   tipo: string;
   paciente: string;
@@ -87,6 +88,14 @@ const PRINT_CSS = `
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
+function normalize(texto: string): string {
+  return (texto ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
 function formatFechaImpresion(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -107,6 +116,10 @@ function mapEmergenciaToService(em: Emergencia): Service {
   return {
     id: em.numeroIncidente,
     fecha: formatFechaImpresion(em.fecha),
+    anio: (() => {
+      const d = new Date(em.fecha);
+      return String(Number.isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear());
+    })(),
     hora: em.horaSalida ?? "",
     tipo: (em.tiposAsistencia ?? [])[0] ?? "",
     paciente: em.paciente,
@@ -238,24 +251,43 @@ function UnitBox({ label, checked }: { label: string; checked: boolean }) {
 function PrintForm({ service }: { service: Service }) {
   const { day, month } = parseFecha(service.fecha);
 
-  const isMaternidad = service.tiposServicio.includes("Maternidad");
-  const isAccidenteTransito = service.tiposServicio.includes("Accidente de Tránsito");
-  const isAccidenteTrabajo = service.tiposServicio.includes("Accidente de Trabajo");
-  const isServicioSocial = service.tiposServicio.includes("Servicio Social");
-  const isPrevención = service.tiposServicio.includes("Prevención");
-  const isCapacitación = service.tiposServicio.includes("Capacitación");
-  const isOtros = service.tiposServicio.includes("Otros");
-  const otrosText = isOtros ? service.tiposServicio.filter((t) => t === "Otros").join("") : "";
+  const ASISTENCIA_CANONICA = [
+    "Maternidad",
+    "Accidente de tránsito",
+    "Accidente de trabajo",
+    "Servicio Social",
+    "Prevención",
+    "Capacitación",
+    "Otros",
+  ];
+  const tiposNorm = service.tiposServicio.map((t) => normalize(t));
+  const hasTipo = (nombre: string) => tiposNorm.includes(normalize(nombre));
 
-  const lt = service.lugarTraslado;
-  const hosmg = lt.includes("Hospitalito") || lt.includes("HOSMG");
-  const cap = lt.includes("C.A.P");
-  const vida = lt.includes("Vida");
-  const nacional = lt.includes("Nacional");
-  const tecniscan = lt.includes("Tecniscan");
-  const roosevelt = lt.includes("Roosevelt");
-  const juanDeDios = lt.includes("Juan") || lt.includes("Dios");
-  const otrosLugar = !hosmg && !cap && !vida && !nacional && !tecniscan && !roosevelt && !juanDeDios && lt !== "N/A" ? lt : "";
+  const isMaternidad = hasTipo("Maternidad");
+  const isAccidenteTransito = hasTipo("Accidente de tránsito");
+  const isAccidenteTrabajo = hasTipo("Accidente de trabajo");
+  const isServicioSocial = hasTipo("Servicio Social");
+  const isPrevención = hasTipo("Prevención");
+  const isCapacitación = hasTipo("Capacitación");
+
+  // Mejoras fuera del formato físico caen en "Otros Especifique"
+  const extrasAsistencia = service.tiposServicio.filter(
+    (t) => !ASISTENCIA_CANONICA.some((c) => normalize(c) === normalize(t))
+  );
+  const isOtros = hasTipo("Otros") || extrasAsistencia.length > 0;
+  const otrosText = extrasAsistencia.join(", ");
+
+  const lt = normalize(service.lugarTraslado);
+  const ltRaw = service.lugarTraslado;
+  const hosmg = lt.includes("hospitalito") || lt.includes("hosmg");
+  const cap = lt.includes("c.a.p");
+  const vida = lt.includes("vida");
+  const nacional = lt.includes("nacional") && lt.includes("solol");
+  const tecniscan = lt.includes("tecniscan");
+  const roosevelt = lt.includes("roosevelt");
+  const juanDeDios = lt.includes("juan de dios");
+  const coincideFisico = hosmg || cap || vida || nacional || tecniscan || roosevelt || juanDeDios;
+  const otrosLugar = !coincideFisico && ltRaw.trim() !== "" && normalize(ltRaw) !== "n/a" ? ltRaw : "";
 
   const baseFont: React.CSSProperties = {
     fontFamily: "Times New Roman, Times, serif",
@@ -468,7 +500,7 @@ function PrintForm({ service }: { service: Service }) {
           <span style={{ display: "inline-block", width: "60px", borderBottom: "1px solid #000", fontSize: "10px", textAlign: "center" }}>{day}</span>
           {" "}de{" "}
           <span style={{ display: "inline-block", width: "90px", borderBottom: "1px solid #000", fontSize: "10px", textAlign: "center" }}>{month}</span>
-          {" "}de 2026.
+          {" "}de {service.anio}.
         </div>
       </div>
 
