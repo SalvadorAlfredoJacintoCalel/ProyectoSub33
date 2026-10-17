@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   Calendar, CheckCircle2, Plus, Search,
   ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown,
@@ -1108,20 +1109,22 @@ export function EmergenciasPage() {
         />
       )}
 
-      {editingId && (
+      {editingId && createPortal(
         <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setEditingId(null)}>
           <div className="animate-morph-enter rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)", boxShadow: "var(--elevation-brand-3)" }} onClick={(e) => e.stopPropagation()}>
             <EditServicePage serviceId={editingId} onClose={() => setEditingId(null)} onSaved={() => setEditingId(null)} />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showRegister && (
+      {showRegister && createPortal(
         <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setShowRegister(false)}>
           <div className="animate-morph-enter rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)", boxShadow: "var(--elevation-brand-3)" }} onClick={(e) => e.stopPropagation()}>
             <RegisterServicePage onClose={() => setShowRegister(false)} currentUser={user?.name ?? ""} />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
