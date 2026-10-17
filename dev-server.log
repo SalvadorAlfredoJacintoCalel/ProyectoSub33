@@ -1,0 +1,38 @@
+
+> @figma/my-make-file@0.0.1 dev
+> vite --force
+
+[2m11:41:15 a. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Forced re-optimization of dependencies
+
+  [32m[1mVITE[22m v6.3.5[39m  [2mready in [0m[1m5188[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[2m[32m  ➜[39m[22m[2m  press [22m[1mh + enter[22m[2m to show help[22m
+[2m11:47:27 a. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx, /src/styles/index.css[22m
+[2m11:56:47 a. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx, /src/styles/index.css[22m
+[2m11:57:04 a. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\components\PersonalForm.tsx, /src/styles/index.css[22m
+[2m11:57:25 a. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\components\PersonalForm.tsx, /src/styles/index.css[22m
+[2m11:57:50 a. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\components\PersonalForm.tsx, /src/styles/index.css[22m
+[2m1:52:59 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx[22m
+[2m1:53:00 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx[22m
+[2m1:53:35 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/styles/index.css, /@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx[22m
+[2m1:53:49 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/types/personal.ts[22m
+[2m1:54:17 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx, /src/styles/index.css[22m
+[2m1:54:36 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx, /src/styles/index.css[22m
+[2m1:54:55 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx, /src/styles/index.css[22m
+[2m1:55:31 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx, /src/styles/index.css[22m
+[2m1:56:03 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx, /src/styles/index.css[22m
+[2m1:56:15 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx, /src/styles/index.css[22m
+[2m1:56:26 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\PersonalPage.tsx, /src/styles/index.css[22m
+[2m1:56:37 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\components\PersonalForm.tsx, /src/styles/index.css[22m
+[2m1:56:51 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\components\PersonalForm.tsx, /src/styles/index.css[22m
+[2m1:57:10 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\components\PersonalForm.tsx, /src/styles/index.css[22m
+[2m1:57:24 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\components\PersonalForm.tsx, /src/styles/index.css[22m
+[2m1:57:33 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\components\PersonalForm.tsx, /src/styles/index.css[22m
+[2m1:57:45 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Personal\components\PersonalForm.tsx, /src/styles/index.css[22m
+[2m1:59:43 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Seguridad\SeguridadPage.tsx, /src/styles/index.css[22m
+[2m3:16:23 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Emergencias\EmergenciaFormPage.tsx, /src/styles/index.css[22m
+[2m3:16:23 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Emergencias\EmergenciaFormPage.tsx, /src/styles/index.css[22m
+[2m3:16:32 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Emergencias\EmergenciaFormPage.tsx, /src/styles/index.css[22m
+[2m3:16:43 p. m.[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/@fs/C:\ProyectoSub33-main\ProyectoSub33-main\src\app\pages\Emergencias\EmergenciaFormPage.tsx, /src/styles/index.css[22m

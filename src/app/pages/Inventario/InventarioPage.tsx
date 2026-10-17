@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
@@ -296,6 +297,60 @@ function ItemsTab() {
   const totalPages = Math.max(1, paginacion?.totalPaginas ?? 1);
   const total = paginacion?.total ?? 0;
 
+  const itemColumns: DataTableColumn<InventarioItem>[] = [
+    {
+      key: "codigo",
+      header: "Código",
+      cell: (it) => (
+        <span className="font-mono font-medium" style={{ color: "var(--text-1)" }}>
+          {it.codigoBarras || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "nombre",
+      header: "Nombre",
+      cell: (it) => (
+        <span style={{ color: "var(--text-1)" }}>{it.nombre}</span>
+      ),
+    },
+    {
+      key: "categoria",
+      header: "Categoría",
+      cell: (it) => (
+        <span style={{ color: "var(--text-2)" }}>{it.categoriaNombre}</span>
+      ),
+    },
+    {
+      key: "stock",
+      header: "Stock",
+      cell: (it) => {
+        const status = stockStatus(it);
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant={status.variant} size="sm" dot>{status.label}</Badge>
+            <span className="font-medium" style={{ color: "var(--text-1)" }}>{it.stockActual}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "stockMinimo",
+      header: "Stock Mín.",
+      className: "text-center",
+      cell: (it) => (
+        <span style={{ color: "var(--text-2)" }}>{it.stockMinimo}</span>
+      ),
+    },
+    {
+      key: "unidad",
+      header: "Unidad",
+      cell: (it) => (
+        <span style={{ color: "var(--text-2)" }}>{it.unidadMedida}</span>
+      ),
+    },
+  ];
+
   function openAdd() {
     setForm(EMPTY_FORM);
     setErrors({});
@@ -484,110 +539,54 @@ function ItemsTab() {
     : [];
 
   return (
-    <div style={CARD_STYLE}>
-      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="flex items-center gap-3">
-          <div className="relative w-72">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
-            <input
-              className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"
-              style={{ borderColor: "var(--border)", color: "var(--text-1)", fontFamily: "Inter, sans-serif", background: "var(--bg-input)" }}
-              placeholder="Buscar por código o nombre…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            />
+    <div>
+      <DataTable<InventarioItem>
+        columns={itemColumns}
+        data={items}
+        getRowKey={(it) => it.itemId}
+        loading={loading}
+        serverPagination={{ page, pageSize: PAGE_SIZE, totalItems: total, totalPages }}
+        onPageChange={setPage}
+        onRowClick={openDetail}
+        emptyIcon={Package}
+        emptyTitle="No hay items registrados"
+        emptyDescription="Registre un nuevo insumo o equipo para comenzar a gestionar el inventario."
+        emptyAction={
+          <Button variant="brand" onClick={openAdd}>
+            <Plus className="size-4" /> Nuevo Item
+          </Button>
+        }
+        toolbar={
+          <div className="flex w-full flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="relative w-72">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
+                <input
+                  className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"
+                  style={{ borderColor: "var(--border)", color: "var(--text-1)", fontFamily: "Inter, sans-serif", background: "var(--bg-input)" }}
+                  placeholder="Buscar por código o nombre…"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                />
+              </div>
+              <select
+                value={categoriaFilter}
+                onChange={(e) => { setCategoriaFilter(e.target.value); setPage(1); }}
+                className="rounded-lg border px-3 py-2 text-sm outline-none"
+                style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}
+              >
+                <option value="">Todas las categorías</option>
+                {catalogos.categorias.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <Button variant="brand" onClick={openAdd}>
+              <Plus className="size-4" /> Nuevo Item
+            </Button>
           </div>
-          <select
-            value={categoriaFilter}
-            onChange={(e) => { setCategoriaFilter(e.target.value); setPage(1); }}
-            className="rounded-lg border px-3 py-2 text-sm outline-none"
-            style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}
-          >
-            <option value="">Todas las categorías</option>
-            {catalogos.categorias.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
-        </div>
-        <Button variant="brand" onClick={openAdd}>
-          <Plus className="size-4" /> Nuevo Item
-        </Button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left" style={{ fontFamily: "Inter, sans-serif" }}>
-          <thead>
-            <tr style={{ background: "var(--bg-input)", borderBottom: "1px solid var(--border)" }}>
-              {cols.map((h) => (
-                <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && items.length === 0 ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <tr key={`skeleton-${i}`} style={{ borderBottom: "1px solid var(--divider)" }}>
-                  {cols.map((_, j) => (
-                    <td key={j} className="px-4 py-3">
-                      <Skeleton className="h-4 w-full bg-neutral-200" style={{ maxWidth: j === 1 ? 200 : 120 }} />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={cols.length}>
-                  <EmptyState
-                    icon={Package}
-                    title="No hay items registrados"
-                    description="Registre un nuevo insumo o equipo para comenzar a gestionar el inventario."
-                    action={
-                      <Button variant="brand" onClick={openAdd}>
-                        <Plus className="size-4" /> Nuevo Item
-                      </Button>
-                    }
-                  />
-                </td>
-              </tr>
-            ) : (
-              items.map((it) => {
-                const status = stockStatus(it);
-                return (
-                  <tr
-                    key={it.itemId}
-                    className="cursor-pointer border-b transition-colors"
-                    style={{ borderColor: "var(--divider)" }}
-                    onClick={() => openDetail(it)}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <td className="px-4 py-3 text-sm font-mono font-medium" style={{ color: "var(--text-1)" }}>{it.codigoBarras || "—"}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: "var(--text-1)", maxWidth: 240 }}>{it.nombre}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: "var(--text-2)" }}>{it.categoriaNombre}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={status.variant} size="sm" dot>{status.label}</Badge>
-                        <span className="font-medium" style={{ color: "var(--text-1)" }}>{it.stockActual}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center" style={{ color: "var(--text-2)" }}>{it.stockMinimo}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: "var(--text-2)" }}>{it.unidadMedida}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: "var(--border)", fontFamily: "Inter, sans-serif" }}>
-        <p className="text-xs" style={{ color: "var(--text-2)" }}>{total} registro{total !== 1 ? "s" : ""} — Página {page} de {totalPages}</p>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="rounded p-1.5 transition hover:bg-[var(--bg-hover)] disabled:opacity-40" style={{ color: "var(--text-3)" }}><ChevronLeft size={16} /></button>
-          <span className="px-2 text-xs font-medium" style={{ color: "var(--text-2)" }}>{page} / {totalPages}</span>
-          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded p-1.5 transition hover:bg-[var(--bg-hover)] disabled:opacity-40" style={{ color: "var(--text-3)" }}><ChevronRight size={16} /></button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Item Create / Edit Modal */}
       <Modal

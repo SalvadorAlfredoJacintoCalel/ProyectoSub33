@@ -1,4 +1,5 @@
 import type { Estado, FormState, Miembro } from "@/types/personal";
+import type { PersonalResponse } from "@/services/personalService";
 
 export function emptyFormState(): FormState {
   return {
@@ -24,6 +25,58 @@ export function miembroToForm(m: Miembro): FormState {
     fechaIngreso: m.fechaIngreso, telefono: m.telefono, estado: m.estado ? "Activo" : "Inactivo",
     contactoEmergencia: m.contactoEmergenciaNombre || "", telEmergencia: m.contactoEmergenciaTelefono || "",
     usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
+  };
+}
+
+export function personalResponseToMiembro(p: PersonalResponse): Miembro {
+  return {
+    personalId: p.personalId,
+    codigo: p.codigo,
+    codigoBombero: p.codigoBombero,
+    nombreCompleto: p.nombreCompleto,
+    dpi: p.dpi,
+    fechaNacimiento: p.fechaNacimiento,
+    rangoId: p.rangoId ?? 0,
+    rangoNombre: p.rangoNombre,
+    estado: p.estado,
+    telefono: p.telefono,
+    contactoEmergenciaNombre: p.contactoEmergenciaNombre,
+    contactoEmergenciaTelefono: p.contactoEmergenciaTelefono,
+    fechaIngreso: p.fechaIngreso,
+    username: p.usuario?.username,
+    rolNombre: p.usuario?.rol,
+    usuario: p.usuario
+      ? {
+          username: p.usuario.username,
+          estado: p.usuario.estado,
+          rolId: p.usuario.rolId,
+          rol: p.usuario.rol,
+        }
+      : undefined,
+  };
+}
+
+export function personalResponseToForm(p: PersonalResponse): FormState {
+  return {
+    primerNombre: p.primerNombre ?? "",
+    segundoNombre: p.segundoNombre ?? "",
+    primerApellido: p.primerApellido ?? "",
+    segundoApellido: p.segundoApellido ?? "",
+    dpi: p.dpi ?? "",
+    fechaNacimiento: p.fechaNacimiento ? p.fechaNacimiento.split("T")[0] : "",
+    codigo: p.codigo ?? "",
+    codigoBombero: p.codigoBombero ?? "",
+    rangoId: p.rangoId ?? 0,
+    fechaIngreso: p.fechaIngreso ? p.fechaIngreso.split("T")[0] : "",
+    telefono: p.telefono ?? "",
+    estado: p.estado ? "Activo" : "Inactivo",
+    contactoEmergencia: p.contactoEmergenciaNombre ?? "",
+    telEmergencia: p.contactoEmergenciaTelefono ?? "",
+    usuario: p.usuario?.username ?? "",
+    correo: "",
+    contrasena: "",
+    confirmarContrasena: "",
+    rolId: p.usuario?.rolId ?? 0,
   };
 }
 

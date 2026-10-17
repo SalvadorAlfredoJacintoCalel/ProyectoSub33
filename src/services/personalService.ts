@@ -1,5 +1,5 @@
 import { apiClient } from "./api/client";
-import type { RangoItem, RolItem, Miembro } from "../types/personal";
+import type { RangoItem, RolItem } from "../types/personal";
 
 // ── Backend envelope ───────────────────────────────────────────────────────────
 interface BackendEnvelope<T> {
@@ -158,27 +158,57 @@ export const crearRol = async (nombre: string): Promise<RolItem> => {
   }
 };
 
-export const getPersonal = async (): Promise<PersonalResponse[]> => {
+export interface PersonalQueryParams {
+  pagina?: number;
+  tamanio?: number;
+  busqueda?: string;
+  rangoId?: number;
+  estado?: boolean;
+}
+
+export interface PersonalPaginated {
+  items: PersonalResponse[];
+  total: number;
+  totalPaginas: number;
+  pagina: number;
+  tamanio: number;
+}
+
+export interface PersonalEstadisticas {
+  total: number;
+  activos: number;
+  inactivos: number;
+}
+
+export const getPersonal = async (
+  params: PersonalQueryParams = {},
+  signal?: AbortSignal
+): Promise<PersonalPaginated> => {
   try {
-    const res = await apiClient.get<BackendEnvelope<PersonalResponse[]> | { items: PersonalResponse[] }>("/personal");
+    const res = await apiClient.get<BackendEnvelope<PersonalPaginated> | PersonalResponse[]>("/personal", { params, signal });
     const payload = res.data;
-    if (Array.isArray(payload)) return payload;
-    if (payload && typeof payload === "object" && "items" in payload && Array.isArray(payload.items)) {
-      return payload.items;
+    if (Array.isArray(payload)) {
+      return { items: payload, total: payload.length, totalPaginas: 1, pagina: 1, tamanio: payload.length };
     }
-    return [];
+    return {
+      items: payload?.items ?? [],
+      total: payload?.total ?? 0,
+      totalPaginas: payload?.totalPaginas ?? 1,
+      pagina: payload?.pagina ?? 1,
+      tamanio: payload?.tamanio ?? (params.tamanio ?? 10),
+    };
   } catch (error) {
     console.error("Error fetching personal:", error);
     throw error;
   }
 };
 
-export const buscarPersonal = async (q: string): Promise<Miembro[]> => {
+export const getEstadisticasPersonal = async (): Promise<PersonalEstadisticas> => {
   try {
-    const res = await apiClient.get<BackendEnvelope<Miembro[]>>(`/personal/buscar?q=${encodeURIComponent(q)}`);
-    return res.data ?? [];
+    const res = await apiClient.get<BackendEnvelope<PersonalEstadisticas>>("/personal/estadisticas");
+    return res.data ?? { total: 0, activos: 0, inactivos: 0 };
   } catch (error) {
-    console.error("Error buscando personal:", error);
+    console.error("Error fetching personal stats:", error);
     throw error;
   }
 };

@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { Modal } from "@/app/components/ui/modal";
 import { Button } from "@/app/components/ui/button";
+import { DataTable } from "@/app/components/ui/data-table";
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const RED = "var(--red)";
@@ -1122,65 +1123,50 @@ function AnalyticasTab() {
               v.plate.toLowerCase().includes(q) || v.brand.toLowerCase().includes(q) || v.model.toLowerCase().includes(q)
             );
             return (
-              <Card>
-                <div style={{ marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <DataTable<ReporteVehicle>
+                columns={[
+                  { key: "code", header: "Código", cell: (v) => (
+                    <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, color: RED, fontSize: 13, fontFamily: "Inter, sans-serif" }}
+                      onClick={(e) => { e.stopPropagation(); setDetailVehicle(v); }}>
+                      {v.code}
+                    </button>
+                  ) },
+                  { key: "type", header: "Tipo", cell: (v) => <span style={{ color: "#374151" }}>{v.type}</span> },
+                  { key: "marca", header: "Marca / Modelo", cell: (v) => <span style={{ color: "#374151" }}>{v.brand} {v.model}</span> },
+                  { key: "plate", header: "Placa", cell: (v) => (
+                    <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 600, color: "#1d4ed8", fontSize: 13, fontFamily: "Inter, sans-serif", textDecoration: "underline" }}
+                      onClick={(e) => { e.stopPropagation(); setDetailVehicle(v); }}>
+                      {v.plate}
+                    </button>
+                  ) },
+                  { key: "year", header: "Año", cell: (v) => <span style={{ color: "#374151" }}>{v.year}</span> },
+                  { key: "km", header: "Km", cell: (v) => <span style={{ color: "#374151" }}>{v.km} km</span> },
+                  { key: "status", header: "Operación", cell: (v) => (
+                    <span style={{
+                      display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+                      background: v.status === "Operativa" ? "var(--success-100)" : v.status === "En Servicio" ? "var(--info-100)" : "#fef9c3",
+                      color: v.status === "Operativa" ? "#166534" : v.status === "En Servicio" ? "#1d4ed8" : "#92400e",
+                    }}>{v.status}</span>
+                  ) },
+                  { key: "estado", header: "Estado", cell: (v) => (
+                    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+                      background: v.estado === "Activo" ? "var(--success-100)" : "var(--brand-100)",
+                      color: v.estado === "Activo" ? "#166534" : "#991b1b" }}>
+                      {v.estado}
+                    </span>
+                  ) },
+                ]}
+                data={rows}
+                getRowKey={(v) => v.code}
+                onRowClick={setDetailVehicle}
+                emptyTitle="Sin resultados"
+                emptyDescription="No hay vehículos que coincidan con la búsqueda."
+                toolbar={
                   <p style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
                     Flota de Vehículos — {rows.length} unidad{rows.length !== 1 ? "es" : ""}
                   </p>
-                </div>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: "var(--bg-input)" }}>
-                        {["Código","Tipo","Marca / Modelo","Placa","Año","Km","Operación","Estado"].map((h) => (
-                          <th key={h} style={{ textAlign: "left", padding: "8px 12px", color: "var(--neutral-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${BORDER}` }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.length === 0 ? (
-                        <tr><td colSpan={8} style={{ textAlign: "center", padding: 32, color: "var(--neutral-400)", fontSize: 13 }}>Sin resultados</td></tr>
-                      ) : rows.map((v) => (
-                        <tr key={v.code} style={{ borderBottom: `1px solid ${BORDER}`, cursor: "pointer" }}
-                          onClick={() => setDetailVehicle(v)}
-                          onMouseOver={(e) => (e.currentTarget.style.background = "var(--bg-input)")}
-                          onMouseOut={(e) => (e.currentTarget.style.background = "")}>
-                          <td style={{ padding: "10px 12px" }}>
-                            <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 700, color: RED, fontSize: 13, fontFamily: "Inter, sans-serif" }}
-                              onClick={(e) => { e.stopPropagation(); setDetailVehicle(v); }}>
-                              {v.code}
-                            </button>
-                          </td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>{v.type}</td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>{v.brand} {v.model}</td>
-                          <td style={{ padding: "10px 12px" }}>
-                            <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 600, color: "#1d4ed8", fontSize: 13, fontFamily: "Inter, sans-serif", textDecoration: "underline" }}
-                              onClick={(e) => { e.stopPropagation(); setDetailVehicle(v); }}>
-                              {v.plate}
-                            </button>
-                          </td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>{v.year}</td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>{v.km} km</td>
-                          <td style={{ padding: "10px 12px" }}>
-                            <span style={{
-                              display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                              background: v.status === "Operativa" ? "var(--success-100)" : v.status === "En Servicio" ? "var(--info-100)" : "#fef9c3",
-                              color: v.status === "Operativa" ? "#166534" : v.status === "En Servicio" ? "#1d4ed8" : "#92400e",
-                            }}>{v.status}</span>
-                          </td>
-                          <td style={{ padding: "10px 12px" }}>
-                            <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                              background: v.estado === "Activo" ? "var(--success-100)" : "var(--brand-100)",
-                              color: v.estado === "Activo" ? "#166534" : "#991b1b" }}>
-                              {v.estado}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
+                }
+              />
             );
           })()}
 
@@ -1195,66 +1181,53 @@ function AnalyticasTab() {
             const totalCupones = rows.reduce((s, r) => s + r.totalCupones, 0);
             const totalHaber = rows.reduce((s, r) => s + r.haber, 0);
             return (
-              <Card>
-                <div style={{ marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                  <p style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
-                    Control de Combustible — {rows.length} registro{rows.length !== 1 ? "s" : ""}
-                  </p>
-                  <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--neutral-500)" }}>
-                    <span>Total galones: <strong style={{ color: "var(--text-1)" }}>{totalGalones}</strong></span>
-                    <span>Total cupones: <strong style={{ color: "var(--text-1)" }}>{totalCupones}</strong></span>
-                    <span>Total Q: <strong style={{ color: "var(--text-1)" }}>Q{totalHaber.toLocaleString()}</strong></span>
+              <DataTable<ReporteFuel>
+                columns={[
+                  { key: "fecha", header: "Fecha", cell: (f) => <span style={{ color: "#374151" }}>{f.fecha}</span> },
+                  { key: "responsable", header: "Responsable", cell: (f) => (
+                    <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 600, color: RED, fontSize: 13, fontFamily: "Inter, sans-serif" }}
+                      onClick={(e) => { e.stopPropagation(); setDetailFuel(f); }}>
+                      {f.responsable}
+                    </button>
+                  ) },
+                  { key: "placas", header: "Placas", cell: (f) => (
+                    <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 600, color: "#1d4ed8", fontSize: 13, fontFamily: "Inter, sans-serif", textDecoration: "underline" }}
+                      onClick={(e) => { e.stopPropagation(); setDetailFuel(f); }}>
+                      {f.placas}
+                    </button>
+                  ) },
+                  { key: "unidad", header: "Unidad", cell: (f) => <span style={{ color: "#374151" }}>{f.tipoUnidad}</span> },
+                  { key: "gasolinera", header: "Gasolinera", cell: (f) => <span style={{ color: "#374151" }}>{f.gasolinera}</span> },
+                  { key: "galonaje", header: "Galonaje", cell: (f) => <span style={{ color: "#374151" }}>{f.galonaje} gal</span> },
+                  { key: "cupones", header: "Cupones", cell: (f) => <span style={{ color: "#374151" }}>{f.cuponDel}–{f.cuponAl} ({f.totalCupones})</span> },
+                  { key: "haber", header: "Haber (Q)", cell: (f) => <span style={{ color: "#374151" }}>Q{f.haber.toLocaleString()}</span> },
+                  { key: "saldo", header: "Saldo (Q)", cell: (f) => <span style={{ color: "#374151" }}>Q{f.saldoRestante.toLocaleString()}</span> },
+                  { key: "estado", header: "Estado", cell: (f) => (
+                    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+                      background: f.estado === "Activo" ? "var(--success-100)" : "var(--brand-100)",
+                      color: f.estado === "Activo" ? "#166534" : "#991b1b" }}>
+                      {f.estado}
+                    </span>
+                  ) },
+                ]}
+                data={rows}
+                getRowKey={(f) => f.id}
+                onRowClick={setDetailFuel}
+                emptyTitle="Sin resultados"
+                emptyDescription="No hay registros que coincidan con la búsqueda."
+                toolbar={
+                  <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                    <p style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>
+                      Control de Combustible — {rows.length} registro{rows.length !== 1 ? "s" : ""}
+                    </p>
+                    <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--neutral-500)" }}>
+                      <span>Total galones: <strong style={{ color: "var(--text-1)" }}>{totalGalones}</strong></span>
+                      <span>Total cupones: <strong style={{ color: "var(--text-1)" }}>{totalCupones}</strong></span>
+                      <span>Total Q: <strong style={{ color: "var(--text-1)" }}>Q{totalHaber.toLocaleString()}</strong></span>
+                    </div>
                   </div>
-                </div>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: "var(--bg-input)" }}>
-                        {["Fecha","Responsable","Placas","Unidad","Gasolinera","Galonaje","Cupones","Haber (Q)","Saldo (Q)","Estado"].map((h) => (
-                          <th key={h} style={{ textAlign: "left", padding: "8px 12px", color: "var(--neutral-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: `1px solid ${BORDER}` }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.length === 0 ? (
-                        <tr><td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--neutral-400)", fontSize: 13 }}>Sin resultados</td></tr>
-                      ) : rows.map((f) => (
-                        <tr key={f.id} style={{ borderBottom: `1px solid ${BORDER}`, cursor: "pointer" }}
-                          onClick={() => setDetailFuel(f)}
-                          onMouseOver={(e) => (e.currentTarget.style.background = "var(--bg-input)")}
-                          onMouseOut={(e) => (e.currentTarget.style.background = "")}>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>{f.fecha}</td>
-                          <td style={{ padding: "10px 12px" }}>
-                            <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 600, color: RED, fontSize: 13, fontFamily: "Inter, sans-serif" }}
-                              onClick={(e) => { e.stopPropagation(); setDetailFuel(f); }}>
-                              {f.responsable}
-                            </button>
-                          </td>
-                          <td style={{ padding: "10px 12px" }}>
-                            <button style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontWeight: 600, color: "#1d4ed8", fontSize: 13, fontFamily: "Inter, sans-serif", textDecoration: "underline" }}
-                              onClick={(e) => { e.stopPropagation(); setDetailFuel(f); }}>
-                              {f.placas}
-                            </button>
-                          </td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>{f.tipoUnidad}</td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>{f.gasolinera}</td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>{f.galonaje} gal</td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>{f.cuponDel}–{f.cuponAl} ({f.totalCupones})</td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>Q{f.haber.toLocaleString()}</td>
-                          <td style={{ padding: "10px 12px", color: "#374151" }}>Q{f.saldoRestante.toLocaleString()}</td>
-                          <td style={{ padding: "10px 12px" }}>
-                            <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                              background: f.estado === "Activo" ? "var(--success-100)" : "var(--brand-100)",
-                              color: f.estado === "Activo" ? "#166534" : "#991b1b" }}>
-                              {f.estado}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
+                }
+              />
             );
           })()}
         </div>
@@ -1640,102 +1613,61 @@ function UsuariosTab() {
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden !p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: "var(--bg-input)", borderBottom: `1px solid ${BORDER}` }}>
-                {["Usuario", "Nombre Completo", "Correo", "Rol", "Estado", "Última Sesión", "Acciones"].map(
-                  (col) => (
-                    <th
-                      key={col}
-                      className="px-4 py-3 text-left text-xs font-semibold text-[var(--text-3)] uppercase tracking-wide"
-                      style={{ fontFamily: "Manrope, sans-serif" }}
-                    >
-                      {col}
-                    </th>
-                  )
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {usuarios.map((u) => (
-                <tr key={u.id} className="hover:bg-[var(--bg-hover)] transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--text-2)]">
-                    <div className="flex items-center gap-2">
-                      {u.username}
-                      {u.sesionActiva && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                          En línea
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-medium text-[var(--text-1)]">{u.nombre}</td>
-                  <td className="px-4 py-3 text-[var(--text-2)]">{u.correo}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-md text-xs font-medium ${rolStyles[u.rol]}`}>
-                      {u.rol}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          u.estado === "Activo" ? "bg-green-500 animate-pulse" : "bg-gray-400"
-                        }`}
-                      />
-                      <span
-                        className={`text-xs font-medium ${
-                          u.estado === "Activo" ? "text-green-700" : "text-[var(--text-3)]"
-                        }`}
-                      >
-                        {u.estado}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-[var(--text-3)]">{u.ultimaSesion}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        title="Ver detalle"
-                        className="p-1.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-3)] transition-colors"
-                      >
-                        <Eye size={14} />
-                      </button>
-                      <button
-                        title="Editar"
-                        className="p-1.5 rounded hover:bg-blue-50 text-blue-600 transition-colors"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        title={u.estado === "Activo" ? "Suspender" : "Activar"}
-                        onClick={() => toggleEstado(u.id)}
-                        className={`p-1.5 rounded transition-colors ${
-                          u.estado === "Activo"
-                            ? "hover:bg-amber-50 text-amber-600"
-                            : "hover:bg-green-50 text-green-600"
-                        }`}
-                      >
-                        <UserCog size={14} />
-                      </button>
-                      <button
-                        title="Eliminar"
-                        onClick={() => setDeleteTarget(u)}
-                        className="p-1.5 rounded hover:bg-red-50 text-red-500 transition-colors"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <DataTable<Usuario>
+        columns={[
+          { key: "usuario", header: "Usuario", cell: (u) => (
+            <div className="flex items-center gap-2 font-mono text-xs" style={{ color: "var(--text-2)" }}>
+              {u.username}
+              {u.sesionActiva && (
+                <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                  En línea
+                </span>
+              )}
+            </div>
+          ) },
+          { key: "nombre", header: "Nombre Completo", className: "font-medium", cell: (u) => <span style={{ color: "var(--text-1)" }}>{u.nombre}</span> },
+          { key: "correo", header: "Correo", cell: (u) => <span style={{ color: "var(--text-2)" }}>{u.correo}</span> },
+          { key: "rol", header: "Rol", cell: (u) => (
+            <span className={`px-2 py-1 rounded-md text-xs font-medium ${rolStyles[u.rol]}`}>
+              {u.rol}
+            </span>
+          ) },
+          { key: "estado", header: "Estado", cell: (u) => (
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${u.estado === "Activo" ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
+              <span className={`text-xs font-medium ${u.estado === "Activo" ? "text-green-700" : "text-[var(--text-3)]"}`}>
+                {u.estado}
+              </span>
+            </div>
+          ) },
+          { key: "ultimaSesion", header: "Última Sesión", cell: (u) => <span className="text-xs" style={{ color: "var(--text-3)" }}>{u.ultimaSesion}</span> },
+          { key: "acciones", header: "Acciones", cell: (u) => (
+            <div className="flex items-center gap-1">
+              <button title="Ver detalle" className="p-1.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-3)] transition-colors">
+                <Eye size={14} />
+              </button>
+              <button title="Editar" className="p-1.5 rounded hover:bg-blue-50 text-blue-600 transition-colors">
+                <Pencil size={14} />
+              </button>
+              <button
+                title={u.estado === "Activo" ? "Suspender" : "Activar"}
+                onClick={() => toggleEstado(u.id)}
+                className={`p-1.5 rounded transition-colors ${u.estado === "Activo" ? "hover:bg-amber-50 text-amber-600" : "hover:bg-green-50 text-green-600"}`}
+              >
+                <UserCog size={14} />
+              </button>
+              <button title="Eliminar" onClick={() => setDeleteTarget(u)} className="p-1.5 rounded hover:bg-red-50 text-red-500 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+          ) },
+        ]}
+        data={usuarios}
+        getRowKey={(u) => u.id}
+        emptyTitle="No hay usuarios registrados"
+        emptyDescription="Los usuarios del sistema aparecerán aquí."
+      />
 
       {/* New User Modal */}
       {showModal && (

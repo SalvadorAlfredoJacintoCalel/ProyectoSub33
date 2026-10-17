@@ -96,6 +96,8 @@ public class UpdatePersonalDto
 
     [MaxLength(20)]
     public string? ContactoEmergenciaTelefono { get; set; }
+
+    public AccesoSistemaDto? AccesoSistema { get; set; }
 }
 
 public class CambiarEstadoDto
@@ -129,6 +131,13 @@ public class PersonalResumenDto
     public bool TieneUsuario { get; init; }
     public string? Username { get; init; }
     public string? RolNombre { get; init; }
+}
+
+public class PersonalEstadisticasDto
+{
+    public int Total { get; init; }
+    public int Activos { get; init; }
+    public int Inactivos { get; init; }
 }
 
 public class PersonalResponseDto

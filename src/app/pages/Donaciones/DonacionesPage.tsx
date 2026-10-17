@@ -26,6 +26,7 @@ import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { EmptyState } from "@/app/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { useDonaciones } from "@/hooks/useDonaciones";
 import type {
   Donacion,
@@ -656,6 +657,78 @@ export function DonacionesPage() {
 
   const tabs: FilterTab[] = ["Todos", "Efectivo", "Insumos Médicos", "Equipo/Herramientas", "Vehículos"];
 
+  const donacionColumns: DataTableColumn<Donacion>[] = [
+    {
+      key: "fecha",
+      header: "Fecha",
+      cell: (d) => <span>{d.fecha ? d.fecha.split("T")[0] : "—"}</span>,
+    },
+    {
+      key: "noRecibo",
+      header: "No. Recibo",
+      cell: (d) => <span className="font-semibold" style={{ color: "var(--text-1)" }}>{d.noRecibo}</span>,
+    },
+    {
+      key: "donante",
+      header: "Donante",
+      className: "max-w-[200px]",
+      cell: (d) => <span className="font-medium" style={{ color: "var(--text-1)" }}>{d.donante}</span>,
+    },
+    {
+      key: "elemento",
+      header: "Elemento",
+      cell: (d) => <ElementoBadge donacion={d} />,
+    },
+    {
+      key: "tipo",
+      header: "Tipo",
+      cell: (d) => <TipoBadge tipo={d.tipo} />,
+    },
+    {
+      key: "detalle",
+      header: "Descripción / Monto",
+      className: "max-w-[240px]",
+      cell: (d) => (
+        <span className="block max-w-[220px] truncate" style={{ color: "var(--text-1)" }}>
+          {d.tipo === "Monetaria"
+            ? formatQ(d.monto)
+            : (d.materiales?.map((m) => m.descripcion).join(", ") ?? "") + ` (est. ${formatQ(d.monto)})`}
+        </span>
+      ),
+    },
+    {
+      key: "estado",
+      header: "Estado",
+      cell: (d) => <EstadoBadge estado={d.estado} />,
+    },
+    {
+      key: "acciones",
+      header: "Acciones",
+      headerClassName: "text-center",
+      className: "text-center",
+      cell: (d) => (
+        <div className="flex justify-center gap-1">
+          <button
+            title="Editar"
+            onClick={(e) => { e.stopPropagation(); setEditTarget(d); setShowForm(true); }}
+            className="rounded-lg p-1.5"
+            style={{ background: "var(--info-50)", color: "var(--info-700)" }}
+          >
+            <Pencil size={15} />
+          </button>
+          <button
+            title="Eliminar"
+            onClick={(e) => { e.stopPropagation(); requestDelete(d); }}
+            className="rounded-lg p-1.5"
+            style={{ background: "var(--brand-50)", color: RED }}
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   const thStyle: React.CSSProperties = {
     padding: "10px 14px", textAlign: "left", fontFamily: "Inter, sans-serif", fontSize: 12, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap",
   };
@@ -685,111 +758,50 @@ export function DonacionesPage() {
         <KpiCard label="Donaciones en Especie" value={formatQ(totalEspecie)} color="#1565c0" icon={<Package size={22} />} />
       </div>
 
-      <div style={{ background: "var(--bg-card)", borderRadius: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.05)", overflow: "hidden" }}>
-        <div style={{ padding: "18px 20px 0", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ position: "relative", maxWidth: 340 }}>
-            <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-3)" }} />
-            <input
-              style={{ width: "100%", border: "1px solid var(--neutral-200)", borderRadius: 10, padding: "8px 12px 8px 36px", fontSize: 14, fontFamily: "Inter, sans-serif", color: "var(--neutral-900)", background: "var(--bg-input)", outline: "none", boxSizing: "border-box" }}
-              placeholder="Buscar por donante, recibo o descripción…"
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-            />
-          </div>
+      <DataTable<Donacion>
+        columns={donacionColumns}
+        data={donaciones}
+        getRowKey={(d) => d.donacionId}
+        loading={loading}
+        serverPagination={{ page, pageSize: PAGE_SIZE, totalItems, totalPages }}
+        onPageChange={setPage}
+        onRowClick={setViewTarget}
+        emptyIcon={Gift}
+        emptyTitle="No se encontraron donaciones"
+        emptyDescription="No hay donaciones que coincidan con los filtros actuales."
+        toolbar={
+          <div className="flex w-full flex-col gap-3">
+            <div className="relative w-full max-w-[340px]">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
+              <input
+                className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"
+                style={{ borderColor: "var(--neutral-200)", color: "var(--text-1)", background: "var(--bg-input)", fontFamily: "Inter, sans-serif" }}
+                placeholder="Buscar por donante, recibo o descripción…"
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+            </div>
 
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => handleTabChange(tab)}
-                style={{
-                  padding: "6px 14px", borderRadius: 9999, border: "none", fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, cursor: "pointer",
-                  background: activeTab === tab ? RED : "transparent", color: activeTab === tab ? "#fff" : "var(--text-2)", transition: "all 0.15s",
-                }}
-              >
-                {tab}
-              </button>
-            ))}
+            <div className="flex flex-wrap gap-1.5">
+              {tabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => handleTabChange(tab)}
+                  className="rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-all"
+                  style={{
+                    border: "none",
+                    background: activeTab === tab ? RED : "transparent",
+                    color: activeTab === tab ? "#fff" : "var(--text-2)",
+                    fontFamily: "Inter, sans-serif",
+                  }}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
-            <thead>
-              <tr style={{ background: "var(--bg-input)" }}>
-                <th style={thStyle}>Fecha</th>
-                <th style={thStyle}>No. Recibo</th>
-                <th style={thStyle}>Donante</th>
-                <th style={thStyle}>Elemento</th>
-                <th style={thStyle}>Tipo</th>
-                <th style={thStyle}>Descripción / Monto</th>
-                <th style={thStyle}>Estado</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && donaciones.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "var(--text-3)", padding: "40px 0" }}>
-                    <Loader2 size={24} className="animate-spin" style={{ color: RED, margin: "0 auto" }} />
-                  </td>
-                </tr>
-              ) : donaciones.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "var(--text-3)", padding: "40px 0" }}>
-                    No se encontraron donaciones con los filtros actuales.
-                  </td>
-                </tr>
-              ) : (
-                donaciones.map((d) => (
-                  <tr key={d.donacionId} style={{ transition: "background 0.1s", cursor: "pointer" }}
-                    onClick={() => setViewTarget(d)}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--neutral-50)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
-                  >
-                    <td style={tdStyle}>{d.fecha ? d.fecha.split("T")[0] : "—"}</td>
-                    <td style={{ ...tdStyle, fontWeight: 600, color: "var(--neutral-900)", whiteSpace: "nowrap" }}>{d.noRecibo}</td>
-                    <td style={{ ...tdStyle, maxWidth: 200 }}>
-                      <div style={{ fontWeight: 500 }}>{d.donante}</div>
-                    </td>
-                    <td style={tdStyle}><ElementoBadge donacion={d} /></td>
-                    <td style={tdStyle}><TipoBadge tipo={d.tipo} /></td>
-                    <td style={{ ...tdStyle, maxWidth: 240 }}>
-                      <div style={{ fontSize: 13, color: "var(--neutral-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
-                        {d.tipo === "Monetaria"
-                          ? formatQ(d.monto)
-                          : (d.materiales?.map((m) => m.descripcion).join(", ") ?? "") + ` (est. ${formatQ(d.monto)})`}
-                      </div>
-                    </td>
-                    <td style={tdStyle}><EstadoBadge estado={d.estado} /></td>
-                    <td style={{ ...tdStyle, textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                        <button title="Editar" onClick={(e) => { e.stopPropagation(); setEditTarget(d); setShowForm(true); }} style={{ background: "var(--info-50)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: "var(--info-700)", display: "flex", alignItems: "center" }}><Pencil size={15} /></button>
-                        <button title="Eliminar" onClick={(e) => { e.stopPropagation(); requestDelete(d); }} style={{ background: "var(--brand-50)", border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", color: RED, display: "flex", alignItems: "center" }}><Trash2 size={15} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={{ padding: "14px 20px", borderTop: "1px solid var(--bg-hover)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontSize: 13, color: "var(--text-2)", fontFamily: "Inter, sans-serif" }}>
-            Mostrando {donaciones.length} de {totalItems} registros
-          </span>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} style={{ background: page === 1 ? "var(--bg-hover)" : "#fff", border: "1px solid var(--neutral-200)", borderRadius: 8, padding: "6px 10px", cursor: page === 1 ? "not-allowed" : "pointer", color: page === 1 ? "var(--neutral-300)" : "#475569", display: "flex", alignItems: "center" }}>
-              <ChevronLeft size={16} />
-            </button>
-            <span style={{ padding: "6px 10px", fontSize: 13, fontWeight: 600, color: "#475569", fontFamily: "Inter, sans-serif" }}>{page} / {totalPages}</span>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ background: page === totalPages ? "var(--bg-hover)" : "#fff", border: "1px solid var(--neutral-200)", borderRadius: 8, padding: "6px 10px", cursor: page === totalPages ? "not-allowed" : "pointer", color: page === totalPages ? "var(--neutral-300)" : "#475569", display: "flex", alignItems: "center" }}>
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {showForm && (
         <DonacionModal

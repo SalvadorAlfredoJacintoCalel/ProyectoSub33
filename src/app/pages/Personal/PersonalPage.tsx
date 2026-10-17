@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Plus, Search, Users, UserCheck, UserX, ChevronDown, Printer, Pencil, History, FileText, Info, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { PersonalTable } from "@/app/pages/Personal/components/PersonalTable";
+import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { PersonalForm } from "@/app/pages/Personal/components/PersonalForm";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
@@ -15,6 +15,8 @@ import {
   getRoles,
   crearRol,
   getPersonal,
+  getPersonalById,
+  getEstadisticasPersonal,
   registrarPersonal,
   actualizarPersonal,
   eliminarPersonal,
@@ -23,7 +25,7 @@ import {
 } from "../../../services/personalService";
 import type { Estado, Miembro, FormState, RangoItem, RolItem } from "@/types/personal";
 import { formatDate } from "@/utils/format";
-import { emptyFormState, miembroToForm } from "@/utils/formHelpers";
+import { emptyFormState, miembroToForm, personalResponseToForm, personalResponseToMiembro } from "@/utils/formHelpers";
 import { useAlert } from "@/app/components/ui/AlertContext";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -44,9 +46,9 @@ function MemberInfo({ member }: { member: Miembro }) {
     { label: "Fecha de Ingreso", value: formatDate(member.fechaIngreso) },
     { label: "Contacto de Emergencia", value: member.contactoEmergenciaNombre || "—" },
     { label: "Tel. de Emergencia", value: member.contactoEmergenciaTelefono || "—" },
-    { label: "Usuario del Sistema", value: member.usuario?.username || "Sin cuenta" },
-    { label: "Rol del Sistema", value: member.usuario?.rol || member.rolNombre || "Sin rol" },
-    { label: "Acceso al Sistema", value: member.usuario ? "Sí" : "No" },
+    { label: "Usuario del Sistema", value: member.username || member.usuario?.username || "Sin cuenta" },
+    { label: "Rol del Sistema", value: member.rolNombre || member.usuario?.rol || "Sin rol" },
+    { label: "Acceso al Sistema", value: member.username || member.usuario ? "Sí" : "No" },
   ];
 
   return (
@@ -71,9 +73,14 @@ export function PersonalPage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [estadoDropdownOpen, setEstadoDropdownOpen] = useState(false);
-  const [filterRango, setFilterRango] = useState<RangoItem["nombre"] | "">("");
+  const [filterRango, setFilterRango] = useState<number | "">("");
   const [filterEstado, setFilterEstado] = useState<Estado | "">("Activo");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [stats, setStats] = useState({ total: 0, activos: 0, inactivos: 0 });
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -83,9 +90,11 @@ export function PersonalPage() {
 
   const [credOpen, setCredOpen] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [editingHasAccess, setEditingHasAccess] = useState(false);
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<Miembro | null>(null);
+  const detailFetchRef = useRef<string | null>(null);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast, alert } = useAlert();
@@ -100,58 +109,62 @@ export function PersonalPage() {
   const [nuevoRolNombre, setNuevoRolNombre] = useState("");
 
   // ── Derived ───────────────────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    if (!Array.isArray(members)) return [];
-    return members.filter((m) => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase().trim();
-      const qDigits = q.replace(/\D/g, "");
-
-      const matchNombre =
-        m.nombreCompleto.toLowerCase().includes(q) ||
-        m.nombreCompleto.toLowerCase().split(" ").some((p) => p.startsWith(q));
-
-      const matchCodigo =
-        m.codigo.toLowerCase().includes(q) || (m.codigoBombero && m.codigoBombero.toLowerCase().includes(q));
-
-      const matchDpi = qDigits.length >= 2 && m.dpi.replace(/\D/g, "").includes(qDigits);
-
-      const matchTelefono = qDigits.length >= 2 && (m.telefono || "").replace(/\D/g, "").includes(qDigits);
-
-      const matchUsuario = m.usuario?.username?.toLowerCase().includes(q) || false;
-
-      const matchSearch = matchNombre || matchCodigo || matchDpi || matchTelefono || matchUsuario;
-
-      const matchRango = !filterRango || m.rangoNombre === filterRango;
-      const matchEstado = !filterEstado || m.estado === filterEstado;
-
-      return matchSearch && matchRango && matchEstado;
-    });
-  }, [members, search, filterRango, filterEstado]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-
-  const totalEfectivos = members.length;
-  const activos = members.filter((m) => m.estado === true).length;
-  const inactivos = members.filter((m) => m.estado === false).length;
+  const { total: totalEfectivos, activos, inactivos } = stats;
 
   // ── Data loading ──────────────────────────────────────────────────────────────
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchPersonal = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setIsLoadingMembers(true);
+    try {
+      const estadoParam =
+        filterEstado === "Activo" ? true : filterEstado === "Inactivo" ? false : undefined;
+      const result = await getPersonal({
+        pagina: page,
+        tamanio: pageSize,
+        busqueda: search.trim() || undefined,
+        rangoId: filterRango === "" ? undefined : filterRango,
+        estado: estadoParam,
+      }, controller.signal);
+      setMembers(result.items);
+      setTotalItems(result.total);
+      setTotalPages(result.totalPaginas);
+    } catch (error) {
+      if ((error as Error)?.name === "AbortError") return;
+      console.error("Error fetching personal:", error);
+      setMembers([]);
+      setTotalItems(0);
+      setTotalPages(1);
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsLoadingMembers(false);
+      }
+    }
+  }, [page, pageSize, search, filterEstado, filterRango]);
+
+  const fetchEstadisticas = useCallback(async () => {
+    try {
+      const data = await getEstadisticasPersonal();
+      setStats(data);
+    } catch (error) {
+      console.error("Error fetching personal stats:", error);
+    }
+  }, []);
+
   useEffect(() => {
-    const loadData = async () => {
+    const loadCatalogos = async () => {
       try {
         setIsLoadingRangos(true);
         setIsLoadingRoles(true);
-        const [rangosData, rolesData, personalData] = await Promise.all([
-          getRangos(),
-          getRoles(),
-          getPersonal(),
-        ]);
+        const [rangosData, rolesData] = await Promise.all([getRangos(), getRoles()]);
         setRangos(rangosData);
         setRoles(rolesData);
-        setMembers(personalData);
       } catch (error) {
-        console.error("Error loading data:", error);
-        setMembers([]);
+        console.error("Error loading catalogos:", error);
         setRangos([]);
         setRoles([]);
       } finally {
@@ -159,38 +172,33 @@ export function PersonalPage() {
         setIsLoadingRoles(false);
       }
     };
-    loadData();
-  }, []);
+    loadCatalogos();
+    fetchEstadisticas();
+  }, [fetchEstadisticas]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
-      setPage(1);
-    }, 250);
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
-  const fetchPersonal = useCallback(async () => {
-    try {
-      const data = await getPersonal();
-      if (!Array.isArray(data)) {
-        setMembers([]);
-        return;
-      }
-      setMembers(data);
-    } catch (error) {
-      console.error("Error fetching personal:", error);
-      setMembers([]);
-    }
-  }, []);
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterRango, filterEstado, pageSize]);
+
+  useEffect(() => {
+    fetchPersonal();
+  }, [fetchPersonal]);
 
   useEffect(() => {
     const handleFocus = () => {
       fetchPersonal();
+      fetchEstadisticas();
     };
     const handleUsuariosActualizados = () => {
       fetchPersonal();
+      fetchEstadisticas();
     };
     window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", handleFocus);
@@ -200,7 +208,9 @@ export function PersonalPage() {
       document.removeEventListener("visibilitychange", handleFocus);
       window.removeEventListener("usuarios-actualizados", handleUsuariosActualizados);
     };
-  }, [fetchPersonal]);
+  }, [fetchPersonal, fetchEstadisticas]);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
 
   const fetchCatalogos = useCallback(async () => {
     try {
@@ -223,14 +233,33 @@ export function PersonalPage() {
     setEditingId(null);
     setForm(emptyFormState());
     setErrors({});
+    setCredOpen(false);
+    setShowPw(false);
+    setEditingHasAccess(false);
     fetchCatalogos().then(() => setEditModalOpen(true));
   }
 
-  function openEditModal(m: Miembro) {
+  async function openEditModal(m: Miembro) {
     setEditingId(m.personalId);
-    setForm(miembroToForm(m));
     setErrors({});
-    fetchCatalogos().then(() => setEditModalOpen(true));
+    setShowPw(false);
+    setCredOpen(false);
+    setEditingHasAccess(false);
+    try {
+      const full = await getPersonalById(m.personalId);
+      setForm(personalResponseToForm(full));
+      const hasAccess = Boolean(full.usuario);
+      setEditingHasAccess(hasAccess);
+      setCredOpen(hasAccess);
+    } catch (error) {
+      console.error("Error cargando detalle para edición:", error);
+      setForm(miembroToForm(m));
+      const hasAccess = Boolean(m.username || m.usuario);
+      setEditingHasAccess(hasAccess);
+      setCredOpen(hasAccess);
+    }
+    await fetchCatalogos();
+    setEditModalOpen(true);
   }
 
   function closeModal() {
@@ -279,14 +308,25 @@ export function PersonalPage() {
     if (!form.telEmergencia.trim()) errs.telEmergencia = "Teléfono de emergencia requerido";
     if (form.rangoId === 0) errs.rangoId = "Rango requerido";
 
+    let passwordsMismatch = false;
     if (credOpen) {
       if (!form.usuario.trim()) errs.usuario = "Usuario requerido";
       if (!form.rolId) errs.rolId = "Rol del sistema requerido";
-      if (!editingId && form.contrasena.length < 8) errs.contrasena = "Mínimo 8 caracteres";
-      if (form.confirmarContrasena !== form.contrasena) errs.confirmarContrasena = "Las contraseñas no coinciden";
+      const passwordRequired = !editingId || !editingHasAccess;
+      if (passwordRequired && form.contrasena.length < 8) errs.contrasena = "Mínimo 8 caracteres";
+      const confirmRequired = passwordRequired || form.contrasena.length > 0;
+      if (confirmRequired && form.confirmarContrasena !== form.contrasena) {
+        errs.confirmarContrasena = "Las contraseñas no coinciden";
+        passwordsMismatch = true;
+      }
     }
 
     setErrors(errs);
+
+    if (passwordsMismatch) {
+      toast.error("Las contraseñas no coinciden. Verifícalas e inténtalo de nuevo.");
+      return;
+    }
 
     if (Object.keys(errs).length > 0) {
       toast.warning("Por favor completa los campos obligatorios (*).");
@@ -335,7 +375,8 @@ export function PersonalPage() {
       }
       setForm(emptyFormState());
       closeModal();
-      await fetchPersonal();
+      await Promise.all([fetchPersonal(), fetchEstadisticas()]);
+      window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
     } catch (error) {
       console.error("Error registrando personal:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";
@@ -352,10 +393,8 @@ export function PersonalPage() {
     if (!deleteId) return;
     try {
       await eliminarPersonal(deleteId);
-      setMembers((prev) =>
-        prev.map((m) => (m.personalId === deleteId ? { ...m, estado: false } : m))
-      );
       setDeleteId(null);
+      await Promise.all([fetchPersonal(), fetchEstadisticas()]);
       toast.success("Miembro desactivado correctamente.");
     } catch (error) {
       console.error("Error eliminando personal:", error);
@@ -449,6 +488,71 @@ export function PersonalPage() {
       ]
     : [];
 
+  const personalColumns: DataTableColumn<Miembro>[] = useMemo(
+    () => [
+      {
+        key: "codigoBombero",
+        header: "Código",
+        cell: (m) => (
+          <span className="font-mono font-semibold" style={{ color: "var(--brand-600)" }}>
+            {m.codigoBombero || "Sin código"}
+          </span>
+        ),
+      },
+      {
+        key: "nombreCompleto",
+        header: "Nombre Completo",
+        cell: (m) => (
+          <span className="font-medium" style={{ color: "var(--text-1)" }}>
+            {m.nombreCompleto}
+          </span>
+        ),
+      },
+      {
+        key: "dpi",
+        header: "DPI",
+        cell: (m) => (
+          <span className="font-mono" style={{ color: "var(--text-2)" }}>
+            {m.dpi}
+          </span>
+        ),
+      },
+      {
+        key: "rangoNombre",
+        header: "Rango",
+        cell: (m) => (
+          <Badge variant="info" size="sm">
+            {m.rangoNombre || "Sin rango"}
+          </Badge>
+        ),
+      },
+      {
+        key: "estado",
+        header: "Estado",
+        cell: (m) => (
+          <Badge variant={m.estado ? "success" : "default"} size="sm" dot>
+            {m.estado ? "Activo" : "Inactivo"}
+          </Badge>
+        ),
+      },
+      {
+        key: "telefono",
+        header: "Teléfono",
+        cell: (m) => (
+          <span style={{ color: "var(--text-2)" }}>{m.telefono || "—"}</span>
+        ),
+      },
+      {
+        key: "fechaIngreso",
+        header: "Fecha de Ingreso",
+        cell: (m) => (
+          <span style={{ color: "var(--text-2)" }}>{formatDate(m.fechaIngreso)}</span>
+        ),
+      },
+    ],
+    []
+  );
+
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
@@ -474,7 +578,7 @@ export function PersonalPage() {
           style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "var(--elevation-brand-2)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "var(--shadow)"; }}
-          onClick={() => { setFilterEstado(""); setPage(1); }}
+          onClick={() => setFilterEstado("")}
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--brand-50)" }}>
             <Users size={20} style={{ color: BRAND }} />
@@ -490,7 +594,7 @@ export function PersonalPage() {
           style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "var(--elevation-brand-2)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "var(--shadow)"; }}
-          onClick={() => { setFilterEstado("Activo"); setPage(1); }}
+          onClick={() => setFilterEstado("Activo")}
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--success-50)" }}>
             <UserCheck size={20} style={{ color: "var(--success-600)" }} />
@@ -506,7 +610,7 @@ export function PersonalPage() {
           style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}
           onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "var(--elevation-brand-2)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "var(--shadow)"; }}
-          onClick={() => { setFilterEstado("Inactivo"); setPage(1); }}
+          onClick={() => setFilterEstado("Inactivo")}
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: "var(--brand-50)" }}>
             <UserX size={20} style={{ color: BRAND }} />
@@ -518,88 +622,95 @@ export function PersonalPage() {
         </div>
       </div>
 
-      {/* ── Search & Filters Bar ──────────────────────────────────────────────── */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="min-w-[240px] flex-1">
-          <Input
-            startIcon={<Search size={15} />}
-            placeholder="Buscar por nombre, código o DPI..."
-            value={searchInput}
-            onChange={(e) => { setSearchInput(e.target.value); setPage(1); }}
-          />
-        </div>
-
-        <select
-          value={filterRango}
-          onChange={(e) => { setFilterRango(e.target.value as RangoItem["nombre"] | ""); setPage(1); }}
-          className="rounded-lg px-3 py-2 text-sm outline-none"
-          style={{
-            background: "var(--bg-input)",
-            color: "var(--text-1)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <option value="">Todos los rangos</option>
-          {rangos.map((r) => (
-            <option key={r.id} value={r.nombre}>{r.nombre}</option>
-          ))}
-        </select>
-
-        <div style={{ position: "relative" }}>
-          <button
-            onClick={() => setEstadoDropdownOpen((o) => !o)}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none"
-            style={{ background: "var(--bg-input)", color: "var(--text-1)", border: "1px solid var(--border)" }}
-          >
-            <span
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                background: filterEstado === "Activo" ? "var(--success-600)" : filterEstado === "Inactivo" ? BRAND : "var(--neutral-400)",
-              }}
-            />
-            {filterEstado === "Activo" ? "Activos" : filterEstado === "Inactivo" ? "Inactivos" : "Todos"}
-            <ChevronDown size={14} style={{ color: "var(--text-3)", transform: estadoDropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
-          </button>
-          {estadoDropdownOpen && (
-            <div
-              style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 30, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "var(--shadow)", minWidth: 140, overflow: "hidden" }}
-            >
-              {([["Activo", "Activos", "var(--success-600)"], ["Inactivo", "Inactivos", BRAND], ["", "Todos", "var(--neutral-400)"]] as const).map(([val, label, color]) => (
-                <button
-                  key={label}
-                  onClick={() => { setFilterEstado(val); setPage(1); setEstadoDropdownOpen(false); }}
-                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", fontSize: 13, color: "var(--text-1)", background: filterEstado === val ? "var(--bg-hover)" : "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
-                >
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: color }} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* ── Table ──────────────────────────────────────────────────────────────── */}
-      <PersonalTable
-        members={members}
-        search={search}
-        setSearch={setSearch}
-        filterRango={filterRango}
-        setFilterRango={setFilterRango}
-        filterEstado={filterEstado}
-        setFilterEstado={setFilterEstado}
-        page={page}
-        setPage={setPage}
-        totalPages={totalPages}
-        PAGE_SIZE={PAGE_SIZE}
-        rangos={rangos}
-        roles={roles}
+      <DataTable<Miembro>
+        columns={personalColumns}
+        data={members}
+        getRowKey={(m) => m.personalId}
+        loading={isLoadingMembers}
+        pageSize={pageSize}
+        pageSizeOptions={[8, 16, 32]}
+        serverPagination={{ page, pageSize, totalItems, totalPages }}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        emptyIcon={Users}
+        emptyTitle="No se encontraron miembros"
+        emptyDescription="No hay registros que coincidan con los filtros de búsqueda seleccionados."
         onRowClick={(m) => {
+          detailFetchRef.current = m.personalId;
           setSelectedRecord(m);
           setDetailOpen(true);
+          getPersonalById(m.personalId)
+            .then((full) => {
+              if (detailFetchRef.current === m.personalId) {
+                setSelectedRecord(personalResponseToMiembro(full));
+              }
+            })
+            .catch((error) => console.error("Error refrescando detalle:", error));
         }}
+        toolbar={
+          <>
+            <div className="min-w-[240px] flex-1">
+              <Input
+                startIcon={<Search size={15} />}
+                placeholder="Buscar por nombre, código, DPI o teléfono..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
+
+            <select
+              value={filterRango}
+              onChange={(e) => setFilterRango(e.target.value === "" ? "" : Number(e.target.value))}
+              className="rounded-lg px-3 py-2 text-sm outline-none"
+              style={{
+                background: "var(--bg-input)",
+                color: "var(--text-1)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <option value="">Todos los rangos</option>
+              {rangos.map((r) => (
+                <option key={r.id} value={r.id}>{r.nombre}</option>
+              ))}
+            </select>
+
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setEstadoDropdownOpen((o) => !o)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none"
+                style={{ background: "var(--bg-input)", color: "var(--text-1)", border: "1px solid var(--border)" }}
+              >
+                <span
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    background: filterEstado === "Activo" ? "var(--success-600)" : filterEstado === "Inactivo" ? BRAND : "var(--neutral-400)",
+                  }}
+                />
+                {filterEstado === "Activo" ? "Activos" : filterEstado === "Inactivo" ? "Inactivos" : "Todos"}
+                <ChevronDown size={14} style={{ color: "var(--text-3)", transform: estadoDropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+              </button>
+              {estadoDropdownOpen && (
+                <div
+                  style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, zIndex: 30, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, boxShadow: "var(--shadow)", minWidth: 140, overflow: "hidden" }}
+                >
+                  {([["Activo", "Activos", "var(--success-600)"], ["Inactivo", "Inactivos", BRAND], ["", "Todos", "var(--neutral-400)"]] as const).map(([val, label, color]) => (
+                    <button
+                      key={label}
+                      onClick={() => { setFilterEstado(val); setEstadoDropdownOpen(false); }}
+                      style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", fontSize: 13, color: "var(--text-1)", background: filterEstado === val ? "var(--bg-hover)" : "transparent", border: "none", cursor: "pointer", textAlign: "left" }}
+                    >
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: color }} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        }
       />
 
       {/* ── Add / Edit Modal ───────────────────────────────────────────────────── */}
@@ -615,6 +726,7 @@ export function PersonalPage() {
         setCredOpen={setCredOpen}
         showPw={showPw}
         setShowPw={setShowPw}
+        hasAccess={editingHasAccess}
         rangos={rangos}
         roles={roles}
         saving={saving}

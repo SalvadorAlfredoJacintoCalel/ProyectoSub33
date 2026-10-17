@@ -127,7 +127,8 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
   useEffect(() => {
     let mounted = true;
     (async () => {
-      await cargarCatalogos();
+      try {
+        await cargarCatalogos();
 
       if (isEdit && serviceId) {
         const em = await obtenerEmergencia(serviceId);
@@ -172,7 +173,12 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
           );
         }
 
-        const ins = await inventarioService.getServicioInsumos({ servicioId }).catch(() => []);
+        const ins = await inventarioService
+          .getServicioInsumos({ servicioId: serviceId })
+          .catch((error) => {
+            console.error("Error cargando insumos del servicio:", error);
+            return [];
+          });
         if (mounted) {
           setInsumos((ins ?? []).map((x) => ({ itemId: x.itemId, cantidad: x.cantidad })));
         }
@@ -181,7 +187,12 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
         if (mounted && correlativo) setNumeroIncidente(correlativo);
       }
 
-      if (mounted) setLoading(false);
+      } catch (error) {
+        console.error("Error cargando la emergencia:", error);
+        if (mounted) toast.error("No se pudo cargar la emergencia.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
     })();
     return () => {
       mounted = false;

@@ -55,15 +55,13 @@ export function Modal({
           style={{
             background:
               "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.45)",
-            backdropFilter: "blur(24px)",
-            WebkitBackdropFilter: "blur(24px)",
           }}
         />
         <DialogPrimitive.Content
           className={cn(
             "fixed left-1/2 top-1/2 z-[var(--z-modal)] flex max-h-[90vh] w-full -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--bg-card)] shadow-[var(--elevation-brand-3)]",
             SIZE_CLASSES[size],
-            variant === "glass" && "glass-strong border-[var(--glass-border)]",
+            variant === "glass" && "border-[var(--glass-border)]",
             "data-[state=open]:animate-morph-enter data-[state=closed]:animate-morph-exit",
             className,
           )}
@@ -101,7 +99,7 @@ export function Modal({
           <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
 
           {footer && (
-            <div className="glass-strong flex items-center justify-end gap-3 border-t border-[var(--divider)] px-6 py-4">
+            <div className="flex items-center justify-end gap-3 border-t border-[var(--divider)] bg-[var(--bg-card)] px-6 py-4">
               {footer}
             </div>
           )}

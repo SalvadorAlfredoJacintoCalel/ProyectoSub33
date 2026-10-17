@@ -7,8 +7,6 @@ import {
   X,
   Check,
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
   TrendingUp,
   TrendingDown,
   DollarSign,
@@ -38,6 +36,7 @@ import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { EmptyState } from "@/app/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,7 +118,6 @@ export function FinanzasPage() {
   const [search, setSearch] = useState("");
   const [filterTipo, setFilterTipo] = useState<TipoTx | "">("");
   const [filterCat, setFilterCat] = useState<string>("");
-  const [page, setPage] = useState(1);
   const PAGE_SIZE = 8;
 
   // Modal state
@@ -158,9 +156,6 @@ export function FinanzasPage() {
       return matchTab && matchTipo && matchCat && matchSearch;
     });
   }, [rows, activeTab, search, filterTipo, filterCat]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // ── KPI totals ────────────────────────────────────────────────────────────
   const totalIngresos  = rows.filter(r => r.tipo === "Ingreso").reduce((s, r) => s + r.entrada, 0);
@@ -284,6 +279,26 @@ export function FinanzasPage() {
     toast.success("Transacción eliminada.");
   };
 
+  const finColumns: DataTableColumn<Transaccion>[] = [
+    { key: "fecha", header: "Fecha", cell: (r) => <span style={{ color: "var(--text-2)" }}>{r.fecha}</span> },
+    { key: "tipo", header: "Tipo", cell: (r) => <Badge variant={TIPO_BADGE[r.tipo]} size="sm">{r.tipo}</Badge> },
+    { key: "descripcion", header: "Descripción", className: "max-w-48 truncate", cell: (r) => <span title={r.descripcion} style={{ color: "var(--text-1)" }}>{r.descripcion}</span> },
+    { key: "categoria", header: "Categoría", cell: (r) => <span style={{ color: "var(--text-2)" }}>{r.categoria}</span> },
+    { key: "metodoPago", header: "Método de Pago", cell: (r) => <span style={{ color: "var(--text-2)" }}>{r.metodoPago}</span> },
+    { key: "comprobante", header: "Comprobante", cell: (r) => <span style={{ color: "var(--text-2)" }}>{r.comprobante}</span> },
+    { key: "noDocumento", header: "No. Documento", cell: (r) => <span style={{ color: "var(--text-2)" }}>{r.noDocumento || "—"}</span> },
+    { key: "entrada", header: "Entrada (Q)", headerClassName: "text-right", className: "text-right", cell: (r) => <span className="font-medium text-green-700">{r.entrada > 0 ? fmt(r.entrada) : "—"}</span> },
+    { key: "salida", header: "Salida (Q)", headerClassName: "text-right", className: "text-right", cell: (r) => <span className="font-medium text-red-600">{r.salida > 0 ? fmt(r.salida) : "—"}</span> },
+    { key: "saldo", header: "Saldo Acum. (Q)", headerClassName: "text-right", className: "text-right", cell: (r) => <span className="font-semibold" style={{ color: "var(--text-1)" }}>{fmt(r.saldoAcumulado)}</span> },
+    { key: "responsable", header: "Responsable", cell: (r) => <span style={{ color: "var(--text-2)" }}>{r.responsable}</span> },
+    { key: "acciones", header: "Acciones", cell: (r) => (
+      <div className="flex items-center gap-1">
+        <ActionBtn icon={<Pencil size={14} />} title="Editar" color="text-amber-600" onClick={(e) => { e.stopPropagation(); openEditModal(r); }} />
+        <ActionBtn icon={<Trash2 size={14} />} title="Eliminar" color="text-red-600" onClick={(e) => { e.stopPropagation(); requestDelete(r.id); }} />
+      </div>
+    ) },
+  ];
+
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen p-6" style={{ backgroundColor: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
@@ -336,7 +351,7 @@ export function FinanzasPage() {
         {TABS.map(tab => (
           <button
             key={tab}
-            onClick={() => { setActiveTab(tab); setPage(1); }}
+            onClick={() => setActiveTab(tab)}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
               activeTab === tab
                 ? "text-white shadow-sm"
@@ -349,123 +364,53 @@ export function FinanzasPage() {
         ))}
       </div>
 
-      {/* ── SECTION 3: Table Card ── */}
-      <div className="bg-[var(--bg-card)] rounded-xl overflow-hidden" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06),0 0 0 1px rgba(0,0,0,0.05)" }}>
-
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 p-4 border-b" style={{ borderColor: "var(--neutral-200)" }}>
-          <div className="relative flex-1 min-w-48">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
-            <input
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Buscar descripción, responsable…"
-              className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-red-200"
+      {/* ── SECTION 3: Table ── */}
+      <DataTable<Transaccion>
+        columns={finColumns}
+        data={filtered}
+        getRowKey={(r) => r.id}
+        pageSize={PAGE_SIZE}
+        onRowClick={setViewRow}
+        emptyTitle="No se encontraron registros"
+        emptyDescription="Ajuste los filtros o registre una nueva transacción."
+        toolbar={
+          <div className="flex w-full flex-wrap gap-3">
+            <div className="relative min-w-48 flex-1">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar descripción, responsable…"
+                className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-red-200"
+                style={{ borderColor: "var(--neutral-200)" }}
+              />
+            </div>
+            <select
+              value={filterTipo}
+              onChange={e => setFilterTipo(e.target.value as TipoTx | "")}
+              className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-[var(--bg-card)]"
               style={{ borderColor: "var(--neutral-200)" }}
-            />
-          </div>
-          <select
-            value={filterTipo}
-            onChange={e => { setFilterTipo(e.target.value as TipoTx | ""); setPage(1); }}
-            className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-[var(--bg-card)]"
-            style={{ borderColor: "var(--neutral-200)" }}
-          >
-            <option value="">Todos los tipos</option>
-            <option>Ingreso</option>
-            <option>Gasto</option>
-            <option>Donación</option>
-          </select>
-          <select
-            value={filterCat}
-            onChange={e => { setFilterCat(e.target.value); setPage(1); }}
-            className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-[var(--bg-card)]"
-            style={{ borderColor: "var(--neutral-200)" }}
-          >
-            <option value="">Todas las categorías</option>
-            <option value="Vehículo/Combustible">Vehículo / Combustible</option>
-            {(["Combustible","Mantenimiento","Apoyo Social","Recaudación","Equipamiento","Otros"] as Categoria[]).map(c => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-xs font-semibold text-[var(--text-3)] uppercase tracking-wide" style={{ borderColor: "var(--neutral-200)", backgroundColor: "#f5f5f6" }}>
-                {["Fecha","Tipo","Descripción","Categoría","Método de Pago","Comprobante","No. Documento","Entrada (Q)","Salida (Q)","Saldo Acum. (Q)","Responsable","Acciones"].map(h => (
-                  <th key={h} className="px-3 py-3 text-left whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.length === 0 ? (
-                <tr>
-                  <td colSpan={12} className="py-12 text-center text-[var(--text-3)] text-sm">
-                    No se encontraron registros
-                  </td>
-                </tr>
-              ) : pageRows.map((r, i) => (
-                <tr
-                  key={r.id}
-                  className={`cursor-pointer border-b transition-colors hover:bg-[var(--bg-hover)] ${i % 2 === 0 ? "" : "bg-[var(--bg-hover)]/50"}`}
-                  style={{ borderColor: "var(--neutral-200)" }}
-                  onClick={() => setViewRow(r)}
-                >
-                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.fecha}</td>
-                  <td className="px-3 py-3">
-                    <Badge variant={TIPO_BADGE[r.tipo]} size="sm">{r.tipo}</Badge>
-                  </td>
-                  <td className="px-3 py-3 max-w-48 truncate text-[var(--text-1)]" title={r.descripcion}>{r.descripcion}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.categoria}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.metodoPago}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.comprobante}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.noDocumento || "—"}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-green-700 font-medium text-right">
-                    {r.entrada > 0 ? fmt(r.entrada) : "—"}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-red-600 font-medium text-right">
-                    {r.salida > 0 ? fmt(r.salida) : "—"}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap font-semibold text-[var(--text-1)] text-right">{fmt(r.saldoAcumulado)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-[var(--text-2)]">{r.responsable}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1">
-                      <ActionBtn icon={<Pencil size={14} />} title="Editar"   color="text-amber-600" onClick={(e) => { e.stopPropagation(); openEditModal(r); }} />
-                      <ActionBtn icon={<Trash2 size={14} />} title="Eliminar" color="text-red-600"   onClick={(e) => { e.stopPropagation(); requestDelete(r.id); }} />
-                    </div>
-                  </td>
-                </tr>
+            >
+              <option value="">Todos los tipos</option>
+              <option>Ingreso</option>
+              <option>Gasto</option>
+              <option>Donación</option>
+            </select>
+            <select
+              value={filterCat}
+              onChange={e => setFilterCat(e.target.value)}
+              className="text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-red-200 bg-[var(--bg-card)]"
+              style={{ borderColor: "var(--neutral-200)" }}
+            >
+              <option value="">Todas las categorías</option>
+              <option value="Vehículo/Combustible">Vehículo / Combustible</option>
+              {(["Combustible","Mantenimiento","Apoyo Social","Recaudación","Equipamiento","Otros"] as Categoria[]).map(c => (
+                <option key={c}>{c}</option>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-[var(--text-3)]" style={{ borderColor: "var(--neutral-200)" }}>
-          <span>{filtered.length} registro{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="p-1.5 rounded-md border disabled:opacity-40 hover:bg-[var(--bg-hover)] transition-colors"
-              style={{ borderColor: "var(--neutral-200)" }}
-            >
-              <ChevronLeft size={15} />
-            </button>
-            <span className="px-2 font-medium text-[var(--text-2)]">Página {page} / {totalPages}</span>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="p-1.5 rounded-md border disabled:opacity-40 hover:bg-[var(--bg-hover)] transition-colors"
-              style={{ borderColor: "var(--neutral-200)" }}
-            >
-              <ChevronRight size={15} />
-            </button>
+            </select>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── Modal: Nueva Transacción ── */}
       <Modal

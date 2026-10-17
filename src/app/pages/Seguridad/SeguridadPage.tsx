@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { Shield, Lock, Plus, X, Pencil, Trash2, Save } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertContext";
 import { Button } from "@/app/components/ui/button";
+import { DataTable } from "@/app/components/ui/data-table";
 import {
   getParametros,
   guardarParametros,
@@ -312,6 +313,18 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   useEffect(() => {
     cargarPermisos(selectedRolId);
   }, [selectedRolId, cargarPermisos]);
+
+  useEffect(() => {
+    if (activeTab === "usuarios") {
+      cargarUsuariosYRoles();
+    }
+  }, [activeTab, cargarUsuariosYRoles]);
+
+  useEffect(() => {
+    const handler = () => cargarUsuariosYRoles();
+    window.addEventListener("usuarios-actualizados", handler);
+    return () => window.removeEventListener("usuarios-actualizados", handler);
+  }, [cargarUsuariosYRoles]);
 
   if (userRole !== "admin") return <AccessDenied />;
 
@@ -717,71 +730,50 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
         {/* ── Tab 3: Usuarios y Roles ── */}
         {activeTab === "usuarios" && (
-          <div style={{ background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "var(--bg-page)", borderBottom: "1px solid var(--divider)" }}>
-                  {["Nombre Completo", "Usuario", "Rol", "Contraseña", "Estado"].map((h) => (
-                    <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>
-                      {h}
-                    </th>
+          <DataTable<UsuarioConfig>
+            columns={[
+              { key: "nombre", header: "Nombre Completo", cell: (u) => <span className="font-semibold" style={{ color: "var(--text-1)" }}>{u.nombreCompleto}</span> },
+              { key: "usuario", header: "Usuario", cell: (u) => (
+                <div className="flex items-center gap-2">
+                  <span style={{ fontFamily: "monospace", color: "var(--text-2)" }}>@{u.username}</span>
+                  <button
+                    onClick={() => { setModalUsername(u); setNuevoUsername(u.username); }}
+                    style={{ background: "transparent", border: "none", color: "var(--text-2)", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}
+                    title="Cambiar usuario"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                </div>
+              ) },
+              { key: "rol", header: "Rol", cell: (u) => (
+                <select
+                  value={u.rolId}
+                  onChange={(e) => handleRol(u, Number(e.target.value))}
+                  style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 12 }}
+                >
+                  <option value={0}>Sin rol</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>{r.nombre}</option>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loadingUsuarios ? (
-                  <tr>
-                    <td colSpan={5} style={{ padding: 20, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Cargando usuarios...</td>
-                  </tr>
-                ) : usuarios.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ padding: 20, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>No hay usuarios registrados.</td>
-                  </tr>
-                ) : (
-                  usuarios.map((u, i) => (
-                    <tr key={u.usuarioId} style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-page)", borderBottom: "1px solid var(--divider)" }}>
-                      <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{u.nombreCompleto}</td>
-                      <td style={{ padding: "12px 16px", fontSize: 12, color: "var(--text-2)", fontFamily: "monospace" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span>@{u.username}</span>
-                          <button
-                            onClick={() => { setModalUsername(u); setNuevoUsername(u.username); }}
-                            style={{ background: "transparent", border: "none", color: "var(--text-2)", cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}
-                            title="Cambiar usuario"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                        </div>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <select
-                          value={u.rolId}
-                          onChange={(e) => handleRol(u, Number(e.target.value))}
-                          style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 12 }}
-                        >
-                          <option value={0}>Sin rol</option>
-                          {roles.map((r) => (
-                            <option key={r.id} value={r.id}>{r.nombre}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <button
-                          onClick={() => { setModalPassword(u); setNuevaPassword(""); }}
-                          style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, color: "var(--text-2)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
-                        >
-                          <Lock size={13} /> Cambiar
-                        </button>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <Toggle checked={u.estado} onChange={(v) => handleEstado(u, v)} />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                </select>
+              ) },
+              { key: "password", header: "Contraseña", cell: (u) => (
+                <button
+                  onClick={() => { setModalPassword(u); setNuevaPassword(""); }}
+                  style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, color: "var(--text-2)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  <Lock size={13} /> Cambiar
+                </button>
+              ) },
+              { key: "estado", header: "Estado", cell: (u) => <Toggle checked={u.estado} onChange={(v) => handleEstado(u, v)} /> },
+            ]}
+            data={usuarios}
+            getRowKey={(u) => u.usuarioId}
+            loading={loadingUsuarios}
+            emptyIcon={Shield}
+            emptyTitle="No hay usuarios registrados"
+            emptyDescription="Los usuarios del sistema aparecerán aquí."
+          />
         )}
 
         {/* ── Tab 4: Matriz de Permisos ── */}

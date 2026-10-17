@@ -18,6 +18,7 @@ interface FormProps {
   setCredOpen: Dispatch<SetStateAction<boolean>>;
   showPw: boolean;
   setShowPw: Dispatch<SetStateAction<boolean>>;
+  hasAccess: boolean;
   rangos: RangoItem[];
   roles: RolItem[];
   saving: boolean;
@@ -187,6 +188,7 @@ export function PersonalForm({
   setCredOpen,
   showPw,
   setShowPw,
+  hasAccess,
   rangos,
   roles,
   saving,
@@ -195,15 +197,19 @@ export function PersonalForm({
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      if (field === "primerNombre" || field === "primerApellido") {
+      if (!editingId && (field === "primerNombre" || field === "primerApellido")) {
         next.usuario = slugify(next.primerNombre + next.primerApellido);
       }
       return next;
     });
-    if (errors[field as string]) {
+    if (errors[field as string] || field === "contrasena" || field === "confirmarContrasena") {
       setErrors((prev) => {
         const n = { ...prev };
         delete n[field as string];
+        if (field === "contrasena" || field === "confirmarContrasena") {
+          delete n.contrasena;
+          delete n.confirmarContrasena;
+        }
         return n;
       });
     }
@@ -214,6 +220,13 @@ export function PersonalForm({
     setForm((prev) => ({ ...prev, contrasena: pw, confirmarContrasena: pw }));
     setShowPw(true);
   }
+
+  const passwordsMismatch =
+    form.contrasena.length > 0 &&
+    form.confirmarContrasena.length > 0 &&
+    form.contrasena !== form.confirmarContrasena;
+
+  const passwordRequired = !editingId || !hasAccess;
 
   return (
     <Modal
@@ -421,8 +434,8 @@ export function PersonalForm({
               <div className="flex-1">
                 <PasswordInput
                   id="contrasena"
-                  label={editingId ? "Contraseña" : "Contraseña *"}
-                  placeholder={editingId ? "Nueva contraseña (opcional)" : "Mínimo 8 caracteres"}
+                  label={passwordRequired ? "Contraseña *" : "Contraseña"}
+                  placeholder={passwordRequired ? "Mínimo 8 caracteres" : "Nueva contraseña (opcional)"}
                   value={form.contrasena}
                   onChange={(v) => setField("contrasena", v)}
                   error={errors.contrasena}
@@ -441,14 +454,14 @@ export function PersonalForm({
               </button>
             </div>
 
-            {(form.contrasena.length > 0 || !editingId) && (
+            {(form.contrasena.length > 0 || passwordRequired) && (
               <PasswordInput
                 id="confirmarContrasena"
-                label={editingId ? "Confirmar Contraseña" : "Confirmar Contraseña *"}
+                label={passwordRequired ? "Confirmar Contraseña *" : "Confirmar Contraseña"}
                 placeholder="Repetir contraseña"
                 value={form.confirmarContrasena}
                 onChange={(v) => setField("confirmarContrasena", v)}
-                error={errors.confirmarContrasena}
+                error={errors.confirmarContrasena ?? (passwordsMismatch ? "Las contraseñas no coinciden" : undefined)}
                 show={showPw}
                 onToggle={() => setShowPw((v) => !v)}
               />
@@ -460,9 +473,11 @@ export function PersonalForm({
             >
               <Shield size={13} style={{ marginTop: 2, flexShrink: 0, color: "var(--text-3)" }} />
               <span>
-                {editingId
-                  ? "Deja la contraseña vacía si no deseas cambiarla. Solo los campos que modifiques serán actualizados."
-                  : "Al crear la cuenta, el bombero recibirá sus credenciales de acceso al sistema."}
+                {!editingId
+                  ? "Al crear la cuenta, el bombero recibirá sus credenciales de acceso al sistema."
+                  : hasAccess
+                    ? "Deja la contraseña vacía si no deseas cambiarla. Solo los campos que modifiques serán actualizados."
+                    : "Al otorgar acceso al sistema, se creará la cuenta con las credenciales indicadas."}
               </span>
             </div>
           </div>

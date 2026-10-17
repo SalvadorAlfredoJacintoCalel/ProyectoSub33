@@ -6,6 +6,7 @@ export interface Miembro {
   codigoBombero?: string;
   nombreCompleto: string;
   dpi: string;
+  fechaNacimiento?: string;
   rangoId?: number;
   rangoNombre?: string;
   estado: boolean;

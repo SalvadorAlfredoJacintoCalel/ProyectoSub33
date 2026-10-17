@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 namespace Backend_Sub33.Common;
 
 public static class TextNormalizer
@@ -23,4 +26,28 @@ public static class TextNormalizer
     /// </summary>
     public static string? NormalizeDescription(string? text)
         => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
+    /// <summary>
+    /// Normaliza un término de búsqueda: minúsculas y sin diacríticos
+    /// ("José" -> "jose", "PÉREZ" -> "perez"). Retorna cadena vacía si no hay texto.
+    /// </summary>
+    public static string NormalizeSearch(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return string.Empty;
+        }
+
+        var normalized = text.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(normalized.Length);
+        foreach (var ch in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(ch);
+            }
+        }
+
+        return builder.ToString().Normalize(NormalizationForm.FormC);
+    }
 }

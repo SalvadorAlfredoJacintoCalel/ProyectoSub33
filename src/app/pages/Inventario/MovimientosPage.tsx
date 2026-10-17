@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { Plus, ArrowLeftRight, Loader2, Printer, Info, FileText, Link2, AlertTriangle } from "lucide-react";
+import { Plus, ArrowLeftRight, Printer, Info, FileText, Link2, AlertTriangle } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Modal } from "@/app/components/ui/modal";
@@ -11,13 +12,6 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
 import type { InventarioMovimiento, InventarioMovimientoCreate } from "@/types/inventario";
-
-const CARD_STYLE: React.CSSProperties = {
-  background: "var(--bg-card)",
-  borderRadius: "1rem",
-  boxShadow: "var(--shadow)",
-  border: "1px solid var(--border)",
-};
 
 function formatFecha(iso?: string): string {
   if (!iso) return "—";
@@ -159,7 +153,13 @@ export function MovimientosPage() {
     }
   }
 
-  const cols = ["Fecha", "Item", "Tipo", "Cantidad", "Motivo"];
+  const movColumns: DataTableColumn<InventarioMovimiento>[] = [
+    { key: "fecha", header: "Fecha", cell: (m) => <span style={{ color: "var(--text-2)" }}>{formatFecha(m.fechaHora)}</span> },
+    { key: "item", header: "Item", cell: (m) => <span style={{ color: "var(--text-1)" }}>{m.itemNombre}</span> },
+    { key: "tipo", header: "Tipo", cell: (m) => { const t = tipoVariant(m); return <Badge variant={t.variant} size="sm">{t.label}</Badge>; } },
+    { key: "cantidad", header: "Cantidad", className: "font-medium", cell: (m) => { const t = tipoVariant(m); return <span style={{ color: t.variant === "success" ? "var(--success-700)" : "var(--brand-700)" }}>{m.cantidad}</span>; } },
+    { key: "motivo", header: "Motivo", cell: (m) => <span style={{ color: "var(--text-2)" }}>{m.motivo}</span> },
+  ];
 
   const detailTabs: TabItem[] = selectedMov
     ? [
@@ -206,9 +206,18 @@ export function MovimientosPage() {
     : [];
 
   return (
-    <div style={CARD_STYLE}>
-      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--border)" }}>
-        <div className="flex items-center gap-3">
+    <>
+    <DataTable<InventarioMovimiento>
+      columns={movColumns}
+      data={movimientos}
+      getRowKey={(m) => m.movimientoId}
+      loading={loading}
+      onRowClick={(m) => { setSelectedMov(m); setDetailOpen(true); }}
+      emptyIcon={ArrowLeftRight}
+      emptyTitle="No hay movimientos"
+      emptyDescription="No se han registrado movimientos de stock."
+      toolbar={
+        <>
           <select value={itemFilter} onChange={(e) => setItemFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}>
             <option value="">Todos los items</option>
             {items.map((i) => <option key={i.itemId} value={i.itemId}>{i.nombre}</option>)}
@@ -217,58 +226,12 @@ export function MovimientosPage() {
             <option value="">Todos los tipos</option>
             {catalogos.tiposMovimiento.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
           </select>
-        </div>
-        <Button variant="brand" onClick={openCreate}>
-          <Plus size={16} /> Registrar Movimiento
-        </Button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left" style={{ fontFamily: "Inter, sans-serif" }}>
-          <thead>
-            <tr style={{ background: "var(--bg-input)", borderBottom: "1px solid var(--border)" }}>
-              {cols.map((h) => <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>{h}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && movimientos.length === 0 ? (
-              <tr><td colSpan={cols.length} className="py-16 text-center"><Loader2 size={24} className="mx-auto animate-spin" style={{ color: "var(--brand-600)" }} /></td></tr>
-            ) : movimientos.length === 0 ? (
-              <tr>
-                <td colSpan={cols.length}>
-                  <EmptyState
-                    icon={ArrowLeftRight}
-                    title="No hay movimientos"
-                    description="No se han registrado movimientos de stock."
-                  />
-                </td>
-              </tr>
-            ) : (
-              movimientos.map((m) => {
-                const t = tipoVariant(m);
-                return (
-                  <tr
-                    key={m.movimientoId}
-                    className="cursor-pointer border-b transition-colors"
-                    style={{ borderColor: "var(--divider)" }}
-                    onClick={() => { setSelectedMov(m); setDetailOpen(true); }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <td className="px-4 py-3 text-sm" style={{ color: "var(--text-2)" }}>{formatFecha(m.fechaHora)}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: "var(--text-1)" }}>{m.itemNombre}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <Badge variant={t.variant} size="sm">{t.label}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium" style={{ color: t.variant === "success" ? "var(--success-700)" : "var(--brand-700)" }}>{m.cantidad}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: "var(--text-2)" }}>{m.motivo}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+          <Button variant="brand" onClick={openCreate} className="ml-auto">
+            <Plus size={16} /> Registrar Movimiento
+          </Button>
+        </>
+      }
+    />
 
       {/* Create Modal */}
       <Modal
@@ -357,6 +320,6 @@ export function MovimientosPage() {
       >
         {selectedMov && <Tabs variant="glass" tabs={detailTabs} />}
       </Drawer>
-    </div>
+    </>
   );
 }

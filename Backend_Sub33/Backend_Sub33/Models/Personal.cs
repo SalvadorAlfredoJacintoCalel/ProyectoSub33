@@ -61,6 +61,9 @@ public class Personal
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("search_text")]
+    public string? SearchText { get; set; }
+
     [ForeignKey("RangoId")]
     public virtual CatRango? Rango { get; set; }
 }

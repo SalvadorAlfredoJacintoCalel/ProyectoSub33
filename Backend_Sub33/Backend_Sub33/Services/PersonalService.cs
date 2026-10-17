@@ -22,7 +22,7 @@ public partial class PersonalService : IPersonalService
     }
 
     public async Task<ServiceResult<PaginatedResult<PersonalResumenDto>>> GetResumenAsync(
-        int pagina, int tamanio, int? rangoId, bool? estado, CancellationToken ct = default)
+        int pagina, int tamanio, int? rangoId, bool? estado, string? busqueda, CancellationToken ct = default)
     {
         try
         {
@@ -44,11 +44,41 @@ public partial class PersonalService : IPersonalService
                 query = query.Where(p => p.Estado == estado.Value);
             }
 
+            var termino = TextNormalizer.NormalizeSearch(busqueda);
+            if (termino.Length > 0)
+            {
+                var tokens = termino.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var token in tokens)
+                {
+                    var pattern = $"%{token}%";
+                    query = query.Where(p =>
+                        EF.Functions.ILike(p.SearchText ?? string.Empty, pattern) ||
+                        _context.Usuarios.Any(u =>
+                            u.PersonalId == p.PersonalId &&
+                            EF.Functions.ILike(u.Username, pattern)));
+                }
+            }
+
+            var raw = (busqueda ?? string.Empty).Trim().ToLowerInvariant();
+            if (raw.Length > 0)
+            {
+                query = query
+                    .OrderByDescending(p =>
+                        p.Dpi.ToLower() == raw ||
+                        (p.CodigoBombero != null && p.CodigoBombero.ToLower() == raw))
+                    .ThenBy(p => p.PrimerApellido)
+                    .ThenBy(p => p.PrimerNombre);
+            }
+            else
+            {
+                query = query
+                    .OrderBy(p => p.PrimerApellido)
+                    .ThenBy(p => p.PrimerNombre);
+            }
+
             var total = await query.CountAsync(ct);
 
             var registros = await query
-                .OrderBy(p => p.PrimerApellido)
-                .ThenBy(p => p.PrimerNombre)
                 .Skip((pagina - 1) * tamanio)
                 .Take(tamanio)
                 .ToListAsync(ct);
@@ -130,64 +160,24 @@ public partial class PersonalService : IPersonalService
         }
     }
 
-    public async Task<ServiceResult<List<PersonalResumenDto>>> BuscarAsync(string termino, CancellationToken ct = default)
+    public async Task<ServiceResult<PersonalEstadisticasDto>> GetEstadisticasAsync(CancellationToken ct = default)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(termino))
+            var total = await _context.Personal.AsNoTracking().CountAsync(ct);
+            var activos = await _context.Personal.AsNoTracking().CountAsync(p => p.Estado, ct);
+
+            return ServiceResult<PersonalEstadisticasDto>.Success(new PersonalEstadisticasDto
             {
-                return ServiceResult<List<PersonalResumenDto>>.Success(new List<PersonalResumenDto>());
-            }
-
-            var search = $"%{termino.Trim()}%";
-
-            var registros = await _context.Personal
-                .AsNoTracking()
-                .Include(p => p.Rango)
-                .Where(p =>
-                    EF.Functions.ILike(p.PrimerNombre, search) ||
-                    EF.Functions.ILike(p.SegundoNombre ?? "", search) ||
-                    EF.Functions.ILike(p.PrimerApellido, search) ||
-                    EF.Functions.ILike(p.SegundoApellido ?? "", search) ||
-                    EF.Functions.ILike(p.Dpi, search) ||
-                    EF.Functions.ILike(p.CodigoBombero ?? "", search))
-                .OrderBy(p => p.PrimerApellido)
-                .ThenBy(p => p.PrimerNombre)
-                .Take(20)
-                .ToListAsync(ct);
-
-            var codigos = await BuildCodigoIndexAsync(ct);
-            var ids = registros.Select(p => p.PersonalId).ToList();
-            var usuariosPorPersonal = await ObtenerUsuariosPorPersonalAsync(ids, ct);
-            var rolesPorPersonal = await ObtenerRolesPorPersonalAsync(ids, ct);
-
-            var items = registros
-                .Select(p => new PersonalResumenDto
-                {
-                    PersonalId = p.PersonalId.ToString(),
-                    Codigo = GenerarCodigo(p.PersonalId, codigos),
-                    CodigoBombero = p.CodigoBombero,
-                    NombreCompleto = BuildNombreCompleto(p),
-                    Dpi = p.Dpi,
-                    RangoId = p.RangoId,
-                    RangoNombre = p.Rango?.Rango,
-                    Estado = p.Estado,
-                    Telefono = p.Telefono,
-                    ContactoEmergenciaNombre = p.ContactoEmergenciaNombre ?? string.Empty,
-                    ContactoEmergenciaTelefono = p.ContactoEmergenciaTelefono ?? string.Empty,
-                    FechaIngreso = p.FechaIngreso.ToString("yyyy-MM-dd"),
-                    TieneUsuario = usuariosPorPersonal.ContainsKey(p.PersonalId),
-                    Username = usuariosPorPersonal.GetValueOrDefault(p.PersonalId),
-                    RolNombre = rolesPorPersonal.GetValueOrDefault(p.PersonalId)
-                })
-                .ToList();
-
-            return ServiceResult<List<PersonalResumenDto>>.Success(items);
+                Total = total,
+                Activos = activos,
+                Inactivos = total - activos
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al buscar personal");
-            return ServiceResult<List<PersonalResumenDto>>.Internal("Error al buscar personal.");
+            _logger.LogError(ex, "Error al obtener las estadísticas de personal");
+            return ServiceResult<PersonalEstadisticasDto>.Internal("Error al obtener las estadísticas de personal.");
         }
     }
 
@@ -501,10 +491,142 @@ public partial class PersonalService : IPersonalService
                 personal.FechaIngreso = dto.FechaIngreso.Value;
             }
 
+            string? accessUsername = null;
+            string? accessPasswordHash = null;
+            var accessRolId = 0;
+
+            if (dto.AccesoSistema is not null)
+            {
+                accessUsername = dto.AccesoSistema.Username.Trim();
+                if (string.IsNullOrWhiteSpace(accessUsername))
+                {
+                    return ServiceResult<PersonalResponseDto>.BadRequest("El nombre de usuario es requerido.");
+                }
+
+                accessRolId = dto.AccesoSistema.RolId;
+                if (accessRolId <= 0)
+                {
+                    return ServiceResult<PersonalResponseDto>.BadRequest("El rol del sistema es requerido.");
+                }
+
+                var rolExiste = await _context.Roles.AnyAsync(r => r.RolId == accessRolId, ct);
+                if (!rolExiste)
+                {
+                    return ServiceResult<PersonalResponseDto>.BadRequest("El rol del sistema seleccionado no existe.");
+                }
+
+                var usernameOcupado = await _context.Usuarios.AnyAsync(
+                    u => u.Username.ToLower() == accessUsername.ToLower() && u.PersonalId != id, ct);
+                if (usernameOcupado)
+                {
+                    return ServiceResult<PersonalResponseDto>.Conflict("El nombre de usuario ya existe.");
+                }
+
+                var usuarioActual = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == id, ct);
+                var password = dto.AccesoSistema.Password ?? string.Empty;
+
+                if (usuarioActual is null)
+                {
+                    if (password.Length < 8)
+                    {
+                        return ServiceResult<PersonalResponseDto>.BadRequest("La contraseña debe tener al menos 8 caracteres.");
+                    }
+
+                    accessPasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+                }
+                else if (!string.IsNullOrWhiteSpace(password))
+                {
+                    if (password.Length < 8)
+                    {
+                        return ServiceResult<PersonalResponseDto>.BadRequest("La contraseña debe tener al menos 8 caracteres.");
+                    }
+
+                    accessPasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+                }
+            }
+
             personal.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync(ct);
+
+            using var transaction = await _context.Database.BeginTransactionAsync(ct);
+
+            try
+            {
+                await _context.SaveChangesAsync(ct);
+
+                if (accessUsername is not null)
+                {
+                    var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == id, ct);
+
+                    if (usuario is null)
+                    {
+                        usuario = new Usuario
+                        {
+                            UsuarioId = Guid.NewGuid(),
+                            PersonalId = id,
+                            Username = accessUsername.ToLower(),
+                            PasswordHash = accessPasswordHash!,
+                            Estado = personal.Estado,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+
+                        _context.Usuarios.Add(usuario);
+                        await _context.SaveChangesAsync(ct);
+
+                        _context.UsuarioRoles.Add(new UsuarioRol
+                        {
+                            UsuarioId = usuario.UsuarioId,
+                            RolId = accessRolId
+                        });
+                        await _context.SaveChangesAsync(ct);
+                    }
+                    else
+                    {
+                        usuario.Username = accessUsername.ToLower();
+                        if (accessPasswordHash is not null)
+                        {
+                            usuario.PasswordHash = accessPasswordHash;
+                        }
+
+                        usuario.Estado = personal.Estado;
+                        usuario.UpdatedAt = DateTime.UtcNow;
+
+                        var rolesActuales = await _context.UsuarioRoles
+                            .Where(ur => ur.UsuarioId == usuario.UsuarioId)
+                            .ToListAsync(ct);
+                        _context.UsuarioRoles.RemoveRange(rolesActuales);
+
+                        _context.UsuarioRoles.Add(new UsuarioRol
+                        {
+                            UsuarioId = usuario.UsuarioId,
+                            RolId = accessRolId
+                        });
+                        await _context.SaveChangesAsync(ct);
+                    }
+                }
+
+                await transaction.CommitAsync(ct);
+            }
+            catch
+            {
+                try
+                {
+                    await transaction.RollbackAsync(ct);
+                }
+                catch (Exception rollbackEx)
+                {
+                    _logger.LogWarning(rollbackEx, "Error al revertir la transacción de actualización de personal");
+                }
+
+                throw;
+            }
 
             return await GetByIdAsync(id, ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("username") == true)
+        {
+            _logger.LogWarning(ex, "Nombre de usuario duplicado al actualizar personal");
+            return ServiceResult<PersonalResponseDto>.Conflict("El nombre de usuario ya existe.");
         }
         catch (Exception ex)
         {

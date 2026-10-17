@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { Plus, Truck, Loader2, Printer, Info, FileText, AlertTriangle } from "lucide-react";
+import { Plus, Truck, Printer, Info, FileText, AlertTriangle } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Modal } from "@/app/components/ui/modal";
@@ -11,13 +12,6 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
 import type { EquipoUnidad, EquipoUnidadCreate } from "@/types/inventario";
-
-const CARD_STYLE: React.CSSProperties = {
-  background: "var(--bg-card)",
-  borderRadius: "1rem",
-  boxShadow: "var(--shadow)",
-  border: "1px solid var(--border)",
-};
 
 function InfoField({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -137,7 +131,11 @@ export function EquipoUnidadesPage() {
     }
   }
 
-  const cols = ["Unidad", "Item", "Cantidad Asignada"];
+  const equipoColumns: DataTableColumn<EquipoUnidad>[] = [
+    { key: "unidad", header: "Unidad", className: "font-medium", cell: (e) => <span style={{ color: "var(--text-1)" }}>{e.unidadCodigo}</span> },
+    { key: "item", header: "Item", cell: (e) => <span style={{ color: "var(--text-1)" }}>{e.itemNombre}</span> },
+    { key: "cantidad", header: "Cantidad Asignada", className: "font-medium", cell: (e) => <span style={{ color: "var(--text-2)" }}>{e.cantidadAsignada}</span> },
+  ];
 
   const detailTabs: TabItem[] = selected
     ? [
@@ -169,56 +167,28 @@ export function EquipoUnidadesPage() {
     : [];
 
   return (
-    <div style={CARD_STYLE}>
-      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--border)" }}>
-        <select value={unidadFilter} onChange={(e) => setUnidadFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}>
-          <option value="">Todas las unidades</option>
-          {catalogos.unidades.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
-        </select>
-        <Button variant="brand" onClick={openCreate}>
-          <Plus size={16} /> Asignar Equipo
-        </Button>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left" style={{ fontFamily: "Inter, sans-serif" }}>
-          <thead>
-            <tr style={{ background: "var(--bg-input)", borderBottom: "1px solid var(--border)" }}>
-              {cols.map((h) => <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>{h}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && equipoUnidades.length === 0 ? (
-              <tr><td colSpan={cols.length} className="py-16 text-center"><Loader2 size={24} className="mx-auto animate-spin" style={{ color: "var(--brand-600)" }} /></td></tr>
-            ) : equipoUnidades.length === 0 ? (
-              <tr>
-                <td colSpan={cols.length}>
-                  <EmptyState
-                    icon={Truck}
-                    title="No hay equipo asignado"
-                    description="Asigne equipos a las unidades de la compañía."
-                  />
-                </td>
-              </tr>
-            ) : (
-              equipoUnidades.map((e, idx) => (
-                <tr
-                  key={`${e.unidadId}-${e.itemId}-${idx}`}
-                  className="cursor-pointer border-b transition-colors"
-                  style={{ borderColor: "var(--divider)" }}
-                  onClick={() => { setSelected(e); setDetailOpen(true); }}
-                  onMouseEnter={(ev) => (ev.currentTarget.style.background = "var(--bg-hover)")}
-                  onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}
-                >
-                  <td className="px-4 py-3 text-sm font-medium" style={{ color: "var(--text-1)" }}>{e.unidadCodigo}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: "var(--text-1)" }}>{e.itemNombre}</td>
-                  <td className="px-4 py-3 text-sm font-medium" style={{ color: "var(--text-2)" }}>{e.cantidadAsignada}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+    <>
+    <DataTable<EquipoUnidad>
+      columns={equipoColumns}
+      data={equipoUnidades}
+      getRowKey={(e) => `${e.unidadId}-${e.itemId}`}
+      loading={loading}
+      onRowClick={(e) => { setSelected(e); setDetailOpen(true); }}
+      emptyIcon={Truck}
+      emptyTitle="No hay equipo asignado"
+      emptyDescription="Asigne equipos a las unidades de la compañía."
+      toolbar={
+        <>
+          <select value={unidadFilter} onChange={(e) => setUnidadFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}>
+            <option value="">Todas las unidades</option>
+            {catalogos.unidades.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+          </select>
+          <Button variant="brand" onClick={openCreate} className="ml-auto">
+            <Plus size={16} /> Asignar Equipo
+          </Button>
+        </>
+      }
+    />
 
       {/* Asignar Equipo Modal */}
       <Modal
@@ -303,6 +273,6 @@ export function EquipoUnidadesPage() {
       >
         {selected && <Tabs variant="glass" tabs={detailTabs} />}
       </Drawer>
-    </div>
+    </>
   );
 }

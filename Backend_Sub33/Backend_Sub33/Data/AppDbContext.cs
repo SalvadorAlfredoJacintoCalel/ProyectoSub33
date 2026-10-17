@@ -134,6 +134,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ContactoEmergenciaTelefono).HasColumnName("contacto_emergencia_telefono").HasMaxLength(20);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.SearchText).HasColumnName("search_text").ValueGeneratedOnAddOrUpdate();
 
             entity.HasIndex(e => e.Dpi).IsUnique();
 

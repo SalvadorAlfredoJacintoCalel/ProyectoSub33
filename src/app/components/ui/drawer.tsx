@@ -31,7 +31,6 @@ interface DrawerProps {
   footer?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
-  contentMask?: boolean;
 }
 
 export function Drawer({
@@ -45,7 +44,6 @@ export function Drawer({
   footer,
   children,
   className,
-  contentMask = true,
 }: DrawerProps) {
   const isRight = side === "right";
   const panelRef = React.useRef<HTMLDivElement>(null);
@@ -118,8 +116,6 @@ export function Drawer({
             className="fixed inset-0 z-[var(--z-drawer)]"
             style={{
               background: "radial-gradient(circle at center, rgba(211,47,47,0.12) 0%, transparent 70%), rgba(0,0,0,0.4)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -141,8 +137,8 @@ export function Drawer({
             className={cn(
               "fixed inset-y-0 z-[var(--z-drawer)] flex h-full w-full flex-col overflow-hidden",
               isRight ? "right-0 border-l" : "left-0 border-r",
-              "border-[var(--glass-border)]",
-              "bg-[var(--glass-bg-strong)] backdrop-blur-[24px]",
+              "border-[var(--divider)]",
+              "bg-[var(--bg-card)]",
               "shadow-[var(--elevation-brand-3)]",
               isRight
                 ? "before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-[var(--grad-primary)] before:rounded-tl-[24px]"
@@ -156,7 +152,7 @@ export function Drawer({
             transition={{ ease: SPRING_GENTLE, duration: 0.45 }}
           >
             {title && (
-              <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-[var(--glass-border)] px-6 py-5 bg-[var(--glass-bg-strong)] backdrop-blur-[24px] animate-slide-up-stagger stagger-1">
+              <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-[var(--divider)] px-6 py-5 bg-[var(--bg-card)] animate-slide-up-stagger stagger-1">
                 {icon && (
                   <motion.div
                     className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--grad-primary-soft)] text-[var(--brand-700)] shadow-[var(--elevation-brand-1)]"
@@ -174,7 +170,7 @@ export function Drawer({
                 <motion.button
                   onClick={onClose}
                   aria-label="Cerrar panel"
-                  className="shrink-0 rounded-xl p-2 text-[var(--text-3)] bg-[var(--glass-bg-subtle)] backdrop-blur-[12px] border border-[var(--glass-border)] transition-all duration-200 hover:bg-[var(--grad-primary)] hover:text-white hover:scale-110 hover:rotate-90 active:scale-95 focus-ring-premium"
+                  className="shrink-0 rounded-xl p-2 text-[var(--text-3)] bg-[var(--bg-hover)] border border-[var(--divider)] transition-all duration-200 hover:bg-[var(--grad-primary)] hover:text-white hover:scale-110 hover:rotate-90 active:scale-95 focus-ring-premium"
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
                 >
@@ -183,18 +179,12 @@ export function Drawer({
               </div>
             )}
 
-            <div
-              className="flex-1 overflow-y-auto px-6 py-5"
-              style={contentMask ? {
-                maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
-                WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
-              } : undefined}
-            >
+            <div className="flex-1 overflow-y-auto px-6 py-5">
               {children}
             </div>
 
             {footer && (
-              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-[var(--glass-border)] px-6 py-4 bg-[var(--glass-bg-strong)] backdrop-blur-[24px] animate-slide-up stagger-6">
+              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-[var(--divider)] px-6 py-4 bg-[var(--bg-card)] animate-slide-up stagger-6">
                 {footer}
               </div>
             )}

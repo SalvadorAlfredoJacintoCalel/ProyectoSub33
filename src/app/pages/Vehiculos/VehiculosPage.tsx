@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import {
   Pencil, Trash2, Eye, Plus, Search, X, Check,
-  AlertTriangle, ChevronLeft, ChevronRight, Fuel, Truck,
+  AlertTriangle, Fuel, Truck,
   Wrench, Info, Power, Printer, FileText, History, MapPin,
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
@@ -10,6 +10,7 @@ import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const RED = "var(--red)";
@@ -272,7 +273,6 @@ export function VehiculosPage() {
   const [entries, setEntries]                   = useState<FuelEntry[]>(INITIAL_FUEL);
   const [search, setSearch]                     = useState("");
   const [gasFilter, setGasFilter]               = useState<GasolineraFilter>("Todas");
-  const [page, setPage]                         = useState(1);
 
   // ── Fuel modal state ──────────────────────────────────────────────────────
   const [showFuelModal, setShowFuelModal]       = useState(false);
@@ -315,10 +315,6 @@ export function VehiculosPage() {
   }, [entries, search, gasFilter]);
 
   const PAGE_SIZE = 8;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageRows   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  useEffect(() => { setPage(1); }, [search, gasFilter]);
 
   // ── Open vehicle modal ────────────────────────────────────────────────────
   function openNewVehicle() {
@@ -542,6 +538,29 @@ export function VehiculosPage() {
     );
   }
 
+  const vehColumns: DataTableColumn<FuelEntry>[] = [
+    { key: "fecha", header: "Fecha", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.fecha}</span> },
+    { key: "responsable", header: "Responsable", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.responsable}</span> },
+    { key: "placas", header: "Placas", cell: (e) => <span className="font-semibold" style={{ color: "var(--neutral-900)" }}>{e.placas}</span> },
+    { key: "tipoUnidad", header: "Tipo Unidad", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.tipoUnidad}</span> },
+    { key: "galonaje", header: "Galonaje", headerClassName: "text-right", className: "text-right", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.galonaje} gal</span> },
+    { key: "comision", header: "Comisión Realizada", className: "max-w-[180px] truncate", cell: (e) => <span style={{ color: MUTED }}>{e.comision}</span> },
+    { key: "gasolinera", header: "Gasolinera", cell: (e) => <span style={{ background: "#fef9c3", color: "#b45309", borderRadius: 999, padding: "2px 8px", fontWeight: 600, fontSize: 11 }}>{e.gasolinera}</span> },
+    { key: "cuponDel", header: "Cupones Del", headerClassName: "text-right", className: "text-right", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.cuponDel}</span> },
+    { key: "cuponAl", header: "Cupones Al", headerClassName: "text-right", className: "text-right", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.cuponAl}</span> },
+    { key: "total", header: "Total", headerClassName: "text-right", className: "text-right", cell: (e) => <span className="font-bold" style={{ color: "var(--neutral-900)" }}>{e.totalCupones}</span> },
+    { key: "valor", header: "Valor Q", headerClassName: "text-right", className: "text-right", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>Q{e.valorCupon}</span> },
+    { key: "haber", header: "Haber (Q)", headerClassName: "text-right", className: "text-right", cell: (e) => <span className="font-bold" style={{ color: "var(--success-600)" }}>Q{e.haber.toLocaleString()}</span> },
+    { key: "saldo", header: "Saldo (Q)", headerClassName: "text-right", className: "text-right", cell: (e) => <span className="font-bold" style={{ color: e.saldoRestante < 500 ? "var(--brand-600)" : "var(--neutral-900)" }}>Q{e.saldoRestante.toLocaleString()}</span> },
+    { key: "acciones", header: "Acciones", cell: (e) => (
+      <div className="flex gap-1.5">
+        <button onClick={() => setDetailEntry(e)} title="Ver" style={iconBtn("var(--info-50)", "#1d4ed8")}><Eye size={13} /></button>
+        <button onClick={() => openEditFuel(e)} title="Editar" style={iconBtn("#fefce8", "#b45309")}><Pencil size={13} /></button>
+        <button onClick={() => requestDelete(e.id)} title="Eliminar" style={iconBtn("#fff5f5", "var(--brand-600)")}><Trash2 size={13} /></button>
+      </div>
+    ) },
+  ];
+
   // ──────────────────────────────────────────────────────────────────────────
   return (
     <div style={{ background: BG, minHeight: "100vh", fontFamily: "Inter, sans-serif", padding: "28px 24px" }}>
@@ -614,103 +633,37 @@ export function VehiculosPage() {
           </Button>
         </div>
 
-        {/* Search + filter bar */}
-        <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-          <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
-            <Search size={14} color={MUTED} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
-            <input
-              placeholder="Buscar por responsable, placa, unidad…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "100%", paddingLeft: 32, paddingRight: 10, paddingTop: 8, paddingBottom: 8, fontSize: 13, borderRadius: 8, border: `1px solid ${BORDER}`, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}
-            />
-          </div>
-          <select
-            value={gasFilter}
-            onChange={(e) => setGasFilter(e.target.value as GasolineraFilter)}
-            style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontFamily: "Inter, sans-serif", cursor: "pointer" }}
-          >
-            {(["Todas", "Shell Jireh", "Shell Atitlán"] as GasolineraFilter[]).map((g) => <option key={g}>{g}</option>)}
-          </select>
-        </div>
-
-        {/* Table */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 16, boxShadow: CARD_SHADOW, overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ background: "var(--neutral-50)", borderBottom: `1px solid ${BORDER}` }}>
-                {["Fecha","Responsable","Placas","Tipo Unidad","Galonaje","Comisión Realizada","Gasolinera","Cupones Del","Cupones Al","Total","Valor Q","Haber (Q)","Saldo (Q)","Acciones"].map((h) => (
-                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: "var(--neutral-900)", whiteSpace: "nowrap", fontFamily: "Manrope, sans-serif" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.length === 0 && (
-                <tr>
-                  <td colSpan={14} style={{ textAlign: "center", padding: 32, color: MUTED, fontSize: 13 }}>Sin registros encontrados.</td>
-                </tr>
-              )}
-              {pageRows.map((e, idx) => (
-                <tr key={e.id} style={{ borderBottom: `1px solid ${BORDER}`, background: idx % 2 === 0 ? "#fff" : "var(--neutral-50)" }}>
-                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "var(--neutral-900)" }}>{e.fecha}</td>
-                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "var(--neutral-900)" }}>{e.responsable}</td>
-                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--neutral-900)" }}>{e.placas}</td>
-                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "var(--neutral-900)" }}>{e.tipoUnidad}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--neutral-900)" }}>{e.galonaje} gal</td>
-                  <td style={{ padding: "9px 12px", color: MUTED, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.comision}</td>
-                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>
-                    <span style={{ background: "#fef9c3", color: "#b45309", borderRadius: 999, padding: "2px 8px", fontWeight: 600, fontSize: 11 }}>{e.gasolinera}</span>
-                  </td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--neutral-900)" }}>{e.cuponDel}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--neutral-900)" }}>{e.cuponAl}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "var(--neutral-900)" }}>{e.totalCupones}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--neutral-900)" }}>Q{e.valorCupon}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--success-600)", fontWeight: 700 }}>Q{e.haber.toLocaleString()}</td>
-                  <td style={{ padding: "9px 12px", textAlign: "right", color: e.saldoRestante < 500 ? "var(--brand-600)" : "var(--neutral-900)", fontWeight: 700 }}>Q{e.saldoRestante.toLocaleString()}</td>
-                  <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => setDetailEntry(e)} title="Ver" style={iconBtn("var(--info-50)","#1d4ed8")}><Eye size={13} /></button>
-                      <button onClick={() => openEditFuel(e)} title="Editar" style={iconBtn("#fefce8","#b45309")}><Pencil size={13} /></button>
-                      <button onClick={() => requestDelete(e.id)} title="Eliminar" style={iconBtn("#fff5f5","var(--brand-600)")}><Trash2 size={13} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Pagination */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderTop: `1px solid ${BORDER}` }}>
-            <span style={{ fontSize: 12, color: MUTED }}>
-              Mostrando {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length} registros
-            </span>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                style={{ padding: "5px 9px", borderRadius: 6, border: `1px solid ${BORDER}`, background: page === 1 ? "var(--neutral-50)" : "#fff", cursor: page === 1 ? "default" : "pointer", color: page === 1 ? MUTED : "var(--neutral-900)" }}
+        <DataTable<FuelEntry>
+          columns={vehColumns}
+          data={filtered}
+          getRowKey={(e) => e.id}
+          pageSize={PAGE_SIZE}
+          dense
+          emptyTitle="Sin registros encontrados"
+          emptyDescription="No hay cupones que coincidan con la búsqueda."
+          toolbar={
+            <div className="flex w-full flex-wrap gap-3">
+              <div className="relative min-w-[200px] flex-1">
+                <Search size={14} color={MUTED} className="absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  placeholder="Buscar por responsable, placa, unidad…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full rounded-lg border py-2 pl-8 pr-3 text-[13px] outline-none"
+                  style={{ borderColor: BORDER, fontFamily: "Inter, sans-serif", background: "var(--bg-input)", color: "var(--text-1)" }}
+                />
+              </div>
+              <select
+                value={gasFilter}
+                onChange={(e) => setGasFilter(e.target.value as GasolineraFilter)}
+                className="rounded-lg border px-3 py-2 text-[13px]"
+                style={{ borderColor: BORDER, background: "var(--bg-card)", fontFamily: "Inter, sans-serif", cursor: "pointer", color: "var(--text-1)" }}
               >
-                <ChevronLeft size={14} />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${p === page ? RED : BORDER}`, background: p === page ? RED : "#fff", color: p === page ? "#fff" : "var(--neutral-900)", cursor: "pointer", fontWeight: p === page ? 700 : 400, fontSize: 12 }}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                style={{ padding: "5px 9px", borderRadius: 6, border: `1px solid ${BORDER}`, background: page === totalPages ? "var(--neutral-50)" : "#fff", cursor: page === totalPages ? "default" : "pointer", color: page === totalPages ? MUTED : "var(--neutral-900)" }}
-              >
-                <ChevronRight size={14} />
-              </button>
+                {(["Todas", "Shell Jireh", "Shell Atitlán"] as GasolineraFilter[]).map((g) => <option key={g}>{g}</option>)}
+              </select>
             </div>
-          </div>
-        </div>
+          }
+        />
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════ */}

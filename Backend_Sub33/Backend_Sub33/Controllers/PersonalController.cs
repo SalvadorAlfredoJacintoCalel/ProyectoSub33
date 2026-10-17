@@ -21,16 +21,17 @@ public class PersonalController : ApiControllerBase
         [FromQuery] int tamanio = 10,
         [FromQuery] int? rangoId = null,
         [FromQuery] bool? estado = null,
+        [FromQuery] string? busqueda = null,
         CancellationToken ct = default)
-        => Respond(await _personalService.GetResumenAsync(pagina, tamanio, rangoId, estado, ct));
+        => Respond(await _personalService.GetResumenAsync(pagina, tamanio, rangoId, estado, busqueda, ct));
+
+    [HttpGet("estadisticas")]
+    public async Task<IActionResult> GetEstadisticas(CancellationToken ct)
+        => Respond(await _personalService.GetEstadisticasAsync(ct));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
         => Respond(await _personalService.GetByIdAsync(id, ct));
-
-    [HttpGet("buscar")]
-    public async Task<IActionResult> Buscar([FromQuery] string q, CancellationToken ct)
-        => Respond(await _personalService.BuscarAsync(q, ct));
 
     [HttpPost]
     public async Task<IActionResult> Crear([FromBody] CreatePersonalDto dto, CancellationToken ct)

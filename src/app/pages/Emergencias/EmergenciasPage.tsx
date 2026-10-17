@@ -15,6 +15,7 @@ import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
+import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
 import { inventarioService } from "@/services/inventarioService";
@@ -791,7 +792,6 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onDe
       onClose={onClose}
       side="right"
       size="xl"
-      contentMask={false}
       title={`REPORTE DE SERVICIO · ${emergencia.numeroIncidente}`}
       icon={<Calendar className="size-6" />}
       statusBadge={
@@ -940,6 +940,74 @@ export function EmergenciasPage() {
   const totalPaginas = paginacion?.totalPaginas ?? 0;
 
   const tipoOptions = useMemo(() => catalogos.tiposEmergencia.map((t) => t.nombre), [catalogos.tiposEmergencia]);
+
+  const emergencyColumns: DataTableColumn<EmergenciaListItem>[] = useMemo(
+    () => [
+      {
+        key: "numeroIncidente",
+        header: "N.º Incidente",
+        cell: (r) => (
+          <button
+            onClick={(e) => { e.stopPropagation(); openReport(r); }}
+            className="font-bold text-[13px] hover:underline transition-all"
+            style={{ color: RED }}
+          >
+            {r.numeroIncidente}
+          </button>
+        ),
+      },
+      {
+        key: "fecha",
+        header: "Fecha / Hora",
+        cell: (r) => (
+          <div className="flex flex-col">
+            <span className="font-semibold text-[13px]" style={{ color: "var(--text-1)" }}>
+              {formatFechaTabla(r.fecha)}
+            </span>
+            <span className="text-[11px]" style={{ color: "var(--text-3)" }}>
+              {r.horaSalida ?? ""}
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: "tipo",
+        header: "Tipo",
+        cell: (r) => <TypeBadge label={(r.tiposAsistencia ?? [])[0] ?? "—"} />,
+      },
+      {
+        key: "paciente",
+        header: "Paciente",
+        className: "max-w-[220px] truncate",
+        cell: (r) => (
+          <span className="font-semibold text-[13px]" style={{ color: "var(--text-1)" }}>
+            {r.paciente}
+          </span>
+        ),
+      },
+      {
+        key: "ubicacion",
+        header: "Ubicación",
+        className: "max-w-[220px] truncate",
+        cell: (r) => (
+          <span className="text-[13px]" style={{ color: "var(--text-2)" }}>
+            {r.ubicacion}
+          </span>
+        ),
+      },
+      {
+        key: "unidad",
+        header: "Unidad",
+        cell: (r) => (
+          <span className="font-bold text-[13px]" style={{ color: "var(--text-2)" }}>
+            {r.unidadAsignadaNombre ?? "—"}
+          </span>
+        ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   return (
     <>
@@ -1141,86 +1209,26 @@ export function EmergenciasPage() {
         </div>
 
         {/* Data table */}
-        <div className="flex flex-col">
-          <div className="flex items-end gap-4 px-4 pb-3 border-b border-[var(--neutral-100)]">
-            {TABLE_COLS.map((col) => (
-              <span key={col.label} className={`font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-400)] ${col.width}`}>
-                {col.label}
-              </span>
-            ))}
-          </div>
-
-          {loading && emergencias.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <Loader2 className="w-8 h-8 animate-spin" style={{ color: RED }} />
-              <p className="text-[13px] text-[var(--neutral-400)]">Cargando emergencias…</p>
-            </div>
-          ) : emergencias.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-5">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "var(--neutral-100)", border: "1px solid #ebebeb" }}>
-                <CalendarX2 style={{ color: "#c4c4c8" }} className="w-8 h-8" strokeWidth={1.5} />
-              </div>
-              <div className="flex flex-col items-center gap-1.5 text-center">
-                <h3 className="font-bold text-[16px] text-[var(--neutral-700)] tracking-[-0.2px]" style={{ fontFamily: "Manrope, sans-serif" }}>
-                  {hasActiveFilter ? "Sin registros para esta búsqueda" : "No hay emergencias registradas"}
-                </h3>
-                <p className="text-[13px] text-[var(--neutral-400)] leading-relaxed max-w-[400px]" style={{ fontFamily: "Inter, sans-serif" }}>
-                  {hasActiveFilter ? "No se encontraron reportes para el periodo o filtro seleccionado." : "Registre un nuevo servicio para comenzar."}
-                </p>
-              </div>
-              <button onClick={handleLimpiar} className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-[13px] text-white transition-opacity hover:opacity-90" style={{ background: RED, fontFamily: "Inter, sans-serif" }}>
-                <CheckCircle2 className="w-4 h-4" strokeWidth={2.5} />
-                Ver Historial Completo
-              </button>
-            </div>
-          ) : (
-            emergencias.map((row) => (
-              <div key={row.servicioId} className="flex items-center gap-4 px-4 py-5 transition-colors" style={{ borderBottom: "1px solid var(--divider)", cursor: "pointer" }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-                onClick={() => openReport(row)}>
-                <button
-                  onClick={(e) => { e.stopPropagation(); openReport(row); }}
-                  className="font-['Inter:Bold',sans-serif] font-bold text-[13px] leading-snug w-[120px] shrink-0 text-left hover:underline transition-all"
-                  style={{ color: RED }}
-                >
-                  {row.numeroIncidente}
-                </button>
-                <div className="flex flex-col gap-0.5 w-[130px] shrink-0">
-                  <span className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[13px]" style={{ color: "var(--text-1)" }}>{formatFechaTabla(row.fecha)}</span>
-                  <span className="font-['Inter:Regular',sans-serif] font-normal text-[11px]" style={{ color: "var(--text-3)" }}>{row.horaSalida ?? ""}</span>
-                </div>
-                <div className="w-[160px] shrink-0"><TypeBadge label={(row.tiposAsistencia ?? [])[0] ?? "—"} /></div>
-                <span className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[13px] flex-1 min-w-0 truncate" style={{ color: "var(--text-1)" }}>{row.paciente}</span>
-                <span className="font-['Inter:Regular',sans-serif] font-normal text-[13px] w-[180px] shrink-0 truncate" style={{ color: "var(--text-2)" }}>{row.ubicacion}</span>
-                <span className="font-['Inter:Bold',sans-serif] font-bold text-[13px] w-[80px] shrink-0" style={{ color: "var(--text-2)" }}>{row.unidadAsignadaNombre ?? "—"}</span>
-              </div>
-            ))
-          )}
-
-          <div className="flex items-center justify-between px-4 pt-5 pb-2">
-            <div className="flex items-center gap-3">
-              <span className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1.5px] uppercase" style={{ color: "var(--text-3)" }}>
-                MOSTRANDO {emergencias.length} DE {totalItems} SERVICIOS
-              </span>
-              <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                className="px-2 py-1 rounded border border-[var(--neutral-200)] text-[12px] text-[var(--neutral-700)] outline-none">
-                {[10, 25, 50].map((s) => (
-                  <option key={s} value={s}>{s} / página</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-1">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="w-8 h-8 flex items-center justify-center rounded text-[var(--neutral-400)] hover:bg-[var(--neutral-100)] transition-colors disabled:opacity-40">
-                <ChevronLeft className="w-4 h-4" strokeWidth={2} />
-              </button>
-              <span className="px-2 text-[13px] font-bold" style={{ color: "var(--neutral-500)" }}>{page} / {Math.max(1, totalPaginas)}</span>
-              <button onClick={() => setPage((p) => (totalPaginas > 0 ? Math.min(totalPaginas, p + 1) : p + 1))} disabled={totalPaginas > 0 && page >= totalPaginas} className="w-8 h-8 flex items-center justify-center rounded text-[var(--neutral-400)] hover:bg-[var(--neutral-100)] transition-colors disabled:opacity-40">
-                <ChevronRight className="w-4 h-4" strokeWidth={2} />
-              </button>
-            </div>
-          </div>
-        </div>
+        <DataTable<EmergenciaListItem>
+          columns={emergencyColumns}
+          data={emergencias}
+          getRowKey={(r) => r.servicioId}
+          loading={loading}
+          serverPagination={{ page, pageSize, totalItems, totalPages: totalPaginas }}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+          pageSizeOptions={[10, 25, 50]}
+          onRowClick={openReport}
+          emptyIcon={CalendarX2}
+          emptyTitle={hasActiveFilter ? "Sin registros para esta búsqueda" : "No hay emergencias registradas"}
+          emptyDescription={hasActiveFilter ? "No se encontraron reportes para el periodo o filtro seleccionado." : "Registre un nuevo servicio para comenzar."}
+          emptyAction={hasActiveFilter ? (
+            <button onClick={handleLimpiar} className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-[13px] text-white transition-opacity hover:opacity-90" style={{ background: RED, fontFamily: "Inter, sans-serif" }}>
+              <CheckCircle2 className="w-4 h-4" strokeWidth={2.5} />
+              Ver Historial Completo
+            </button>
+          ) : undefined}
+        />
 
         <div className="flex flex-col gap-1 items-center pt-4 pb-2">
           <span className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[2px] uppercase text-center" style={{ color: "var(--text-3)" }}>
