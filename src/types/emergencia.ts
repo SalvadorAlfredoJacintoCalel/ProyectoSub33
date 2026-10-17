@@ -107,6 +107,7 @@ export interface EmergenciaCreate {
   hospitalDestinoId?: number;
   estadoEntrega?: string;
   unidadAsignadaId?: number;
+  formuladoPorId?: string | null;
   creadoPorNombre?: string;
   resumen?: string;
   tiposAsistencia: string[];
@@ -133,11 +134,13 @@ export interface EmergenciaUpdate {
   hospitalDestinoId?: number;
   estadoEntrega?: string;
   unidadAsignadaId?: number;
+  formuladoPorId?: string | null;
   creadoPorNombre?: string;
   resumen?: string;
   tiposAsistencia: string[];
   personalAsignado: PersonalAsignado[];
   signosVitales?: SignosVitales;
+  insumosUtilizados?: InsumoEmergenciaDto[];
 }
 
 export interface EmergenciaFiltros {

@@ -105,6 +105,14 @@ INSERT INTO cat_hospitales (nombre, direccion, telefono, created_at) VALUES
     ('Tecniscan Escuintla', NULL, NULL, NOW())
 ON CONFLICT (nombre) DO NOTHING;
 
+-- ── 8. Tipo de movimiento de inventario para reversiones por edición ─────────
+-- Se usa al editar una emergencia y devolver stock de insumos que ya no se usan.
+INSERT INTO cat_tipos_movimiento (codigo, descripcion)
+SELECT 'REVERSION_SERVICIO', 'Reversión por edición de servicio'
+WHERE NOT EXISTS (
+    SELECT 1 FROM cat_tipos_movimiento WHERE codigo = 'REVERSION_SERVICIO'
+);
+
 -- ============================================================================
 -- Verificación rápida
 -- ============================================================================

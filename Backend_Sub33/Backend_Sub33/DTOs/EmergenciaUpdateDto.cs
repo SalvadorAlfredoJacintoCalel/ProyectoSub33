@@ -41,6 +41,7 @@ namespace Backend_Sub33.DTOs
         public List<string> TiposAsistencia { get; set; } = new();
         public List<PersonalAsignadoDto> PersonalAsignado { get; set; } = new();
         public SignosVitalesDto? SignosVitales { get; set; }
+        public List<InsumoEmergenciaDto> InsumosUtilizados { get; set; } = new();
     }
 
     public class EmergenciaResponseDto

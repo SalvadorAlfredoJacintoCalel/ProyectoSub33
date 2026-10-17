@@ -4,7 +4,7 @@ import {
   Calendar, CheckCircle2, Plus, Search,
   ChevronLeft, ChevronRight, SlidersHorizontal, ChevronDown,
   X, Printer, Clock, Zap, CalendarX2, Pencil, Power, Loader2,
-  User, Users, FileText,
+  User, Users, Activity,
 } from "lucide-react";
 import imgCvbLogo from "@/imports/DashboardPrincipalDesktop/382ba90f17ab58630c2735b72b71bff037f7ba87.png";
 import { RegisterServicePage } from "@/app/pages/Emergencias/RegisterServicePage";
@@ -17,7 +17,9 @@ import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
+import { inventarioService } from "@/services/inventarioService";
 import type { Emergencia, EmergenciaListItem, EmergenciaFiltros } from "@/types/emergencia";
+import type { ServicioInsumoUtilizado } from "@/types/inventario";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const RED = "var(--red)";
@@ -107,6 +109,18 @@ function formatFechaTabla(iso: string): string {
   const datePart = iso.split("T")[0];
   const [y, m, d] = datePart.split("-");
   return `${d}/${m}/${y}`;
+}
+
+function formatFechaHora(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
 }
 
 function mapEmergenciaToService(em: Emergencia): Service {
@@ -553,15 +567,49 @@ function SectionHeading({ children }: { children: ReactNode }) {
   );
 }
 
+function StatCard({ label, value, unit }: { label: string; value: string; unit?: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] px-4 py-3" style={{ background: "var(--bg-input)" }}>
+      <span className="block font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>{label}</span>
+      <div className="mt-1 flex items-baseline gap-1">
+        <span className="text-[20px] font-extrabold leading-none" style={{ color: "var(--text-1)", fontFamily: "Manrope, sans-serif" }}>{value}</span>
+        {unit && <span className="text-[11px] font-semibold" style={{ color: "var(--text-3)" }}>{unit}</span>}
+      </div>
+    </div>
+  );
+}
+
 // ─── Service Report Modal ─────────────────────────────────────────────────────
 
-function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
+function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onDesactivar }: {
   emergencia: Emergencia;
+  tiposEmergencia: { id: number; nombre: string }[];
   onClose: () => void;
   onEdit?: () => void;
   onDesactivar?: () => void;
 }) {
   const service = useMemo(() => mapEmergenciaToService(emergencia), [emergencia]);
+
+  const tipoEmergenciaNombre = useMemo(
+    () => tiposEmergencia.find((t) => t.id === emergencia.tipoEmergenciaId)?.nombre ?? "",
+    [tiposEmergencia, emergencia.tipoEmergenciaId]
+  );
+
+  const sv = emergencia.signosVitales;
+
+  const [insumos, setInsumos] = useState<ServicioInsumoUtilizado[]>([]);
+  const [loadingInsumos, setLoadingInsumos] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoadingInsumos(true);
+    inventarioService
+      .getServicioInsumos({ servicioId: emergencia.servicioId })
+      .then((r) => { if (mounted) setInsumos(r ?? []); })
+      .catch(() => { if (mounted) setInsumos([]); })
+      .finally(() => { if (mounted) setLoadingInsumos(false); });
+    return () => { mounted = false; };
+  }, [emergencia.servicioId]);
 
   useEffect(() => {
     const el = document.createElement("style");
@@ -575,89 +623,163 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
 
   const tabs: TabItem[] = [
     {
+      id: "general",
+      label: "General",
+      icon: <Calendar size={15} />,
+      content: (
+        <div className="flex flex-col gap-6">
+          <div>
+            <SectionHeading>Identificación del Servicio</SectionHeading>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+              <FieldRow label="N.º de Incidente" value={emergencia.numeroIncidente} />
+              <FieldRow label="Fecha" value={formatFechaTabla(emergencia.fecha)} />
+              <FieldRow label="Hora de Salida" value={emergencia.horaSalida ?? ""} />
+              <FieldRow label="Hora de Entrada" value={emergencia.horaEntrada ?? ""} />
+              <FieldRow label="Tipo de Solicitud" value={emergencia.solicitudTipo ?? ""} />
+              <FieldRow label="Tipo de Emergencia" value={tipoEmergenciaNombre} />
+              <FieldRow label="Ubicación del Incidente" value={emergencia.ubicacion} />
+              <FieldRow label="Hospital / Lugar de Traslado" value={emergencia.hospitalDestinoNombre ?? ""} />
+              <FieldRow label="Estado al Entregar" value={emergencia.estadoEntrega ?? ""} />
+              <FieldRow label="Unidad Asignada" value={emergencia.unidadAsignadaNombre ?? ""} />
+            </div>
+          </div>
+
+          <div>
+            <SectionHeading>Tipos de Asistencia</SectionHeading>
+            {emergencia.tiposAsistencia?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {emergencia.tiposAsistencia.map((t) => (
+                  <TypeBadge key={t} label={t} />
+                ))}
+              </div>
+            ) : (
+              <span className="text-[13px]" style={{ color: "var(--text-2)" }}>—</span>
+            )}
+          </div>
+
+          {emergencia.resumen && (
+            <div>
+              <SectionHeading>Resumen del Incidente</SectionHeading>
+              <p className="text-[13px] text-[var(--neutral-700)] leading-relaxed" style={{ fontFamily: "Inter, sans-serif" }}>{emergencia.resumen}</p>
+            </div>
+          )}
+
+          <div>
+            <SectionHeading>Registro</SectionHeading>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+              <FieldRow label="Formulado Por" value={emergencia.creadoPorNombre ?? ""} />
+              <FieldRow label="Estado del Registro" value={emergencia.estado} />
+              <FieldRow label="Creado" value={formatFechaHora(emergencia.fechaCreacion)} />
+              <FieldRow label="Última Modificación" value={formatFechaHora(emergencia.fechaModificacion)} />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
       id: "paciente",
-      label: "Info Paciente",
+      label: "Paciente",
       icon: <User size={15} />,
       content: (
         <div className="flex flex-col gap-5">
           <SectionHeading>Datos del Paciente &amp; Solicitante</SectionHeading>
           <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-            <FieldRow label="Nombre del Solicitante" value={service.solicitante} />
-            <FieldRow label="Nombre del Paciente" value={service.paciente} />
-            <FieldRow label="Acompañante" value={service.acompanante} />
-            <FieldRow label="Domicilio" value={service.domicilio} />
-            <FieldRow label="Edad" value={service.edad} />
+            <FieldRow label="Nombre del Solicitante" value={emergencia.solicitante ?? ""} />
+            <FieldRow label="Nombre del Paciente" value={emergencia.paciente} />
+            <FieldRow label="Edad" value={emergencia.edad != null ? String(emergencia.edad) : ""} />
+            <FieldRow label="Género" value={emergencia.genero ?? ""} />
+            <FieldRow label="Acompañante" value={emergencia.acompanante ?? ""} />
+            <FieldRow label="Domicilio" value={emergencia.domicilio ?? ""} />
             <div className="flex flex-col gap-0.5">
               <span className="font-bold text-[10px] tracking-[1.2px] uppercase text-[var(--neutral-400)]" style={{ fontFamily: "Inter, sans-serif" }}>Falleció</span>
-              <Badge variant={service.fallecio ? "error" : "success"}>{service.fallecio ? "SÍ" : "NO"}</Badge>
+              <Badge variant={emergencia.fallecio ? "error" : "success"}>{emergencia.fallecio ? "SÍ" : "NO"}</Badge>
             </div>
           </div>
         </div>
       ),
     },
     {
-      id: "servicio",
-      label: "Servicio",
-      icon: <Zap size={15} />,
-      content: (
+      id: "signos",
+      label: "Signos Vitales",
+      icon: <Activity size={15} />,
+      content: sv ? (
         <div className="flex flex-col gap-5">
-          <SectionHeading>Información del Servicio</SectionHeading>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-            <FieldRow label="Solicitud" value={service.solicitud} />
-            <FieldRow label="Hora de Salida" value={service.horaSalida} />
-            <FieldRow label="Hora de Entrada" value={service.horaEntrada} />
-            <FieldRow label="Tipo de Servicio" value={service.tiposServicio.join(", ")} />
-            <FieldRow label="Lugar de Traslado" value={service.lugarTraslado} />
+          <SectionHeading>Signos Vitales</SectionHeading>
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="Presión Arterial" value={sv.presionArterial || "—"} unit="mmHg" />
+            <StatCard label="Frecuencia Cardíaca" value={sv.frecuenciaCardiaca != null ? String(sv.frecuenciaCardiaca) : "—"} unit="BPM" />
+            <StatCard label="Frecuencia Respiratoria" value={sv.frecuenciaRespiratoria != null ? String(sv.frecuenciaRespiratoria) : "—"} unit="resp/min" />
+            <StatCard label="Saturación de Oxígeno" value={sv.saturacionOxigeno != null ? String(sv.saturacionOxigeno) : "—"} unit="%SpO₂" />
           </div>
-          {service.resumen && (
-            <div>
-              <SectionHeading>Resumen del Incidente</SectionHeading>
-              <p className="text-[13px] text-[var(--neutral-700)] leading-relaxed" style={{ fontFamily: "Inter, sans-serif" }}>{service.resumen}</p>
+          {sv.horaToma && (
+            <div className="pt-1">
+              <FieldRow label="Hora de Toma" value={sv.horaToma} />
             </div>
           )}
         </div>
-      ),
-    },
-    {
-      id: "personal",
-      label: "Personal",
-      icon: <Users size={15} />,
-      content: (
-        <div className="flex flex-col gap-5">
-          <SectionHeading>Personal y Unidades</SectionHeading>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-            <FieldRow label="Unidad(es) Destacada(s)" value={service.unidades.join(", ")} />
-            <FieldRow label="Formulado por (Responsable)" value={service.formuladoPor} />
-            <FieldRow label="Piloto(s)" value={service.pilotos.join(", ")} />
-            <FieldRow label="Camillero(s)" value={service.camilleros.join(", ")} />
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: "documentos",
-      label: "Documentos",
-      icon: <FileText size={15} />,
-      content: (
+      ) : (
         <EmptyState
-          icon={FileText}
-          title="Sin documentos adjuntos"
-          description="Los documentos asociados a este servicio aparecerán aquí."
+          icon={Activity}
+          title="Sin signos vitales"
+          description="No se registraron signos vitales para este servicio."
         />
       ),
     },
     {
-      id: "imprimir",
-      label: "Imprimir",
-      icon: <Printer size={15} />,
+      id: "recursos",
+      label: "Recursos",
+      icon: <Users size={15} />,
       content: (
-        <div className="flex flex-col gap-4">
-          <p className="text-sm leading-relaxed" style={{ color: "var(--text-2)" }}>
-            Genera el reporte oficial del servicio en formato carta para imprimir o guardar como PDF.
-          </p>
-          <Button variant="brand" onClick={() => window.print()}>
-            <Printer className="size-4" /> Imprimir Reporte
-          </Button>
+        <div className="flex flex-col gap-6">
+          <div>
+            <SectionHeading>Personal y Unidades</SectionHeading>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+              <FieldRow label="Unidad(es) Destacada(s)" value={emergencia.unidadAsignadaNombre ?? ""} />
+              <FieldRow label="Formulado por (Responsable)" value={emergencia.creadoPorNombre ?? ""} />
+            </div>
+            {emergencia.personalAsignado?.length ? (
+              <div className="mt-4 flex flex-col gap-2">
+                {emergencia.personalAsignado.map((p, i) => (
+                  <div key={`${p.nombrePersonal}-${i}`} className="flex items-center justify-between rounded-lg border border-[var(--border)] px-3 py-2">
+                    <span className="text-[13px] font-medium" style={{ color: "var(--text-1)" }}>{p.nombrePersonal}</span>
+                    <TypeBadge label={p.rolEnServicio || "Sin rol"} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-[13px]" style={{ color: "var(--text-2)" }}>Sin personal asignado.</p>
+            )}
+          </div>
+
+          <div>
+            <SectionHeading>Insumos Utilizados</SectionHeading>
+            {loadingInsumos ? (
+              <div className="flex items-center gap-2 text-[13px]" style={{ color: "var(--text-2)" }}>
+                <Loader2 className="w-4 h-4 animate-spin" /> Cargando insumos…
+              </div>
+            ) : insumos.length === 0 ? (
+              <p className="text-[13px]" style={{ color: "var(--text-2)" }}>No se registraron insumos utilizados.</p>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr style={{ background: "var(--bg-input)" }}>
+                      <th className="px-3 py-2 text-left font-bold text-[10px] uppercase tracking-[1px] text-[var(--neutral-400)]">Insumo</th>
+                      <th className="px-3 py-2 text-right font-bold text-[10px] uppercase tracking-[1px] text-[var(--neutral-400)]">Cantidad</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {insumos.map((ins) => (
+                      <tr key={ins.itemId} className="border-t border-[var(--divider)]">
+                        <td className="px-3 py-2" style={{ color: "var(--text-1)" }}>{ins.itemNombre}</td>
+                        <td className="px-3 py-2 text-right font-semibold" style={{ color: "var(--text-2)" }}>{ins.cantidad}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       ),
     },
@@ -669,19 +791,29 @@ function ServiceReportModal({ emergencia, onClose, onEdit, onDesactivar }: {
       onClose={onClose}
       side="right"
       size="xl"
-      title="REPORTE DE SERVICIO"
+      contentMask={false}
+      title={`REPORTE DE SERVICIO · ${emergencia.numeroIncidente}`}
       icon={<Calendar className="size-6" />}
       statusBadge={
-        <Badge variant={service.estado === "Inactivo" ? "default" : "success"} dot>
-          {service.estado === "Inactivo" ? "Inactivo" : "Activo"}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={emergencia.estado === "Inactivo" ? "default" : "success"} dot>
+            {emergencia.estado === "Inactivo" ? "Inactivo" : "Activo"}
+          </Badge>
+          <span className="text-[12px] font-medium" style={{ color: "var(--text-2)" }}>{formatFechaTabla(emergencia.fecha)}</span>
+          {tipoEmergenciaNombre && (
+            <>
+              <span style={{ color: "var(--text-3)" }}>·</span>
+              <span className="text-[12px] font-medium" style={{ color: "var(--text-2)" }}>{tipoEmergenciaNombre}</span>
+            </>
+          )}
+        </div>
       }
       footer={
         <>
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="size-4" /> Imprimir
           </Button>
-          {service.estado !== "Inactivo" && onDesactivar && (
+          {emergencia.estado !== "Inactivo" && onDesactivar && (
             <Button variant="brand-outline" onClick={onDesactivar}>
               <Power className="size-4" /> Desactivar
             </Button>
@@ -1103,6 +1235,7 @@ export function EmergenciasPage() {
       {selectedEmergencia && !editingId && (
         <ServiceReportModal
           emergencia={selectedEmergencia}
+          tiposEmergencia={catalogos.tiposEmergencia}
           onClose={() => setSelectedEmergencia(null)}
           onEdit={() => { setEditingId(selectedEmergencia.servicioId); setSelectedEmergencia(null); }}
           onDesactivar={() => handleDesactivar(selectedEmergencia.servicioId)}

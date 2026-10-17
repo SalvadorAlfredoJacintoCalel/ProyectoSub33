@@ -1,0 +1,1200 @@
+import { useState, useEffect, useMemo } from "react";
+import {
+  X, Lock, Phone, User, MapPin, ChevronDown, Truck, Heart, Loader2, Package,
+} from "lucide-react";
+import { useAlert } from "@/app/components/ui/AlertSystem";
+import { Button } from "@/app/components/ui/button";
+import { useEmergencias } from "@/hooks/useEmergencias";
+import { useAuth } from "@/context/AuthContext";
+import { inventarioService } from "@/services/inventarioService";
+import type { PersonalAsignado } from "@/types/emergencia";
+import type { InventarioItem } from "@/types/inventario";
+
+type Mode = "create" | "edit";
+
+interface Props {
+  mode: Mode;
+  serviceId?: number;
+  onClose: () => void;
+  onSaved?: () => void;
+}
+
+const sectionLabel: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  color: "var(--text-3)",
+  marginBottom: 8,
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+};
+
+const inputBase: React.CSSProperties = {
+  background: "var(--bg-input)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  color: "var(--text-1)",
+  fontSize: 14,
+  padding: "8px 12px",
+  width: "100%",
+  outline: "none",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
+  transition: "border-color 0.2s, box-shadow 0.2s",
+};
+
+const selectBase: React.CSSProperties = {
+  ...inputBase,
+  appearance: "none",
+  WebkitAppearance: "none",
+  backgroundImage: "none",
+  cursor: "pointer",
+};
+
+const errorField = (bad?: boolean): React.CSSProperties =>
+  bad
+    ? {
+        border: "1px solid var(--brand-500)",
+        boxShadow: "0 0 0 3px var(--red, var(--red))40",
+        animation: "shake 0.4s ease-in-out",
+      }
+    : {};
+
+const OpcionesGenero = ["Masculino", "Femenino"];
+
+function getNow() {
+  const now = new Date();
+  return now.toTimeString().slice(0, 5);
+}
+
+function numOrUndefined(value: string): number | undefined {
+  if (value === "") return undefined;
+  const n = Number(value);
+  return Number.isNaN(n) ? undefined : n;
+}
+
+interface PersonalSel {
+  personalId: string | null;
+  nombre: string;
+  rolServicioId: number | null;
+}
+
+export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props) {
+  const isEdit = mode === "edit";
+  const { catalogos, cargarCatalogos, getSiguienteIncidente, obtenerEmergencia, crearEmergencia, actualizarEmergencia } =
+    useEmergencias();
+  const { toast } = useAlert();
+  const { user } = useAuth();
+
+  const [numeroIncidente, setNumeroIncidente] = useState("");
+  const [tipoSolicitud, setTipoSolicitud] = useState<"Telefónica" | "Personal">("Telefónica");
+  const [tiempoSalida, setTiempoSalida] = useState("");
+  const [tiempoLlegada, setTiempoLlegada] = useState("");
+  const [tipoEmergenciaId, setTipoEmergenciaId] = useState("");
+  const [tiposAsistencia, setTiposAsistencia] = useState<string[]>([]);
+  const [nuevoTipoAsistencia, setNuevoTipoAsistencia] = useState("");
+  const [ubicacion, setUbicacion] = useState("");
+  const [hospitalDestinoId, setHospitalDestinoId] = useState("");
+  const [nombrePaciente, setNombrePaciente] = useState("");
+  const [edad, setEdad] = useState("");
+  const [genero, setGenero] = useState("");
+  const [solicitante, setSolicitante] = useState("");
+  const [acompanante, setAcompanante] = useState("");
+  const [fallecido, setFallecido] = useState(false);
+  const [domicilio, setDomicilio] = useState("");
+  const [presionArterial, setPresionArterial] = useState("");
+  const [frecuenciaCardiaca, setFrecuenciaCardiaca] = useState("");
+  const [frecuenciaRespiratoria, setFrecuenciaRespiratoria] = useState("");
+  const [saturacion, setSaturacion] = useState("");
+  const [horaToma, setHoraToma] = useState(() => getNow());
+  const [estadoEntrega, setEstadoEntrega] = useState("");
+  const [unidadAsignadaId, setUnidadAsignadaId] = useState("");
+  const [personalSeleccionado, setPersonalSeleccionado] = useState<PersonalSel[]>([]);
+  const [resumen, setResumen] = useState("");
+  const [fecha, setFecha] = useState(() => new Date().toISOString().split("T")[0]);
+  const [insumos, setInsumos] = useState<{ itemId: number; cantidad: number }[]>([]);
+  const [itemsDisponibles, setItemsDisponibles] = useState<InventarioItem[]>([]);
+
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [personalMsg, setPersonalMsg] = useState("");
+  const [loading, setLoading] = useState(isEdit);
+  const [submitting, setSubmitting] = useState(false);
+  const [formuladoPorIdOriginal, setFormuladoPorIdOriginal] = useState<string | null>(null);
+  const [creadoPorNombreOriginal, setCreadoPorNombreOriginal] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      await cargarCatalogos();
+
+      if (isEdit && serviceId) {
+        const em = await obtenerEmergencia(serviceId);
+        if (mounted && em) {
+          setNumeroIncidente(em.numeroIncidente);
+          setTipoSolicitud(em.solicitudTipo === "Personal" ? "Personal" : "Telefónica");
+          setTiempoSalida(em.horaSalida ?? "");
+          setTiempoLlegada(em.horaEntrada ?? "");
+          setTipoEmergenciaId(em.tipoEmergenciaId ? String(em.tipoEmergenciaId) : "");
+          setTiposAsistencia(em.tiposAsistencia ?? []);
+          setUbicacion(em.ubicacion ?? "");
+          setHospitalDestinoId(em.hospitalDestinoId ? String(em.hospitalDestinoId) : "");
+          setNombrePaciente(em.paciente ?? "");
+          setEdad(em.edad ? String(em.edad) : "");
+          setGenero(em.genero === "No especificado" ? "" : (em.genero ?? ""));
+          setSolicitante(em.solicitante ?? "");
+          setAcompanante(em.acompanante ?? "");
+          setFallecido(em.fallecio ?? false);
+          setDomicilio(em.domicilio ?? "");
+          setEstadoEntrega(em.estadoEntrega ?? "");
+          setUnidadAsignadaId(em.unidadAsignadaId ? String(em.unidadAsignadaId) : "");
+          setResumen(em.resumen ?? "");
+          setFecha(em.fecha ? em.fecha.split("T")[0] : new Date().toISOString().split("T")[0]);
+          setFormuladoPorIdOriginal(em.formuladoPorId ?? null);
+          setCreadoPorNombreOriginal(em.creadoPorNombre ?? "");
+
+          const sv = em.signosVitales;
+          if (sv) {
+            setPresionArterial(sv.presionArterial ?? "");
+            setFrecuenciaCardiaca(sv.frecuenciaCardiaca != null ? String(sv.frecuenciaCardiaca) : "");
+            setFrecuenciaRespiratoria(sv.frecuenciaRespiratoria != null ? String(sv.frecuenciaRespiratoria) : "");
+            setSaturacion(sv.saturacionOxigeno != null ? String(sv.saturacionOxigeno) : "");
+            setHoraToma(sv.horaToma ?? getNow());
+          }
+
+          setPersonalSeleccionado(
+            (em.personalAsignado ?? []).map((p) => ({
+              personalId: p.personalId ?? null,
+              nombre: p.nombrePersonal,
+              rolServicioId: p.rolServicioId ?? null,
+            }))
+          );
+        }
+
+        const ins = await inventarioService.getServicioInsumos({ servicioId }).catch(() => []);
+        if (mounted) {
+          setInsumos((ins ?? []).map((x) => ({ itemId: x.itemId, cantidad: x.cantidad })));
+        }
+      } else {
+        const correlativo = await getSiguienteIncidente();
+        if (mounted && correlativo) setNumeroIncidente(correlativo);
+      }
+
+      if (mounted) setLoading(false);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [isEdit, serviceId, cargarCatalogos, obtenerEmergencia, getSiguienteIncidente]);
+
+  useEffect(() => {
+    let mounted = true;
+    inventarioService
+      .getItems({ pagina: 1, tamanio: 200 })
+      .then((r) => {
+        if (mounted) setItemsDisponibles(r.items);
+      })
+      .catch(() => {
+        if (mounted) setItemsDisponibles([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  function toggleTipoAsistencia(tipo: string) {
+    setTiposAsistencia((prev) =>
+      prev.includes(tipo) ? prev.filter((t) => t !== tipo) : [...prev, tipo]
+    );
+    setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
+  }
+
+  function togglePersonal(personalId: string, nombre: string) {
+    setPersonalSeleccionado((prev) => {
+      const existe = prev.find((p) => p.personalId === personalId);
+      if (existe) return prev.filter((p) => p.personalId !== personalId);
+      const rolDefault = catalogos.rolesServicio[0]?.id ?? null;
+      return [...prev, { personalId, nombre, rolServicioId: rolDefault }];
+    });
+    setErrors((prev) => ({ ...prev, personalAsignado: false }));
+    setPersonalMsg("");
+  }
+
+  function setRolPersonal(personalId: string, rolServicioId: number | null) {
+    setPersonalSeleccionado((prev) =>
+      prev.map((p) => (p.personalId === personalId ? { ...p, rolServicioId } : p))
+    );
+    setErrors((prev) => ({ ...prev, personalAsignado: false }));
+    setPersonalMsg("");
+  }
+
+  const selectedIds = new Set(personalSeleccionado.map((p) => p.personalId));
+
+  const personalLista = useMemo(() => {
+    const base = catalogos.personal;
+    const ids = new Set(base.map((p) => p.personalId));
+    const extra = personalSeleccionado
+      .filter((s) => s.personalId && !ids.has(s.personalId))
+      .map((s) => ({
+        personalId: s.personalId as string,
+        codigo: "",
+        codigoBombero: null,
+        nombreCompleto: s.nombre,
+        rangoNombre: null,
+        estado: false,
+      }));
+    return [...base, ...extra];
+  }, [catalogos.personal, personalSeleccionado]);
+
+  async function handleSubmit() {
+    const newErrors: Record<string, boolean> = {};
+    let personalErrorMsg = "";
+
+    if (!tipoEmergenciaId) newErrors.tipoEmergenciaId = true;
+    if (tiposAsistencia.length === 0) newErrors.tiposAsistencia = true;
+    if (!ubicacion.trim()) newErrors.ubicacion = true;
+    if (!nombrePaciente.trim()) newErrors.nombrePaciente = true;
+    if (!hospitalDestinoId) newErrors.hospitalDestinoId = true;
+    if (!unidadAsignadaId) newErrors.unidadAsignadaId = true;
+
+    const edadNum = Number(edad);
+    if (edad && (Number.isNaN(edadNum) || edadNum < 0 || edadNum > 120)) newErrors.edad = true;
+
+    const fc = Number(frecuenciaCardiaca);
+    if (frecuenciaCardiaca !== "" && (Number.isNaN(fc) || fc < 0 || fc > 250)) newErrors.frecuenciaCardiaca = true;
+
+    const fr = Number(frecuenciaRespiratoria);
+    if (frecuenciaRespiratoria !== "" && (Number.isNaN(fr) || fr < 0 || fr > 100)) newErrors.frecuenciaRespiratoria = true;
+
+    const sat = Number(saturacion);
+    if (saturacion !== "" && (Number.isNaN(sat) || sat < 0 || sat > 100)) newErrors.saturacion = true;
+
+    const idPiloto = catalogos.rolesServicio.find((r) => r.nombre.toLowerCase().includes("piloto"))?.id ?? null;
+    const idCamillero = catalogos.rolesServicio.find((r) => r.nombre.toLowerCase().includes("camillero"))?.id ?? null;
+    const rolesSel = personalSeleccionado.map((p) => p.rolServicioId);
+    const tienePiloto = idPiloto != null && rolesSel.includes(idPiloto);
+    const tieneCamillero = idCamillero != null && rolesSel.includes(idCamillero);
+
+    if (personalSeleccionado.length < 2) {
+      newErrors.personalAsignado = true;
+      personalErrorMsg = "Debe asignar al menos 2 personas (un Piloto y un Camillero).";
+    } else if (!tienePiloto || !tieneCamillero) {
+      newErrors.personalAsignado = true;
+      personalErrorMsg = "El personal asignado debe incluir al menos un Piloto y un Camillero.";
+    }
+
+    setPersonalMsg(personalErrorMsg);
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.warning(personalErrorMsg || "Complete los datos obligatorios (*) antes de continuar.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const personalAsignado: PersonalAsignado[] = personalSeleccionado.map((p) => ({
+        personalId: p.personalId ?? null,
+        nombrePersonal: p.nombre,
+        rolServicioId: p.rolServicioId,
+      }));
+
+      const dto = {
+        numeroIncidente,
+        fecha,
+        horaSalida: tiempoSalida || undefined,
+        horaEntrada: tiempoLlegada || undefined,
+        solicitudTipo: tipoSolicitud,
+        tipoEmergenciaId: Number(tipoEmergenciaId),
+        tiposAsistencia,
+        ubicacion: ubicacion.trim(),
+        hospitalDestinoId: Number(hospitalDestinoId),
+        paciente: nombrePaciente.trim(),
+        edad: edadNum || undefined,
+        genero: genero || undefined,
+        solicitante: solicitante || undefined,
+        acompanante: acompanante || undefined,
+        fallecio: fallecido,
+        domicilio: domicilio || undefined,
+        estadoEntrega: estadoEntrega || undefined,
+        unidadAsignadaId: Number(unidadAsignadaId),
+        formuladoPorId: isEdit ? (formuladoPorIdOriginal ?? undefined) : (user?.personalId ?? undefined),
+        creadoPorNombre: isEdit
+          ? (creadoPorNombreOriginal || undefined)
+          : (user?.name || user?.username || undefined),
+        personalAsignado,
+        signosVitales: {
+          presionArterial: presionArterial || undefined,
+          frecuenciaCardiaca: numOrUndefined(frecuenciaCardiaca),
+          frecuenciaRespiratoria: numOrUndefined(frecuenciaRespiratoria),
+          saturacionOxigeno: numOrUndefined(saturacion),
+          horaToma,
+        },
+        resumen: resumen || undefined,
+        insumosUtilizados: insumos
+          .filter((i) => i.itemId > 0 && i.cantidad > 0)
+          .map((i) => ({ itemId: i.itemId, cantidad: i.cantidad })),
+      };
+
+      if (isEdit && serviceId) {
+        const actualizada = await actualizarEmergencia(serviceId, dto);
+        if (actualizada) {
+          toast.success(`Incidente ${actualizada.numeroIncidente} actualizado exitosamente`);
+          onSaved?.();
+          onClose();
+        } else {
+          toast.error("No se pudieron guardar los cambios. Intente nuevamente.");
+        }
+      } else {
+        const resultado = await crearEmergencia(dto);
+        if (resultado && resultado.exito) {
+          toast.success(`Incidente ${resultado.numeroIncidente} registrado exitosamente`);
+          onClose();
+        } else {
+          toast.error("No se pudo registrar la emergencia. Intente nuevamente.");
+        }
+      }
+    } catch (err) {
+      const mensaje = err instanceof Error ? err.message : "Error desconocido";
+      toast.error(mensaje);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50">
+        <div className="rounded-2xl p-10 flex flex-col items-center gap-4" style={{ background: "var(--bg-card)" }}>
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--red)" }} />
+          <span style={{ color: "var(--text-2)", fontSize: 14 }}>Cargando emergencia…</span>
+        </div>
+      </div>
+    );
+  }
+
+  const titulo = isEdit ? `Editar Emergencia — ${numeroIncidente}` : "Registrar Emergencia";
+
+  return (
+    <>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "90vh",
+          overflow: "hidden",
+          background: "var(--bg-card)",
+          borderRadius: 24,
+        }}
+      >
+        {/* Sticky header */}
+        <div
+          style={{
+            background: "var(--bg-input)",
+            padding: "16px 24px",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 3, height: 24, borderRadius: 2, background: "var(--red)" }} />
+            <h1
+              style={{
+                fontFamily: "Manrope, sans-serif",
+                fontSize: 16,
+                fontWeight: 700,
+                color: "var(--text-1)",
+                margin: 0,
+              }}
+            >
+              {titulo}
+            </h1>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              color: "var(--text-2)",
+              display: "flex",
+              alignItems: "center",
+            }}
+            aria-label="Cerrar"
+          >
+            <X style={{ width: 20, height: 20 }} />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div
+          style={{
+            overflowY: "auto",
+            padding: "24px",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 20,
+          }}
+        >
+          {/* 1. Código de Emergencia */}
+          <section>
+            <p style={sectionLabel}>Código de Emergencia</p>
+            <div style={{ position: "relative" }}>
+              <Lock
+                style={{
+                  position: "absolute",
+                  left: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 15,
+                  height: 15,
+                  color: "var(--text-3)",
+                  pointerEvents: "none",
+                }}
+              />
+              <input
+                readOnly
+                value={numeroIncidente}
+                style={{ ...inputBase, paddingLeft: 32, color: "var(--text-3)", cursor: "default" }}
+              />
+            </div>
+          </section>
+
+          {/* 2. Tipo de Solicitud */}
+          <section>
+            <p style={sectionLabel}>Tipo de Solicitud</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {(["Telefónica", "Personal"] as const).map((tipo) => {
+                const active = tipoSolicitud === tipo;
+                return (
+                  <button
+                    key={tipo}
+                    onClick={() => setTipoSolicitud(tipo)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "8px 16px",
+                      borderRadius: 999,
+                      border: active ? "none" : "1px solid var(--border)",
+                      background: active ? "var(--red)" : "var(--bg-input)",
+                      color: active ? "#fff" : "var(--text-2)",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {tipo === "Telefónica" ? (
+                      <Phone style={{ width: 14, height: 14 }} />
+                    ) : (
+                      <User style={{ width: 14, height: 14 }} />
+                    )}
+                    {tipo}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* 3. Tipo de Emergencia */}
+          <section>
+            <p style={sectionLabel}>
+              Tipo de Emergencia
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
+            </p>
+            <div style={{ position: "relative" }}>
+              <select
+                value={tipoEmergenciaId}
+                onChange={(e) => {
+                  setTipoEmergenciaId(e.target.value);
+                  setErrors((prev) => ({ ...prev, tipoEmergenciaId: false }));
+                }}
+                style={{
+                  ...selectBase,
+                  paddingRight: 32,
+                  ...errorField(errors.tipoEmergenciaId),
+                }}
+              >
+                <option value="">Seleccionar tipo de emergencia…</option>
+                {catalogos.tiposEmergencia.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nombre}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 15,
+                  height: 15,
+                  color: "var(--text-3)",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
+          </section>
+
+          {/* 4. Tiempos de Atención */}
+          <section>
+            <p style={sectionLabel}>Tiempos de Atención</p>
+            <div style={{ display: "flex", gap: 12 }}>
+              {[
+                { label: "Salida", value: tiempoSalida, set: setTiempoSalida },
+                { label: "Llegada", value: tiempoLlegada, set: setTiempoLlegada },
+              ].map((campo) => (
+                <div key={campo.label} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500 }}>{campo.label}</span>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <input
+                      type="time"
+                      value={campo.value}
+                      onChange={(e) => campo.set(e.target.value)}
+                      style={{ ...inputBase, flex: 1, padding: "8px 10px" }}
+                    />
+                    <button
+                      onClick={() => campo.set(getNow())}
+                      style={{
+                        padding: "7px 10px",
+                        borderRadius: 6,
+                        border: "1px solid var(--red)",
+                        background: "transparent",
+                        color: "var(--red)",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      Ahora
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 5. Tipos de Asistencia — Input libre con sugerencias */}
+          <section>
+            <p style={sectionLabel}>
+              Tipos de Asistencia
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
+            </p>
+
+            {/* Tags seleccionados */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+              {tiposAsistencia.map((tipo, i) => (
+                <span
+                  key={i}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    background: "var(--red)",
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  {tipo}
+                  <button
+                    onClick={() => setTiposAsistencia(tiposAsistencia.filter((_, j) => j !== i))}
+                    style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 0 }}
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            {/* Input con autocomplete automático */}
+            <input
+              list="tiposAsistenciaList"
+              value={nuevoTipoAsistencia}
+              onChange={(e) => {
+                const valor = e.target.value;
+                setNuevoTipoAsistencia(valor);
+                const coincidencia = catalogos.tiposAsistencia.find(
+                  (t) => t.nombre.toLowerCase() === valor.toLowerCase()
+                );
+                if (coincidencia && !tiposAsistencia.includes(coincidencia.nombre)) {
+                  setTiposAsistencia([...tiposAsistencia, coincidencia.nombre]);
+                  setNuevoTipoAsistencia("");
+                  setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && nuevoTipoAsistencia.trim()) {
+                  e.preventDefault();
+                  const valor = nuevoTipoAsistencia.trim();
+                  if (!tiposAsistencia.includes(valor)) {
+                    setTiposAsistencia([...tiposAsistencia, valor]);
+                  }
+                  setNuevoTipoAsistencia("");
+                  setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
+                }
+              }}
+              placeholder="Escriba o seleccione..."
+              style={{ ...inputBase, ...errorField(errors.tiposAsistencia) }}
+            />
+            <datalist id="tiposAsistenciaList">
+              {catalogos.tiposAsistencia
+                .filter((t) => !tiposAsistencia.includes(t.nombre))
+                .map((t) => (
+                  <option key={t.id} value={t.nombre} />
+                ))}
+            </datalist>
+          </section>
+
+          {/* 6. Ubicación */}
+          <section>
+            <p style={sectionLabel}>
+              Ubicación del Incidente
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
+            </p>
+            <div style={{ position: "relative" }}>
+              <MapPin
+                style={{
+                  position: "absolute",
+                  left: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 15,
+                  height: 15,
+                  color: "var(--text-3)",
+                  pointerEvents: "none",
+                }}
+              />
+              <input
+                type="text"
+                value={ubicacion}
+                onChange={(e) => {
+                  setUbicacion(e.target.value);
+                  setErrors((prev) => ({ ...prev, ubicacion: false }));
+                }}
+                placeholder="Aldea, sector o punto de referencia"
+                style={{
+                  ...inputBase,
+                  paddingLeft: 32,
+                  ...errorField(errors.ubicacion),
+                }}
+              />
+            </div>
+          </section>
+
+          {/* 7. Hospital de Destino */}
+          <section>
+            <p style={sectionLabel}>
+              Hospital de Destino
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
+            </p>
+            <div style={{ position: "relative" }}>
+              <select
+                value={hospitalDestinoId}
+                onChange={(e) => {
+                  setHospitalDestinoId(e.target.value);
+                  setErrors((prev) => ({ ...prev, hospitalDestinoId: false }));
+                }}
+                style={{
+                  ...selectBase,
+                  paddingRight: 32,
+                  ...errorField(errors.hospitalDestinoId),
+                }}
+              >
+                <option value="">Seleccionar hospital…</option>
+                {catalogos.hospitales.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.nombre}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 15,
+                  height: 15,
+                  color: "var(--text-3)",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
+          </section>
+
+          {/* 8. Datos del Paciente */}
+          <section>
+            <p style={sectionLabel}>Datos del Paciente</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Nombre Completo <span style={{ color: "var(--red)" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={nombrePaciente}
+                  onChange={(e) => {
+                    setNombrePaciente(e.target.value);
+                    setErrors((prev) => ({ ...prev, nombrePaciente: false }));
+                  }}
+                  placeholder="Nombre del paciente"
+                  style={{
+                    ...inputBase,
+                    ...errorField(errors.nombrePaciente),
+                  }}
+                />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px" }}>
+                <div>
+                  <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                    Edad
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={edad}
+                    onChange={(e) => {
+                      setEdad(e.target.value);
+                      setErrors((prev) => ({ ...prev, edad: false }));
+                    }}
+                    placeholder="—"
+                    min={0}
+                    max={120}
+                    style={{
+                      ...inputBase,
+                      width: 80,
+                      ...errorField(errors.edad),
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                    Género
+                  </label>
+                  <select value={genero} onChange={(e) => setGenero(e.target.value)} style={{ ...selectBase, paddingRight: 32 }}>
+                    <option value="" disabled>
+                      Seleccione una opción
+                    </option>
+                    {OpcionesGenero.map((op) => (
+                      <option key={op} value={op}>
+                        {op}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Solicitante
+                </label>
+                <input type="text" value={solicitante} onChange={(e) => setSolicitante(e.target.value)} placeholder="Nombre del solicitante" style={inputBase} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Acompañante
+                </label>
+                <input type="text" value={acompanante} onChange={(e) => setAcompanante(e.target.value)} placeholder="Nombre del acompañante" style={inputBase} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Domicilio
+                </label>
+                <input type="text" value={domicilio} onChange={(e) => setDomicilio(e.target.value)} placeholder="Domicilio del paciente" style={inputBase} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 6 }}>
+                  Fallecido
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setFallecido(false)}
+                    style={{
+                      padding: "6px 18px",
+                      borderRadius: 999,
+                      border: !fallecido ? "none" : "1px solid var(--border)",
+                      background: !fallecido ? "var(--success-600)" : "var(--bg-input)",
+                      color: !fallecido ? "#fff" : "var(--text-2)",
+                      fontSize: 13,
+                      fontWeight: !fallecido ? 600 : 400,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={() => setFallecido(true)}
+                    style={{
+                      padding: "6px 18px",
+                      borderRadius: 999,
+                      border: fallecido ? "none" : "1px solid var(--border)",
+                      background: fallecido ? "var(--red)" : "var(--bg-input)",
+                      color: fallecido ? "#fff" : "var(--text-2)",
+                      fontSize: 13,
+                      fontWeight: fallecido ? 600 : 400,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    Sí
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 9. Evaluación / Signos Vitales */}
+          <section>
+            <p style={sectionLabel}>
+              <Heart style={{ width: 13, height: 13, color: "var(--red)" }} />
+              Evaluación del Paciente / Signos Vitales
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Presión Arterial (mmHg)
+                </label>
+                <input type="text" value={presionArterial} onChange={(e) => setPresionArterial(e.target.value)} placeholder="120/80" style={inputBase} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Frecuencia Cardíaca (BPM)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={frecuenciaCardiaca}
+                  onChange={(e) => {
+                    setFrecuenciaCardiaca(e.target.value);
+                    setErrors((prev) => ({ ...prev, frecuenciaCardiaca: false }));
+                  }}
+                  placeholder="72"
+                  style={{
+                    ...inputBase,
+                    ...errorField(errors.frecuenciaCardiaca),
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Frecuencia Respiratoria (resp/min)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={frecuenciaRespiratoria}
+                  onChange={(e) => {
+                    setFrecuenciaRespiratoria(e.target.value);
+                    setErrors((prev) => ({ ...prev, frecuenciaRespiratoria: false }));
+                  }}
+                  placeholder="16"
+                  style={{ ...inputBase, ...errorField(errors.frecuenciaRespiratoria) }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Saturación de Oxígeno (%SpO₂)
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={saturacion}
+                  onChange={(e) => {
+                    setSaturacion(e.target.value);
+                    setErrors((prev) => ({ ...prev, saturacion: false }));
+                  }}
+                  placeholder="98"
+                  style={{
+                    ...inputBase,
+                    ...errorField(errors.saturacion),
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Hora de Toma
+                </label>
+                <input type="time" value={horaToma} onChange={(e) => setHoraToma(e.target.value)} style={inputBase} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                  Estado al Entregar en Hospital
+                </label>
+                <div style={{ position: "relative" }}>
+                  <select
+                    value={estadoEntrega}
+                    onChange={(e) => setEstadoEntrega(e.target.value)}
+                    style={{ ...selectBase, paddingRight: 32 }}
+                  >
+                    <option value="">Seleccionar estado…</option>
+                    {catalogos.estadosEntrega.map((e) => (
+                      <option key={e.id} value={e.nombre}>
+                        {e.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    style={{
+                      position: "absolute",
+                      right: 10,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: 14,
+                      height: 14,
+                      color: "var(--text-3)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 10. Recursos Asignados */}
+          <section>
+            <p style={sectionLabel}>
+              <Truck style={{ width: 13, height: 13 }} />
+              Recursos Asignados
+            </p>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
+                Unidad / Vehículo <span style={{ color: "var(--red)" }}>*</span>
+              </label>
+              <div style={{ position: "relative" }}>
+                <select
+                  value={unidadAsignadaId}
+                  onChange={(e) => {
+                    setUnidadAsignadaId(e.target.value);
+                    setErrors((prev) => ({ ...prev, unidadAsignadaId: false }));
+                  }}
+                  style={{
+                    ...selectBase,
+                    paddingRight: 32,
+                    ...errorField(errors.unidadAsignadaId),
+                  }}
+                >
+                  <option value="">Seleccionar unidad…</option>
+                  {catalogos.unidades.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 14,
+                    height: 14,
+                    color: "var(--text-3)",
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 6 }}>
+                Personal <span style={{ color: "var(--red)", marginLeft: 4 }}>*</span>
+              </label>
+              {personalLista.length === 0 ? (
+                <p style={{ color: "var(--text-2)", fontSize: 12, margin: "8px 0" }}>Sin personal disponible</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {personalLista.map((p) => {
+                    const selected = selectedIds.has(p.personalId);
+                    return (
+                      <div
+                        key={p.personalId}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          border: selected ? "1px solid var(--red)" : "1px solid var(--border)",
+                          background: selected ? "var(--brand-50)" : "var(--bg-input)",
+                          ...errorField(errors.personalAsignado && !selected),
+                        }}
+                      >
+                        <button
+                          onClick={() => togglePersonal(p.personalId, p.nombreCompleto)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            flex: 1,
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            padding: 0,
+                            color: "var(--text-1)",
+                            fontSize: 13,
+                            fontWeight: 500,
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: 4,
+                              border: "1px solid var(--border)",
+                              background: selected ? "var(--red)" : "transparent",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#fff",
+                              fontSize: 11,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {selected ? "✓" : ""}
+                          </span>
+                          {p.nombreCompleto}
+                        </button>
+                        {selected && (
+                          <select
+                            value={personalSeleccionado.find((s) => s.personalId === p.personalId)?.rolServicioId ?? ""}
+                            onChange={(e) => setRolPersonal(p.personalId, e.target.value ? Number(e.target.value) : null)}
+                            style={{ ...selectBase, width: 160, padding: "4px 8px", fontSize: 12 }}
+                          >
+                            <option value="">Rol…</option>
+                            {catalogos.rolesServicio.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {errors.personalAsignado && personalMsg && (
+                <p style={{ color: "var(--red)", fontSize: 12, marginTop: 8 }}>{personalMsg}</p>
+              )}
+            </div>
+          </section>
+
+          {/* 11. Insumos Utilizados */}
+          <section>
+            <p style={sectionLabel}>
+              <Package style={{ width: 13, height: 13 }} />
+              Insumos Utilizados (opcional)
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {insumos.map((ins, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <select
+                    value={ins.itemId}
+                    onChange={(e) =>
+                      setInsumos(insumos.map((x, j) => (j === i ? { ...x, itemId: Number(e.target.value) } : x)))
+                    }
+                    style={{ ...selectBase, flex: 1 }}
+                  >
+                    <option value={0}>Seleccionar insumo...</option>
+                    {itemsDisponibles.map((it) => (
+                      <option key={it.itemId} value={it.itemId}>
+                        {it.nombre} (stock: {it.stockActual})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    value={ins.cantidad}
+                    onChange={(e) =>
+                      setInsumos(insumos.map((x, j) => (j === i ? { ...x, cantidad: Number(e.target.value) } : x)))
+                    }
+                    style={{ ...inputBase, width: 80 }}
+                  />
+                  <button
+                    onClick={() => setInsumos(insumos.filter((_, j) => j !== i))}
+                    style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer" }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setInsumos([...insumos, { itemId: 0, cantidad: 1 }])}
+                style={{
+                  background: "none",
+                  border: "1px dashed var(--border)",
+                  borderRadius: 8,
+                  padding: "8px",
+                  cursor: "pointer",
+                  color: "var(--text-2)",
+                }}
+              >
+                + Agregar insumo
+              </button>
+            </div>
+          </section>
+
+          {/* 12. Resumen */}
+          <section>
+            <p style={sectionLabel}>Resumen del Incidente</p>
+            <textarea
+              value={resumen}
+              onChange={(e) => setResumen(e.target.value)}
+              rows={3}
+              placeholder="Descripción breve del incidente…"
+              style={{ ...inputBase, resize: "vertical", minHeight: 80 }}
+            />
+          </section>
+        </div>
+
+        {/* Sticky footer */}
+        <div
+          style={{
+            background: "var(--bg-card)",
+            borderTop: "1px solid var(--border)",
+            padding: "16px 24px",
+            display: "flex",
+            gap: 12,
+            justifyContent: "flex-end",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Button variant="brand-outline" onClick={onClose} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button variant="brand" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} />
+                {isEdit ? "Guardando..." : "Registrando..."}
+              </>
+            ) : (
+              isEdit ? "Guardar Cambios" : "Registrar Emergencia"
+            )}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}

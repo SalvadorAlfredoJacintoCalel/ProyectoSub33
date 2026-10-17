@@ -7,6 +7,7 @@ interface UserData {
   role: UserRole;
   name: string;
   email?: string;
+  personalId?: string | null;
   [key: string]: unknown;
 }
 

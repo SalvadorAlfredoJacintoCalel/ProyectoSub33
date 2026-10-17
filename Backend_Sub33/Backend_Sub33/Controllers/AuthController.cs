@@ -104,6 +104,19 @@ public class AuthController : ControllerBase
                   WHERE ur.usuario_id = @UsuarioId;",
                 new { UsuarioId = (Guid)usuarioDb.usuario_id });
 
+            // Resolver el nombre real del personal vinculado al usuario (para auditoría / "Formulado por")
+            Guid? personalId = usuarioDb.personal_id is Guid pid ? pid : (Guid?)null;
+
+            string nombreCompleto = string.Empty;
+            if (personalId.HasValue)
+            {
+                nombreCompleto = await connection.QueryFirstOrDefaultAsync<string?>(
+                    @"SELECT NULLIF(TRIM(CONCAT_WS(' ', primer_nombre, segundo_nombre, primer_apellido, segundo_apellido)), '')
+                      FROM personal
+                      WHERE personal_id = @PersonalId;",
+                    new { PersonalId = personalId.Value }) ?? string.Empty;
+            }
+
             var token = GenerateJwtToken((Guid)usuarioDb.usuario_id, usuarioDb.username, roles, permisos);
 
             return Ok(new AuthResponseDto
@@ -112,6 +125,8 @@ public class AuthController : ControllerBase
                 Mensaje = "Inicio de sesión exitoso",
                 UsuarioId = (Guid)usuarioDb.usuario_id,
                 Username = usuarioDb.username,
+                NombreCompleto = string.IsNullOrWhiteSpace(nombreCompleto) ? (string)usuarioDb.username : nombreCompleto,
+                PersonalId = personalId,
                 Token = token,
                 Roles = roles.ToList(),
                 Permisos = permisos.ToList()

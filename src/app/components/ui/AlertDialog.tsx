@@ -67,8 +67,8 @@ export function AlertDialog({ open, config, onConfirm, onCancel }: AlertDialogPr
       }}
     >
       <AlertDialogPrimitive.Portal>
-        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-[var(--z-modal)] bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <AlertDialogPrimitive.Content className="glass-strong fixed top-[50%] left-[50%] z-[var(--z-modal)] w-full max-w-md translate-x-[-50%] translate-y-[-50%] overflow-hidden rounded-2xl p-0 shadow-[var(--elevation-brand-3)] data-[state=open]:animate-morph-enter data-[state=closed]:animate-morph-exit">
+        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-[var(--z-modal)] bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <AlertDialogPrimitive.Content className="fixed top-[50%] left-[50%] z-[var(--z-modal)] w-full max-w-md translate-x-[-50%] translate-y-[-50%] overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--bg-card)] p-0 shadow-[var(--elevation-brand-3)] data-[state=open]:animate-morph-enter data-[state=closed]:animate-morph-exit">
           <div className="h-1 w-full bg-[var(--grad-primary)]" />
 
           <div className="flex items-start gap-4 p-6">
@@ -104,12 +104,13 @@ export function AlertDialog({ open, config, onConfirm, onCancel }: AlertDialogPr
             <AlertDialogPrimitive.Action
               onClick={onConfirm}
               disabled={config.loading}
+              style={{ background: "var(--grad-primary-solid)", backgroundImage: "var(--grad-primary)" }}
               className={cn(
                 buttonVariants({
                   variant:
                     config.variant === "error" || config.variant === "confirm"
                       ? "destructive"
-                      : "default",
+                      : "brand",
                 }),
                 "w-full sm:w-auto",
                 config.loading && "cursor-not-allowed opacity-50"

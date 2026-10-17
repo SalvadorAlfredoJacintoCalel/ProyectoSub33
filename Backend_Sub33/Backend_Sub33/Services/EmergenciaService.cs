@@ -152,36 +152,40 @@ namespace Backend_Sub33.Services
         {
             using var connection = AbrirConexion();
 
-            var sql = @"
+                var sql = @"
                 SELECT 
-                    servicio_id,
-                    numero_incidente,
-                    fecha,
-                    to_char(hora_salida, 'HH24:MI') AS hora_salida,
-                    to_char(hora_entrada, 'HH24:MI') AS hora_entrada,
-                    solicitud_tipo,
-                    paciente,
-                    edad,
-                    genero,
-                    solicitante,
-                    acompanante,
-                    domicilio,
-                    fallecio,
-                    ubicacion,
-                    tipo_emergencia_id,
-                    hospital_destino_id,
-                    hospital_destino_nombre,
-                    estado_entrega,
-                    unidad_asignada_id,
-                    unidad_asignada_nombre,
-                    formulado_por_id,
-                    creado_por_nombre,
-                    resumen,
-                    estado,
-                    created_at AS fecha_creacion,
-                    updated_at AS fecha_modificacion
-                FROM emergencias_servicios
-                WHERE servicio_id = @Id";
+                    e.servicio_id,
+                    e.numero_incidente,
+                    e.fecha,
+                    to_char(e.hora_salida, 'HH24:MI') AS hora_salida,
+                    to_char(e.hora_entrada, 'HH24:MI') AS hora_entrada,
+                    e.solicitud_tipo,
+                    e.paciente,
+                    e.edad,
+                    e.genero,
+                    e.solicitante,
+                    e.acompanante,
+                    e.domicilio,
+                    e.fallecio,
+                    e.ubicacion,
+                    e.tipo_emergencia_id,
+                    e.hospital_destino_id,
+                    e.hospital_destino_nombre,
+                    e.estado_entrega,
+                    e.unidad_asignada_id,
+                    e.unidad_asignada_nombre,
+                    e.formulado_por_id,
+                    COALESCE(
+                        NULLIF(TRIM(CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido)), ''),
+                        e.creado_por_nombre
+                    ) AS creado_por_nombre,
+                    e.resumen,
+                    e.estado,
+                    e.created_at AS fecha_creacion,
+                    e.updated_at AS fecha_modificacion
+                FROM emergencias_servicios e
+                LEFT JOIN personal p ON p.personal_id = e.formulado_por_id
+                WHERE e.servicio_id = @Id";
 
             var emergencia = await connection.QueryFirstOrDefaultAsync<EmergenciaResponseDto>(sql, new { Id = id });
 
@@ -527,6 +531,99 @@ namespace Backend_Sub33.Services
                                   SaturacionOxigeno = dto.SignosVitales.SaturacionOxigeno != null ? (object)dto.SignosVitales.SaturacionOxigeno : DBNull.Value,
                                   HoraToma = horaToma }, transaction);
                     }
+                }
+
+                // Reconciliar insumos utilizados (edición): ajusta stock y registra movimientos
+                var insumosNuevos = (dto.InsumosUtilizados ?? new List<InsumoEmergenciaDto>())
+                    .Where(i => i.ItemId > 0 && i.Cantidad > 0)
+                    .GroupBy(i => i.ItemId)
+                    .Select(g => new InsumoEmergenciaDto { ItemId = g.Key, Cantidad = g.Sum(x => x.Cantidad) })
+                    .ToList();
+
+                var insumosPrevios = (await connection.QueryAsync<(int ItemId, int Cantidad)>(
+                    "SELECT item_id, cantidad FROM servicio_insumos_utilizados WHERE servicio_id = @Id",
+                    new { Id = id }, transaction)).ToDictionary(x => x.ItemId, x => x.Cantidad);
+
+                var tipoUsoInsumo = await connection.QueryFirstOrDefaultAsync<int>(
+                    "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'USO_SERVICIO'",
+                    transaction: transaction);
+                var tipoReversion = await connection.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'REVERSION_SERVICIO'",
+                    transaction: transaction)
+                    ?? await connection.QueryFirstOrDefaultAsync<int?>(
+                        "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'ENTRADA'",
+                        transaction: transaction);
+
+                var itemIds = insumosPrevios.Keys.Union(insumosNuevos.Select(i => i.ItemId)).ToList();
+                foreach (var itemId in itemIds)
+                {
+                    var cantidadPrevia = insumosPrevios.TryGetValue(itemId, out var pv) ? pv : 0;
+                    var cantidadNueva = insumosNuevos.FirstOrDefault(i => i.ItemId == itemId)?.Cantidad ?? 0;
+                    var delta = cantidadNueva - cantidadPrevia;
+                    if (delta == 0) continue;
+
+                    var item = await connection.QueryFirstOrDefaultAsync<(string Nombre, int StockActual)>(
+                        "SELECT nombre, stock_actual FROM inventario_items WHERE item_id = @Id",
+                        new { Id = itemId }, transaction);
+
+                    if (item == default)
+                        throw new InvalidOperationException($"Item {itemId} no existe en inventario");
+
+                    if (delta > 0)
+                    {
+                        if (item.StockActual < delta)
+                            throw new InvalidOperationException($"Stock insuficiente para {item.Nombre}. Disponible: {item.StockActual}, Requerido: {delta}");
+
+                        await connection.ExecuteAsync(
+                            "UPDATE inventario_items SET stock_actual = stock_actual - @Cantidad WHERE item_id = @Id",
+                            new { Id = itemId, Cantidad = delta }, transaction);
+
+                        await connection.ExecuteAsync(
+                            @"INSERT INTO inventario_movimientos (item_id, tipo_mov_id, cantidad, motivo, responsable_id, fecha_hora)
+                              VALUES (@ItemId, @TipoMovId, @Cantidad, @Motivo, @ResponsableId, CURRENT_TIMESTAMP)",
+                            new
+                            {
+                                ItemId = itemId,
+                                TipoMovId = tipoUsoInsumo,
+                                Cantidad = delta,
+                                Motivo = $"Uso en servicio {dto.NumeroIncidente} (edición)",
+                                ResponsableId = (object?)dto.FormuladoPorId ?? DBNull.Value
+                            }, transaction);
+                    }
+                    else
+                    {
+                        var devolver = -delta;
+
+                        await connection.ExecuteAsync(
+                            "UPDATE inventario_items SET stock_actual = stock_actual + @Cantidad WHERE item_id = @Id",
+                            new { Id = itemId, Cantidad = devolver }, transaction);
+
+                        if (tipoReversion.HasValue)
+                        {
+                            await connection.ExecuteAsync(
+                                @"INSERT INTO inventario_movimientos (item_id, tipo_mov_id, cantidad, motivo, responsable_id, fecha_hora)
+                                  VALUES (@ItemId, @TipoMovId, @Cantidad, @Motivo, @ResponsableId, CURRENT_TIMESTAMP)",
+                                new
+                                {
+                                    ItemId = itemId,
+                                    TipoMovId = tipoReversion.Value,
+                                    Cantidad = devolver,
+                                    Motivo = $"Reversión por edición de servicio {dto.NumeroIncidente}",
+                                    ResponsableId = (object?)dto.FormuladoPorId ?? DBNull.Value
+                                }, transaction);
+                        }
+                    }
+                }
+
+                await connection.ExecuteAsync(
+                    "DELETE FROM servicio_insumos_utilizados WHERE servicio_id = @Id",
+                    new { Id = id }, transaction);
+
+                foreach (var ins in insumosNuevos)
+                {
+                    await connection.ExecuteAsync(
+                        "INSERT INTO servicio_insumos_utilizados (servicio_id, item_id, cantidad) VALUES (@ServicioId, @ItemId, @Cantidad)",
+                        new { ServicioId = id, ins.ItemId, ins.Cantidad }, transaction);
                 }
 
                 transaction.Commit();

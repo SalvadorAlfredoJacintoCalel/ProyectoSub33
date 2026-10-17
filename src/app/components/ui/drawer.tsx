@@ -31,6 +31,7 @@ interface DrawerProps {
   footer?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  contentMask?: boolean;
 }
 
 export function Drawer({
@@ -44,6 +45,7 @@ export function Drawer({
   footer,
   children,
   className,
+  contentMask = true,
 }: DrawerProps) {
   const isRight = side === "right";
   const panelRef = React.useRef<HTMLDivElement>(null);
@@ -181,10 +183,13 @@ export function Drawer({
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto px-6 py-5" style={{
-              maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
-              WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
-            }}>
+            <div
+              className="flex-1 overflow-y-auto px-6 py-5"
+              style={contentMask ? {
+                maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
+                WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
+              } : undefined}
+            >
               {children}
             </div>
 

@@ -38,6 +38,7 @@ export const login = async (username, password) => {
           username: data?.username || data?.usuario || data?.user || username,
           role,
           name: data?.nombreCompleto || data?.username || username,
+          personalId: data?.personalId ?? data?.PersonalId ?? null,
           roles,
           permisos: Array.isArray(data?.permisos) ? data.permisos : [],
         },

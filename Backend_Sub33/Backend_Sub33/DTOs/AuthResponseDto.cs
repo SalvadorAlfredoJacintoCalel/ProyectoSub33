@@ -10,4 +10,5 @@ public class AuthResponseDto
     public bool Exito { get; set; }
     public string Mensaje { get; set; } = string.Empty;
     public Guid UsuarioId { get; set; }
+    public Guid? PersonalId { get; set; }
 }
