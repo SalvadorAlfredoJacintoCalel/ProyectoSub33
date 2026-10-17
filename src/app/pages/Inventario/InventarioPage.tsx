@@ -280,7 +280,7 @@ function ItemsTab() {
       loadDonacionesMaterial();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al crear donación";
-      alert.error("Error", msg);
+      toast.error(msg);
     } finally {
       setDonacionSaving(false);
     }
@@ -342,7 +342,7 @@ function ItemsTab() {
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
-      alert.warning("Campos Incompletos", "Complete los datos obligatorios (*) antes de continuar.");
+      toast.warning("Complete los datos obligatorios (*) antes de continuar.");
       return;
     }
 
@@ -385,7 +385,7 @@ function ItemsTab() {
       loadItems({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error desconocido";
-      alert.error("Error al Guardar", msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -406,7 +406,7 @@ function ItemsTab() {
       loadItems({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al eliminar";
-      alert.error("No se pudo eliminar", msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

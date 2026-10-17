@@ -93,7 +93,7 @@ function SelectField({
 export function MovimientosPage() {
   const { movimientos, items, loading, catalogos, loadMovimientos, loadItems, loadCatalogos, createMovimiento } =
     useInventario();
-  const { alert, toast } = useAlert();
+  const { toast } = useAlert();
 
   const [itemFilter, setItemFilter] = useState("");
   const [tipoFilter, setTipoFilter] = useState("");
@@ -153,7 +153,7 @@ export function MovimientosPage() {
       loadItems({ pagina: 1, tamanio: 100 });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al registrar movimiento";
-      alert.error("Error", msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

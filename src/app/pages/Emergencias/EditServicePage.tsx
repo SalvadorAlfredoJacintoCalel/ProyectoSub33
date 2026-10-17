@@ -57,6 +57,15 @@ const selectBase: React.CSSProperties = {
   cursor: "pointer",
 };
 
+const errorField = (bad?: boolean): React.CSSProperties =>
+  bad
+    ? {
+        border: "1px solid var(--brand-500)",
+        boxShadow: "0 0 0 3px var(--red, var(--red))40",
+        animation: "shake 0.4s ease-in-out",
+      }
+    : {};
+
 const OpcionesGenero = ["Masculino", "Femenino"];
 
 function getNow() {
@@ -72,7 +81,7 @@ interface PersonalSel {
 
 export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
   const { catalogos, cargarCatalogos, obtenerEmergencia, actualizarEmergencia } = useEmergencias();
-  const { alert, toast } = useAlert();
+  const { toast } = useAlert();
 
   const [numeroIncidente, setNumeroIncidente] = useState("");
   const [tipoSolicitud, setTipoSolicitud] = useState<"Telefónica" | "Personal">("Telefónica");
@@ -199,7 +208,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      alert.warning("Campos Incompletos", "Complete los datos obligatorios (*) antes de continuar.");
+      toast.warning("Complete los datos obligatorios (*) antes de continuar.");
       return;
     }
 
@@ -248,11 +257,11 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
         onSaved?.();
         onClose();
       } else {
-        alert.error("Error al Guardar", "No se pudieron guardar los cambios. Intente nuevamente.");
+        toast.error("No se pudieron guardar los cambios. Intente nuevamente.");
       }
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : "Error desconocido";
-      alert.error("Error de Servidor", mensaje);
+      toast.error(mensaje);
     } finally {
       setSubmitting(false);
     }
@@ -355,13 +364,13 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
           <section>
             <p style={sectionLabel}>
               Tipo de Emergencia
-              {errors.tipoEmergenciaId && <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>}
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
             <div style={{ position: "relative" }}>
               <select
                 value={tipoEmergenciaId}
                 onChange={(e) => { setTipoEmergenciaId(e.target.value); setErrors((prev) => ({ ...prev, tipoEmergenciaId: false })); }}
-                style={{ ...selectBase, paddingRight: 32, boxShadow: errors.tipoEmergenciaId ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
+                style={{ ...selectBase, paddingRight: 32, ...errorField(errors.tipoEmergenciaId) }}
               >
                 <option value="">Seleccionar tipo de emergencia…</option>
                 {catalogos.tiposEmergencia.map((t) => (
@@ -400,7 +409,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
           <section>
             <p style={sectionLabel}>
               Tipos de Asistencia
-              {errors.tiposAsistencia && <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>}
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
             {catalogos.tiposEmergencia.length === 0 ? (
               <p style={{ color: "var(--text-2)", fontSize: 12, margin: "8px 0" }}>Sin opciones disponibles</p>
@@ -416,7 +425,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                         padding: "6px 14px", borderRadius: 999, border: selected ? "none" : "1px solid var(--border)",
                         background: selected ? "var(--red)" : "var(--bg-input)", color: selected ? "#fff" : "var(--text-2)",
                         fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
-                        boxShadow: errors.tiposAsistencia && !selected ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                        ...errorField(errors.tiposAsistencia && !selected),
                       }}
                     >
                       {t.nombre}
@@ -431,7 +440,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
           <section>
             <p style={sectionLabel}>
               Ubicación del Incidente
-              {errors.ubicacion && <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>}
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
             <div style={{ position: "relative" }}>
               <MapPin style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--text-3)", pointerEvents: "none" }} />
@@ -440,7 +449,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                 value={ubicacion}
                 onChange={(e) => { setUbicacion(e.target.value); setErrors((prev) => ({ ...prev, ubicacion: false })); }}
                 placeholder="Aldea, sector o punto de referencia"
-                style={{ ...inputBase, paddingLeft: 32, boxShadow: errors.ubicacion ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
+                style={{ ...inputBase, paddingLeft: 32, ...errorField(errors.ubicacion) }}
               />
             </div>
           </section>
@@ -449,13 +458,13 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
           <section>
             <p style={sectionLabel}>
               Hospital de Destino
-              {errors.hospitalDestinoId && <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>}
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
             <div style={{ position: "relative" }}>
               <select
                 value={hospitalDestinoId}
                 onChange={(e) => { setHospitalDestinoId(e.target.value); setErrors((prev) => ({ ...prev, hospitalDestinoId: false })); }}
-                style={{ ...selectBase, paddingRight: 32, boxShadow: errors.hospitalDestinoId ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
+                style={{ ...selectBase, paddingRight: 32, ...errorField(errors.hospitalDestinoId) }}
               >
                 <option value="">Seleccionar hospital…</option>
                 {catalogos.hospitales.map((h) => (
@@ -472,14 +481,14 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Nombre Completo {errors.nombrePaciente && <span style={{ color: "var(--red)" }}>*</span>}
+                  Nombre Completo <span style={{ color: "var(--red)" }}>*</span>
                 </label>
                 <input
                   type="text"
                   value={nombrePaciente}
                   onChange={(e) => { setNombrePaciente(e.target.value); setErrors((prev) => ({ ...prev, nombrePaciente: false })); }}
                   placeholder="Nombre del paciente"
-                  style={{ ...inputBase, boxShadow: errors.nombrePaciente ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
+                  style={{ ...inputBase, ...errorField(errors.nombrePaciente) }}
                 />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px" }}>
@@ -489,7 +498,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                     type="number" inputMode="numeric" value={edad}
                     onChange={(e) => { setEdad(e.target.value); setErrors((prev) => ({ ...prev, edad: false })); }}
                     placeholder="—" min={0} max={120}
-                    style={{ ...inputBase, width: 80, boxShadow: errors.edad ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
+                    style={{ ...inputBase, width: 80, ...errorField(errors.edad) }}
                   />
                 </div>
                 <div>
@@ -547,7 +556,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
               </div>
               <div>
                 <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Frecuencia Cardíaca (BPM)</label>
-                <input type="number" inputMode="numeric" value={frecuenciaCardiaca} onChange={(e) => { setFrecuenciaCardiaca(e.target.value); setErrors((prev) => ({ ...prev, frecuenciaCardiaca: false })); }} placeholder="72" style={{ ...inputBase, boxShadow: errors.frecuenciaCardiaca ? "0 0 0 3px var(--red, var(--red))40" : "none" }} />
+                <input type="number" inputMode="numeric" value={frecuenciaCardiaca} onChange={(e) => { setFrecuenciaCardiaca(e.target.value); setErrors((prev) => ({ ...prev, frecuenciaCardiaca: false })); }} placeholder="72" style={{ ...inputBase, ...errorField(errors.frecuenciaCardiaca) }} />
               </div>
               <div>
                 <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Frecuencia Respiratoria (resp/min)</label>
@@ -555,7 +564,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
               </div>
               <div>
                 <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Saturación de Oxígeno (%SpO₂)</label>
-                <input type="number" inputMode="numeric" value={saturacion} onChange={(e) => { setSaturacion(e.target.value); setErrors((prev) => ({ ...prev, saturacion: false })); }} placeholder="98" style={{ ...inputBase, boxShadow: errors.saturacion ? "0 0 0 3px var(--red, var(--red))40" : "none" }} />
+                <input type="number" inputMode="numeric" value={saturacion} onChange={(e) => { setSaturacion(e.target.value); setErrors((prev) => ({ ...prev, saturacion: false })); }} placeholder="98" style={{ ...inputBase, ...errorField(errors.saturacion) }} />
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -585,12 +594,12 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
               Recursos Asignados
             </p>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Unidad / Vehículo</label>
+              <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>Unidad / Vehículo <span style={{ color: "var(--red)" }}>*</span></label>
               <div style={{ position: "relative" }}>
                 <select
                   value={unidadAsignadaId}
                   onChange={(e) => { setUnidadAsignadaId(e.target.value); setErrors((prev) => ({ ...prev, unidadAsignadaId: false })); }}
-                  style={{ ...selectBase, paddingRight: 32, boxShadow: errors.unidadAsignadaId ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
+                  style={{ ...selectBase, paddingRight: 32, ...errorField(errors.unidadAsignadaId) }}
                 >
                   <option value="">Seleccionar unidad…</option>
                   {catalogos.unidades.map((u) => (
@@ -602,8 +611,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
             </div>
             <div>
               <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 6 }}>
-                Personal
-                {errors.personalAsignado && <span style={{ color: "var(--red)", marginLeft: 4 }}>*</span>}
+                Personal <span style={{ color: "var(--red)", marginLeft: 4 }}>*</span>
               </label>
               {catalogos.personal.length === 0 ? (
                 <p style={{ color: "var(--text-2)", fontSize: 12, margin: "8px 0" }}>Sin personal disponible</p>
@@ -618,6 +626,7 @@ export function EditServicePage({ serviceId, onClose, onSaved }: Props) {
                           display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 8,
                           border: selected ? "1px solid var(--red)" : "1px solid var(--border)",
                           background: selected ? "var(--brand-50)" : "var(--bg-input)",
+                          ...errorField(errors.personalAsignado && !selected),
                         }}
                       >
                         <button

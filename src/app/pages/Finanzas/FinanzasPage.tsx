@@ -249,7 +249,7 @@ export function FinanzasPage() {
 
   const handleSave = () => {
     if (!validate()) {
-      alert.warning("Campos Incompletos", "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
+      toast.warning("Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
     const monto = parseFloat(form.monto);

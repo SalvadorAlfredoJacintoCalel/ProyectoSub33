@@ -58,6 +58,15 @@ const selectBase: React.CSSProperties = {
   cursor: "pointer",
 };
 
+const errorField = (bad?: boolean): React.CSSProperties =>
+  bad
+    ? {
+        border: "1px solid var(--brand-500)",
+        boxShadow: "0 0 0 3px var(--red, var(--red))40",
+        animation: "shake 0.4s ease-in-out",
+      }
+    : {};
+
 const OpcionesGenero = ["Masculino", "Femenino"];
 
 function getNow() {
@@ -73,7 +82,7 @@ interface PersonalSel {
 
 export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
   const { catalogos, cargarCatalogos, getSiguienteIncidente, crearEmergencia } = useEmergencias();
-  const { alert, toast } = useAlert();
+  const { toast } = useAlert();
 
   const [numeroIncidente, setNumeroIncidente] = useState("");
   const [tipoSolicitud, setTipoSolicitud] = useState<"Telefónica" | "Personal">("Telefónica");
@@ -175,7 +184,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      alert.warning("Campos Incompletos", "Complete los datos obligatorios (*) antes de continuar.");
+      toast.warning("Complete los datos obligatorios (*) antes de continuar.");
       return;
     }
 
@@ -227,11 +236,11 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
         toast.success(`Incidente ${resultado.numeroIncidente} registrado exitosamente`);
         onClose();
       } else {
-        alert.error("Error al Registrar", "No se pudo registrar la emergencia. Intente nuevamente.");
+        toast.error("No se pudo registrar la emergencia. Intente nuevamente.");
       }
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : "Error desconocido";
-      alert.error("Error de Servidor", mensaje);
+      toast.error(mensaje);
     } finally {
       setSubmitting(false);
     }
@@ -371,9 +380,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
           <section>
             <p style={sectionLabel}>
               Tipo de Emergencia
-              {errors.tipoEmergenciaId && (
-                <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
-              )}
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
             <div style={{ position: "relative" }}>
               <select
@@ -385,7 +392,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 style={{
                   ...selectBase,
                   paddingRight: 32,
-                  boxShadow: errors.tipoEmergenciaId ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                  ...errorField(errors.tipoEmergenciaId),
                 }}
               >
                 <option value="">Seleccionar tipo de emergencia…</option>
@@ -454,9 +461,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
           <section>
             <p style={sectionLabel}>
               Tipos de Asistencia
-              {errors.tiposAsistencia && (
-                <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
-              )}
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
 
             {/* Tags seleccionados */}
@@ -515,7 +520,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 }
               }}
               placeholder="Escriba o seleccione..."
-              style={{ ...inputBase, boxShadow: errors.tiposAsistencia ? "0 0 0 3px var(--red, var(--red))40" : "none" }}
+              style={{ ...inputBase, ...errorField(errors.tiposAsistencia) }}
             />
             <datalist id="tiposAsistenciaList">
               {catalogos.tiposAsistencia
@@ -530,9 +535,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
           <section>
             <p style={sectionLabel}>
               Ubicación del Incidente
-              {errors.ubicacion && (
-                <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
-              )}
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
             <div style={{ position: "relative" }}>
               <MapPin
@@ -558,7 +561,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 style={{
                   ...inputBase,
                   paddingLeft: 32,
-                  boxShadow: errors.ubicacion ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                  ...errorField(errors.ubicacion),
                 }}
               />
             </div>
@@ -568,9 +571,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
           <section>
             <p style={sectionLabel}>
               Hospital de Destino
-              {errors.hospitalDestinoId && (
-                <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
-              )}
+              <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
             <div style={{ position: "relative" }}>
               <select
@@ -582,7 +583,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                 style={{
                   ...selectBase,
                   paddingRight: 32,
-                  boxShadow: errors.hospitalDestinoId ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                  ...errorField(errors.hospitalDestinoId),
                 }}
               >
                 <option value="">Seleccionar hospital…</option>
@@ -613,8 +614,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div>
                 <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                  Nombre Completo{" "}
-                  {errors.nombrePaciente && <span style={{ color: "var(--red)" }}>*</span>}
+                  Nombre Completo <span style={{ color: "var(--red)" }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -626,7 +626,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                   placeholder="Nombre del paciente"
                   style={{
                     ...inputBase,
-                    boxShadow: errors.nombrePaciente ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                    ...errorField(errors.nombrePaciente),
                   }}
                 />
               </div>
@@ -649,7 +649,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                     style={{
                       ...inputBase,
                       width: 80,
-                      boxShadow: errors.edad ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                      ...errorField(errors.edad),
                     }}
                   />
                 </div>
@@ -759,7 +759,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                   placeholder="72"
                   style={{
                     ...inputBase,
-                    boxShadow: errors.frecuenciaCardiaca ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                    ...errorField(errors.frecuenciaCardiaca),
                   }}
                 />
               </div>
@@ -791,7 +791,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                   placeholder="98"
                   style={{
                     ...inputBase,
-                    boxShadow: errors.saturacion ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                    ...errorField(errors.saturacion),
                   }}
                 />
               </div>
@@ -845,7 +845,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             </p>
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                Unidad / Vehículo
+                Unidad / Vehículo <span style={{ color: "var(--red)" }}>*</span>
               </label>
               <div style={{ position: "relative" }}>
                 <select
@@ -857,7 +857,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                   style={{
                     ...selectBase,
                     paddingRight: 32,
-                    boxShadow: errors.unidadAsignadaId ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                    ...errorField(errors.unidadAsignadaId),
                   }}
                 >
                   <option value="">Seleccionar unidad…</option>
@@ -883,8 +883,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
             </div>
             <div>
               <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 6 }}>
-                Personal
-                {errors.personalAsignado && <span style={{ color: "var(--red)", marginLeft: 4 }}>*</span>}
+                Personal <span style={{ color: "var(--red)", marginLeft: 4 }}>*</span>
               </label>
               {catalogos.personal.length === 0 ? (
                 <p style={{ color: "var(--text-2)", fontSize: 12, margin: "8px 0" }}>Sin personal disponible</p>
@@ -903,7 +902,7 @@ export function RegisterServicePage({ onClose, currentUser = "" }: Props) {
                           borderRadius: 8,
                           border: selected ? "1px solid var(--red)" : "1px solid var(--border)",
                           background: selected ? "var(--brand-50)" : "var(--bg-input)",
-                          boxShadow: errors.personalAsignado && !selected ? "0 0 0 3px var(--red, var(--red))40" : "none",
+                          ...errorField(errors.personalAsignado && !selected),
                         }}
                       >
                         <button

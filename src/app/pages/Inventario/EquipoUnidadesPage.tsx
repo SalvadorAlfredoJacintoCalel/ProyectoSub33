@@ -81,7 +81,7 @@ function SelectField({
 export function EquipoUnidadesPage() {
   const { equipoUnidades, items, loading, catalogos, loadEquipoUnidades, loadItems, loadCatalogos, asignarEquipo } =
     useInventario();
-  const { alert, toast } = useAlert();
+  const { toast } = useAlert();
 
   const [unidadFilter, setUnidadFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -131,7 +131,7 @@ export function EquipoUnidadesPage() {
       loadEquipoUnidades(unidadFilter ? Number(unidadFilter) : undefined);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al asignar equipo";
-      alert.error("Error", msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

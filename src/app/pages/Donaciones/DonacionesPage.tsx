@@ -614,7 +614,7 @@ export function DonacionesPage() {
       loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al guardar la donación";
-      alert.error("Error", msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -632,7 +632,7 @@ export function DonacionesPage() {
       loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al eliminar";
-      alert.error("Error", msg);
+      toast.error(msg);
     }
   }
 
@@ -646,7 +646,7 @@ export function DonacionesPage() {
       loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al eliminar";
-      alert.error("Error", msg);
+      toast.error(msg);
     }
   }
 

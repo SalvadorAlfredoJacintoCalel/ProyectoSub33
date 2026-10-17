@@ -342,7 +342,7 @@ export function VehiculosPage() {
     const errs = required.filter((k) => !vehicleForm[k]?.toString().trim());
     if (errs.length) {
       setVehicleErrors(errs);
-      alert.warning("Campos Incompletos", "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
+      toast.warning("Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
     setVehicleErrors([]);
@@ -421,7 +421,7 @@ export function VehiculosPage() {
     const errs = FUEL_REQUIRED.filter((k) => !fuelForm[k]?.toString().trim());
     if (errs.length) {
       setFuelErrors(errs);
-      alert.warning("Campos Incompletos", "Campos incompletos: Por favor complete los datos obligatorios (*) antes de continuar.");
+      toast.warning("Por favor complete los datos obligatorios (*) antes de continuar.");
       return;
     }
     setFuelErrors([]);
