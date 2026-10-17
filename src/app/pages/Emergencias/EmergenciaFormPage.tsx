@@ -75,6 +75,10 @@ function numOrUndefined(value: string): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
+function normalizeRol(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
 interface PersonalSel {
   personalId: string | null;
   nombre: string;
@@ -281,18 +285,33 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     const sat = Number(saturacion);
     if (saturacion !== "" && (Number.isNaN(sat) || sat < 0 || sat > 100)) newErrors.saturacion = true;
 
-    const idPiloto = catalogos.rolesServicio.find((r) => r.nombre.toLowerCase().includes("piloto"))?.id ?? null;
-    const idCamillero = catalogos.rolesServicio.find((r) => r.nombre.toLowerCase().includes("camillero"))?.id ?? null;
+    const idPiloto = catalogos.rolesServicio.find((r) => normalizeRol(r.nombre) === "piloto")?.id ?? null;
+    const idCamillero = catalogos.rolesServicio.find((r) => normalizeRol(r.nombre) === "camillero")?.id ?? null;
+    const idSocorrista = catalogos.rolesServicio.find((r) => normalizeRol(r.nombre) === "socorrista")?.id ?? null;
     const rolesSel = personalSeleccionado.map((p) => p.rolServicioId);
     const tienePiloto = idPiloto != null && rolesSel.includes(idPiloto);
-    const tieneCamillero = idCamillero != null && rolesSel.includes(idCamillero);
+    const tieneAcompanante =
+      (idCamillero != null && rolesSel.includes(idCamillero)) ||
+      (idSocorrista != null && rolesSel.includes(idSocorrista));
+    const exigePiloto = idPiloto != null;
+    const exigeAcompanante = idCamillero != null || idSocorrista != null;
+    const faltaRol = personalSeleccionado.some((p) => p.rolServicioId == null);
 
-    if (personalSeleccionado.length < 2) {
+    if (personalSeleccionado.length === 0) {
       newErrors.personalAsignado = true;
-      personalErrorMsg = "Debe asignar al menos 2 personas (un Piloto y un Camillero).";
-    } else if (!tienePiloto || !tieneCamillero) {
+      personalErrorMsg = "Debe asignar el personal que atendió la emergencia.";
+    } else if (personalSeleccionado.length < 2) {
       newErrors.personalAsignado = true;
-      personalErrorMsg = "El personal asignado debe incluir al menos un Piloto y un Camillero.";
+      personalErrorMsg = "Debe asignar al menos 2 personas.";
+    } else if (faltaRol) {
+      newErrors.personalAsignado = true;
+      personalErrorMsg = "Asigna un rol a cada persona asignada.";
+    } else if (exigePiloto && !tienePiloto) {
+      newErrors.personalAsignado = true;
+      personalErrorMsg = "El personal asignado debe incluir un Piloto.";
+    } else if (exigeAcompanante && !tieneAcompanante) {
+      newErrors.personalAsignado = true;
+      personalErrorMsg = "El personal asignado debe incluir un acompañante (Camillero o Socorrista).";
     }
 
     setPersonalMsg(personalErrorMsg);

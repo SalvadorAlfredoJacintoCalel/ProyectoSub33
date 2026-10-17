@@ -140,6 +140,10 @@ namespace Backend_Sub33.Controllers
 
                 return Ok(actualizada);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { exito = false, mensaje = ex.Message });
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR EMERGENCIAS PUT]: {ex.Message}");

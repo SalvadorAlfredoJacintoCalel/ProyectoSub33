@@ -39,6 +39,77 @@ namespace Backend_Sub33.Services
             return connection;
         }
 
+        private sealed class RolServicioRow
+        {
+            public int RolServicioId { get; set; }
+            public string Nombre { get; set; } = string.Empty;
+        }
+
+        private static string NormalizarRol(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+            var descompuesto = s.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder(descompuesto.Length);
+            foreach (var c in descompuesto)
+            {
+                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark)
+                {
+                    sb.Append(c);
+                }
+            }
+            return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+        }
+
+        // Regla operativa: mínimo 2 personas, al menos 1 Piloto y 1 acompañante
+        // (Camillero o Socorrista). Solo se exige un rol si ese rol existe en el catálogo.
+        private static async Task ValidarPersonalAsignadoAsync(System.Data.Common.DbConnection connection, IEnumerable<PersonalAsignadoDto>? personal)
+        {
+            var lista = (personal ?? Enumerable.Empty<PersonalAsignadoDto>()).ToList();
+
+            var roles = (await connection.QueryAsync<RolServicioRow>(
+                "SELECT rol_servicio_id AS RolServicioId, nombre AS Nombre FROM cat_roles_servicio")).ToList();
+
+            int? RolId(string esperado) => roles
+                .Where(r => NormalizarRol(r.Nombre) == esperado)
+                .Select(r => (int?)r.RolServicioId)
+                .FirstOrDefault();
+
+            var idPiloto = RolId("piloto");
+            var idCamillero = RolId("camillero");
+            var idSocorrista = RolId("socorrista");
+
+            if (lista.Count == 0)
+            {
+                throw new InvalidOperationException("Debe asignar el personal que atendió la emergencia.");
+            }
+
+            if (lista.Any(p => p.RolServicioId == null))
+            {
+                throw new InvalidOperationException("Asigna un rol a cada persona asignada.");
+            }
+
+            if (lista.Count < 2)
+            {
+                throw new InvalidOperationException("Debe asignar al menos 2 personas.");
+            }
+
+            var rolesSel = lista.Select(p => p.RolServicioId).ToList();
+
+            if (idPiloto != null && !rolesSel.Contains(idPiloto.Value))
+            {
+                throw new InvalidOperationException("El personal asignado debe incluir un Piloto.");
+            }
+
+            var tieneAcompanante =
+                (idCamillero != null && rolesSel.Contains(idCamillero.Value)) ||
+                (idSocorrista != null && rolesSel.Contains(idSocorrista.Value));
+
+            if ((idCamillero != null || idSocorrista != null) && !tieneAcompanante)
+            {
+                throw new InvalidOperationException("El personal asignado debe incluir un acompañante (Camillero o Socorrista).");
+            }
+        }
+
         public async Task<EmergenciaListResponseDto> ListarEmergenciasAsync(EmergenciaFiltrosDto filtros)
         {
             using var connection = AbrirConexion();
@@ -209,6 +280,8 @@ namespace Backend_Sub33.Services
         public async Task<EmergenciaResponseDto> CrearEmergenciaAsync(EmergenciaCreateDto dto)
         {
             using var connection = AbrirConexion();
+
+            await ValidarPersonalAsignadoAsync(connection, dto.PersonalAsignado);
 
             using var transaction = connection.BeginTransaction();
 
@@ -391,6 +464,8 @@ namespace Backend_Sub33.Services
                 "SELECT COUNT(*) FROM emergencias_servicios WHERE servicio_id = @Id", new { Id = id });
 
             if (existe == 0) return null;
+
+            await ValidarPersonalAsignadoAsync(connection, dto.PersonalAsignado);
 
             using var transaction = connection.BeginTransaction();
 
