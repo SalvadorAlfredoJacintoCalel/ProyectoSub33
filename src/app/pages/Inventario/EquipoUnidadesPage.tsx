@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, Truck, Printer, Info, FileText, Pencil, AlertTriangle } from "lucide-react";
+import { Plus, Truck, Printer, Info, Pencil, AlertTriangle } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
-import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
@@ -124,18 +123,6 @@ export function EquipoUnidadesPage() {
               <InfoField label="Cantidad Asignada" value={selected.cantidadAsignada} />
               <InfoField label="Stock Disponible" value={`${selected.stockActual ?? 0}${selected.unidadMedida ? ` ${selected.unidadMedida}` : ""}`} />
             </div>
-          ),
-        },
-        {
-          id: "documentos",
-          label: "Documentos",
-          icon: <FileText size={15} />,
-          content: (
-            <EmptyState
-              icon={FileText}
-              title="Sin documentos"
-              description="Los documentos asociados a esta asignación aparecerán aquí."
-            />
           ),
         },
       ]

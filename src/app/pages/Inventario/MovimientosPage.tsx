@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { Plus, ArrowLeftRight, Printer, Info, FileText, Download, X, Link2 } from "lucide-react";
+import { Plus, ArrowLeftRight, Printer, Download, X } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
-import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Drawer } from "@/app/components/ui/drawer";
-import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Modal } from "@/app/components/ui/modal";
 import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
@@ -176,53 +174,6 @@ export function MovimientosPage() {
 
   const esUsoServicio = selectedMov ? (selectedMov.tipoMovCodigo || "").toUpperCase().includes("SERVICIO") : false;
 
-  const detailTabs: TabItem[] = selectedMov
-    ? [
-        {
-          id: "detalle",
-          label: "Detalle",
-          icon: <Info size={15} />,
-          content: (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
-              <InfoField label="Fecha y Hora" value={formatFecha(selectedMov.fechaHora)} />
-              <InfoField label="Item" value={selectedMov.itemNombre} />
-              <InfoField label="Tipo de Movimiento" value={selectedMov.tipoMovNombre} />
-              <InfoField label="Cantidad" value={selectedMov.cantidad} />
-              <InfoField label="Responsable" value={selectedMov.responsableNombre || "—"} />
-              <InfoField label="Motivo" value={selectedMov.motivo || "—"} />
-            </div>
-          ),
-        },
-        ...(esUsoServicio
-          ? [
-              {
-                id: "origen",
-                label: "Origen",
-                icon: <Link2 size={15} />,
-                content: (
-                  <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "var(--info-100)", background: "var(--info-50)", color: "var(--info-700)" }}>
-                    Este movimiento corresponde a consumo registrado durante un servicio de emergencia.
-                    El detalle por servicio está en la pestaña <strong>Insumos en Servicios</strong>.
-                  </div>
-                ),
-              } as TabItem,
-            ]
-          : []),
-        {
-          id: "documentos",
-          label: "Documentos",
-          icon: <FileText size={15} />,
-          content: (
-            <EmptyState
-              icon={FileText}
-              title="Sin documentos"
-              description="Los documentos asociados a este movimiento aparecerán aquí."
-            />
-          ),
-        },
-      ]
-    : [];
-
   return (
     <>
     <DataTable<InventarioMovimiento>
@@ -346,7 +297,24 @@ export function MovimientosPage() {
           </Button>
         }
       >
-        {selectedMov && <Tabs variant="glass" tabs={detailTabs} />}
+        {selectedMov && (
+          <div className="flex flex-col gap-4">
+            {esUsoServicio && (
+              <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "var(--info-100)", background: "var(--info-50)", color: "var(--info-700)" }}>
+                Este movimiento corresponde a consumo registrado durante un servicio de emergencia.
+                El detalle por servicio está en la pestaña <strong>Insumos en Servicios</strong>.
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+              <InfoField label="Fecha y Hora" value={formatFecha(selectedMov.fechaHora)} />
+              <InfoField label="Item" value={selectedMov.itemNombre} />
+              <InfoField label="Tipo de Movimiento" value={selectedMov.tipoMovNombre} />
+              <InfoField label="Cantidad" value={selectedMov.cantidad} />
+              <InfoField label="Responsable" value={selectedMov.responsableNombre || "—"} />
+              <InfoField label="Motivo" value={selectedMov.motivo || "—"} />
+            </div>
+          </div>
+        )}
       </Drawer>
     </>
   );

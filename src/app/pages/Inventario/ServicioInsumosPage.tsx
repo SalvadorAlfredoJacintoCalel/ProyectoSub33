@@ -183,25 +183,6 @@ export function ServicioInsumosPage() {
             </div>
           ),
         },
-        {
-          id: "acciones",
-          label: "Acciones",
-          icon: <Printer size={15} />,
-          content: (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <InfoField label="Incidente" value={selected.servicioNumero} />
-              <InfoField label="Estado del registro" value={<Badge variant={estadoMeta(detalle?.estado).variant} dot>{estadoMeta(detalle?.estado).label}</Badge>} />
-              <p className="text-xs" style={{ color: "var(--text-3)" }}>
-                La captura de insumos se realiza desde el módulo de Emergencias. Aquí solo se consulta el consumo registrado.
-              </p>
-              <div className="pt-2">
-                <Button variant="brand-outline" size="sm" onClick={() => window.print()}>
-                  <Printer className="size-4" /> Imprimir reporte
-                </Button>
-              </div>
-            </div>
-          ),
-        },
       ]
     : [];
 
