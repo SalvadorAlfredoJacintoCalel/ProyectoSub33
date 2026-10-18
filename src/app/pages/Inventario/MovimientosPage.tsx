@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import type { ReactNode } from "react";
-import { Plus, ArrowLeftRight, Printer, Info, FileText, Link2, AlertTriangle } from "lucide-react";
+import { Plus, ArrowLeftRight, Printer, Info, FileText, Download, X, Link2 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
@@ -11,86 +10,47 @@ import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
+import { InfoField } from "@/app/pages/Inventario/components/InfoField";
+import { SelectField } from "@/app/pages/Inventario/components/SelectField";
+import { FormErrorSummary } from "@/app/pages/Inventario/components/FormErrorSummary";
+import { formatFecha, toCsv, descargarCsv } from "@/app/pages/Inventario/components/format";
 import type { InventarioMovimiento, InventarioMovimientoCreate } from "@/types/inventario";
 
-function formatFecha(iso?: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("es-GT", { dateStyle: "short", timeStyle: "short" });
-}
+const PAGE_SIZE = 15;
 
-function tipoVariant(mov: InventarioMovimiento): { variant: BadgeVariant; label: string } {
-  const esEntrada = mov.tipoMovNombre.toLowerCase().includes("entrada");
-  return esEntrada ? { variant: "success", label: mov.tipoMovNombre } : { variant: "info", label: mov.tipoMovNombre };
-}
-
-function InfoField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>
-        {label}
-      </span>
-      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1)" }}>{value ?? "—"}</span>
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  required = false,
-  value,
-  onChange,
-  options,
-  error,
-  placeholder,
-}: {
-  label: string;
-  required?: boolean;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  error?: string;
-  placeholder: string;
-}) {
-  return (
-    <div className="w-full">
-      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
-        {label} {required && <span style={{ color: "var(--brand-600)" }}>*</span>}
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
-        style={{
-          background: "var(--bg-input)",
-          color: "var(--text-1)",
-          border: error ? "1px solid var(--brand-500)" : "1px solid var(--border)",
-        }}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      {error && (
-        <p className="mt-1 text-xs font-medium" style={{ color: "var(--brand-600)" }}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
+function tipoMeta(mov: InventarioMovimiento): { variant: BadgeVariant; label: string } {
+  const codigo = (mov.tipoMovCodigo || "").toUpperCase();
+  switch (codigo) {
+    case "ENTRADA":
+      return { variant: "success", label: mov.tipoMovNombre };
+    case "SALIDA":
+    case "BAJA":
+      return { variant: "error", label: mov.tipoMovNombre };
+    case "AJUSTE":
+      return { variant: "warning", label: mov.tipoMovNombre };
+    case "TRANSFERENCIA":
+    case "USO_SERVICIO":
+      return { variant: "info", label: mov.tipoMovNombre };
+    case "REVERSION_SERVICIO":
+      return { variant: "default", label: mov.tipoMovNombre };
+    default:
+      return { variant: "info", label: mov.tipoMovNombre };
+  }
 }
 
 export function MovimientosPage() {
-  const { movimientos, items, loading, catalogos, loadMovimientos, loadItems, loadCatalogos, createMovimiento } =
-    useInventario();
+  const {
+    movimientos, items, loading, catalogos, paginacionMovimientos, tiposMovimientoManual,
+    loadMovimientos, loadItems, loadCatalogos, loadTiposMovimientoManual, createMovimiento,
+  } = useInventario();
   const { toast } = useAlert();
 
   const [itemFilter, setItemFilter] = useState("");
   const [tipoFilter, setTipoFilter] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [page, setPage] = useState(1);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMov, setSelectedMov] = useState<InventarioMovimiento | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -100,18 +60,54 @@ export function MovimientosPage() {
 
   useEffect(() => {
     loadCatalogos();
+    loadTiposMovimientoManual();
     loadItems({ pagina: 1, tamanio: 100 });
-  }, [loadCatalogos, loadItems]);
+  }, [loadCatalogos, loadTiposMovimientoManual, loadItems]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       loadMovimientos({
         itemId: itemFilter ? Number(itemFilter) : undefined,
         tipoMovId: tipoFilter ? Number(tipoFilter) : undefined,
+        desde: desde || undefined,
+        hasta: hasta || undefined,
+        pagina: page,
+        tamanio: PAGE_SIZE,
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [itemFilter, tipoFilter, loadMovimientos]);
+  }, [itemFilter, tipoFilter, desde, hasta, page, loadMovimientos]);
+
+  const hayFiltros = !!(itemFilter || tipoFilter || desde || hasta);
+  const total = paginacionMovimientos?.total ?? 0;
+  const totalPages = Math.max(1, paginacionMovimientos?.totalPaginas ?? 1);
+
+  function limpiarFiltros() {
+    setItemFilter("");
+    setTipoFilter("");
+    setDesde("");
+    setHasta("");
+    setPage(1);
+  }
+
+  function exportarCsv() {
+    if (movimientos.length === 0) {
+      toast.info("No hay movimientos para exportar");
+      return;
+    }
+    const csv = toCsv(
+      ["Fecha", "Item", "Tipo", "Cantidad", "Motivo", "Responsable"],
+      movimientos.map((m) => [
+        formatFecha(m.fechaHora),
+        m.itemNombre,
+        m.tipoMovNombre,
+        m.cantidad,
+        m.motivo,
+        m.responsableNombre || "",
+      ]),
+    );
+    descargarCsv(`movimientos_inventario_${new Date().toISOString().slice(0, 10)}.csv`, csv);
+  }
 
   function openCreate() {
     setForm({ itemId: "", tipoMovId: "", cantidad: "", motivo: "" });
@@ -143,7 +139,14 @@ export function MovimientosPage() {
       toast.success("Movimiento registrado correctamente");
       setModalOpen(false);
       setForm({ itemId: "", tipoMovId: "", cantidad: "", motivo: "" });
-      loadMovimientos({ itemId: itemFilter ? Number(itemFilter) : undefined, tipoMovId: tipoFilter ? Number(tipoFilter) : undefined });
+      loadMovimientos({
+        itemId: itemFilter ? Number(itemFilter) : undefined,
+        tipoMovId: tipoFilter ? Number(tipoFilter) : undefined,
+        desde: desde || undefined,
+        hasta: hasta || undefined,
+        pagina: page,
+        tamanio: PAGE_SIZE,
+      });
       loadItems({ pagina: 1, tamanio: 100 });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al registrar movimiento";
@@ -156,10 +159,22 @@ export function MovimientosPage() {
   const movColumns: DataTableColumn<InventarioMovimiento>[] = [
     { key: "fecha", header: "Fecha", cell: (m) => <span style={{ color: "var(--text-2)" }}>{formatFecha(m.fechaHora)}</span> },
     { key: "item", header: "Item", cell: (m) => <span style={{ color: "var(--text-1)" }}>{m.itemNombre}</span> },
-    { key: "tipo", header: "Tipo", cell: (m) => { const t = tipoVariant(m); return <Badge variant={t.variant} size="sm">{t.label}</Badge>; } },
-    { key: "cantidad", header: "Cantidad", className: "font-medium", cell: (m) => { const t = tipoVariant(m); return <span style={{ color: t.variant === "success" ? "var(--success-700)" : "var(--brand-700)" }}>{m.cantidad}</span>; } },
-    { key: "motivo", header: "Motivo", cell: (m) => <span style={{ color: "var(--text-2)" }}>{m.motivo}</span> },
+    { key: "tipo", header: "Tipo", cell: (m) => { const t = tipoMeta(m); return <Badge variant={t.variant} size="sm">{t.label}</Badge>; } },
+    {
+      key: "cantidad",
+      header: "Cantidad",
+      className: "font-medium",
+      cell: (m) => {
+        const t = tipoMeta(m);
+        const color = t.variant === "success" ? "var(--success-700)" : t.variant === "error" ? "var(--brand-700)" : "var(--text-1)";
+        return <span style={{ color }}>{m.cantidad}</span>;
+      },
+    },
+    { key: "motivo", header: "Motivo", cell: (m) => <span style={{ color: "var(--text-2)" }}>{m.motivo || "—"}</span> },
+    { key: "responsable", header: "Responsable", cell: (m) => <span style={{ color: "var(--text-2)" }}>{m.responsableNombre || "—"}</span> },
   ];
+
+  const esUsoServicio = selectedMov ? (selectedMov.tipoMovCodigo || "").toUpperCase().includes("SERVICIO") : false;
 
   const detailTabs: TabItem[] = selectedMov
     ? [
@@ -174,10 +189,25 @@ export function MovimientosPage() {
               <InfoField label="Tipo de Movimiento" value={selectedMov.tipoMovNombre} />
               <InfoField label="Cantidad" value={selectedMov.cantidad} />
               <InfoField label="Responsable" value={selectedMov.responsableNombre || "—"} />
-              <InfoField label="Motivo" value={selectedMov.motivo} />
+              <InfoField label="Motivo" value={selectedMov.motivo || "—"} />
             </div>
           ),
         },
+        ...(esUsoServicio
+          ? [
+              {
+                id: "origen",
+                label: "Origen",
+                icon: <Link2 size={15} />,
+                content: (
+                  <div className="rounded-xl border p-3 text-sm" style={{ borderColor: "var(--info-100)", background: "var(--info-50)", color: "var(--info-700)" }}>
+                    Este movimiento corresponde a consumo registrado durante un servicio de emergencia.
+                    El detalle por servicio está en la pestaña <strong>Insumos en Servicios</strong>.
+                  </div>
+                ),
+              } as TabItem,
+            ]
+          : []),
         {
           id: "documentos",
           label: "Documentos",
@@ -187,18 +217,6 @@ export function MovimientosPage() {
               icon={FileText}
               title="Sin documentos"
               description="Los documentos asociados a este movimiento aparecerán aquí."
-            />
-          ),
-        },
-        {
-          id: "relacionados",
-          label: "Relacionados",
-          icon: <Link2 size={15} />,
-          content: (
-            <EmptyState
-              icon={Link2}
-              title="Sin movimientos relacionados"
-              description="Los movimientos relacionados a este registro aparecerán aquí."
             />
           ),
         },
@@ -212,24 +230,42 @@ export function MovimientosPage() {
       data={movimientos}
       getRowKey={(m) => m.movimientoId}
       loading={loading}
+      serverPagination={{ page, pageSize: PAGE_SIZE, totalItems: total, totalPages }}
+      onPageChange={setPage}
       onRowClick={(m) => { setSelectedMov(m); setDetailOpen(true); }}
       emptyIcon={ArrowLeftRight}
       emptyTitle="No hay movimientos"
       emptyDescription="No se han registrado movimientos de stock."
       toolbar={
-        <>
-          <select value={itemFilter} onChange={(e) => setItemFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}>
+        <div className="flex w-full flex-wrap items-center gap-2">
+          <select value={itemFilter} onChange={(e) => { setItemFilter(e.target.value); setPage(1); }} className="rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}>
             <option value="">Todos los items</option>
             {items.map((i) => <option key={i.itemId} value={i.itemId}>{i.nombre}</option>)}
           </select>
-          <select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}>
+          <select value={tipoFilter} onChange={(e) => { setTipoFilter(e.target.value); setPage(1); }} className="rounded-lg border px-3 py-2 text-sm outline-none" style={{ borderColor: "var(--border)", color: "var(--text-1)", background: "var(--bg-input)" }}>
             <option value="">Todos los tipos</option>
             {catalogos.tiposMovimiento.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
           </select>
-          <Button variant="brand" onClick={openCreate} className="ml-auto">
-            <Plus size={16} /> Registrar Movimiento
-          </Button>
-        </>
+          <div className="flex items-center gap-1 rounded-lg border px-2" style={{ borderColor: "var(--border)", background: "var(--bg-input)" }}>
+            <span className="text-xs" style={{ color: "var(--text-3)" }}>Desde</span>
+            <input type="date" value={desde} onChange={(e) => { setDesde(e.target.value); setPage(1); }} className="bg-transparent py-2 text-sm outline-none" style={{ color: "var(--text-1)" }} />
+            <span className="text-xs" style={{ color: "var(--text-3)" }}>Hasta</span>
+            <input type="date" value={hasta} onChange={(e) => { setHasta(e.target.value); setPage(1); }} className="bg-transparent py-2 text-sm outline-none" style={{ color: "var(--text-1)" }} />
+          </div>
+          {hayFiltros && (
+            <Button variant="ghost" size="sm" onClick={limpiarFiltros}>
+              <X size={14} /> Limpiar
+            </Button>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="brand-outline" size="sm" onClick={exportarCsv}>
+              <Download size={14} /> Exportar CSV
+            </Button>
+            <Button variant="brand" onClick={openCreate}>
+              <Plus size={16} /> Registrar Movimiento
+            </Button>
+          </div>
+        </div>
       }
     />
 
@@ -240,7 +276,7 @@ export function MovimientosPage() {
         size="md"
         variant="glass"
         title="Registrar Movimiento"
-        description="Registra una entrada o salida de stock."
+        description="Registra una entrada, salida o ajuste de stock."
         icon={<ArrowLeftRight className="size-6" />}
         className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
         footer={
@@ -250,15 +286,7 @@ export function MovimientosPage() {
           </>
         }
       >
-        {Object.keys(errors).length > 0 && (
-          <div
-            className="mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm"
-            style={{ borderColor: "var(--brand-300)", background: "var(--brand-100)", color: "var(--brand-700)" }}
-          >
-            <AlertTriangle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--brand-600)" }} />
-            <span>Por favor corrige los campos marcados antes de continuar.</span>
-          </div>
-        )}
+        <FormErrorSummary show={Object.keys(errors).length > 0} />
         <div className="flex flex-col gap-4">
           <SelectField
             label="Item"
@@ -274,7 +302,7 @@ export function MovimientosPage() {
             required
             value={form.tipoMovId}
             onChange={(v) => setForm((p) => ({ ...p, tipoMovId: v }))}
-            options={catalogos.tiposMovimiento.map((t) => ({ value: String(t.id), label: t.nombre }))}
+            options={tiposMovimientoManual.map((t) => ({ value: String(t.id), label: t.descripcion }))}
             error={errors.tipoMovId}
             placeholder="Seleccionar…"
           />
@@ -309,7 +337,7 @@ export function MovimientosPage() {
         icon={<ArrowLeftRight className="size-6" />}
         statusBadge={
           selectedMov ? (
-            <Badge variant={tipoVariant(selectedMov).variant}>{tipoVariant(selectedMov).label}</Badge>
+            <Badge variant={tipoMeta(selectedMov).variant}>{tipoMeta(selectedMov).label}</Badge>
           ) : undefined
         }
         footer={

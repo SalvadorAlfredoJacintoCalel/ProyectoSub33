@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import type { ElementType, ReactNode } from "react";
 import {
-  Pencil, Trash2, Plus, Search, X, Package, Boxes, ArrowLeftRight, Truck, ChevronLeft, ChevronRight,
-  Printer, Info, History, MapPin, ListChecks, User, Gift, AlertTriangle,
+  Pencil, Trash2, Plus, Search, Package, Boxes, ArrowLeftRight, Truck, ChevronLeft, ChevronRight,
+  Printer, Info, History, MapPin, ListChecks, User, Gift, TrendingDown, TrendingUp, CalendarClock, AlertOctagon,
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
@@ -19,6 +19,9 @@ import { donacionService } from "@/services/donacionService";
 import { MovimientosPage } from "@/app/pages/Inventario/MovimientosPage";
 import { EquipoUnidadesPage } from "@/app/pages/Inventario/EquipoUnidadesPage";
 import { ServicioInsumosPage } from "@/app/pages/Inventario/ServicioInsumosPage";
+import { InfoField } from "@/app/pages/Inventario/components/InfoField";
+import { SelectField } from "@/app/pages/Inventario/components/SelectField";
+import { FormErrorSummary } from "@/app/pages/Inventario/components/FormErrorSummary";
 import type { InventarioItem, InventarioItemCreate, InventarioItemUpdate } from "@/types/inventario";
 import type { Donacion, DonacionCreate } from "@/types/donacion";
 
@@ -37,17 +40,6 @@ function stockStatus(it: InventarioItem): { variant: BadgeVariant; label: string
   if (it.stockActual <= 0) return { variant: "error", label: "Agotado" };
   if (it.stockActual <= it.stockMinimo) return { variant: "warning", label: "Stock bajo" };
   return { variant: "success", label: "Normal" };
-}
-
-function InfoField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>
-        {label}
-      </span>
-      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1)" }}>{value ?? "—"}</span>
-    </div>
-  );
 }
 
 function CollapsibleSection({
@@ -93,54 +85,6 @@ function CollapsibleSection({
         <div style={{ paddingTop: 16, animation: "slide-up 200ms var(--spring-gentle) both" }}>
           {children}
         </div>
-      )}
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  required = false,
-  value,
-  onChange,
-  options,
-  error,
-  placeholder,
-}: {
-  label: string;
-  required?: boolean;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  error?: string;
-  placeholder: string;
-}) {
-  return (
-    <div className="w-full">
-      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
-        {label} {required && <span style={{ color: "var(--brand-600)" }}>*</span>}
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
-        style={{
-          background: "var(--bg-input)",
-          color: "var(--text-1)",
-          border: error ? "1px solid var(--brand-500)" : "1px solid var(--border)",
-        }}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      {error && (
-        <p className="mt-1 text-xs font-medium" style={{ color: "var(--brand-600)" }}>
-          {error}
-        </p>
       )}
     </div>
   );
@@ -609,16 +553,7 @@ function ItemsTab() {
           </>
         }
       >
-        {/* Error summary */}
-        {Object.keys(errors).length > 0 && (
-          <div
-            className="mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm"
-            style={{ borderColor: "var(--brand-300)", background: "var(--brand-100)", color: "var(--brand-700)" }}
-          >
-            <AlertTriangle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--brand-600)" }} />
-            <span>Por favor corrige los campos marcados antes de continuar.</span>
-          </div>
-        )}
+        <FormErrorSummary show={Object.keys(errors).length > 0} />
 
         <CollapsibleSection label="Datos" icon={User}>
           <div className="grid grid-cols-2 gap-4">
@@ -778,68 +713,67 @@ function ItemsTab() {
         {selectedItem && <Tabs variant="glass" tabs={detailTabs} />}
       </Drawer>
 
-      {/* Nueva Donación (overlay secundario, sobre el Modal) */}
-      {showDonacionDrawer && (
-        <div className="fixed inset-0 z-[600]" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setShowDonacionDrawer(false)}>
-          <div
-            className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto shadow-2xl"
-            style={{ background: "var(--bg-card)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--bg-input)" }}>
-              <h2 className="text-base font-semibold" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>Nueva Donación (Material)</h2>
-              <button onClick={() => setShowDonacionDrawer(false)} className="rounded p-1 hover:bg-[var(--bg-hover)]" style={{ color: "var(--text-3)" }}><X size={18} /></button>
-            </div>
-            <div className="space-y-4 px-6 py-5" style={{ fontFamily: "Inter, sans-serif" }}>
-              <Input
-                label="Donante *"
-                placeholder="Nombre del donante"
-                value={donacionForm.donante}
-                onChange={(e) => setDonacionForm((p) => ({ ...p, donante: e.target.value }))}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  label="DPI / NIT"
-                  placeholder="DPI/NIT"
-                  value={donacionForm.dpiNit}
-                  onChange={(e) => setDonacionForm((p) => ({ ...p, dpiNit: e.target.value }))}
-                />
-                <Input
-                  label="Teléfono"
-                  placeholder="xxxx-xxxx"
-                  value={donacionForm.telefono}
-                  onChange={(e) => setDonacionForm((p) => ({ ...p, telefono: e.target.value }))}
-                />
-              </div>
-              <SelectField
-                label="Categoría"
-                value={donacionForm.categoria}
-                onChange={(v) => setDonacionForm((p) => ({ ...p, categoria: v }))}
-                options={["Insumos Médicos", "Equipo/Herramientas"].map((c) => ({ value: c, label: c }))}
-                placeholder="Seleccionar…"
-              />
-              <Input
-                label="Descripción del artículo *"
-                placeholder="Ej. Camillas plegables"
-                value={donacionForm.descripcion}
-                onChange={(e) => setDonacionForm((p) => ({ ...p, descripcion: e.target.value }))}
-              />
-              <Input
-                type="number"
-                min={1}
-                label="Cantidad"
-                placeholder="1"
-                value={donacionForm.cantidad}
-                onChange={(e) => setDonacionForm((p) => ({ ...p, cantidad: e.target.value }))}
-              />
-            </div>
-            <div className="flex justify-end gap-3 border-t px-6 py-4" style={{ borderColor: "var(--border)", background: "var(--bg-input)", fontFamily: "Inter, sans-serif" }}>
-              <Button variant="brand-outline" onClick={() => setShowDonacionDrawer(false)}>Cancelar</Button>
-              <Button variant="brand" loading={donacionSaving} onClick={handleCrearDonacionRapida}>Crear y vincular</Button>
-            </div>
+      {/* Nueva Donación (Modal anidado, se superpone al Modal de Nuevo Item) */}
+      <Modal
+        open={showDonacionDrawer}
+        onClose={() => setShowDonacionDrawer(false)}
+        size="md"
+        variant="glass"
+        title="Nueva Donación (Material)"
+        description="Registra la donación y vincúlala al item."
+        icon={<Gift className="size-6" />}
+        className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
+        footer={
+          <>
+            <Button variant="brand-outline" onClick={() => setShowDonacionDrawer(false)}>Cancelar</Button>
+            <Button variant="brand" loading={donacionSaving} onClick={handleCrearDonacionRapida}>Crear y vincular</Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <Input
+            label="Donante *"
+            placeholder="Nombre del donante"
+            value={donacionForm.donante}
+            onChange={(e) => setDonacionForm((p) => ({ ...p, donante: e.target.value }))}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="DPI / NIT"
+              placeholder="DPI/NIT"
+              value={donacionForm.dpiNit}
+              onChange={(e) => setDonacionForm((p) => ({ ...p, dpiNit: e.target.value }))}
+            />
+            <Input
+              label="Teléfono"
+              placeholder="xxxx-xxxx"
+              value={donacionForm.telefono}
+              onChange={(e) => setDonacionForm((p) => ({ ...p, telefono: e.target.value }))}
+            />
           </div>
+          <SelectField
+            label="Categoría"
+            value={donacionForm.categoria}
+            onChange={(v) => setDonacionForm((p) => ({ ...p, categoria: v }))}
+            options={["Insumos Médicos", "Equipo/Herramientas"].map((c) => ({ value: c, label: c }))}
+            placeholder="Seleccionar…"
+          />
+          <Input
+            label="Descripción del artículo *"
+            placeholder="Ej. Camillas plegables"
+            value={donacionForm.descripcion}
+            onChange={(e) => setDonacionForm((p) => ({ ...p, descripcion: e.target.value }))}
+          />
+          <Input
+            type="number"
+            min={1}
+            label="Cantidad"
+            placeholder="1"
+            value={donacionForm.cantidad}
+            onChange={(e) => setDonacionForm((p) => ({ ...p, cantidad: e.target.value }))}
+          />
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
@@ -855,6 +789,88 @@ const TOP_TABS = [
 
 type TopTab = (typeof TOP_TABS)[number]["id"];
 
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  hint,
+  onClick,
+}: {
+  icon: ElementType;
+  label: string;
+  value: number;
+  tone: "brand" | "error" | "warning" | "info";
+  hint?: string;
+  onClick?: () => void;
+}) {
+  const colors: Record<string, { color: string; bg: string }> = {
+    brand: { color: "var(--brand-600)", bg: "var(--brand-100)" },
+    error: { color: "var(--brand-700)", bg: "var(--brand-100)" },
+    warning: { color: "var(--warning-700)", bg: "var(--warning-100)" },
+    info: { color: "var(--info-700)", bg: "var(--info-100)" },
+  };
+  const c = colors[tone];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-3 rounded-2xl border p-4 text-left transition"
+      style={{
+        borderColor: "var(--border)",
+        background: "var(--bg-card)",
+        boxShadow: "var(--shadow)",
+        cursor: onClick ? "pointer" : "default",
+      }}
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: c.bg, color: c.color }}>
+        <Icon size={20} />
+      </span>
+      <div className="min-w-0">
+        <div className="text-2xl font-bold leading-tight" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>
+          {value}
+        </div>
+        <div className="truncate text-xs" style={{ color: "var(--text-3)" }}>
+          {label}
+        </div>
+        {hint && <div className="truncate text-[11px]" style={{ color: c.color }}>{hint}</div>}
+      </div>
+    </button>
+  );
+}
+
+function ResumenHeader({ onNavigate }: { onNavigate: (tab: TopTab) => void }) {
+  const { resumen, loadingResumen, loadResumen } = useInventario();
+
+  useEffect(() => {
+    loadResumen();
+  }, [loadResumen]);
+
+  if (loadingResumen && !resumen) {
+    return (
+      <div className="mb-5 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+            <Skeleton className="h-11 w-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!resumen) return null;
+
+  return (
+    <div className="mb-5 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+      <KpiCard icon={Package} label="Items registrados" value={resumen.totalItems} tone="brand" onClick={() => onNavigate("items")} />
+      <KpiCard icon={AlertOctagon} label="Agotados" value={resumen.agotados} tone="error" hint={resumen.agotados > 0 ? "Requieren reposición" : undefined} onClick={() => onNavigate("items")} />
+      <KpiCard icon={TrendingDown} label="Stock bajo" value={resumen.stockBajo} tone="warning" hint={resumen.stockBajo > 0 ? "En o bajo el mínimo" : undefined} onClick={() => onNavigate("items")} />
+      <KpiCard icon={CalendarClock} label="Movimientos hoy" value={resumen.movimientosHoy} tone="info" onClick={() => onNavigate("movimientos")} />
+      <KpiCard icon={ArrowLeftRight} label="Movimientos totales" value={resumen.totalMovimientos} tone="info" onClick={() => onNavigate("movimientos")} />
+    </div>
+  );
+}
+
 export function InventarioPage() {
   const [topTab, setTopTab] = useState<TopTab>("items");
 
@@ -869,6 +885,8 @@ export function InventarioPage() {
           <p className="text-xs" style={{ color: "var(--text-3)" }}>Gestión de insumos, equipos y movimientos de stock</p>
         </div>
       </div>
+
+      <ResumenHeader onNavigate={setTopTab} />
 
       <div className="mb-5 flex gap-2 flex-wrap">
         {TOP_TABS.map(({ id, label, Icon }) => {

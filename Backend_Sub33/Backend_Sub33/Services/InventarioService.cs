@@ -303,7 +303,7 @@ namespace Backend_Sub33.Services
 
         // ── Movimientos ───────────────────────────────────────────────────────
 
-        public async Task<ServiceResult<List<InventarioMovimientoDto>>> GetMovimientosAsync(int? itemId, int? tipoMovId, DateTime? desde, DateTime? hasta)
+        public async Task<ServiceResult<PaginatedResult<InventarioMovimientoDto>>> GetMovimientosAsync(InventarioMovimientoFiltrosDto filtros)
         {
             try
             {
@@ -312,31 +312,40 @@ namespace Backend_Sub33.Services
                 var where = new List<string> { "1=1" };
                 var parameters = new DynamicParameters();
 
-                if (itemId.HasValue)
+                if (filtros.ItemId.HasValue)
                 {
                     where.Add("m.item_id = @ItemId");
-                    parameters.Add("ItemId", itemId.Value);
+                    parameters.Add("ItemId", filtros.ItemId.Value);
                 }
 
-                if (tipoMovId.HasValue)
+                if (filtros.TipoMovId.HasValue)
                 {
                     where.Add("m.tipo_mov_id = @TipoMovId");
-                    parameters.Add("TipoMovId", tipoMovId.Value);
+                    parameters.Add("TipoMovId", filtros.TipoMovId.Value);
                 }
 
-                if (desde.HasValue)
+                if (filtros.Desde.HasValue)
                 {
                     where.Add("m.fecha_hora >= @Desde");
-                    parameters.Add("Desde", desde.Value);
+                    parameters.Add("Desde", filtros.Desde.Value);
                 }
 
-                if (hasta.HasValue)
+                if (filtros.Hasta.HasValue)
                 {
-                    where.Add("m.fecha_hora <= @Hasta");
-                    parameters.Add("Hasta", hasta.Value);
+                    where.Add("m.fecha_hora < @Hasta");
+                    parameters.Add("Hasta", filtros.Hasta.Value.Date.AddDays(1));
                 }
 
                 var whereClause = string.Join(" AND ", where);
+
+                var total = await connection.ExecuteScalarAsync<int>(
+                    $"SELECT COUNT(*) FROM inventario_movimientos m WHERE {whereClause}", parameters);
+
+                var pagina = Math.Max(1, filtros.Pagina);
+                var tamanio = Math.Clamp(filtros.TamanoPagina, 1, 100);
+                var offset = (pagina - 1) * tamanio;
+                parameters.Add("Tamano", tamanio);
+                parameters.Add("Offset", offset);
 
                 var sql = $@"
                     SELECT m.movimiento_id,
@@ -344,6 +353,7 @@ namespace Backend_Sub33.Services
                            COALESCE(i.nombre, '') AS item_nombre,
                            m.tipo_mov_id,
                            COALESCE(t.descripcion, '') AS tipo_mov_nombre,
+                           COALESCE(t.codigo, '') AS tipo_mov_codigo,
                            m.cantidad,
                            m.motivo,
                            m.responsable_id,
@@ -354,14 +364,47 @@ namespace Backend_Sub33.Services
                     LEFT JOIN cat_tipos_movimiento t ON t.tipo_mov_id = m.tipo_mov_id
                     LEFT JOIN personal per ON per.personal_id = m.responsable_id
                     WHERE {whereClause}
-                    ORDER BY m.movimiento_id DESC";
+                    ORDER BY m.movimiento_id DESC
+                    LIMIT @Tamano OFFSET @Offset";
 
                 var items = (await connection.QueryAsync<InventarioMovimientoDto>(sql, parameters)).ToList();
-                return ServiceResult<List<InventarioMovimientoDto>>.Success(items);
+
+                var resultado = new PaginatedResult<InventarioMovimientoDto>
+                {
+                    Pagina = pagina,
+                    Tamanio = tamanio,
+                    Total = total,
+                    TotalPaginas = (int)Math.Ceiling(total / (double)tamanio),
+                    Items = items
+                };
+
+                return ServiceResult<PaginatedResult<InventarioMovimientoDto>>.Success(resultado);
             }
             catch (Exception ex)
             {
-                return ServiceResult<List<InventarioMovimientoDto>>.Internal($"Error al obtener movimientos: {ex.Message}");
+                return ServiceResult<PaginatedResult<InventarioMovimientoDto>>.Internal($"Error al obtener movimientos: {ex.Message}");
+            }
+        }
+
+        public async Task<ServiceResult<List<TipoMovimientoInvDto>>> GetTiposMovimientoAsync(bool soloManuales)
+        {
+            try
+            {
+                using var connection = AbrirConexion();
+
+                var sql = "SELECT tipo_mov_id AS id, codigo, descripcion FROM cat_tipos_movimiento";
+                if (soloManuales)
+                {
+                    sql += " WHERE codigo NOT IN ('USO_SERVICIO', 'REVERSION_SERVICIO')";
+                }
+                sql += " ORDER BY tipo_mov_id";
+
+                var tipos = (await connection.QueryAsync<TipoMovimientoInvDto>(sql)).ToList();
+                return ServiceResult<List<TipoMovimientoInvDto>>.Success(tipos);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<List<TipoMovimientoInvDto>>.Internal($"Error al obtener tipos de movimiento: {ex.Message}");
             }
         }
 
@@ -478,7 +521,9 @@ namespace Backend_Sub33.Services
                            COALESCE(u.codigo_unidad, '') AS unidad_codigo,
                            e.item_id,
                            COALESCE(i.nombre, '') AS item_nombre,
-                           e.cantidad_asignada
+                           e.cantidad_asignada,
+                           COALESCE(i.stock_actual, 0) AS stock_actual,
+                           COALESCE(i.unidad_medida, '') AS unidad_medida
                     FROM equipo_unidades e
                     LEFT JOIN cat_unidades u ON u.unidad_id = e.unidad_id
                     LEFT JOIN inventario_items i ON i.item_id = e.item_id
@@ -552,14 +597,19 @@ namespace Backend_Sub33.Services
                 var sql = $@"
                     SELECT s.servicio_id,
                            COALESCE(es.numero_incidente, '') AS servicio_numero,
+                           es.fecha,
+                           es.paciente,
+                           te.tipo AS tipo_emergencia_nombre,
                            s.item_id,
                            COALESCE(i.nombre, '') AS item_nombre,
+                           COALESCE(i.unidad_medida, '') AS unidad_medida,
                            s.cantidad
                     FROM servicio_insumos_utilizados s
                     LEFT JOIN emergencias_servicios es ON es.servicio_id = s.servicio_id
+                    LEFT JOIN cat_tipos_emergencia te ON te.tipo_emergencia_id = es.tipo_emergencia_id
                     LEFT JOIN inventario_items i ON i.item_id = s.item_id
                     WHERE {where}
-                    ORDER BY s.servicio_id, s.item_id";
+                    ORDER BY es.fecha DESC NULLS LAST, s.servicio_id DESC, s.item_id";
 
                 var items = (await connection.QueryAsync<ServicioInsumoUtilizadoDto>(sql, parameters)).ToList();
                 return ServiceResult<List<ServicioInsumoUtilizadoDto>>.Success(items);
@@ -567,6 +617,50 @@ namespace Backend_Sub33.Services
             catch (Exception ex)
             {
                 return ServiceResult<List<ServicioInsumoUtilizadoDto>>.Internal($"Error al obtener insumos utilizados: {ex.Message}");
+            }
+        }
+
+        // ── Resumen ───────────────────────────────────────────────────────────
+
+        public async Task<ServiceResult<InventarioResumenDto>> GetResumenAsync()
+        {
+            try
+            {
+                using var connection = AbrirConexion();
+
+                var resumen = new InventarioResumenDto();
+
+                var conteos = await connection.QueryFirstAsync<(int Total, int Agotados, int Bajo)>(
+                    @"SELECT COUNT(*)::int AS total,
+                             COUNT(*) FILTER (WHERE stock_actual <= 0)::int AS agotados,
+                             COUNT(*) FILTER (WHERE stock_actual > 0 AND stock_actual <= stock_minimo)::int AS bajo
+                      FROM inventario_items");
+                resumen.TotalItems = conteos.Total;
+                resumen.Agotados = conteos.Agotados;
+                resumen.StockBajo = conteos.Bajo;
+
+                var movs = await connection.QueryFirstAsync<(int Total, int Hoy)>(
+                    @"SELECT COUNT(*)::int AS total,
+                             COUNT(*) FILTER (WHERE fecha_hora::date = CURRENT_DATE)::int AS hoy
+                      FROM inventario_movimientos");
+                resumen.TotalMovimientos = movs.Total;
+                resumen.MovimientosHoy = movs.Hoy;
+
+                var categorias = await connection.QueryAsync<InventarioResumenCategoriaDto>(
+                    @"SELECT COALESCE(c.nombre, 'Sin categoría') AS categoria,
+                             COUNT(i.item_id)::int AS items,
+                             COALESCE(SUM(i.stock_actual), 0)::int AS stock_total
+                      FROM inventario_items i
+                      LEFT JOIN cat_categorias_inventario c ON c.categoria_inv_id = i.categoria_inv_id
+                      GROUP BY COALESCE(c.nombre, 'Sin categoría')
+                      ORDER BY items DESC");
+                resumen.Categorias = categorias.ToList();
+
+                return ServiceResult<InventarioResumenDto>.Success(resumen);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<InventarioResumenDto>.Internal($"Error al obtener resumen de inventario: {ex.Message}");
             }
         }
 

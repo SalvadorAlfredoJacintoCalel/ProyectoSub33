@@ -11,7 +11,8 @@ public interface IInventarioService
     Task<ServiceResult<InventarioItemDto>> UpdateItemAsync(int id, InventarioItemUpdateDto dto);
     Task<ServiceResult> DeleteItemAsync(int id);
 
-    Task<ServiceResult<List<InventarioMovimientoDto>>> GetMovimientosAsync(int? itemId, int? tipoMovId, DateTime? desde, DateTime? hasta);
+    Task<ServiceResult<PaginatedResult<InventarioMovimientoDto>>> GetMovimientosAsync(InventarioMovimientoFiltrosDto filtros);
+    Task<ServiceResult<List<TipoMovimientoInvDto>>> GetTiposMovimientoAsync(bool soloManuales);
     Task<ServiceResult<InventarioMovimientoDto>> CreateMovimientoAsync(InventarioMovimientoCreateDto dto);
 
     Task<ServiceResult<List<EquipoUnidadDto>>> GetEquipoUnidadesAsync(int? unidadId);
@@ -19,4 +20,6 @@ public interface IInventarioService
 
     Task<ServiceResult<List<ServicioInsumoUtilizadoDto>>> GetInsumosUtilizadosAsync(int? servicioId);
     Task<ServiceResult> RegistrarUsoInsumoAsync(ServicioInsumoUtilizadoCreateDto dto);
+
+    Task<ServiceResult<InventarioResumenDto>> GetResumenAsync();
 }

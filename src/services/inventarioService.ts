@@ -9,7 +9,11 @@ import type {
   EquipoUnidadCreate,
   ServicioInsumoUtilizado,
   PaginacionInventario,
+  PaginacionMovimientos,
   InventarioItemFiltros,
+  InventarioMovimientoFiltros,
+  TipoMovimientoInv,
+  InventarioResumen,
   CategoriaInventario,
   Proveedor,
   TipoMovimiento,
@@ -52,18 +56,35 @@ export const inventarioService = {
   },
 
   // ── Movimientos ────────────────────────────────────────────────────────
-  getMovimientos: async (params?: {
-    itemId?: number;
-    tipoMovId?: number;
-    desde?: string;
-    hasta?: string;
-  }): Promise<InventarioMovimiento[]> => {
-    const res = await apiClient.get<ApiEnvelope<InventarioMovimiento[]>>(`${API_BASE}/movimientos`, { params });
+  getMovimientos: async (filtros: InventarioMovimientoFiltros): Promise<PaginacionMovimientos> => {
+    const params: Record<string, string | number> = {
+      pagina: filtros.pagina,
+      tamanio: filtros.tamanio,
+    };
+    if (filtros.itemId) params.itemId = filtros.itemId;
+    if (filtros.tipoMovId) params.tipoMovId = filtros.tipoMovId;
+    if (filtros.desde) params.desde = filtros.desde;
+    if (filtros.hasta) params.hasta = filtros.hasta;
+
+    const res = await apiClient.get<ApiEnvelope<PaginacionMovimientos>>(`${API_BASE}/movimientos`, { params });
+    return res.data;
+  },
+
+  getTiposMovimientoManual: async (): Promise<TipoMovimientoInv[]> => {
+    const res = await apiClient.get<ApiEnvelope<TipoMovimientoInv[]>>(`${API_BASE}/movimientos/tipos`, {
+      params: { soloManuales: true },
+    });
     return res.data;
   },
 
   createMovimiento: async (data: InventarioMovimientoCreate): Promise<InventarioMovimiento> => {
     const res = await apiClient.post<ApiEnvelope<InventarioMovimiento>>(`${API_BASE}/movimientos`, data);
+    return res.data;
+  },
+
+  // ── Resumen ────────────────────────────────────────────────────────────
+  getResumen: async (): Promise<InventarioResumen> => {
+    const res = await apiClient.get<ApiEnvelope<InventarioResumen>>(`${API_BASE}/resumen`);
     return res.data;
   },
 

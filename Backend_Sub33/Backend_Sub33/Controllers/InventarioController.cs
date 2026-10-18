@@ -77,8 +77,26 @@ public class InventarioController : ApiControllerBase
         [FromQuery] int? itemId = null,
         [FromQuery] int? tipoMovId = null,
         [FromQuery] DateTime? desde = null,
-        [FromQuery] DateTime? hasta = null)
-        => Respond(await _inventarioService.GetMovimientosAsync(itemId, tipoMovId, desde, hasta));
+        [FromQuery] DateTime? hasta = null,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanio = 15)
+    {
+        var filtros = new InventarioMovimientoFiltrosDto
+        {
+            ItemId = itemId,
+            TipoMovId = tipoMovId,
+            Desde = desde,
+            Hasta = hasta,
+            Pagina = pagina,
+            TamanoPagina = tamanio
+        };
+
+        return Respond(await _inventarioService.GetMovimientosAsync(filtros));
+    }
+
+    [HttpGet("movimientos/tipos")]
+    public async Task<IActionResult> GetTiposMovimiento([FromQuery] bool soloManuales = true)
+        => Respond(await _inventarioService.GetTiposMovimientoAsync(soloManuales));
 
     [HttpPost("movimientos")]
     public async Task<IActionResult> CreateMovimiento([FromBody] InventarioMovimientoCreateDto dto)
@@ -113,6 +131,12 @@ public class InventarioController : ApiControllerBase
             "Equipo asignado correctamente.",
             StatusCodes.Status201Created);
     }
+
+    // ── Resumen ──────────────────────────────────────────────────────────────
+
+    [HttpGet("resumen")]
+    public async Task<IActionResult> GetResumen()
+        => Respond(await _inventarioService.GetResumenAsync());
 
     // ── Servicio-Insumos ─────────────────────────────────────────────────────
 

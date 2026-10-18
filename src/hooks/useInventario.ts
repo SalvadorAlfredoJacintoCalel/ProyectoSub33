@@ -10,7 +10,11 @@ import type {
   EquipoUnidadCreate,
   ServicioInsumoUtilizado,
   PaginacionInventario,
+  PaginacionMovimientos,
   InventarioItemFiltros,
+  InventarioMovimientoFiltros,
+  TipoMovimientoInv,
+  InventarioResumen,
   CategoriaInventario,
   Proveedor,
   TipoMovimiento,
@@ -35,16 +39,22 @@ interface UseInventarioReturn {
   movimientos: InventarioMovimiento[];
   equipoUnidades: EquipoUnidad[];
   servicioInsumos: ServicioInsumoUtilizado[];
+  tiposMovimientoManual: TipoMovimientoInv[];
+  resumen: InventarioResumen | null;
   paginacion: PaginacionInventario | null;
+  paginacionMovimientos: PaginacionMovimientos | null;
   loading: boolean;
+  loadingResumen: boolean;
   error: string | null;
   catalogos: Catalogos;
 
   loadItems: (filtros?: InventarioItemFiltros) => Promise<void>;
-  loadMovimientos: (params?: { itemId?: number; tipoMovId?: number; desde?: string; hasta?: string }) => Promise<void>;
+  loadMovimientos: (filtros: InventarioMovimientoFiltros) => Promise<void>;
   loadEquipoUnidades: (unidadId?: number) => Promise<void>;
   loadServicioInsumos: (servicioId?: number) => Promise<void>;
   loadCatalogos: () => Promise<void>;
+  loadTiposMovimientoManual: () => Promise<void>;
+  loadResumen: () => Promise<void>;
 
   createItem: (dto: InventarioItemCreate) => Promise<InventarioItem>;
   updateItem: (id: number, dto: InventarioItemUpdate) => Promise<InventarioItem>;
@@ -60,8 +70,12 @@ export function useInventario(): UseInventarioReturn {
   const [movimientos, setMovimientos] = useState<InventarioMovimiento[]>([]);
   const [equipoUnidades, setEquipoUnidades] = useState<EquipoUnidad[]>([]);
   const [servicioInsumos, setServicioInsumos] = useState<ServicioInsumoUtilizado[]>([]);
+  const [tiposMovimientoManual, setTiposMovimientoManual] = useState<TipoMovimientoInv[]>([]);
+  const [resumen, setResumen] = useState<InventarioResumen | null>(null);
   const [paginacion, setPaginacion] = useState<PaginacionInventario | null>(null);
+  const [paginacionMovimientos, setPaginacionMovimientos] = useState<PaginacionMovimientos | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingResumen, setLoadingResumen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [catalogos, setCatalogos] = useState<Catalogos>(CATALOGOS_INICIALES);
 
@@ -85,22 +99,22 @@ export function useInventario(): UseInventarioReturn {
     }
   }, []);
 
-  const loadMovimientos = useCallback(
-    async (params?: { itemId?: number; tipoMovId?: number; desde?: string; hasta?: string }) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const resultado = await inventarioService.getMovimientos(params);
-        setMovimientos(resultado);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Error al cargar movimientos");
-        setMovimientos([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  const loadMovimientos = useCallback(async (filtros: InventarioMovimientoFiltros) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resultado = await inventarioService.getMovimientos(filtros);
+      const items = Array.isArray(resultado?.items) ? resultado.items : [];
+      setMovimientos(items);
+      setPaginacionMovimientos(items.length > 0 || Array.isArray(resultado?.items) ? resultado : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar movimientos");
+      setMovimientos([]);
+      setPaginacionMovimientos(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const loadEquipoUnidades = useCallback(async (unidadId?: number) => {
     setLoading(true);
@@ -145,6 +159,27 @@ export function useInventario(): UseInventarioReturn {
     }
   }, []);
 
+  const loadTiposMovimientoManual = useCallback(async () => {
+    try {
+      const tipos = await inventarioService.getTiposMovimientoManual();
+      setTiposMovimientoManual(tipos);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar tipos de movimiento");
+    }
+  }, []);
+
+  const loadResumen = useCallback(async () => {
+    setLoadingResumen(true);
+    try {
+      const data = await inventarioService.getResumen();
+      setResumen(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar resumen");
+    } finally {
+      setLoadingResumen(false);
+    }
+  }, []);
+
   const createItem = useCallback(async (dto: InventarioItemCreate): Promise<InventarioItem> => {
     return inventarioService.createItem(dto);
   }, []);
@@ -170,8 +205,12 @@ export function useInventario(): UseInventarioReturn {
     movimientos,
     equipoUnidades,
     servicioInsumos,
+    tiposMovimientoManual,
+    resumen,
     paginacion,
+    paginacionMovimientos,
     loading,
+    loadingResumen,
     error,
     catalogos,
     loadItems,
@@ -179,6 +218,8 @@ export function useInventario(): UseInventarioReturn {
     loadEquipoUnidades,
     loadServicioInsumos,
     loadCatalogos,
+    loadTiposMovimientoManual,
+    loadResumen,
     createItem,
     updateItem,
     deleteItem,

@@ -63,7 +63,7 @@ function accessValue<T>(row: T, key: string): unknown {
 
 export function DataTable<T>({
   columns,
-  data,
+  data = [],
   getRowKey,
   loading = false,
   pageSize = 10,

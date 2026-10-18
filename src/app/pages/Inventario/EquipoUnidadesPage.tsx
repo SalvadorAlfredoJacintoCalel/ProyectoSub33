@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import type { ReactNode } from "react";
-import { Plus, Truck, Printer, Info, FileText, AlertTriangle } from "lucide-react";
+import { Plus, Truck, Printer, Info, FileText, Pencil, AlertTriangle } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
@@ -11,66 +10,10 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
+import { InfoField } from "@/app/pages/Inventario/components/InfoField";
+import { SelectField } from "@/app/pages/Inventario/components/SelectField";
+import { FormErrorSummary } from "@/app/pages/Inventario/components/FormErrorSummary";
 import type { EquipoUnidad, EquipoUnidadCreate } from "@/types/inventario";
-
-function InfoField({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>
-        {label}
-      </span>
-      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1)" }}>{value ?? "—"}</span>
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  required = false,
-  value,
-  onChange,
-  options,
-  error,
-  placeholder,
-}: {
-  label: string;
-  required?: boolean;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  error?: string;
-  placeholder: string;
-}) {
-  return (
-    <div className="w-full">
-      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
-        {label} {required && <span style={{ color: "var(--brand-600)" }}>*</span>}
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
-        style={{
-          background: "var(--bg-input)",
-          color: "var(--text-1)",
-          border: error ? "1px solid var(--brand-500)" : "1px solid var(--border)",
-        }}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      {error && (
-        <p className="mt-1 text-xs font-medium" style={{ color: "var(--brand-600)" }}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
 
 export function EquipoUnidadesPage() {
   const { equipoUnidades, items, loading, catalogos, loadEquipoUnidades, loadItems, loadCatalogos, asignarEquipo } =
@@ -79,6 +22,7 @@ export function EquipoUnidadesPage() {
 
   const [unidadFilter, setUnidadFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<EquipoUnidad | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [form, setForm] = useState({ unidadId: "", itemId: "", cantidadAsignada: "" });
@@ -94,9 +38,21 @@ export function EquipoUnidadesPage() {
     loadEquipoUnidades(unidadFilter ? Number(unidadFilter) : undefined);
   }, [unidadFilter, loadEquipoUnidades]);
 
+  const itemSeleccionado = items.find((i) => String(i.itemId) === form.itemId) ?? null;
+  const excedeStock = !!itemSeleccionado && Number(form.cantidadAsignada) > itemSeleccionado.stockActual;
+
   function openCreate() {
-    setForm({ unidadId: "", itemId: "", cantidadAsignada: "" });
+    setForm({ unidadId: unidadFilter || "", itemId: "", cantidadAsignada: "" });
     setErrors({});
+    setEditing(false);
+    setModalOpen(true);
+  }
+
+  function openEdit(e: EquipoUnidad) {
+    setForm({ unidadId: String(e.unidadId), itemId: String(e.itemId), cantidadAsignada: String(e.cantidadAsignada) });
+    setErrors({});
+    setEditing(true);
+    setDetailOpen(false);
     setModalOpen(true);
   }
 
@@ -111,6 +67,10 @@ export function EquipoUnidadesPage() {
       return;
     }
 
+    if (excedeStock) {
+      toast.warning(`La cantidad asignada supera el stock disponible (${itemSeleccionado?.stockActual}).`);
+    }
+
     setSubmitting(true);
     try {
       const dto: EquipoUnidadCreate = {
@@ -119,7 +79,7 @@ export function EquipoUnidadesPage() {
         cantidadAsignada: Number(form.cantidadAsignada),
       };
       await asignarEquipo(dto);
-      toast.success("Equipo asignado correctamente");
+      toast.success(editing ? "Asignación actualizada correctamente" : "Equipo asignado correctamente");
       setModalOpen(false);
       setForm({ unidadId: "", itemId: "", cantidadAsignada: "" });
       loadEquipoUnidades(unidadFilter ? Number(unidadFilter) : undefined);
@@ -135,6 +95,20 @@ export function EquipoUnidadesPage() {
     { key: "unidad", header: "Unidad", className: "font-medium", cell: (e) => <span style={{ color: "var(--text-1)" }}>{e.unidadCodigo}</span> },
     { key: "item", header: "Item", cell: (e) => <span style={{ color: "var(--text-1)" }}>{e.itemNombre}</span> },
     { key: "cantidad", header: "Cantidad Asignada", className: "font-medium", cell: (e) => <span style={{ color: "var(--text-2)" }}>{e.cantidadAsignada}</span> },
+    {
+      key: "stock",
+      header: "Stock Disponible",
+      cell: (e) => {
+        const stock = e.stockActual ?? 0;
+        const excede = e.cantidadAsignada > stock;
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant={excede ? "warning" : "success"} size="sm" dot>{stock}</Badge>
+            {excede && <span className="text-xs" style={{ color: "var(--warning-700)" }}>Excede stock</span>}
+          </div>
+        );
+      },
+    },
   ];
 
   const detailTabs: TabItem[] = selected
@@ -148,6 +122,7 @@ export function EquipoUnidadesPage() {
               <InfoField label="Unidad" value={selected.unidadCodigo} />
               <InfoField label="Item / Equipo" value={selected.itemNombre} />
               <InfoField label="Cantidad Asignada" value={selected.cantidadAsignada} />
+              <InfoField label="Stock Disponible" value={`${selected.stockActual ?? 0}${selected.unidadMedida ? ` ${selected.unidadMedida}` : ""}`} />
             </div>
           ),
         },
@@ -190,14 +165,14 @@ export function EquipoUnidadesPage() {
       }
     />
 
-      {/* Asignar Equipo Modal */}
+      {/* Asignar / Editar Equipo Modal */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         size="md"
         variant="glass"
-        title="Asignar Equipo a Unidad"
-        description="Asigna un equipo o insumo a una unidad operativa."
+        title={editing ? "Editar Asignación" : "Asignar Equipo a Unidad"}
+        description={editing ? "Actualiza la cantidad asignada de este equipo." : "Asigna un equipo o insumo a una unidad operativa."}
         icon={<Truck className="size-6" />}
         className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
         footer={
@@ -207,15 +182,7 @@ export function EquipoUnidadesPage() {
           </>
         }
       >
-        {Object.keys(errors).length > 0 && (
-          <div
-            className="mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm"
-            style={{ borderColor: "var(--brand-300)", background: "var(--brand-100)", color: "var(--brand-700)" }}
-          >
-            <AlertTriangle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--brand-600)" }} />
-            <span>Por favor corrige los campos marcados antes de continuar.</span>
-          </div>
-        )}
+        <FormErrorSummary show={Object.keys(errors).length > 0} />
         <div className="flex flex-col gap-4">
           <SelectField
             label="Unidad"
@@ -231,7 +198,7 @@ export function EquipoUnidadesPage() {
             required
             value={form.itemId}
             onChange={(v) => setForm((p) => ({ ...p, itemId: v }))}
-            options={items.map((i) => ({ value: String(i.itemId), label: i.nombre }))}
+            options={items.map((i) => ({ value: String(i.itemId), label: `${i.nombre} (stock: ${i.stockActual})` }))}
             error={errors.itemId}
             placeholder="Seleccionar…"
           />
@@ -244,6 +211,12 @@ export function EquipoUnidadesPage() {
             onChange={(e) => setForm((p) => ({ ...p, cantidadAsignada: e.target.value }))}
             error={errors.cantidadAsignada}
           />
+          {excedeStock && (
+            <div className="flex items-start gap-2 rounded-lg border p-2.5 text-xs" style={{ borderColor: "var(--warning-100)", background: "var(--warning-50)", color: "var(--warning-700)" }}>
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <span>La cantidad supera el stock disponible ({itemSeleccionado?.stockActual}). Puedes guardar, pero revisa la disponibilidad.</span>
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -265,8 +238,8 @@ export function EquipoUnidadesPage() {
             <Button variant="outline" onClick={() => window.print()}>
               <Printer className="size-4" /> Imprimir
             </Button>
-            <Button variant="brand" onClick={() => { setDetailOpen(false); openCreate(); }}>
-              <Plus className="size-4" /> Asignar más
+            <Button variant="brand" onClick={() => selected && openEdit(selected)}>
+              <Pencil className="size-4" /> Editar
             </Button>
           </>
         }
