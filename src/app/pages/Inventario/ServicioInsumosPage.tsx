@@ -1,13 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
-import { Boxes, Link2, User, Calendar, Package, Search, Info } from "lucide-react";
+import { Boxes, Link2, User, Calendar, Package, Search, Info, Printer, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Skeleton } from "@/app/components/ui/skeleton";
-import { Badge } from "@/app/components/ui/badge";
+import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { Drawer } from "@/app/components/ui/drawer";
+import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { useInventario } from "@/hooks/useInventario";
 import { emergenciaService } from "@/services/emergenciaService";
+import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { formatFechaCorta } from "@/app/pages/Inventario/components/format";
 import type { ServicioInsumoUtilizado } from "@/types/inventario";
-import type { EmergenciaListItem } from "@/types/emergencia";
+import type { Emergencia, EmergenciaListItem } from "@/types/emergencia";
 
 interface Grupo {
   servicioId: number;
@@ -19,6 +23,13 @@ interface Grupo {
   totalUnidades: number;
 }
 
+const INSUMOS_VISIBLES_EN_CARD = 3;
+
+function estadoMeta(estado?: string | null): { variant: BadgeVariant; label: string } {
+  if ((estado ?? "").toLowerCase() === "inactivo") return { variant: "default", label: "Inactivo" };
+  return { variant: "success", label: estado || "Activo" };
+}
+
 export function ServicioInsumosPage() {
   const { servicioInsumos, loading, loadServicioInsumos } = useInventario();
 
@@ -26,9 +37,10 @@ export function ServicioInsumosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [servicios, setServicios] = useState<EmergenciaListItem[]>([]);
 
-  useEffect(() => {
-    loadServicioInsumos();
-  }, [loadServicioInsumos]);
+  const [selected, setSelected] = useState<Grupo | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detalle, setDetalle] = useState<Emergencia | null>(null);
+  const [detalleLoading, setDetalleLoading] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -67,6 +79,131 @@ export function ServicioInsumosPage() {
     }
     return Array.from(map.values());
   }, [servicioInsumos, busqueda]);
+
+  async function openDetail(g: Grupo) {
+    setSelected(g);
+    setDetalle(null);
+    setDetailOpen(true);
+    setDetalleLoading(true);
+    try {
+      const data = await emergenciaService.getEmergenciaById(g.servicioId);
+      setDetalle(data);
+    } catch {
+      setDetalle(null);
+    } finally {
+      setDetalleLoading(false);
+    }
+  }
+
+  const detailTabs: TabItem[] = selected
+    ? [
+        {
+          id: "incidente",
+          label: "Incidente",
+          icon: <Info size={15} />,
+          content: detalleLoading ? (
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+              <InfoField
+                label="Paciente"
+                value={
+                  detalle
+                    ? [detalle.paciente, detalle.edad != null ? `${detalle.edad} años` : null, detalle.genero]
+                        .filter(Boolean)
+                        .join(" · ")
+                    : selected.paciente || "—"
+                }
+              />
+              <InfoField label="Fecha" value={formatFechaCorta(detalle?.fecha ?? selected.fecha)} />
+              <InfoField label="Hora Salida" value={detalle?.horaSalida || "—"} />
+              <InfoField label="Hora Entrada" value={detalle?.horaEntrada || "—"} />
+              <InfoField label="Tipo de Emergencia" value={selected.tipoEmergenciaNombre || "—"} />
+              <InfoField label="Solicitud" value={detalle?.solicitudTipo || "—"} />
+              <InfoField label="Ubicación" value={detalle?.ubicacion || "—"} />
+              <InfoField label="Unidad Asignada" value={detalle?.unidadAsignadaNombre || "—"} />
+              <InfoField label="Hospital Destino" value={detalle?.hospitalDestinoNombre || "—"} />
+              <InfoField
+                label="Estado"
+                value={
+                  <Badge variant={estadoMeta(detalle?.estado).variant} dot>
+                    {estadoMeta(detalle?.estado).label}
+                  </Badge>
+                }
+              />
+              <InfoField
+                label="Tipos de Asistencia"
+                value={detalle?.tiposAsistencia?.length ? detalle.tiposAsistencia.join(" · ") : "—"}
+              />
+              <InfoField
+                label="Personal Asignado"
+                value={
+                  detalle?.personalAsignado?.length
+                    ? `${detalle.personalAsignado.length}: ${detalle.personalAsignado
+                        .map((p) => (p.rolEnServicio ? `${p.nombrePersonal} (${p.rolEnServicio})` : p.nombrePersonal))
+                        .join(", ")}`
+                    : "—"
+                }
+              />
+              {detalle?.resumen && (
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <InfoField label="Resumen" value={detalle.resumen} />
+                </div>
+              )}
+            </div>
+          ),
+        },
+        {
+          id: "insumos",
+          label: "Insumos",
+          icon: <Package size={15} />,
+          content: (
+            <div>
+              <div className="flex flex-col divide-y" style={{ borderColor: "var(--border)" }}>
+                {selected.insumos.map((ins) => (
+                  <div key={`${ins.servicioId}-${ins.itemId}`} className="flex items-center justify-between gap-2 py-2.5" style={{ borderColor: "var(--border)" }}>
+                    <span className="flex items-center gap-2 text-sm" style={{ color: "var(--text-1)" }}>
+                      <Package size={14} style={{ color: "var(--text-3)" }} /> {ins.itemNombre}
+                    </span>
+                    <span className="shrink-0 text-sm font-semibold" style={{ color: "var(--text-1)" }}>
+                      {ins.cantidad}
+                      {ins.unidadMedida ? <span className="ml-1 text-xs font-normal" style={{ color: "var(--text-3)" }}>{ins.unidadMedida}</span> : null}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>
+                <span className="flex items-center gap-1"><Link2 size={12} /> {selected.insumos.length} {selected.insumos.length === 1 ? "insumo" : "insumos"}</span>
+                <span>{selected.totalUnidades} unidades en total</span>
+              </div>
+            </div>
+          ),
+        },
+        {
+          id: "acciones",
+          label: "Acciones",
+          icon: <Printer size={15} />,
+          content: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <InfoField label="Incidente" value={selected.servicioNumero} />
+              <InfoField label="Estado del registro" value={<Badge variant={estadoMeta(detalle?.estado).variant} dot>{estadoMeta(detalle?.estado).label}</Badge>} />
+              <p className="text-xs" style={{ color: "var(--text-3)" }}>
+                La captura de insumos se realiza desde el módulo de Emergencias. Aquí solo se consulta el consumo registrado.
+              </p>
+              <div className="pt-2">
+                <Button variant="brand-outline" size="sm" onClick={() => window.print()}>
+                  <Printer className="size-4" /> Imprimir reporte
+                </Button>
+              </div>
+            </div>
+          ),
+        },
+      ]
+    : [];
 
   return (
     <div>
@@ -129,59 +266,103 @@ export function ServicioInsumosPage() {
         />
       ) : (
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
-          {grupos.map((g) => (
-            <div
-              key={g.servicioId}
-              className="rounded-2xl border p-4"
-              style={{ borderColor: "var(--border)", background: "var(--bg-card)", boxShadow: "var(--shadow)" }}
-            >
-              {/* Encabezado del servicio */}
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "var(--grad-primary)", color: "var(--neutral-0)" }}>
-                    <Boxes size={16} />
-                  </span>
-                  <div>
-                    <div className="font-mono text-sm font-bold" style={{ color: "var(--text-1)" }}>{g.servicioNumero}</div>
-                    {g.tipoEmergenciaNombre && <div className="text-[11px]" style={{ color: "var(--text-3)" }}>{g.tipoEmergenciaNombre}</div>}
+          {grupos.map((g) => {
+            const visibles = g.insumos.slice(0, INSUMOS_VISIBLES_EN_CARD);
+            const restantes = g.insumos.length - visibles.length;
+            return (
+              <div
+                key={g.servicioId}
+                onClick={() => openDetail(g)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--brand-500)";
+                  e.currentTarget.style.boxShadow = "var(--elevation-brand-1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.boxShadow = "var(--shadow)";
+                }}
+                className="cursor-pointer rounded-2xl border p-4 transition-colors"
+                style={{ borderColor: "var(--border)", background: "var(--bg-card)", boxShadow: "var(--shadow)" }}
+              >
+                {/* Encabezado del servicio */}
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "var(--grad-primary)", color: "var(--neutral-0)" }}>
+                      <Boxes size={16} />
+                    </span>
+                    <div>
+                      <div className="font-mono text-sm font-bold" style={{ color: "var(--text-1)" }}>{g.servicioNumero}</div>
+                      {g.tipoEmergenciaNombre && <div className="text-[11px]" style={{ color: "var(--text-3)" }}>{g.tipoEmergenciaNombre}</div>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {g.fecha && (
+                      <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--text-3)" }}>
+                        <Calendar size={12} /> {formatFechaCorta(g.fecha)}
+                      </span>
+                    )}
+                    <ChevronRight size={15} style={{ color: "var(--text-3)" }} />
                   </div>
                 </div>
-                {g.fecha && (
-                  <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--text-3)" }}>
-                    <Calendar size={12} /> {formatFechaCorta(g.fecha)}
-                  </span>
+
+                {g.paciente && (
+                  <div className="mb-3 flex items-center gap-1.5 text-xs" style={{ color: "var(--text-2)" }}>
+                    <User size={13} /> {g.paciente}
+                  </div>
                 )}
-              </div>
 
-              {g.paciente && (
-                <div className="mb-3 flex items-center gap-1.5 text-xs" style={{ color: "var(--text-2)" }}>
-                  <User size={13} /> {g.paciente}
+                {/* Insumos (primeros 3) */}
+                <div className="flex flex-col divide-y" style={{ borderColor: "var(--border)" }}>
+                  {visibles.map((ins) => (
+                    <div key={`${ins.servicioId}-${ins.itemId}`} className="flex items-center justify-between gap-2 py-2" style={{ borderColor: "var(--border)" }}>
+                      <span className="flex items-center gap-2 text-sm" style={{ color: "var(--text-1)" }}>
+                        <Package size={14} style={{ color: "var(--text-3)" }} /> {ins.itemNombre}
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold" style={{ color: "var(--text-1)" }}>
+                        {ins.cantidad}
+                        {ins.unidadMedida ? <span className="ml-1 text-xs font-normal" style={{ color: "var(--text-3)" }}>{ins.unidadMedida}</span> : null}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              )}
 
-              {/* Insumos */}
-              <div className="flex flex-col divide-y" style={{ borderColor: "var(--border)" }}>
-                {g.insumos.map((ins) => (
-                  <div key={`${ins.servicioId}-${ins.itemId}`} className="flex items-center justify-between gap-2 py-2" style={{ borderColor: "var(--border)" }}>
-                    <span className="flex items-center gap-2 text-sm" style={{ color: "var(--text-1)" }}>
-                      <Package size={14} style={{ color: "var(--text-3)" }} /> {ins.itemNombre}
-                    </span>
-                    <span className="shrink-0 text-sm font-semibold" style={{ color: "var(--text-1)" }}>
-                      {ins.cantidad}
-                      {ins.unidadMedida ? <span className="ml-1 text-xs font-normal" style={{ color: "var(--text-3)" }}>{ins.unidadMedida}</span> : null}
-                    </span>
-                  </div>
-                ))}
+                <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>
+                  <span className="flex items-center gap-1"><Link2 size={12} /> {g.insumos.length} {g.insumos.length === 1 ? "insumo" : "insumos"}</span>
+                  {restantes > 0 ? (
+                    <span style={{ color: "var(--brand-600)", fontWeight: 600 }}>+{restantes} más…</span>
+                  ) : (
+                    <span>{g.totalUnidades} unidades en total</span>
+                  )}
+                </div>
               </div>
-
-              <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs" style={{ borderColor: "var(--border)", color: "var(--text-3)" }}>
-                <span className="flex items-center gap-1"><Link2 size={12} /> {g.insumos.length} {g.insumos.length === 1 ? "insumo" : "insumos"}</span>
-                <span>{g.totalUnidades} unidades en total</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      {/* Drawer detalle del incidente */}
+      <Drawer
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        side="right"
+        size="lg"
+        title={selected?.servicioNumero}
+        icon={<Boxes className="size-6" />}
+        statusBadge={
+          selected ? (
+            <Badge variant={estadoMeta(detalle?.estado).variant} dot>
+              {estadoMeta(detalle?.estado).label}
+            </Badge>
+          ) : undefined
+        }
+        footer={
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="size-4" /> Imprimir
+          </Button>
+        }
+      >
+        {selected && <Tabs variant="glass" tabs={detailTabs} />}
+      </Drawer>
     </div>
   );
 }
