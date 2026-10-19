@@ -55,6 +55,7 @@ public class InventarioItemFiltrosDto
 {
     public string? Busqueda { get; set; }
     public int? CategoriaInvId { get; set; }
+    public string? StockStatus { get; set; }
     public int Pagina { get; set; } = 1;
     public int TamanoPagina { get; set; } = 10;
 }

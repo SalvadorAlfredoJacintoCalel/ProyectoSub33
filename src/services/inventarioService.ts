@@ -31,6 +31,7 @@ export const inventarioService = {
     };
     if (filtros.busqueda) params.busqueda = filtros.busqueda;
     if (filtros.categoriaInvId) params.categoriaInvId = filtros.categoriaInvId;
+    if (filtros.stockStatus) params.stockStatus = filtros.stockStatus;
 
     const res = await apiClient.get<ApiEnvelope<PaginacionInventario>>(`${API_BASE}/items`, { params });
     return res.data;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, ArrowLeftRight, Printer, Download, X } from "lucide-react";
+import { ArrowLeftRight, Download, X, SlidersHorizontal, AlertTriangle } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Drawer } from "@/app/components/ui/drawer";
@@ -8,6 +8,7 @@ import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
+import { useAuth } from "@/context/AuthContext";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { FormErrorSummary } from "@/app/pages/Inventario/components/FormErrorSummary";
@@ -16,7 +17,7 @@ import type { InventarioMovimiento, InventarioMovimientoCreate } from "@/types/i
 
 const PAGE_SIZE = 15;
 
-function tipoMeta(mov: InventarioMovimiento): { variant: BadgeVariant; label: string } {
+export function tipoMeta(mov: InventarioMovimiento): { variant: BadgeVariant; label: string } {
   const codigo = (mov.tipoMovCodigo || "").toUpperCase();
   switch (codigo) {
     case "ENTRADA":
@@ -26,7 +27,6 @@ function tipoMeta(mov: InventarioMovimiento): { variant: BadgeVariant; label: st
       return { variant: "error", label: mov.tipoMovNombre };
     case "AJUSTE":
       return { variant: "warning", label: mov.tipoMovNombre };
-    case "TRANSFERENCIA":
     case "USO_SERVICIO":
       return { variant: "info", label: mov.tipoMovNombre };
     case "REVERSION_SERVICIO":
@@ -42,6 +42,7 @@ export function MovimientosPage() {
     loadMovimientos, loadItems, loadCatalogos, loadTiposMovimientoManual, createMovimiento,
   } = useInventario();
   const { toast } = useAlert();
+  const { user } = useAuth();
 
   const [itemFilter, setItemFilter] = useState("");
   const [tipoFilter, setTipoFilter] = useState("");
@@ -52,9 +53,14 @@ export function MovimientosPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMov, setSelectedMov] = useState<InventarioMovimiento | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [form, setForm] = useState({ itemId: "", tipoMovId: "", cantidad: "", motivo: "" });
+  const [form, setForm] = useState({ itemId: "", cantidad: "", motivo: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const tipoAjuste = tiposMovimientoManual.find((t) => (t.codigo || "").toUpperCase() === "AJUSTE") ?? null;
+  const itemSeleccionado = items.find((i) => String(i.itemId) === form.itemId) ?? null;
+  const delta = Number(form.cantidad) || 0;
+  const stockResultante = itemSeleccionado ? itemSeleccionado.stockActual + delta : null;
 
   useEffect(() => {
     loadCatalogos();
@@ -88,6 +94,18 @@ export function MovimientosPage() {
     setPage(1);
   }
 
+  function recargar() {
+    loadMovimientos({
+      itemId: itemFilter ? Number(itemFilter) : undefined,
+      tipoMovId: tipoFilter ? Number(tipoFilter) : undefined,
+      desde: desde || undefined,
+      hasta: hasta || undefined,
+      pagina: page,
+      tamanio: PAGE_SIZE,
+    });
+    loadItems({ pagina: 1, tamanio: 100 });
+  }
+
   function exportarCsv() {
     if (movimientos.length === 0) {
       toast.info("No hay movimientos para exportar");
@@ -107,8 +125,8 @@ export function MovimientosPage() {
     descargarCsv(`movimientos_inventario_${new Date().toISOString().slice(0, 10)}.csv`, csv);
   }
 
-  function openCreate() {
-    setForm({ itemId: "", tipoMovId: "", cantidad: "", motivo: "" });
+  function openAjuste() {
+    setForm({ itemId: "", cantidad: "", motivo: "" });
     setErrors({});
     setModalOpen(true);
   }
@@ -116,12 +134,22 @@ export function MovimientosPage() {
   async function handleSave() {
     const errs: Record<string, string> = {};
     if (!form.itemId) errs.itemId = "Seleccione un item";
-    if (!form.tipoMovId) errs.tipoMovId = "Seleccione el tipo";
-    if (!form.cantidad || Number(form.cantidad) <= 0) errs.cantidad = "Debe ser mayor a 0";
+    if (!form.cantidad || Number(form.cantidad) === 0) errs.cantidad = "El ajuste no puede ser cero";
     if (!form.motivo.trim()) errs.motivo = "Campo obligatorio";
+    if (!user?.personalId) errs.responsable = "El usuario no tiene un responsable asociado";
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      return;
+    }
+
+    if (stockResultante !== null && stockResultante < 0) {
+      setErrors({ cantidad: "El ajuste dejaría el stock en negativo" });
+      return;
+    }
+
+    if (!tipoAjuste) {
+      setErrors({ tipo: "No se encontró el tipo de movimiento Ajuste" });
       return;
     }
 
@@ -129,25 +157,18 @@ export function MovimientosPage() {
     try {
       const dto: InventarioMovimientoCreate = {
         itemId: Number(form.itemId),
-        tipoMovId: Number(form.tipoMovId),
+        tipoMovId: tipoAjuste.id,
         cantidad: Number(form.cantidad),
         motivo: form.motivo.trim(),
+        responsableId: user?.personalId ?? null,
       };
       await createMovimiento(dto);
-      toast.success("Movimiento registrado correctamente");
+      toast.success("Ajuste registrado correctamente");
       setModalOpen(false);
-      setForm({ itemId: "", tipoMovId: "", cantidad: "", motivo: "" });
-      loadMovimientos({
-        itemId: itemFilter ? Number(itemFilter) : undefined,
-        tipoMovId: tipoFilter ? Number(tipoFilter) : undefined,
-        desde: desde || undefined,
-        hasta: hasta || undefined,
-        pagina: page,
-        tamanio: PAGE_SIZE,
-      });
-      loadItems({ pagina: 1, tamanio: 100 });
+      setForm({ itemId: "", cantidad: "", motivo: "" });
+      recargar();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Error al registrar movimiento";
+      const msg = err instanceof Error ? err.message : "Error al registrar el ajuste";
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -212,28 +233,28 @@ export function MovimientosPage() {
             <Button variant="brand-outline" size="sm" onClick={exportarCsv}>
               <Download size={14} /> Exportar CSV
             </Button>
-            <Button variant="brand" onClick={openCreate}>
-              <Plus size={16} /> Registrar Movimiento
+            <Button variant="brand" onClick={openAjuste}>
+              <SlidersHorizontal size={16} /> Ajuste de Inventario
             </Button>
           </div>
         </div>
       }
     />
 
-      {/* Create Modal */}
+      {/* Ajuste Modal */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         size="md"
         variant="glass"
-        title="Registrar Movimiento"
-        description="Registra una entrada, salida o ajuste de stock."
-        icon={<ArrowLeftRight className="size-6" />}
+        title="Ajuste de Inventario"
+        description="Corrige el stock de un item registrando la diferencia y el motivo."
+        icon={<SlidersHorizontal className="size-6" />}
         className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
         footer={
           <>
             <Button variant="brand-outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-            <Button variant="brand" loading={submitting} onClick={handleSave}>Guardar</Button>
+            <Button variant="brand" loading={submitting} onClick={handleSave}>Registrar Ajuste</Button>
           </>
         }
       >
@@ -248,33 +269,50 @@ export function MovimientosPage() {
             error={errors.itemId}
             placeholder="Seleccionar…"
           />
-          <SelectField
-            label="Tipo de Movimiento"
-            required
-            value={form.tipoMovId}
-            onChange={(v) => setForm((p) => ({ ...p, tipoMovId: v }))}
-            options={tiposMovimientoManual.map((t) => ({ value: String(t.id), label: t.descripcion }))}
-            error={errors.tipoMovId}
-            placeholder="Seleccionar…"
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Tipo de Movimiento"
+              value="Ajuste de Inventario"
+              disabled
+              readOnly
+            />
+            <Input
+              label="Responsable *"
+              value={user?.name ?? ""}
+              disabled
+              readOnly
+              error={errors.responsable}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
               type="number"
-              min={1}
-              label="Cantidad *"
-              placeholder="0"
+              label="Diferencia de Stock *"
+              placeholder="Ej. 5 o -3"
               value={form.cantidad}
               onChange={(e) => setForm((p) => ({ ...p, cantidad: e.target.value }))}
               error={errors.cantidad}
             />
             <Input
               label="Motivo *"
-              placeholder="Motivo del movimiento"
+              placeholder="Motivo del ajuste"
               value={form.motivo}
               onChange={(e) => setForm((p) => ({ ...p, motivo: e.target.value }))}
               error={errors.motivo}
             />
           </div>
+          {itemSeleccionado && (
+            <div className="flex items-center justify-between rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "var(--border)", background: "var(--bg-hover)", color: "var(--text-2)" }}>
+              <span>Stock actual: <strong style={{ color: "var(--text-1)" }}>{itemSeleccionado.stockActual}</strong></span>
+              <span>Stock resultante: <strong style={{ color: stockResultante !== null && stockResultante < 0 ? "var(--brand-700)" : "var(--text-1)" }}>{stockResultante}</strong></span>
+            </div>
+          )}
+          {stockResultante !== null && stockResultante < 0 && (
+            <div className="flex items-start gap-2 rounded-lg border p-2.5 text-xs" style={{ borderColor: "var(--warning-100)", background: "var(--warning-50)", color: "var(--warning-700)" }}>
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <span>El ajuste dejaría el stock en negativo. Ajusta la diferencia.</span>
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -290,11 +328,6 @@ export function MovimientosPage() {
           selectedMov ? (
             <Badge variant={tipoMeta(selectedMov).variant}>{tipoMeta(selectedMov).label}</Badge>
           ) : undefined
-        }
-        footer={
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="size-4" /> Imprimir
-          </Button>
         }
       >
         {selectedMov && (

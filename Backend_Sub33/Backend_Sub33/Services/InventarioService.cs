@@ -73,6 +73,15 @@ namespace Backend_Sub33.Services
                     parameters.Add("CategoriaInvId", filtros.CategoriaInvId.Value);
                 }
 
+                if (string.Equals(filtros.StockStatus, "agotado", StringComparison.OrdinalIgnoreCase))
+                {
+                    where.Add("i.stock_actual <= 0");
+                }
+                else if (string.Equals(filtros.StockStatus, "bajo", StringComparison.OrdinalIgnoreCase))
+                {
+                    where.Add("i.stock_actual > 0 AND i.stock_actual <= i.stock_minimo");
+                }
+
                 var whereClause = string.Join(" AND ", where);
 
                 var total = await connection.ExecuteScalarAsync<int>(
@@ -180,6 +189,25 @@ namespace Backend_Sub33.Services
                         NombreDonante = dto.NombreDonante,
                         NoRecibo = dto.NoRecibo
                     });
+
+                if (dto.StockActual > 0)
+                {
+                    var tipoEntrada = await connection.QueryFirstOrDefaultAsync<int?>(
+                        "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'ENTRADA' LIMIT 1");
+                    if (tipoEntrada.HasValue)
+                    {
+                        await connection.ExecuteAsync(@"
+                            INSERT INTO inventario_movimientos (item_id, tipo_mov_id, cantidad, motivo, fecha_hora)
+                            VALUES (@ItemId, @TipoMovId, @Cantidad, @Motivo, CURRENT_TIMESTAMP);",
+                            new
+                            {
+                                ItemId = itemId,
+                                TipoMovId = tipoEntrada.Value,
+                                Cantidad = dto.StockActual,
+                                Motivo = "Stock inicial"
+                            });
+                    }
+                }
 
                 var creado = await connection.QueryFirstOrDefaultAsync<InventarioItemDto>(
                     $"{ItemSelect} WHERE i.item_id = @Id", new { Id = itemId });
@@ -415,11 +443,6 @@ namespace Backend_Sub33.Services
 
             try
             {
-                if (dto.Cantidad <= 0)
-                {
-                    return ServiceResult<InventarioMovimientoDto>.BadRequest("La cantidad debe ser mayor a 0.");
-                }
-
                 var tipo = await connection.QueryFirstOrDefaultAsync<(string Codigo, string Descripcion)>(
                     "SELECT codigo, descripcion FROM cat_tipos_movimiento WHERE tipo_mov_id = @Id",
                     new { Id = dto.TipoMovId }, transaction);
@@ -427,6 +450,21 @@ namespace Backend_Sub33.Services
                 if (tipo == default)
                 {
                     return ServiceResult<InventarioMovimientoDto>.BadRequest("El tipo de movimiento no existe.");
+                }
+
+                if (!string.Equals(tipo.Codigo, "AJUSTE", StringComparison.OrdinalIgnoreCase))
+                {
+                    return ServiceResult<InventarioMovimientoDto>.BadRequest("Solo se permite registrar ajustes manuales de inventario.");
+                }
+
+                if (!dto.ResponsableId.HasValue)
+                {
+                    return ServiceResult<InventarioMovimientoDto>.BadRequest("El responsable es obligatorio.");
+                }
+
+                if (dto.Cantidad == 0)
+                {
+                    return ServiceResult<InventarioMovimientoDto>.BadRequest("El ajuste no puede ser cero.");
                 }
 
                 var item = await connection.QueryFirstOrDefaultAsync<(string Nombre, int StockActual)>(
@@ -438,27 +476,11 @@ namespace Backend_Sub33.Services
                     return ServiceResult<InventarioMovimientoDto>.NotFound("Item no encontrado.");
                 }
 
-                int nuevoStock;
-                switch (tipo.Codigo.ToUpperInvariant())
+                var nuevoStock = item.StockActual + dto.Cantidad;
+
+                if (nuevoStock < 0)
                 {
-                    case "ENTRADA":
-                        nuevoStock = item.StockActual + dto.Cantidad;
-                        break;
-                    case "SALIDA":
-                    case "BAJA":
-                    case "USO_SERVICIO":
-                        if (item.StockActual < dto.Cantidad)
-                        {
-                            return ServiceResult<InventarioMovimientoDto>.BadRequest("Stock insuficiente para realizar la salida.");
-                        }
-                        nuevoStock = item.StockActual - dto.Cantidad;
-                        break;
-                    case "AJUSTE":
-                        nuevoStock = dto.Cantidad;
-                        break;
-                    default:
-                        nuevoStock = item.StockActual;
-                        break;
+                    return ServiceResult<InventarioMovimientoDto>.BadRequest("El ajuste dejaría el stock en negativo.");
                 }
 
                 var movimientoId = await connection.QuerySingleAsync<int>(@"

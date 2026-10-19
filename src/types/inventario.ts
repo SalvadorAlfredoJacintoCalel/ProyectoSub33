@@ -157,6 +157,7 @@ export interface PaginacionInventario {
 export interface InventarioItemFiltros {
   busqueda?: string;
   categoriaInvId?: number;
+  stockStatus?: string;
   pagina: number;
   tamanio: number;
 }

@@ -61,7 +61,7 @@ namespace Backend_Sub33.Services
             return categoria switch
             {
                 "Insumos Médicos" => "Medicamentos",
-                "Equipo/Herramientas" => "Rescate",
+                "Equipo/Herramientas" => "Equipo de Rescate",
                 _ => "Otros Insumos"
             };
         }

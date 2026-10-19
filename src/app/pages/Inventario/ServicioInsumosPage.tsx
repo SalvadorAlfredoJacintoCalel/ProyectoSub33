@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Boxes, Link2, User, Calendar, Package, Search, Info, Printer, ChevronRight } from "lucide-react";
+import { Boxes, Link2, User, Calendar, Package, Search, Info, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
@@ -335,11 +335,6 @@ export function ServicioInsumosPage() {
               {estadoMeta(detalle?.estado).label}
             </Badge>
           ) : undefined
-        }
-        footer={
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="size-4" /> Imprimir
-          </Button>
         }
       >
         {selected && <Tabs variant="glass" tabs={detailTabs} />}

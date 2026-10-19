@@ -11,7 +11,6 @@ import {
   DollarSign,
   Package,
   Loader2,
-  Printer,
   Info,
   FileText,
   History,
@@ -211,16 +210,11 @@ function DetailModal({ donacion, onClose, onEdit }: { donacion: Donacion; onClos
       icon={<Gift className="size-6" />}
       statusBadge={<Badge variant={donacion.tipo === "Monetaria" ? "warning" : "info"} dot>{donacion.tipo}</Badge>}
       footer={
-        <>
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="size-4" /> Imprimir
+        onEdit ? (
+          <Button variant="brand" onClick={onEdit}>
+            <Pencil className="size-4" /> Editar
           </Button>
-          {onEdit && (
-            <Button variant="brand" onClick={onEdit}>
-              <Pencil className="size-4" /> Editar
-            </Button>
-          )}
-        </>
+        ) : undefined
       }
     >
       <Tabs variant="glass" tabs={tabs} />

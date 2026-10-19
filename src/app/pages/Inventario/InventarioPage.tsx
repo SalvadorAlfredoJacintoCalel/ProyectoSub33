@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { ElementType, ReactNode } from "react";
 import {
   Pencil, Trash2, Plus, Search, Package, Boxes, ArrowLeftRight, Truck, ChevronLeft, ChevronRight,
-  Printer, Info, History, MapPin, ListChecks, User, Gift, TrendingDown, TrendingUp, CalendarClock, AlertOctagon,
+  X, Info, History, MapPin, User, Gift, TrendingDown, TrendingUp, CalendarClock, AlertOctagon,
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
@@ -16,12 +16,13 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
 import { donacionService } from "@/services/donacionService";
-import { MovimientosPage } from "@/app/pages/Inventario/MovimientosPage";
+import { MovimientosPage, tipoMeta } from "@/app/pages/Inventario/MovimientosPage";
 import { EquipoUnidadesPage } from "@/app/pages/Inventario/EquipoUnidadesPage";
 import { ServicioInsumosPage } from "@/app/pages/Inventario/ServicioInsumosPage";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { FormErrorSummary } from "@/app/pages/Inventario/components/FormErrorSummary";
+import { formatFecha } from "@/app/pages/Inventario/components/format";
 import type { InventarioItem, InventarioItemCreate, InventarioItemUpdate } from "@/types/inventario";
 import type { Donacion, DonacionCreate } from "@/types/donacion";
 
@@ -136,9 +137,177 @@ function itemToForm(item: InventarioItem): ItemFormState {
   };
 }
 
+// ─── Item detail tabs ─────────────────────────────────────────────────────────
+
+type StockFilter = "agotado" | "bajo" | null;
+
+const STOCK_FILTER_LABEL: Record<"agotado" | "bajo", string> = {
+  agotado: "Agotados",
+  bajo: "Stock bajo",
+};
+
+function ItemKardex({ itemId }: { itemId: number }) {
+  const { movimientos, loadMovimientos } = useInventario();
+  const [cargado, setCargado] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setCargado(false);
+    loadMovimientos({ itemId, pagina: 1, tamanio: 50 }).finally(() => {
+      if (active) setCargado(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [itemId, loadMovimientos]);
+
+  if (!cargado) {
+    return (
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+      </div>
+    );
+  }
+
+  if (movimientos.length === 0) {
+    return (
+      <EmptyState
+        icon={History}
+        title="Sin movimientos"
+        description="El historial de movimientos (kardex) de este item aparecerá aquí."
+      />
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr style={{ color: "var(--text-3)" }}>
+            <th className="py-2 pr-3 text-left font-semibold">Fecha</th>
+            <th className="py-2 pr-3 text-left font-semibold">Tipo</th>
+            <th className="py-2 pr-3 text-left font-semibold">Cantidad</th>
+            <th className="py-2 pr-3 text-left font-semibold">Motivo</th>
+            <th className="py-2 text-left font-semibold">Responsable</th>
+          </tr>
+        </thead>
+        <tbody>
+          {movimientos.map((m) => {
+            const t = tipoMeta(m);
+            return (
+              <tr key={m.movimientoId} className="border-t" style={{ borderColor: "var(--border)" }}>
+                <td className="py-2 pr-3" style={{ color: "var(--text-2)" }}>{formatFecha(m.fechaHora)}</td>
+                <td className="py-2 pr-3"><Badge variant={t.variant} size="sm">{t.label}</Badge></td>
+                <td className="py-2 pr-3 font-medium" style={{ color: "var(--text-1)" }}>{m.cantidad}</td>
+                <td className="py-2 pr-3" style={{ color: "var(--text-2)" }}>{m.motivo || "—"}</td>
+                <td className="py-2" style={{ color: "var(--text-2)" }}>{m.responsableNombre || "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ItemUbicaciones({ itemId }: { itemId: number }) {
+  const {
+    equipoUnidades, servicioInsumos, catalogos,
+    loadEquipoUnidades, loadServicioInsumos, loadCatalogos,
+  } = useInventario();
+  const [cargado, setCargado] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setCargado(false);
+    Promise.all([loadEquipoUnidades(), loadServicioInsumos(), loadCatalogos()]).finally(() => {
+      if (active) setCargado(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [itemId, loadEquipoUnidades, loadServicioInsumos, loadCatalogos]);
+
+  if (!cargado) {
+    return (
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+      </div>
+    );
+  }
+
+  const unidades = equipoUnidades.filter((e) => e.itemId === itemId);
+  const servicios = servicioInsumos.filter((s) => s.itemId === itemId);
+
+  if (unidades.length === 0 && servicios.length === 0) {
+    return (
+      <EmptyState
+        icon={MapPin}
+        title="Sin ubicaciones"
+        description="Las unidades y servicios donde se encuentra este item aparecerán aquí."
+      />
+    );
+  }
+
+  const nombreUnidad = (id: number) =>
+    catalogos.unidades.find((u) => u.id === id)?.nombre ?? `Unidad #${id}`;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <section>
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em]" style={{ color: "var(--text-3)" }}>
+          <Truck size={14} /> En Unidades ({unidades.length})
+        </div>
+        {unidades.length === 0 ? (
+          <p className="text-sm" style={{ color: "var(--text-3)" }}>No está asignado a ninguna unidad.</p>
+        ) : (
+          <div className="flex flex-col divide-y" style={{ borderColor: "var(--border)" }}>
+            {unidades.map((e) => (
+              <div key={`${e.unidadId}-${e.itemId}`} className="flex items-center justify-between gap-3 py-2.5" style={{ borderColor: "var(--border)" }}>
+                <span className="flex items-center gap-2 text-sm" style={{ color: "var(--text-1)" }}>
+                  <Truck size={14} style={{ color: "var(--text-3)" }} /> {nombreUnidad(e.unidadId)}
+                  {e.unidadCodigo && <span className="font-mono text-[11px]" style={{ color: "var(--text-3)" }}>{e.unidadCodigo}</span>}
+                </span>
+                <span className="shrink-0 text-sm font-semibold" style={{ color: "var(--text-1)" }}>
+                  {e.cantidadAsignada}
+                  {e.unidadMedida ? <span className="ml-1 text-xs font-normal" style={{ color: "var(--text-3)" }}>{e.unidadMedida}</span> : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em]" style={{ color: "var(--text-3)" }}>
+          <Boxes size={14} /> En Servicios ({servicios.length})
+        </div>
+        {servicios.length === 0 ? (
+          <p className="text-sm" style={{ color: "var(--text-3)" }}>No registra consumos en servicios.</p>
+        ) : (
+          <div className="flex flex-col divide-y" style={{ borderColor: "var(--border)" }}>
+            {servicios.map((s) => (
+              <div key={`${s.servicioId}-${s.itemId}`} className="flex items-center justify-between gap-3 py-2.5" style={{ borderColor: "var(--border)" }}>
+                <span className="flex items-center gap-2 text-sm" style={{ color: "var(--text-1)" }}>
+                  <Boxes size={14} style={{ color: "var(--text-3)" }} /> {s.servicioNumero}
+                  {s.paciente && <span className="text-xs" style={{ color: "var(--text-3)" }}>{s.paciente}</span>}
+                </span>
+                <span className="shrink-0 text-sm font-semibold" style={{ color: "var(--text-1)" }}>
+                  {s.cantidad}
+                  {s.unidadMedida ? <span className="ml-1 text-xs font-normal" style={{ color: "var(--text-3)" }}>{s.unidadMedida}</span> : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 // ─── Items Tab ───────────────────────────────────────────────────────────────
 
-function ItemsTab() {
+function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilter; onClearStockFilter: () => void }) {
   const { items, paginacion, loading, catalogos, loadItems, loadCatalogos, createItem, updateItem, deleteItem } =
     useInventario();
   const { alert, toast } = useAlert();
@@ -196,16 +365,18 @@ function ItemsTab() {
       toast.error("Complete donante y descripción del artículo");
       return;
     }
+    if (!donacionForm.dpiNit.trim() || !donacionForm.telefono.trim()) {
+      toast.error("El DPI/NIT y el teléfono del donante son obligatorios");
+      return;
+    }
     setDonacionSaving(true);
     try {
-      const noRecibo = `REC-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100).padStart(3, "0")}`;
       const dto: DonacionCreate = {
         tipo: "Material",
         donante: donacionForm.donante.trim(),
-        dpiNit: donacionForm.dpiNit,
-        telefono: donacionForm.telefono,
+        dpiNit: donacionForm.dpiNit.trim(),
+        telefono: donacionForm.telefono.trim(),
         categoria: donacionForm.categoria,
-        noRecibo,
         monto: 0,
         materiales: [
           { descripcion: donacionForm.descripcion.trim(), cantidad: Number(donacionForm.cantidad) || 1, valorEstimado: 0, categoria: donacionForm.categoria },
@@ -232,11 +403,21 @@ function ItemsTab() {
   }
 
   useEffect(() => {
+    setPage(1);
+  }, [stockFilter]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
-      loadItems({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined });
+      loadItems({
+        pagina: page,
+        tamanio: PAGE_SIZE,
+        busqueda: search || undefined,
+        categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined,
+        stockStatus: stockFilter || undefined,
+      });
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, categoriaFilter, page, loadItems]);
+  }, [search, categoriaFilter, page, stockFilter, loadItems]);
 
   const totalPages = Math.max(1, paginacion?.totalPaginas ?? 1);
   const total = paginacion?.total ?? 0;
@@ -381,7 +562,13 @@ function ItemsTab() {
       }
       setEditModal(null);
       setSelectedItem(null);
-      loadItems({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined });
+      loadItems({
+        pagina: page,
+        tamanio: PAGE_SIZE,
+        busqueda: search || undefined,
+        categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined,
+        stockStatus: stockFilter || undefined,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error desconocido";
       toast.error(msg);
@@ -402,7 +589,13 @@ function ItemsTab() {
       toast.success("Item eliminado correctamente");
       setDetailOpen(false);
       setSelectedItem(null);
-      loadItems({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined });
+      loadItems({
+        pagina: page,
+        tamanio: PAGE_SIZE,
+        busqueda: search || undefined,
+        categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined,
+        stockStatus: stockFilter || undefined,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al eliminar";
       toast.error(msg);
@@ -438,46 +631,13 @@ function ItemsTab() {
           id: "kardex",
           label: "Kardex",
           icon: <History size={15} />,
-          content: (
-            <EmptyState
-              icon={History}
-              title="Sin movimientos"
-              description="El historial de movimientos (kardex) de este item aparecerá aquí."
-            />
-          ),
+          content: <ItemKardex itemId={selectedItem.itemId} />,
         },
         {
           id: "ubicaciones",
           label: "Ubicaciones",
           icon: <MapPin size={15} />,
-          content: (
-            <EmptyState
-              icon={MapPin}
-              title="Sin ubicaciones"
-              description="Las unidades y servicios donde se encuentra este item aparecerán aquí."
-            />
-          ),
-        },
-        {
-          id: "acciones",
-          label: "Acciones",
-          icon: <ListChecks size={15} />,
-          content: (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <InfoField label="Estado de stock" value={stockStatus(selectedItem).label} />
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Button variant="brand" size="sm" onClick={handleEditFromDetail}>
-                  <Pencil className="size-4" /> Editar
-                </Button>
-                <Button variant="brand-outline" size="sm" onClick={() => window.print()}>
-                  <Printer className="size-4" /> Imprimir
-                </Button>
-                <Button variant="brand-outline" size="sm" onClick={() => selectedItem && requestDelete(selectedItem)}>
-                  <Trash2 className="size-4" /> Eliminar
-                </Button>
-              </div>
-            </div>
-          ),
+          content: <ItemUbicaciones itemId={selectedItem.itemId} />,
         },
       ]
     : [];
@@ -524,6 +684,17 @@ function ItemsTab() {
                   <option key={c.id} value={c.id}>{c.nombre}</option>
                 ))}
               </select>
+              {stockFilter && (
+                <span
+                  className="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold"
+                  style={{ borderColor: "var(--brand-200)", background: "var(--brand-50)", color: "var(--brand-700)" }}
+                >
+                  {STOCK_FILTER_LABEL[stockFilter]}
+                  <button type="button" onClick={onClearStockFilter} className="rounded-full p-0.5" title="Quitar filtro">
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
             </div>
             <Button variant="brand" onClick={openAdd}>
               <Plus className="size-4" /> Nuevo Item
@@ -614,15 +785,17 @@ function ItemsTab() {
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection label="Proveedor" icon={Truck}>
-          <SelectField
-            label="Proveedor"
-            value={form.proveedorId}
-            onChange={(v) => setField("proveedorId", v)}
-            options={catalogos.proveedores.map((p) => ({ value: String(p.id), label: p.nombre }))}
-            placeholder="Sin proveedor"
-          />
-        </CollapsibleSection>
+        {form.origen !== "Donado" && (
+          <CollapsibleSection label="Proveedor" icon={Truck}>
+            <SelectField
+              label="Proveedor"
+              value={form.proveedorId}
+              onChange={(v) => setField("proveedorId", v)}
+              options={catalogos.proveedores.map((p) => ({ value: String(p.id), label: p.nombre }))}
+              placeholder="Sin proveedor"
+            />
+          </CollapsibleSection>
+        )}
 
         <CollapsibleSection label="Origen" icon={Gift}>
           <div className="flex flex-col gap-4">
@@ -698,9 +871,6 @@ function ItemsTab() {
         }
         footer={
           <>
-            <Button variant="outline" onClick={() => window.print()}>
-              <Printer className="size-4" /> Imprimir
-            </Button>
             <Button variant="brand-outline" onClick={() => selectedItem && requestDelete(selectedItem)}>
               <Trash2 className="size-4" /> Eliminar
             </Button>
@@ -739,13 +909,13 @@ function ItemsTab() {
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="DPI / NIT"
+              label="DPI / NIT *"
               placeholder="DPI/NIT"
               value={donacionForm.dpiNit}
               onChange={(e) => setDonacionForm((p) => ({ ...p, dpiNit: e.target.value }))}
             />
             <Input
-              label="Teléfono"
+              label="Teléfono *"
               placeholder="xxxx-xxxx"
               value={donacionForm.telefono}
               onChange={(e) => setDonacionForm((p) => ({ ...p, telefono: e.target.value }))}
@@ -839,7 +1009,7 @@ function KpiCard({
   );
 }
 
-function ResumenHeader({ onNavigate }: { onNavigate: (tab: TopTab) => void }) {
+function ResumenHeader({ onNavigate }: { onNavigate: (tab: TopTab, stockFilter?: StockFilter) => void }) {
   const { resumen, loadingResumen, loadResumen } = useInventario();
 
   useEffect(() => {
@@ -863,8 +1033,8 @@ function ResumenHeader({ onNavigate }: { onNavigate: (tab: TopTab) => void }) {
   return (
     <div className="mb-5 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
       <KpiCard icon={Package} label="Items registrados" value={resumen.totalItems} tone="brand" onClick={() => onNavigate("items")} />
-      <KpiCard icon={AlertOctagon} label="Agotados" value={resumen.agotados} tone="error" hint={resumen.agotados > 0 ? "Requieren reposición" : undefined} onClick={() => onNavigate("items")} />
-      <KpiCard icon={TrendingDown} label="Stock bajo" value={resumen.stockBajo} tone="warning" hint={resumen.stockBajo > 0 ? "En o bajo el mínimo" : undefined} onClick={() => onNavigate("items")} />
+      <KpiCard icon={AlertOctagon} label="Agotados" value={resumen.agotados} tone="error" hint={resumen.agotados > 0 ? "Requieren reposición" : undefined} onClick={() => onNavigate("items", "agotado")} />
+      <KpiCard icon={TrendingDown} label="Stock bajo" value={resumen.stockBajo} tone="warning" hint={resumen.stockBajo > 0 ? "En o bajo el mínimo" : undefined} onClick={() => onNavigate("items", "bajo")} />
       <KpiCard icon={CalendarClock} label="Movimientos hoy" value={resumen.movimientosHoy} tone="info" onClick={() => onNavigate("movimientos")} />
       <KpiCard icon={ArrowLeftRight} label="Movimientos totales" value={resumen.totalMovimientos} tone="info" onClick={() => onNavigate("movimientos")} />
     </div>
@@ -873,6 +1043,12 @@ function ResumenHeader({ onNavigate }: { onNavigate: (tab: TopTab) => void }) {
 
 export function InventarioPage() {
   const [topTab, setTopTab] = useState<TopTab>("items");
+  const [itemsFilter, setItemsFilter] = useState<StockFilter>(null);
+
+  function handleNavigate(tab: TopTab, stockFilter?: StockFilter) {
+    setTopTab(tab);
+    if (tab === "items") setItemsFilter(stockFilter ?? null);
+  }
 
   return (
     <div className="min-h-screen p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
@@ -886,7 +1062,7 @@ export function InventarioPage() {
         </div>
       </div>
 
-      <ResumenHeader onNavigate={setTopTab} />
+      <ResumenHeader onNavigate={handleNavigate} />
 
       <div className="mb-5 flex gap-2 flex-wrap">
         {TOP_TABS.map(({ id, label, Icon }) => {
@@ -911,7 +1087,7 @@ export function InventarioPage() {
         })}
       </div>
 
-      {topTab === "items" && <ItemsTab />}
+      {topTab === "items" && <ItemsTab stockFilter={itemsFilter} onClearStockFilter={() => setItemsFilter(null)} />}
       {topTab === "movimientos" && <MovimientosPage />}
       {topTab === "equipo" && <EquipoUnidadesPage />}
       {topTab === "servicio" && <ServicioInsumosPage />}

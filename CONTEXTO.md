@@ -1,14 +1,16 @@
 # ProyectoSub33 — Contexto Completo para IA
 
+> Última actualización: 2026-10-19 (mejoras del módulo Inventario, Fases 0–3).
+
 ## Stack Tecnológico
 - **Frontend:** Vite + React 18 + TypeScript + Tailwind CSS 4
-- **UI:** lucide-react (iconos), MUI 7, Radix UI, recharts (gráficas)
-- **Backend:** .NET 8, ASP.NET Core, EF Core, PostgreSQL
-- **API:** Fetch nativo con `apiClient` centralizado (`src/services/api/client.ts`)
+- **UI:** componentes propios (`src/app/components/ui`), Radix UI, lucide-react, MUI 7, recharts
+- **Backend:** .NET 8, ASP.NET Core, **Dapper** (SQL directo) + PostgreSQL; EF Core para entidades/migraciones
+- **API:** `apiClient` centralizado (`src/services/api/client.ts`), envelope `{ success, message, data }`
 - **Auth:** JWT Bearer + Roles (admin, voluntario, secretario)
-- **Gestión de estado:** React hooks + Context API
-- **Validación:** React Hook Form + validación manual
-- **Notificaciones:** sonner (toast)
+- **Estado:** React hooks + Context API
+- **Validación:** manual por formulario (no React Hook Form en las páginas nuevas)
+- **Notificaciones:** `useAlert()` (`alert`, `confirm`, `toast`) desde `src/app/components/ui/AlertSystem.tsx`
 
 ## Estructura de Carpetas (Monorepo)
 ```
@@ -16,52 +18,40 @@ ProyectoSub33-main/
 ├── src/                        ← FRONTEND (Vite + React 18 + TypeScript)
 │   ├── app/
 │   │   ├── pages/              # 10 módulos (ver abajo)
-│   │   ├── components/         # UI components (AlertDialog, figma/)
+│   │   ├── components/         # UI components (ui/, figma/)
 │   │   ├── layout/             # MainLayout, Sidebar, Topbar
 │   │   └── App.tsx             # Router + dashboard principal
 │   ├── services/
 │   │   ├── api/client.ts       # apiClient centralizado (get/post/put/delete/patch)
-│   │   ├── personalService.ts  # CRUD personal, rangos, roles
-│   │   ├── configuracionService.ts # Parámetros, usuarios, roles, permisos, catálogos
-│   │   ├── emergenciaService.ts    # Emergencias, catálogos emergencia
-│   │   └── authService.js      # Login (legacy, no usado)
-│   ├── types/                  # Tipos TypeScript compartidos
-│   │   ├── api.ts              # ApiError, ApiErrorResponse, RequestOptions
-│   │   ├── personal.ts         # Miembro, FormState, RangoItem, RolItem
-│   │   └── emergencia.ts       # Emergencia, EmergenciaCreate, Paginacion, etc.
-│   ├── constants/              # Constantes globales
-│   │   ├── roles.ts            # ROLE_LABELS, ROLE_BADGE, ROLE_NAV
-│   │   └── navigation.ts       # ALL_NAV, NavIconDef
-│   ├── utils/                  # Utilidades
-│   │   ├── format.ts           # formatDate()
-│   │   └── formHelpers.ts      # emptyFormState, miembroToForm, formToMiembro
-│   ├── context/AuthContext.tsx # useAuth() hook + AuthProvider
-│   ├── hooks/useEmergencias.ts # Hook para manejo de emergencias
+│   │   ├── personalService.ts
+│   │   ├── configuracionService.ts
+│   │   ├── emergenciaService.ts
+│   │   ├── inventarioService.ts
+│   │   └── donacionService.ts
+│   ├── types/                  # Tipos TypeScript compartidos (incluye inventario.ts, donacion.ts)
+│   ├── hooks/                  # useEmergencias, useInventario
+│   ├── constants/              # roles.ts, navigation.ts
+│   ├── utils/                  # format.ts, formHelpers.ts
+│   ├── context/AuthContext.tsx # useAuth() + AuthProvider
 │   └── main.tsx                # Entry point
 │
-├── Backend_Sub33/              ← BACKEND (.NET 8 + EF Core + PostgreSQL)
+├── Backend_Sub33/              ← BACKEND (.NET 8 + Dapper + PostgreSQL)
 │   └── Backend_Sub33/
-│       ├── Controllers/        # 8 API controllers
-│       ├── DTOs/               # Data Transfer Objects
-│       ├── Models/             # EF Core entities (Personal, Usuario, etc.)
-│       ├── Models/Entities/    # Catálogos (CatRango, CatTipoEmergencia, etc.)
-│       ├── Services/           # Business logic (IPersonalService, etc.)
-│       ├── Data/
-│       │   ├── AppDbContext.cs # DbContext con todas las entidades
-│       │   └── SQL/            # Scripts SQL (check_schema.sql, reset_db.sql)
+│       ├── Controllers/        # Personal, Configuracion, Emergencias, Inventario, Donaciones, Auth, ...
+│       ├── DTOs/               # DTOs por módulo (Inventario/Donaciones, etc.)
+│       ├── Models/             # Entidades y catálogos
+│       ├── Services/           # Lógica de negocio (InventarioService, DonacionService, ...)
+│       ├── Data/               # AppDbContext + scripts SQL
 │       ├── Common/             # ApiResponse, ServiceResult, PaginatedResult
 │       ├── Attributes/         # HttpRequirePermissionAttribute
 │       ├── Migrations/         # EF Core migrations
 │       └── Program.cs          # Startup + DI + JWT + CORS
 │
+├── docs/modulos/inventario/    # Documentación y planes del módulo
 ├── CONTEXTO.md                 # Este archivo
-├── contexto-personal.md        # Contexto específico del módulo Personal
-├── guidelines/                 # Guías del proyecto
-├── package.json                # Dependencias frontend
-├── vite.config.ts              # Configuración Vite
-├── pnpm-workspace.yaml         # Workspace pnpm
-├── poblar_catalogos_emergencia_v4.sql  # Datos semilla emergencias
-├── reset_db.sql                # Script reset completo BD
+├── package.json
+├── vite.config.ts
+├── reset_db.sql
 └── README.md
 ```
 
@@ -70,10 +60,10 @@ ProyectoSub33-main/
 |--------|-----------------|-------------------|-------------------|-----------|
 | **Personal** | `PersonalPage.tsx` | `personalService.ts` | `PersonalController` | `/api/personal`, `/api/personal/rangos`, `/api/personal/roles` |
 | **Emergencias** | `EmergenciasPage.tsx`, `RegisterServicePage.tsx`, `EditServicePage.tsx` | `emergenciaService.ts` | `EmergenciasController` | `/api/emergencias`, `/api/emergencias/siguiente-incidente` |
-| **Seguridad/Config** | `SeguridadPage.tsx` | `configuracionService.ts` | `ConfiguracionController` | `/api/configuracion/*` (parametros, usuarios, roles, permisos, catálogos) |
+| **Seguridad/Config** | `SeguridadPage.tsx` | `configuracionService.ts` | `ConfiguracionController` | `/api/configuracion/*` |
 | **Auth** | `LoginPage.tsx` | `AuthContext` + `authService.js` | `AuthController` | `/api/auth/login` |
-| **Inventario** | `InventarioPage.tsx`, `MovimientosPage.tsx`, `EquipoUnidadesPage.tsx`, `ServicioInsumosPage.tsx` | `inventarioService.ts` | `InventarioController` | `/api/inventario/items`, `/api/inventario/movimientos`, `/api/inventario/equipo-unidades`, `/api/inventario/servicio-insumos` |
-| **Donaciones** | `DonacionesPage.tsx` | — | — | Pendiente (plan en `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md`) |
+| **Inventario** | `InventarioPage.tsx`, `MovimientosPage.tsx`, `EquipoUnidadesPage.tsx`, `ServicioInsumosPage.tsx` | `inventarioService.ts` / `useInventario` | `InventarioController` | `/api/inventario/*` |
+| **Donaciones** | `DonacionesPage.tsx` | `donacionService.ts` | `DonacionesController` | `/api/donaciones` |
 | **Vehículos** | `VehiculosPage.tsx` | — | — | Pendiente |
 | **Finanzas** | `FinanzasPage.tsx` | — | — | Pendiente |
 | **Reportes** | `ReportesPage.tsx` | — | — | Pendiente |
@@ -84,37 +74,50 @@ ProyectoSub33-main/
 ### Configuración y Catálogos
 | Tabla | Descripción | PK |
 |-------|-------------|----|
-| `configuracion_listas_maestras` | Listas maestras genéricas (categoría + opción) | `lista_id` |
-| `parametros_sistema` | Parámetros clave-valor de la estación | `parametro_id` |
-| `cat_rangos` | Rangos bomberiles (Bombero, Cabo, Sargento, etc.) | `rango_id` |
-| `cat_tipos_emergencia` | Tipos de emergencia (24 tipos predefinidos) | `tipo_emergencia_id` |
+| `configuracion_listas_maestras` | Listas maestras genéricas | `lista_id` |
+| `parametros_sistema` | Parámetros clave-valor | `parametro_id` |
+| `cat_rangos` | Rangos bomberiles | `rango_id` |
+| `cat_tipos_emergencia` | Tipos de emergencia | `tipo_emergencia_id` |
 | `cat_hospitales` | Hospitales de referencia | `hospital_id` |
-| `cat_tipos_unidad` | Tipos de unidad (Ambulancia, Autobomba, etc.) | `tipo_unidad_id` |
-| `cat_unidades` | Unidades físicas con placa, estado | `unidad_id` |
-| `cat_roles_servicio` | Roles en servicio (Piloto, Socorrista, etc.) | `rol_servicio_id` |
-| `cat_tipos_mantenimiento` | Tipos de mantenimiento vehículos | `tipo_mantenimiento_id` |
+| `cat_tipos_unidad` | Tipos de unidad | `tipo_unidad_id` |
+| `cat_unidades` | Unidades físicas (código, placa, estado) | `unidad_id` |
+| `cat_roles_servicio` | Roles en servicio | `rol_servicio_id` |
+| `cat_tipos_mantenimiento` | Tipos de mantenimiento | `tipo_mantenimiento_id` |
+| `cat_categorias_inventario` | Categorías de inventario | `categoria_inv_id` |
+| `cat_proveedores` | Proveedores | `proveedor_id` |
+| `cat_tipos_movimiento` | Tipos de movimiento (`ENTRADA`, `SALIDA`, `BAJA`, `AJUSTE`, `USO_SERVICIO`, `REVERSION_SERVICIO`) | `tipo_mov_id` |
 
 ### Usuarios, Personal y Seguridad
 | Tabla | Descripción | PK | FKs |
 |-------|-------------|----|-----|
-| `personal` | Bomberos (datos personales, DPI, rango, contacto emergencia) | `personal_id` (UUID) | `rango_id → cat_rangos` |
-| `usuarios` | Cuentas de acceso al sistema | `usuario_id` (UUID) | `personal_id → personal` |
-| `roles` | Roles del sistema (Admin, Voluntario, Secretario) | `rol_id` (int) | — |
-| `permisos` | Permisos por módulo (código único) | `permiso_id` (UUID) | `modulo_id → cat_modulos` |
-| `rol_permisos` | Matriz rol-permiso (M:N) | `(rol_id, permiso_id)` | `rol_id → roles`, `permiso_id → permisos` |
-| `usuario_roles` | Roles de usuario (M:N) | `(usuario_id, rol_id)` | `usuario_id → usuarios`, `rol_id → roles` |
+| `personal` | Bomberos | `personal_id` (UUID) | `rango_id → cat_rangos` |
+| `usuarios` | Cuentas de acceso | `usuario_id` (UUID) | `personal_id → personal` |
+| `roles` | Roles del sistema | `rol_id` (int) | — |
+| `permisos` | Permisos por módulo | `permiso_id` (UUID) | `modulo_id → cat_modulos` |
+| `rol_permisos` | Matriz rol-permiso | `(rol_id, permiso_id)` | `rol_id`, `permiso_id` |
+| `usuario_roles` | Roles de usuario | `(usuario_id, rol_id)` | `usuario_id`, `rol_id` |
 | `sesiones_activas` | Tokens JWT activos | `sesion_id` (UUID) | `usuario_id → usuarios` |
 | `bitacora_accesos` | Log de ingresos | `bitacora_id` | `usuario_id → usuarios` |
-| `codigos_recuperacion` | OTP recuperación contraseña | `codigo_id` | `usuario_id → usuarios` |
+| `codigos_recuperacion` | OTP recuperación | `codigo_id` | `usuario_id → usuarios` |
 
 ### Emergencias y Servicios
 | Tabla | Descripción | PK | FKs |
 |-------|-------------|----|-----|
-| `emergencias_servicios` | Servicios de emergencia (incidente, paciente, unidad, hospital) | `servicio_id` (serial) | `tipo_emergencia_id`, `hospital_destino_id`, `formulado_por_id → personal` |
-| `servicio_tipos_asistencia` | Tipos de asistencia por servicio (M:N) | `(servicio_id, tipo_asistencia)` | `servicio_id → emergencias_servicios` |
-| `servicio_personal_asignado` | Personal asignado a servicio | `(servicio_id, nombre_personal)` | `servicio_id → emergencias_servicios`, `personal_id → personal` |
-| `signos_vitales_paciente` | Signos vitales por servicio | `signo_id` | `servicio_id → emergencias_servicios` |
-| `revision_nuevas_opciones` | Revisiones de nuevas opciones catálogos | `revision_id` | `servicio_id`, `atendido_por_usuario_id` |
+| `emergencias_servicios` | Servicios de emergencia | `servicio_id` (serial) | `tipo_emergencia_id`, `hospital_destino_id`, `formulado_por_id` |
+| `servicio_tipos_asistencia` | Tipos de asistencia por servicio | `(servicio_id, tipo_asistencia)` | `servicio_id` |
+| `servicio_personal_asignado` | Personal asignado | `(servicio_id, nombre_personal)` | `servicio_id`, `personal_id` |
+| `signos_vitales_paciente` | Signos vitales | `signo_id` | `servicio_id` |
+| `revision_nuevas_opciones` | Revisiones de catálogos | `revision_id` | `servicio_id`, `atendido_por_usuario_id` |
+
+### Inventario y Donaciones
+| Tabla | Descripción | PK | FKs |
+|-------|-------------|----|-----|
+| `inventario_items` | Insumos/equipos con stock | `item_id` | `categoria_inv_id`, `proveedor_id`, `donacion_id` |
+| `inventario_movimientos` | Kardex de movimientos (cantidad firmada para ajustes) | `movimiento_id` | `item_id`, `tipo_mov_id`, `responsable_id → personal` |
+| `equipo_unidades` | Equipo asignado a unidades | `(unidad_id, item_id)` | `unidad_id`, `item_id` |
+| `servicio_insumos_utilizados` | Insumos consumidos en servicios | `(servicio_id, item_id)` | `servicio_id`, `item_id` |
+| `donaciones` | Donaciones monetarias/material | `donacion_id` | — |
+| `donacion_materiales` | Detalle de materiales donados | `material_id` | `donacion_id` |
 
 ## Backend Endpoints Detallados
 
@@ -122,9 +125,9 @@ ProyectoSub33-main/
 ```
 GET    /api/personal?pagina=1&tamanio=10&rangoId=&estado=    → Lista paginada con filtros
 GET    /api/personal/{id:guid}                                → Detalle por ID
-POST   /api/personal                                          → Crear (CreatePersonalDto)
-PUT    /api/personal/{id:guid}                                → Actualizar (UpdatePersonalDto)
-PATCH  /api/personal/{id:guid}/estado                         → Cambiar estado (CambiarEstadoDto)
+POST   /api/personal                                          → Crear
+PUT    /api/personal/{id:guid}                                → Actualizar
+PATCH  /api/personal/{id:guid}/estado                         → Cambiar estado
 DELETE /api/personal/{id:guid}                                → Desactivar (soft delete)
 ```
 
@@ -134,246 +137,219 @@ GET    /parametros                    → Parámetros estación
 POST   /parametros                    → Guardar múltiples
 PUT    /parametros/{clave}            → Actualizar uno
 GET    /usuarios                      → Usuarios con rol
-PUT    /usuarios/{id}/estado          → Activar/desactivar usuario
+PUT    /usuarios/{id}/estado          → Activar/desactivar
 PUT    /usuarios/{id}/rol             → Asignar rol
-GET    /roles                         → Lista roles sistema
+GET    /roles                         → Lista roles
 POST   /roles                         → Crear rol
-GET    /roles/{rolId}/permisos        → Matriz permisos rol
-POST   /roles/{rolId}/permisos        → Guardar permisos rol
-GET    /catalogos/{tipo}              → Catálogo genérico (rangos, tipos-emergencia, hospitales, etc.)
-POST   /catalogos/{tipo}              → Crear en catálogo
+GET    /roles/{rolId}/permisos        → Matriz permisos
+POST   /roles/{rolId}/permisos        → Guardar permisos
+GET    /catalogos/{tipo}              → Catálogo genérico
+POST   /catalogos/{tipo}              → Crear catálogo
 PUT    /catalogos/{tipo}/{id}         → Actualizar catálogo
 DELETE /catalogos/{tipo}/{id}         → Eliminar catálogo
-GET    /rangos                        → Rangos (legacy compat)
-POST   /rangos                        → Crear rango (legacy)
 ```
 
 ### Emergencias (`/api/emergencias`)
 ```
-POST   /api/emergencias                    → Registrar emergencia (EmergenciaCreateDto con insumosUtilizados[])
+POST   /api/emergencias                     → Registrar emergencia (con insumosUtilizados[])
 GET    /api/emergencias/siguiente-incidente → Siguiente correlativo INC-YYYY-NNN
 ```
 
 ### Inventario (`/api/inventario`)
 ```
-GET    /api/inventario/items?pagina=&tamanio=&busqueda=&categoriaInvId=  → Lista paginada con filtros
-GET    /api/inventario/items/{id}                                        → Detalle por ID
-POST   /api/inventario/items                                             → Crear (InventarioItemCreateDto)
-PUT    /api/inventario/items/{id}                                        → Actualizar (InventarioItemUpdateDto)
-DELETE /api/inventario/items/{id}                                        → Eliminar
-GET    /api/inventario/movimientos?itemId=&tipoMovId=&desde=&hasta=      → Historial movimientos
-POST   /api/inventario/movimientos                                       → Registrar movimiento
-GET    /api/inventario/equipo-unidades?unidadId=                         → Equipo por unidad
-POST   /api/inventario/equipo-unidades                                   → Asignar equipo
-GET    /api/inventario/servicio-insumos?servicioId=                      → Insumos por servicio (solo lectura)
+GET    /api/inventario/items?pagina=&tamanio=&busqueda=&categoriaInvId=&stockStatus=
+       → Lista paginada. stockStatus: "agotado" | "bajo" (filtro server-side)
+GET    /api/inventario/items/{id}                     → Detalle por ID
+POST   /api/inventario/items                          → Crear item (si stock > 0 registra ENTRADA "Stock inicial")
+PUT    /api/inventario/items/{id}                     → Actualizar item
+DELETE /api/inventario/items/{id}                     → Eliminar
+GET    /api/inventario/movimientos?itemId=&tipoMovId=&desde=&hasta=  → Kardex paginado
+POST   /api/inventario/movimientos                    → SOLO tipo AJUSTE (delta con signo, motivo y responsableId obligatorios)
+GET    /api/inventario/movimientos/tipos              → Tipos manuales (solo AJUSTE)
+GET    /api/inventario/equipo-unidades?unidadId=      → Equipo por unidad
+POST   /api/inventario/equipo-unidades                → Asignar/actualizar equipo (upsert)
+GET    /api/inventario/servicio-insumos?servicioId=   → Insumos por servicio (solo lectura)
+GET    /api/inventario/resumen                        → KPIs (total, agotados, stock bajo, movimientos)
+GET    /api/configuracion/catalogos/{tipo}            → Categorías, proveedores, tipos-movimiento, unidades
+```
+
+### Donaciones (`/api/donaciones`)
+```
+GET    /api/donaciones?tipo=&pagina=&tamanio=   → Lista paginada (Material | Monetaria)
+GET    /api/donaciones/{id}                     → Detalle
+POST   /api/donaciones                          → Crear (genera noRecibo si no se envía)
+PUT    /api/donaciones/{id}                     → Actualizar
+PATCH  /api/donaciones/{id}/estado              → Cambiar estado
+DELETE /api/donaciones/{id}                     → Eliminar
 ```
 
 ### Auth (`/api/auth`)
 ```
-POST   /api/auth/login                    → Login (username + password) → JWT
+POST   /api/auth/login   → Login (username + password) → JWT
 ```
 
 ## Patrones de Código Frontend
 
 ### API Client (`src/services/api/client.ts`)
 ```typescript
-// Uso estándar
 const data = await apiClient.get<T>("/endpoint");
 const data = await apiClient.post<T>("/endpoint", body);
 const data = await apiClient.put<T>("/endpoint", body);
 const data = await apiClient.patch<T>("/endpoint", body);
 await apiClient.delete<T>("/endpoint");
 
-// Configuración
-- Base URL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5196/api"
-- Token: localStorage.getItem("authToken")
-- Headers: Content-Type: application/json + Authorization: Bearer <token>
-- Error handling: ApiError class con status + data
+// Base URL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5196/api"
+// Token: localStorage.getItem("authToken")
+// Headers: Content-Type: application/json + Authorization: Bearer <token>
 ```
 
-### Servicios (ej. `personalService.ts`)
+### Envelope backend
 ```typescript
-// Envelope backend: { success, message, data }
-interface BackendEnvelope<T> { success: boolean; message: string; data: T; }
-
-// Llamadas tipadas
-export const getPersonal = async (): Promise<PersonalResponse[]> => {
-  const res = await apiClient.get<BackendEnvelope<PersonalResponse[]>>("/personal");
-  return res.data; // o res.items si viene paginado
-};
+interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 ```
 
-### Páginas (ej. `PersonalPage.tsx`)
-```typescript
-// Estado local
-const [members, setMembers] = useState<Miembro[]>([]);
-const [search, setSearch] = useState("");
-const [filterRango, setFilterRango] = useState("");
-const [page, setPage] = useState(1);
+### Layout y estilos
+- Variables CSS: `var(--bg-page)`, `var(--bg-card)`, `var(--bg-input)`, `var(--bg-hover)`, `var(--text-1..3)`, `var(--border)`, `var(--brand-*)`, `var(--success-*)`, `var(--warning-*)`, `var(--info-*)`.
+- Tailwind solo para layout (grid, flex, spacing, tipografía).
+- Iconos `lucide-react` 13–20px.
 
-// useMemo para filtrado
-const filtered = useMemo(() => members.filter(...), [members, search, filterRango]);
-
-// Carga inicial
-useEffect(() => { loadData(); }, []);
-
-// Handlers async con try/catch + toast
-const handleSubmit = async () => { ... };
-```
-
-### Componentes
-- Props tipadas con `interface`
-- `useMemo` para derivados, `useState` para estado local
-- Estilos: Variables CSS (`var(--bg-input)`, `var(--text-1)`, `var(--red)`) + Tailwind para layout
-- Iconos: `lucide-react`, tamaño 15-20px
-
-### Tipos Compartidos (`src/types/`)
-- `personal.ts`: `Miembro`, `FormState`, `RangoItem`, `RolItem`, `Estado`
-- `emergencia.ts`: `Emergencia`, `EmergenciaCreate`, `EmergenciaUpdate`, `Paginacion`, `SignosVitales`, `PersonalAsignado`
-- `api.ts`: `ApiError`, `ApiErrorResponse`, `RequestOptions`, `ApiClientConfig`
+### Componentes UI reutilizables
+- `Button` (`variant`: brand, brand-outline, outline, ghost; `loading`).
+- `Input`, `SelectField`, `FormErrorSummary`, `InfoField` (módulo Inventario).
+- `Modal` (Radix `Dialog.Portal`, `z-[var(--z-modal)]` = 500) para formularios.
+- `Drawer` (portal, `z-[var(--z-drawer)]` = 400) para detalle con `Tabs`.
+- `DataTable` con paginación server-side, toolbar y `emptyState`.
+- `AlertSystem`: `const { alert, confirm, toast } = useAlert();`
+- **Gotcha:** `ModuleWrap` usa `animate-page-enter`, creando stacking context permanente; los overlays `fixed` inline quedan atrapados. Usar `Modal`/`Drawer` (portal) para overlays.
 
 ## Convenciones Estrictas
-- **Nombres:** camelCase (vars/functions), PascalCase (componentes/types)
-- **Estilos:** Variables CSS (`var(--red)`, `var(--bg-input)`) + Tailwind solo layout
-- **Iconos:** `lucide-react`, 15-20px
-- **Color principal:** RED = `#D32F2F` (definido en `constants/roles.ts` y `App.tsx`)
-- **API:** `apiClient.get<T>(path)`, `apiClient.post<T>(path, body)` — **NO** fetch directo
-- **Auth:** `useAuth()` hook → `{ user, role, login, logout, setRole }`
-- **Tipos:** **NO** duplicar — usar `src/types/personal.ts` y `src/types/emergencia.ts`
-- **Constantes:** **NO** duplicar — usar `src/constants/roles.ts` y `src/constants/navigation.ts`
-- **URLs:** **NO** hardcodear — usar `import.meta.env.VITE_API_BASE_URL`
-- **Tipado:** **NO** usar `any` — tipar todo correctamente
-- **Código funcional:** **NO** eliminar — refactorizar con cuidado
+- **Nombres:** camelCase (vars/functions), PascalCase (componentes/types).
+- **Estilos:** variables CSS + Tailwind solo layout.
+- **API:** `apiClient` — **NO** fetch directo.
+- **Auth:** `useAuth()` → `{ user, role, loggedIn, login, logout, setRole }`; `user.personalId` (UUID o null).
+- **Tipos:** **NO** duplicar; usar `src/types/*`.
+- **URLs:** **NO** hardcodear; usar `VITE_API_BASE_URL`.
+- **Tipado:** **NO** usar `any`.
+- **Código funcional:** **NO** eliminar; refactorizar con cuidado.
+- **Comentarios:** no agregar comentarios nuevos en el código.
+- **Datos en kardex:** `inventario_movimientos.cantidad` es `int` y admite negativos (delta de AJUSTE).
 
 ## Autenticación y Autorización
-- **JWT:** Bearer token en header `Authorization`
-- **Roles:** `admin` | `voluntario` | `secretario` (definidos en `AuthContext.tsx`)
-- **Navegación por rol:** `ROLE_NAV[role]` filtra items del sidebar
-- **Permisos backend:** `HttpRequirePermissionAttribute` en controllers
-- **Token storage:** `localStorage.authToken` + `localStorage.user` + `localStorage.userRole`
-- **Login actual:** Token hardcodeado `"dev-token"` — **PENDIENTE** implementar real
+- JWT Bearer en `Authorization`.
+- Roles: `admin` | `voluntario` | `secretario`.
+- Navegación por rol: `ROLE_NAV[role]`.
+- Permisos backend: `HttpRequirePermissionAttribute`.
+- Storage: `localStorage.authToken` + `localStorage.user` + `localStorage.userRole`.
+- Login actual: token de desarrollo — **PENDIENTE** auth real.
 
-## Datos Semilla (poblar_catalogos_emergencia_v4.sql)
-- **24 tipos de emergencia** con colores hex y `requiere_unidad`
-- **10 tipos de unidad** (Ambulancia, Autobomba, Rescate, etc.)
-- **11 hospitales** (Sololá, Antigua, Chimaltenango, Quetzaltenango, Ciudad Guatemala)
-- **10 unidades físicas** con códigos (A-33, B-12, R-5, E-44, BD-01, etc.) y placas BOM-XXX
+## Estado Actual — Módulo Inventario (actualizado 2026-10-19)
+
+### Backend
+| Archivo | Estado |
+|---------|--------|
+| `Models/Entities/InventarioItem.cs` | ✅ |
+| `Models/Entities/InventarioMovimiento.cs` | ✅ (`Cantidad` int firmado) |
+| `Models/Entities/EquipoUnidad.cs` | ✅ |
+| `Models/Entities/ServicioInsumoUtilizado.cs` | ✅ |
+| `DTOs/Inventario/InventarioDtos.cs` | ✅ (`InventarioItemFiltrosDto.StockStatus` agregado) |
+| `Services/IInventarioService.cs` | ✅ |
+| `Services/InventarioService.cs` | ✅ (Ajuste delta, ENTRADA inicial, filtro stock) |
+| `Controllers/InventarioController.cs` | ✅ (`stockStatus` en `GetItems`) |
+| `Services/DonacionService.cs` | ✅ (`MapearCategoria` corregido) |
+| `Controllers/DonacionesController.cs` | ✅ |
+| `Program.cs` | ✅ Servicios registrados |
+
+### Frontend
+| Archivo | Estado |
+|---------|--------|
+| `src/types/inventario.ts` | ✅ (`stockStatus` en filtros) |
+| `src/services/inventarioService.ts` | ✅ |
+| `src/hooks/useInventario.ts` | ✅ |
+| `src/app/pages/Inventario/InventarioPage.tsx` | ✅ 4 pestañas; Kardex/Ubicaciones reales; KPIs filtrables; sin print |
+| `src/app/pages/Inventario/MovimientosPage.tsx` | ✅ Solo lectura + Ajuste; `tipoMeta` exportado |
+| `src/app/pages/Inventario/EquipoUnidadesPage.tsx` | ✅ Tarjetas por unidad + Drawer + validación de stock |
+| `src/app/pages/Inventario/ServicioInsumosPage.tsx` | ✅ Tarjetas + Drawer; sin print |
+| `src/app/pages/Donaciones/DonacionesPage.tsx` | ✅ Conectado al backend; sin print |
+
+### Mejoras aplicadas (2026-10-19)
+1. **Equipo en Unidades:** rediseñado a tarjetas por unidad con nombre, filtros (búsqueda por item y unidad), Drawer con detalle y edición de cantidades; aviso cuando la suma asignada excede el stock.
+2. **Items:** la sección Proveedor se oculta cuando `origen === "Donado"`; se eliminó el `noRecibo` aleatorio y se exigen DPI/NIT y teléfono en la donación rápida.
+3. **Movimientos:** página de solo lectura (kardex) + botón **Ajuste de Inventario**; el backend acepta únicamente AJUSTE con delta firmado, motivo y `responsableId` obligatorios; rechaza dejar stock negativo o delta cero.
+4. **Kardex:** al crear un item con stock inicial se registra automáticamente un movimiento ENTRADA con motivo "Stock inicial".
+5. **Detalle de item:** pestañas Kardex (últimos 50 movimientos) y Ubicaciones (unidades y servicios) con datos reales; se eliminó la pestaña Acciones duplicada.
+6. **KPIs:** "Agotados" y "Stock bajo" navegan a Items con filtro server-side (`stockStatus`) y chip para quitarlo.
+7. **Donaciones:** `MapearCategoria("Equipo/Herramientas")` ahora devuelve `"Equipo de Rescate"`.
+8. **Limpieza:** se eliminaron los `window.print()` del módulo (Items, Movimientos, Equipo, ServicioInsumos) y de Donaciones.
+9. Se eliminó el caso muerto `TRANSFERENCIA` de `tipoMeta`.
+
+### Catálogos en Configuración
+- `categorias-inventario` → `cat_categorias_inventario`
+- `proveedores` → `cat_proveedores`
+- `tipos-movimiento` → `cat_tipos_movimiento`
+- `unidades` → `cat_unidades`
+
+### Datos Semilla
+- `docs/modulos/inventario/datos_inventario.sql` → categorías, proveedores, tipos de movimiento, unidades e items.
+
+## Documentación del Módulo
+| Archivo | Propósito |
+|---------|-----------|
+| `docs/modulos/inventario/INVENTARIO.md` | Análisis completo del módulo |
+| `docs/modulos/inventario/PLAN_INVENTARIO_MEJORAS.md` | Plan de mejoras Fases 0–3 (implementado) |
+| `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md` | Integración Inventario ↔ Donaciones |
+| `docs/modulos/inventario/PLAN_INSUMOS_EMERGENCIAS.md` | Insumos en Emergencias → Inventario |
+| `docs/modulos/inventario/datos_inventario.sql` | Datos semilla |
+| `docs/modulos/inventario/migracion_donaciones.sql` | Migración integración donaciones |
 
 ## Tareas Pendientes (Priorizadas)
-- [x] **Conectar módulo Inventario a backend** (completado: Controller, Service, DTOs, Frontend conectado)
-- [ ] **Conectar módulos Vehículos, Finanzas, Donaciones, Reportes a backend**
-- [ ] **Integración Inventario ↔ Donaciones** (plan en `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md`)
-- [ ] **Insumos en Emergencias → Inventario** (plan en `docs/modulos/inventario/PLAN_INSUMOS_EMERGENCIAS.md`)
-- [ ] **Implementar autenticación real** (reemplazar token hardcodeado "dev-token")
-- [ ] **Mover URLs hardcodeadas** a variables de entorno (`VITE_API_BASE_URL`)
-- [ ] **Dividir componentes gigantes** (InventarioPage 1742 líneas, ReportesPage 1931 líneas)
-- [ ] **Agregar tests unitarios** (Jest/Vitest + React Testing Library)
-- [ ] **Implementar manejo de errores consistente** (toast sonner en lugar de console.error)
-- [ ] **Paginación real en backend** para Emergencias (actualmente mock en frontend)
-- [ ] **Validar DTOs backend** con DataAnnotations completos
-- [ ] **Migraciones EF Core** para tablas faltantes (cat_unidades, cat_tipos_unidad, etc.)
+- [x] Conectar módulo Inventario a backend.
+- [x] Conectar módulo Donaciones a backend.
+- [x] Integración Inventario ↔ Donaciones (Material).
+- [x] Insumos en Servicios → Inventario (solo lectura).
+- [x] Plan de mejoras de flujos y UX del Inventario.
+- [ ] Conectar módulos Vehículos, Finanzas y Reportes a backend.
+- [ ] Implementar autenticación real (reemplazar token de desarrollo).
+- [ ] Mover URLs hardcodeadas a `VITE_API_BASE_URL`.
+- [ ] Dividir componentes gigantes (`InventarioPage`, `ReportesPage`).
+- [ ] Agregar tests unitarios (Vitest + React Testing Library).
+- [ ] Manejo de errores consistente en todos los módulos.
+- [ ] Paginación real en backend para Emergencias.
+- [ ] Validar DTOs backend con DataAnnotations completos.
+- [ ] Migraciones EF Core para tablas faltantes.
+- [ ] Implementar impresión por contenido (reemplazar `window.print()` global en módulos restantes).
 
 ## Archivos Clave para Referencia Rápida
 | Archivo | Propósito |
 |---------|-----------|
 | `src/services/api/client.ts` | Cliente API centralizado |
-| `src/context/AuthContext.tsx` | Auth state + login/logout |
-| `src/types/personal.ts` | Tipos módulo Personal |
-| `src/types/emergencia.ts` | Tipos módulo Emergencias |
-| `src/types/inventario.ts` | Tipos módulo Inventario |
-| `src/constants/roles.ts` | Roles, labels, badges, nav permissions |
-| `src/constants/navigation.ts` | Definición de navegación (ALL_NAV) |
-| `Backend_Sub33/Data/AppDbContext.cs` | Esquema BD completo + relaciones |
-| `Backend_Sub33/Controllers/PersonalController.cs` | Endpoints Personal |
-| `Backend_Sub33/Controllers/ConfiguracionController.cs` | Endpoints Config + Catálogos genéricos |
-| `Backend_Sub33/Controllers/EmergenciasController.cs` | Endpoints Emergencias + correlativo |
-| `Backend_Sub33/Controllers/InventarioController.cs` | Endpoints Inventario |
-| `Backend_Sub33/Controllers/AuthController.cs` | Login JWT + BCrypt |
-| `poblar_catalogos_emergencia_v4.sql` | Datos semilla catálogos emergencia |
-| `reset_db.sql` | Script completo recrear BD |
-| `docs/modulos/inventario/datos_inventario.sql` | Datos semilla inventario (categorías, proveedores, items) |
-| `docs/modulos/inventario/INVENTARIO.md` | Análisis completo módulo Inventario |
-| `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md` | Plan integración Inventario ↔ Donaciones |
-| `docs/modulos/inventario/PLAN_INSUMOS_EMERGENCIAS.md` | Plan insumos en Emergencias → Inventario |
-
-10. **Soft delete:** Personal se desactiva (`estado = false`), no se elimina físicamente
-
----
-
-## Estado Actual Módulo Inventario (Completado)
-
-### Backend Implementado
-| Archivo | Estado |
-|---------|--------|
-| `Backend_Sub33/Backend_Sub33/Models/Entities/InventarioItem.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/Models/Entities/InventarioMovimiento.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/Models/Entities/EquipoUnidad.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/Models/Entities/ServicioInsumoUtilizado.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/InventarioItemCreateDto.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/InventarioItemUpdateDto.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/InventarioMovimientoCreateDto.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/EquipoUnidadCreateDto.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/ServicioInsumoUtilizadoCreateDto.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/Services/IInventarioService.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/Services/InventarioService.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/Controllers/InventarioController.cs` | ✅ Creado |
-| `Backend_Sub33/Backend_Sub33/Data/AppDbContext.cs` | ✅ Actualizado (DbSets + OnModelCreating) |
-| `Backend_Sub33/Backend_Sub33/Program.cs` | ✅ Registrado servicio |
-
-### Frontend Implementado
-| Archivo | Estado |
-|---------|--------|
-| `src/types/inventario.ts` | ✅ Creado (tipos completos) |
-| `src/services/inventarioService.ts` | ✅ Creado (apiClient) |
-| `src/hooks/useInventario.ts` | ✅ Creado (estado, catálogos, CRUD) |
-| `src/app/pages/Inventario/InventarioPage.tsx` | ✅ Conectado a backend (4 tabs: Items, Movimientos, Equipo, Servicio) |
-| `src/app/pages/Inventario/MovimientosPage.tsx` | ✅ Creado (historial + registro movimientos) |
-| `src/app/pages/Inventario/EquipoUnidadesPage.tsx` | ✅ Creado (asignación equipo a unidades) |
-| `src/app/pages/Inventario/ServicioInsumosPage.tsx` | ✅ Conectado (pendiente: convertir a solo lectura per plan) |
-
-### Catálogos en Configuración (ya funcionando)
-- `categorias-inventario` → `cat_categorias_inventario`
-- `proveedores` → `cat_proveedores`
-- `tipos-movimiento` → `cat_tipos_movimiento`
-
-### Datos Semilla
-- `docs/modulos/inventario/datos_inventario.sql` → 8 categorías, 5 proveedores, 6 tipos movimiento, 5 unidades, 18 items
-
----
-
-## Planes Creados (Listos para Ejecutar)
-
-| Plan | Archivo | Descripción |
-|------|---------|-------------|
-| **Inventario ↔ Donaciones** | `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md` | Opción B: Asset-First. Registrar en Inventario con origen "Donado" → crea registro en Donaciones |
-| **Insumos en Emergencias** | `docs/modulos/inventario/PLAN_INSUMOS_EMERGENCIAS.md` | Push desde Emergencias: registrar insumos al crear emergencia → descuenta stock, crea movimiento, Inventario solo lectura |
-
----
-
-## Próximos Pasos Inmediatos (para siguiente IA)
-
-1. **Ejecutar migración BD** para Inventario + Donaciones (tablas + columnas)
-2. **Implementar Plan Insumos Emergencias** (PASO 1-5 del plan correspondiente)
-3. **Implementar Plan Inventario ↔ Donaciones** (FASE 1 del plan correspondiente)
-4. **Conectar DonacionesPage.tsx** a backend (crear types, service, hook)
-5. **Convertir ServicioInsumosPage.tsx** a solo lectura (quitar crear/editar)
-
----
+| `src/context/AuthContext.tsx` | Auth state + `useAuth()` |
+| `src/types/inventario.ts` | Tipos del módulo Inventario |
+| `src/types/donacion.ts` | Tipos del módulo Donaciones |
+| `src/constants/roles.ts` | Roles, labels, badges, navegación |
+| `src/constants/navigation.ts` | Navegación (`ALL_NAV`) |
+| `Backend_Sub33/Backend_Sub33/Services/InventarioService.cs` | Lógica de inventario (kardex, ajustes, filtros) |
+| `Backend_Sub33/Backend_Sub33/Services/DonacionService.cs` | Lógica de donaciones |
+| `Backend_Sub33/Backend_Sub33/Controllers/InventarioController.cs` | Endpoints Inventario |
+| `Backend_Sub33/Backend_Sub33/Controllers/DonacionesController.cs` | Endpoints Donaciones |
+| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/InventarioDtos.cs` | DTOs de Inventario |
+| `docs/modulos/inventario/PLAN_INVENTARIO_MEJORAS.md` | Plan de mejoras implementado |
+| `reset_db.sql` | Recrear BD completa |
 
 ## Comandos de Verificación
 
 ```bash
+# Frontend
+npm run build          # Vite build (no ejecuta typecheck)
+
 # Backend
 cd Backend_Sub33/Backend_Sub33
-dotnet build                    # Debe compilar sin errores
-dotnet ef migrations add InventarioDonacionesSync
+dotnet build           # Debe compilar sin errores
+
+# Si el proceso Backend_Sub33 está corriendo y bloquea el .exe:
+dotnet build -p:OutDir=C:\Users\PC\AppData\Local\Temp\opencode\bsout\
+
+# Base de datos
 dotnet ef database update
-
-# Frontend
-npm run build                   # Debe compilar sin errores TS
-
-# Tests manuales
-# 1. Inventario: CRUD items, movimientos, equipo-unidades
-# 2. Emergencias: POST con insumosUtilizados[] → stock descuenta
-# 3. ServicioInsumosPage: solo lectura, sin botón crear
 ```
+
+> Nota: los únicos warnings actuales del backend son 2 preexistentes en `PersonalService.cs` (CS8619, líneas 777/791).

@@ -21,16 +21,18 @@ public class InventarioController : ApiControllerBase
     public async Task<IActionResult> GetItems(
         [FromQuery] string? busqueda = null,
         [FromQuery] int? categoriaInvId = null,
+        [FromQuery] string? stockStatus = null,
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanio = 10)
-    {
-        var filtros = new InventarioItemFiltrosDto
         {
-            Busqueda = busqueda,
-            CategoriaInvId = categoriaInvId,
-            Pagina = pagina,
-            TamanoPagina = tamanio
-        };
+            var filtros = new InventarioItemFiltrosDto
+            {
+                Busqueda = busqueda,
+                CategoriaInvId = categoriaInvId,
+                StockStatus = stockStatus,
+                Pagina = pagina,
+                TamanoPagina = tamanio
+            };
 
         return Respond(await _inventarioService.GetItemsAsync(filtros));
     }
