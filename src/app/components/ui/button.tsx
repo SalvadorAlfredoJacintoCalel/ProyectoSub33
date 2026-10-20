@@ -11,7 +11,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         brand:
-          "text-white hover:shadow-[var(--elevation-brand-2)] hover:scale-[1.02]",
+          "bg-[var(--brand-600)] text-white hover:shadow-[var(--elevation-brand-2)] hover:scale-[1.02]",
         "brand-outline":
           "border-2 border-[var(--brand-500)] text-[var(--brand-600)] bg-[var(--brand-50)] hover:shadow-[var(--elevation-brand-1)] dark:bg-[var(--brand-500)]/20 dark:text-[var(--brand-400)]",
         "brand-ghost":
@@ -19,7 +19,7 @@ const buttonVariants = cva(
         glass:
           "bg-[var(--glass-bg-strong)] backdrop-blur-[12px] border border-[var(--glass-border)] text-[var(--text-1)] hover:bg-[var(--glass-bg-subtle)] hover:shadow-[var(--elevation-brand-1)]",
         destructive:
-          "text-white hover:shadow-[var(--elevation-brand-2)] hover:scale-[1.02]",
+          "bg-[var(--brand-600)] text-white hover:shadow-[var(--elevation-brand-2)] hover:scale-[1.02]",
         outline:
           "border border-[var(--border)] bg-background text-foreground hover:bg-[var(--bg-hover)] hover:shadow-[var(--elevation-1)] dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
         secondary:
@@ -58,9 +58,11 @@ function Button({
   ripple = true,
   children,
   disabled,
+  style,
   ...props
 }: ButtonProps) {
   const Comp = asChild ? Slot : "button";
+  const resolvedVariant = variant ?? "brand";
   const [ripples, setRipples] = React.useState<Array<{ x: number; y: number; id: number }>>([]);
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -77,7 +79,12 @@ function Button({
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
-      style={variant === "brand" || variant === "destructive" ? { background: "var(--grad-primary-solid)", backgroundImage: "var(--grad-primary)" } : undefined}
+      style={{
+        ...(resolvedVariant === "brand" || resolvedVariant === "destructive"
+          ? { background: "var(--grad-primary-solid)", backgroundImage: "var(--grad-primary)" }
+          : {}),
+        ...(style ?? {}),
+      }}
       onClick={handleClick}
       disabled={disabled || loading}
       {...props}

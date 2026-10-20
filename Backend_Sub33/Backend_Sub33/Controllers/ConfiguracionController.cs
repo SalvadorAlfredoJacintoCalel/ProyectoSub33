@@ -36,6 +36,10 @@ namespace Backend_Sub33.Controllers
             ["tipos-movimiento"] = new("cat_tipos_movimiento", "tipo_mov_id", "descripcion", false),
             ["tipos-asistencia"] = new("cat_tipos_asistencia", "tipo_asistencia_id", "nombre", false),
             ["estados-entrega"] = new("cat_estados_entrega", "estado_entrega_id", "nombre", true),
+            ["tipos-vehiculo"] = new("cat_tipos_vehiculo", "tipo_vehiculo_id", "nombre", true),
+            ["gasolineras"] = new("cat_gasolineras", "gasolinera_id", "nombre", true),
+            ["talleres"] = new("cat_talleres", "taller_id", "nombre", false),
+            ["tipos-documento"] = new("cat_tipos_documento", "tipo_documento_id", "nombre", true),
         };
 
         public ConfiguracionController(AppDbContext context, ILogger<ConfiguracionController> logger)

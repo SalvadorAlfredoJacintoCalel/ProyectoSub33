@@ -295,6 +295,17 @@ namespace Backend_Sub33.Services
                     await SincronizarInventarioAsync(connection, transaction, donacionId, noRecibo, donante, dto.Categoria, dto.Materiales);
                 }
 
+                var descripcionLibro = string.IsNullOrWhiteSpace(dto.Descripcion)
+                    ? $"Donación {noRecibo} - {donante}"
+                    : dto.Descripcion.Trim();
+
+                await DonacionLibroHelper.UpsertMovimientoDonacionAsync(
+                    connection, transaction, donacionId,
+                    (dto.Fecha ?? DateTime.Today).Date,
+                    descripcionLibro,
+                    dto.Monto,
+                    noRecibo);
+
                 transaction.Commit();
 
                 return await GetByIdAsync(donacionId);
@@ -386,6 +397,25 @@ namespace Backend_Sub33.Services
                     }
                 }
 
+                var actual = await connection.QueryFirstAsync(@"
+                    SELECT COALESCE(fecha, CURRENT_DATE) AS fecha,
+                           no_recibo,
+                           donante,
+                           COALESCE(descripcion, '') AS descripcion,
+                           COALESCE(monto, 0) AS monto
+                    FROM donaciones WHERE donacion_id = @Id", new { Id = id }, transaction);
+
+                var descripcionLibro = string.IsNullOrWhiteSpace((string?)actual.descripcion)
+                    ? $"Donación {actual.no_recibo} - {actual.donante}"
+                    : ((string)actual.descripcion).Trim();
+
+                await DonacionLibroHelper.UpsertMovimientoDonacionAsync(
+                    connection, transaction, id,
+                    ((DateTime)actual.fecha).Date,
+                    descripcionLibro,
+                    (decimal)actual.monto,
+                    (string?)actual.no_recibo);
+
                 transaction.Commit();
 
                 return await GetByIdAsync(id);
@@ -435,10 +465,15 @@ namespace Backend_Sub33.Services
                     return ServiceResult.NotFound("Donación no encontrada.");
                 }
 
+                using var transaction = connection.BeginTransaction();
+
+                await DonacionLibroHelper.DeleteMovimientoDonacionAsync(connection, transaction, id);
                 await connection.ExecuteAsync(
-                    "UPDATE inventario_items SET donacion_id = NULL WHERE donacion_id = @Id", new { Id = id });
+                    "UPDATE inventario_items SET donacion_id = NULL WHERE donacion_id = @Id", new { Id = id }, transaction);
                 await connection.ExecuteAsync(
-                    "DELETE FROM donaciones WHERE donacion_id = @Id", new { Id = id });
+                    "DELETE FROM donaciones WHERE donacion_id = @Id", new { Id = id }, transaction);
+
+                transaction.Commit();
 
                 return ServiceResult.Success();
             }

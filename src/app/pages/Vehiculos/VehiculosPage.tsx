@@ -1,1290 +1,646 @@
-import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Pencil, Trash2, Eye, Plus, Search, X, Check,
-  AlertTriangle, Fuel, Truck,
-  Wrench, Info, Power, Printer, FileText, History, MapPin,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Fuel,
+  Gift,
+  Pencil,
+  Plus,
+  Search,
+  Ticket,
+  Trash2,
+  Truck,
+  Wallet,
+  Wrench,
 } from "lucide-react";
-import { useAlert } from "@/app/components/ui/AlertSystem";
-import { Drawer } from "@/app/components/ui/drawer";
-import { Tabs, type TabItem } from "@/app/components/ui/tabs";
-import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
+import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
-import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
+import { Input } from "@/app/components/ui/input";
+import { Skeleton } from "@/app/components/ui/skeleton";
+import { Tabs, type TabItem } from "@/app/components/ui/tabs";
+import { useAlert } from "@/app/components/ui/AlertSystem";
+import { SelectField } from "@/app/pages/Inventario/components/SelectField";
+import { formatMoneda } from "@/app/pages/Inventario/components/format";
+import { useVehiculos } from "@/hooks/useVehiculos";
+import { vehiculosService } from "@/services/vehiculosService";
+import type {
+  CatalogoItem,
+  Vehiculo,
+  VehiculoCreate,
+  VehiculoMantenimiento,
+  VehiculoMantenimientoCreate,
+} from "@/types/vehiculos";
+import { CuponesTab } from "./CuponesTab";
+import { VehiculoFormModal } from "./components/VehiculoFormModal";
+import { VehiculoDrawer } from "./components/VehiculoDrawer";
+import { MantenimientoModal } from "./components/MantenimientoModal";
+import { CARD_STYLE, estadoOperativoVariant, origenVariant, registroVariant } from "./components/vehiculoHelpers";
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const RED = "var(--red)";
-const BG = "var(--bg-hover)";
-const BORDER = "var(--neutral-200)";
-const MUTED = "var(--neutral-500)";
-const CARD_SHADOW = "0 1px 4px rgba(0,0,0,0.06)";
+const ESTADOS_OPERATIVOS = ["Operativa", "En Servicio", "Mantenimiento", "Fuera de Servicio"];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type VehicleStatus = "Operativa" | "En Servicio" | "Mantenimiento";
-type VehicleOrigin = "estacion" | "donacion";
-type MantenimientoTipo = "Preventivo" | "Correctivo";
-type MantenimientoEstado = "En proceso" | "Finalizado";
-
-interface Vehicle {
-  code: string;
-  type: string;
-  brand: string;
-  model: string;
-  plate: string;
-  year: number;
-  color: string;
-  km: string;
-  status: VehicleStatus;
-  estado?: "Activo" | "Inactivo";
-}
-
-interface FuelEntry {
-  id: number;
-  fecha: string;
-  responsable: string;
-  placas: string;
-  tipoUnidad: string;
-  galonaje: number;
-  comision: string;
-  gasolinera: "Shell Jireh" | "Shell Atitlán";
-  cuponDel: number;
-  cuponAl: number;
-  totalCupones: number;
-  valorCupon: number;
-  haber: number;
-  saldoRestante: number;
-}
-
-type GasolineraFilter = "Todas" | "Shell Jireh" | "Shell Atitlán";
-
-// ─── Vehicle detail data ──────────────────────────────────────────────────────
-interface VehicleDetailData {
-  chassis: string;
-  motor: string;
-  fuel: string;
-  kmHours: string;
-  tankCapacity: string;
-  tireCondition: "Bueno" | "Regular" | "Crítico";
-  insuranceUntil: string;
-  equipment: { item: string; qty: string }[];
-  maintenance: { date: string; type: "Preventivo" | "Correctivo"; taller: string; desc: string; cost: string }[];
-}
-
-const VEHICLE_DETAILS: Record<string, VehicleDetailData> = {
-  "A-33": {
-    chassis: "CH-7789234",
-    motor: "MO-4421899",
-    fuel: "Gasolina",
-    kmHours: "45,200 km",
-    tankCapacity: "80 litros",
-    tireCondition: "Bueno",
-    insuranceUntil: "2025-06-30",
-    equipment: [
-      { item: "Camilla plegable", qty: "×1" },
-      { item: "Desfibrilador DEA", qty: "×1" },
-      { item: "Tanque de oxígeno", qty: "×2" },
-      { item: "Collar cervical", qty: "×3" },
-      { item: "Botiquín tipo A", qty: "×1" },
-    ],
-    maintenance: [
-      { date: "2025-04-10", type: "Preventivo", taller: "Taller González", desc: "Cambio de aceite y filtros", cost: "Q650" },
-      { date: "2025-01-22", type: "Correctivo", taller: "Taller Mecánico El Lago", desc: "Revisión de frenos delanteros", cost: "Q1,200" },
-      { date: "2024-09-15", type: "Preventivo", taller: "Taller González", desc: "Alineación y balanceo", cost: "Q380" },
-      { date: "2024-06-03", type: "Correctivo", taller: "Taller San Lucas", desc: "Cambio de batería", cost: "Q850" },
-    ],
-  },
-  "BD-01": {
-    chassis: "CH-8823411",
-    motor: "MO-5512344",
-    fuel: "Diésel",
-    kmHours: "78,900 km",
-    tankCapacity: "120 litros",
-    tireCondition: "Regular",
-    insuranceUntil: "2025-03-15",
-    equipment: [
-      { item: "Manguera 1.5\"×30m", qty: "×4" },
-      { item: "Extintor ABC", qty: "×2" },
-      { item: "Hacha bombero", qty: "×1" },
-      { item: "Carretón de manguera", qty: "×1" },
-    ],
-    maintenance: [
-      { date: "2025-03-01", type: "Correctivo", taller: "Servicio Oficial Isuzu Xela", desc: "Reparación sistema hidráulico", cost: "Q3,500" },
-      { date: "2024-11-18", type: "Preventivo", taller: "Taller González", desc: "Cambio de aceite y filtros", cost: "Q720" },
-      { date: "2024-07-25", type: "Preventivo", taller: "Taller Mecánico El Lago", desc: "Revisión eléctrica general", cost: "Q450" },
-      { date: "2024-03-10", type: "Correctivo", taller: "Taller San Lucas", desc: "Cambio de amortiguadores", cost: "Q2,100" },
-    ],
-  },
-  "AD-02": {
-    chassis: "CH-6634122",
-    motor: "MO-3318765",
-    fuel: "Diésel",
-    kmHours: "102,400 km",
-    tankCapacity: "150 litros",
-    tireCondition: "Crítico",
-    insuranceUntil: "2025-09-01",
-    equipment: [
-      { item: "Camilla plegable", qty: "×1" },
-      { item: "Desfibrilador DEA", qty: "×1" },
-      { item: "Tanque de oxígeno", qty: "×1" },
-      { item: "Collar cervical", qty: "×2" },
-      { item: "Botiquín tipo A", qty: "×1" },
-    ],
-    maintenance: [
-      { date: "2025-05-14", type: "Correctivo", taller: "Taller Mecánico El Lago", desc: "Cambio de llantas traseras", cost: "Q4,800" },
-      { date: "2025-02-09", type: "Preventivo", taller: "Taller González", desc: "Cambio de aceite y filtros", cost: "Q750" },
-      { date: "2024-10-20", type: "Correctivo", taller: "Servicio Oficial Isuzu Xela", desc: "Reparación caja de cambios", cost: "Q6,200" },
-      { date: "2024-05-30", type: "Preventivo", taller: "Taller San Lucas", desc: "Revisión de frenos y suspensión", cost: "Q1,100" },
-    ],
-  },
-  "V-33": {
-    chassis: "CH-9901123",
-    motor: "MO-8874512",
-    fuel: "Gasolina",
-    kmHours: "1,200 horas",
-    tankCapacity: "60 litros",
-    tireCondition: "Bueno",
-    insuranceUntil: "2026-01-10",
-    equipment: [
-      { item: "Chaleco salvavidas", qty: "×6" },
-      { item: "Cuerda de rescate", qty: "×1" },
-      { item: "Remos de emergencia", qty: "×2" },
-      { item: "Linterna impermeable", qty: "×2" },
-    ],
-    maintenance: [
-      { date: "2025-04-28", type: "Preventivo", taller: "Taller González", desc: "Servicio motor fuera de borda", cost: "Q900" },
-      { date: "2024-12-05", type: "Preventivo", taller: "Taller Mecánico El Lago", desc: "Cambio de aceite y bujías", cost: "Q480" },
-      { date: "2024-08-14", type: "Correctivo", taller: "Taller San Lucas", desc: "Reparación casco — grieta en proa", cost: "Q2,300" },
-      { date: "2024-03-22", type: "Preventivo", taller: "Taller González", desc: "Revisión hélice y línea de agua", cost: "Q560" },
-    ],
-  },
-  "H-01": {
-    chassis: "CH-5500987",
-    motor: "MO-2209344",
-    fuel: "Gasolina",
-    kmHours: "890 horas",
-    tankCapacity: "40 litros",
-    tireCondition: "Bueno",
-    insuranceUntil: "2026-03-20",
-    equipment: [
-      { item: "Manguera 2.5\"×20m", qty: "×1" },
-      { item: "Lanza contra incendios", qty: "×2" },
-      { item: "Chaleco salvavidas", qty: "×4" },
-      { item: "Linterna impermeable", qty: "×1" },
-    ],
-    maintenance: [
-      { date: "2025-05-03", type: "Preventivo", taller: "Taller González", desc: "Servicio motor y revisión de bomba", cost: "Q1,100" },
-      { date: "2025-01-15", type: "Preventivo", taller: "Taller Mecánico El Lago", desc: "Cambio de aceite y filtros", cost: "Q420" },
-      { date: "2024-09-28", type: "Correctivo", taller: "Taller San Lucas", desc: "Reparación sistema de bombeo", cost: "Q1,800" },
-      { date: "2024-04-11", type: "Preventivo", taller: "Taller González", desc: "Revisión eléctrica y bujías", cost: "Q350" },
-    ],
-  },
-};
-
-// ─── Fleet data ───────────────────────────────────────────────────────────────
-const INITIAL_VEHICLES: Vehicle[] = [];
-  
-
-// ─── Sample fuel data (12 entries) ────────────────────────────────────────────
-const INITIAL_FUEL: FuelEntry[] = [];
-  
-
-// ─── Status badge helper ──────────────────────────────────────────────────────
-function StatusBadge({ status }: { status: VehicleStatus }) {
-  const cfg: Record<VehicleStatus, { variant: BadgeVariant; label: string }> = {
-    Operativa:     { variant: "success", label: "Operativa" },
-    "En Servicio": { variant: "info",    label: "En Servicio" },
-    Mantenimiento: { variant: "warning", label: "Mantenimiento" },
-  };
-  const { variant, label } = cfg[status];
-  return <Badge variant={variant} dot>{label}</Badge>;
-}
-
-// ─── Blank fuel form state ────────────────────────────────────────────────────
-const BLANK_FUEL_FORM = {
-  fecha: "",
-  responsable: "",
-  placas: "",
-  tipoUnidad: "",
-  galonaje: "",
-  comision: "",
-  gasolinera: "Shell Jireh" as "Shell Jireh" | "Shell Atitlán",
-  cuponDel: "",
-  cuponAl: "",
-  valorCupon: "100",
-  saldoRestante: "",
-};
-type FuelFormState = typeof BLANK_FUEL_FORM;
-const FUEL_REQUIRED: (keyof FuelFormState)[] = ["fecha", "responsable", "placas", "tipoUnidad", "galonaje", "comision", "gasolinera", "cuponDel", "cuponAl", "saldoRestante"];
-
-// ─── Blank vehicle form state ─────────────────────────────────────────────────
-const BLANK_VEHICLE_FORM = {
-  code: "",
-  type: "Ambulancia",
-  brand: "",
-  model: "",
-  year: "",
-  plate: "",
-  color: "",
-  km: "",
-  status: "Operativa" as VehicleStatus,
-  // Donation fields
-  donante: "",
-  fechaDonacion: "",
-  noRecibo: "",
-};
-type VehicleFormState = typeof BLANK_VEHICLE_FORM;
-
-// ─── Blank maintenance form state ─────────────────────────────────────────────
-const BLANK_MAINT_FORM = {
-  vehicleCode: "",
-  taller: "Taller Mecánico El Lago",
-  tallerOtro: "",
-  tipo: "Preventivo" as MantenimientoTipo,
-  fechaIngreso: "",
-  fechaRetorno: "",
-  km: "",
-  descripcion: "",
-  costoEstimado: "",
-  estado: "En proceso" as MantenimientoEstado,
-};
-type MaintFormState = typeof BLANK_MAINT_FORM;
-const MAINT_REQUIRED: (keyof MaintFormState)[] = ["fechaIngreso", "km", "descripcion"];
-const TALLERES = ["Taller Mecánico El Lago", "Taller González", "Taller San Lucas", "Servicio Oficial Isuzu Xela", "Otro"];
-
-// ─── Main page ────────────────────────────────────────────────────────────────
 export function VehiculosPage() {
   const { alert, toast } = useAlert();
-  // ── Fleet state ───────────────────────────────────────────────────────────
-  const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
+  const {
+    vehiculos,
+    paginacion,
+    filtros,
+    setFiltros,
+    loading,
+    error,
+    tipos,
+    talleres,
+    recargar,
+    recargarTipos,
+    crear,
+    actualizar,
+    cambiarEstado,
+    cargarMantenimientos,
+    crearMantenimiento,
+    actualizarMantenimiento,
+    eliminarMantenimiento,
+  } = useVehiculos();
 
-  // ── Nuevo Vehículo modal state ────────────────────────────────────────────
-  const [showVehicleModal, setShowVehicleModal] = useState(false);
-  const [vehicleStep, setVehicleStep]           = useState<1 | 2>(1);
-  const [vehicleOrigin, setVehicleOrigin]       = useState<VehicleOrigin | null>(null);
-  const [vehicleForm, setVehicleForm]           = useState<VehicleFormState>(BLANK_VEHICLE_FORM);
-  const [vehicleErrors, setVehicleErrors]       = useState<(keyof VehicleFormState)[]>([]);
+  const [stats, setStats] = useState<Vehiculo[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editTarget, setEditTarget] = useState<Vehiculo | null>(null);
+  const [detalle, setDetalle] = useState<Vehiculo | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // ── Maintenance modal state ───────────────────────────────────────────────
-  const [showMaintModal, setShowMaintModal]     = useState(false);
-  const [maintForm, setMaintForm]               = useState<MaintFormState>(BLANK_MAINT_FORM);
-  const [maintErrors, setMaintErrors]           = useState<(keyof MaintFormState)[]>([]);
-
-  // ── Fuel table state ──────────────────────────────────────────────────────
-  const [entries, setEntries]                   = useState<FuelEntry[]>(INITIAL_FUEL);
-  const [search, setSearch]                     = useState("");
-  const [gasFilter, setGasFilter]               = useState<GasolineraFilter>("Todas");
-
-  // ── Fuel modal state ──────────────────────────────────────────────────────
-  const [showFuelModal, setShowFuelModal]       = useState(false);
-  const [editId, setEditId]                     = useState<number | null>(null);
-  const [fuelForm, setFuelForm]                 = useState<FuelFormState>(BLANK_FUEL_FORM);
-  const [fuelErrors, setFuelErrors]             = useState<(keyof FuelFormState)[]>([]);
-  const [fuelOrigen, setFuelOrigen]             = useState<"subestacion" | "donacion">("subestacion");
-  const [fuelDonante, setFuelDonante]           = useState("");
-  const [fuelNoDoc, setFuelNoDoc]               = useState("");
-
-  // ── Detail modal ──────────────────────────────────────────────────────────
-  const [detailEntry, setDetailEntry]           = useState<FuelEntry | null>(null);
-
-  // ── Vehicle detail modal ──────────────────────────────────────────────────
-  const [detailVehicle, setDetailVehicle]       = useState<Vehicle | null>(null);
-  const [editingVehicle, setEditingVehicle]     = useState<Vehicle | null>(null);
-  const [confirmInactivate, setConfirmInactivate] = useState<string | null>(null);
-
-  // ── Computed fuel fields ──────────────────────────────────────────────────
-  const totalCupones = useMemo(() => {
-    const del = parseInt(fuelForm.cuponDel, 10);
-    const al  = parseInt(fuelForm.cuponAl,  10);
-    if (!isNaN(del) && !isNaN(al) && al >= del) return al - del + 1;
-    return 0;
-  }, [fuelForm.cuponDel, fuelForm.cuponAl]);
-
-  const haber = useMemo(() => totalCupones * 100, [totalCupones]);
-
-  // ── Filtered + paginated rows ─────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    return entries.filter((e) => {
-      const matchSearch =
-        e.responsable.toLowerCase().includes(search.toLowerCase()) ||
-        e.placas.toLowerCase().includes(search.toLowerCase()) ||
-        e.tipoUnidad.toLowerCase().includes(search.toLowerCase()) ||
-        e.comision.toLowerCase().includes(search.toLowerCase());
-      const matchGas = gasFilter === "Todas" || e.gasolinera === gasFilter;
-      return matchSearch && matchGas;
-    });
-  }, [entries, search, gasFilter]);
-
-  const PAGE_SIZE = 8;
-
-  // ── Open vehicle modal ────────────────────────────────────────────────────
-  function openNewVehicle() {
-    setVehicleStep(1);
-    setVehicleOrigin(null);
-    setVehicleForm(BLANK_VEHICLE_FORM);
-    setVehicleErrors([]);
-    setShowVehicleModal(true);
-  }
-
-  function handleVehicleStep1Next() {
-    if (!vehicleOrigin) return;
-    setVehicleStep(2);
-  }
-
-  function handleVehicleSave() {
-    const required: (keyof VehicleFormState)[] = ["code", "type", "brand", "model", "year", "plate"];
-    if (vehicleOrigin === "donacion") {
-      required.push("donante", "fechaDonacion", "noRecibo");
+  const cargarStats = useCallback(async () => {
+    try {
+      const lista = await vehiculosService.getVehiculos({ pagina: 1, tamanio: 500 });
+      setStats(lista.items);
+    } catch {
+      setStats([]);
     }
-    const errs = required.filter((k) => !vehicleForm[k]?.toString().trim());
-    if (errs.length) {
-      setVehicleErrors(errs);
-      toast.warning("Por favor complete los datos obligatorios (*) antes de continuar.");
-      return;
+  }, []);
+
+  useEffect(() => {
+    void cargarStats();
+  }, [cargarStats]);
+
+  const resumen = useMemo(() => {
+    const total = stats.length;
+    const operativas = stats.filter((v) => v.estadoOperativo === "Operativa" || v.estadoOperativo === "En Servicio").length;
+    const mantenimiento = stats.filter((v) => v.estadoOperativo === "Mantenimiento").length;
+    const donados = stats.filter((v) => v.origen === "Donado").length;
+    const valor = stats.reduce((s, v) => s + Number(v.valorUnitario || 0), 0);
+    return { total, operativas, mantenimiento, donados, valor };
+  }, [stats]);
+
+  async function abrirDetalle(v: Vehiculo) {
+    setDetalle(v);
+    setDrawerOpen(true);
+    try {
+      setDetalle(await vehiculosService.getVehiculoById(v.vehiculoId));
+    } catch {
+      /* mantiene el registro de la lista */
     }
-    setVehicleErrors([]);
-    const newVehicle: Vehicle = {
-      code:   vehicleForm.code,
-      type:   vehicleForm.type,
-      brand:  vehicleForm.brand,
-      model:  vehicleForm.model,
-      plate:  vehicleForm.plate,
-      year:   Number(vehicleForm.year),
-      color:  vehicleForm.color,
-      km:     vehicleForm.km,
-      status: vehicleForm.status,
-    };
-    setVehicles((prev) => [...prev, newVehicle]);
-    setShowVehicleModal(false);
-    toast.success("El vehículo ha sido registrado correctamente en el sistema.");
   }
 
-  // ── Open maintenance modal ────────────────────────────────────────────────
-  function openMaintModal(vehicleCode: string) {
-    setMaintForm({ ...BLANK_MAINT_FORM, vehicleCode });
-    setMaintErrors([]);
-    setShowMaintModal(true);
+  async function handleSubmit(data: VehiculoCreate) {
+    try {
+      if (editTarget) {
+        await actualizar(editTarget.vehiculoId, data);
+        toast.success("Vehículo actualizado correctamente");
+        if (drawerOpen && detalle?.vehiculoId === editTarget.vehiculoId) {
+          setDetalle(await vehiculosService.getVehiculoById(editTarget.vehiculoId));
+        }
+      } else {
+        await crear(data);
+        toast.success("Vehículo registrado correctamente");
+      }
+      setEditTarget(null);
+      await cargarStats();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar el vehículo");
+      throw e;
+    }
   }
 
-  function handleMaintSave() {
-    const errs = MAINT_REQUIRED.filter((k) => !maintForm[k]?.toString().trim());
-    if (errs.length) { setMaintErrors(errs); return; }
-    setMaintErrors([]);
-    setVehicles((prev) =>
-      prev.map((v) => v.code === maintForm.vehicleCode ? { ...v, status: "Mantenimiento" } : v)
+  async function toggleEstado(v: Vehiculo) {
+    const bajar = v.estado === "Activo";
+    const ok = await alert.confirm(
+      bajar ? "Dar de baja vehículo" : "Reactivar vehículo",
+      bajar
+        ? `${v.marca} ${v.modelo} se marcará como inactivo en la flota y en inventario.`
+        : `${v.marca} ${v.modelo} volverá a estar activo en la flota y en inventario.`,
     );
-    setShowMaintModal(false);
-    toast.success("Mantenimiento registrado. Vehículo en estado Mantenimiento.");
-  }
-
-  // ── Fuel modal helpers ────────────────────────────────────────────────────
-  function openAddFuel() {
-    setEditId(null);
-    setFuelForm(BLANK_FUEL_FORM);
-    setFuelErrors([]);
-    setFuelOrigen("subestacion");
-    setFuelDonante("");
-    setFuelNoDoc("");
-    setShowFuelModal(true);
-  }
-
-  function closeFuelModal() {
-    setShowFuelModal(false);
-    setFuelOrigen("subestacion");
-    setFuelDonante("");
-    setFuelNoDoc("");
-  }
-
-  function openEditFuel(e: FuelEntry) {
-    setEditId(e.id);
-    setFuelForm({
-      fecha:          e.fecha,
-      responsable:    e.responsable,
-      placas:         e.placas,
-      tipoUnidad:     e.tipoUnidad,
-      galonaje:       String(e.galonaje),
-      comision:       e.comision,
-      gasolinera:     e.gasolinera,
-      cuponDel:       String(e.cuponDel),
-      cuponAl:        String(e.cuponAl),
-      valorCupon:     String(e.valorCupon),
-      saldoRestante:  String(e.saldoRestante),
-    });
-    setFuelErrors([]);
-    setShowFuelModal(true);
-  }
-
-  function handleFuelSave() {
-    const errs = FUEL_REQUIRED.filter((k) => !fuelForm[k]?.toString().trim());
-    if (errs.length) {
-      setFuelErrors(errs);
-      toast.warning("Por favor complete los datos obligatorios (*) antes de continuar.");
-      return;
+    if (!ok) return;
+    try {
+      const actualizado = await cambiarEstado(v.vehiculoId, bajar ? "Inactivo" : "Activo");
+      setDetalle((prev) => (prev && prev.vehiculoId === actualizado.vehiculoId ? { ...prev, ...actualizado } : prev));
+      await cargarStats();
+      toast.success(bajar ? "Vehículo dado de baja" : "Vehículo reactivado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo cambiar el estado");
     }
-    setFuelErrors([]);
-    const entry: FuelEntry = {
-      id:             editId ?? Date.now(),
-      fecha:          fuelForm.fecha,
-      responsable:    fuelForm.responsable,
-      placas:         fuelForm.placas,
-      tipoUnidad:     fuelForm.tipoUnidad,
-      galonaje:       Number(fuelForm.galonaje),
-      comision:       fuelForm.comision,
-      gasolinera:     fuelForm.gasolinera,
-      cuponDel:       Number(fuelForm.cuponDel),
-      cuponAl:        Number(fuelForm.cuponAl),
-      totalCupones,
-      valorCupon:     Number(fuelForm.valorCupon),
-      haber,
-      saldoRestante:  Number(fuelForm.saldoRestante),
-    };
-    if (editId !== null) {
-      setEntries((prev) => prev.map((e) => (e.id === editId ? entry : e)));
-    } else {
-      setEntries((prev) => [entry, ...prev]);
-    }
-    closeFuelModal();
-    toast.success("El cupón ha sido registrado correctamente.");
   }
 
-  function requestDelete(id: number) {
-    alert.confirm(
-      "Eliminar Registro",
-      "Esta acción no se puede deshacer. ¿Está seguro de que desea eliminar este registro?"
-    ).then((ok) => {
-      if (!ok) return;
-      setEntries((prev) => prev.filter((e) => e.id !== id));
-      toast.success("Registro eliminado");
-    });
-  }
+  const tabs: TabItem[] = [
+    {
+      id: "flota",
+      label: "Flota",
+      icon: <Truck size={16} />,
+      content: (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="relative min-w-[220px] flex-1">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
+              <input
+                className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"
+                style={{
+                  borderColor: "var(--border)",
+                  color: "var(--text-1)",
+                  background: "var(--bg-input)",
+                }}
+                placeholder="Buscar por código, placa, marca o modelo…"
+                value={filtros.busqueda ?? ""}
+                onChange={(e) => setFiltros({ busqueda: e.target.value, pagina: 1 })}
+              />
+            </div>
+            <div className="w-44">
+              <SelectField
+                label=""
+                placeholder="Todos los tipos"
+                value={filtros.tipoId ? String(filtros.tipoId) : ""}
+                onChange={(v) => setFiltros({ tipoId: v ? Number(v) : undefined, pagina: 1 })}
+                options={tipos.map((t) => ({ value: String(t.id), label: t.nombre }))}
+              />
+            </div>
+            <div className="w-48">
+              <SelectField
+                label=""
+                placeholder="Todos los estados"
+                value={filtros.estadoOperativo ?? ""}
+                onChange={(v) => setFiltros({ estadoOperativo: v || undefined, pagina: 1 })}
+                options={ESTADOS_OPERATIVOS.map((v) => ({ value: v, label: v }))}
+              />
+            </div>
+            <div className="w-44">
+              <SelectField
+                label=""
+                placeholder="Todos los orígenes"
+                value={filtros.origen ?? ""}
+                onChange={(v) => setFiltros({ origen: v || undefined, pagina: 1 })}
+                options={[
+                  { value: "Compra Propia", label: "Compra Propia" },
+                  { value: "Donado", label: "Donado" },
+                ]}
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setFiltros({ busqueda: "", tipoId: undefined, estadoOperativo: undefined, origen: undefined, pagina: 1 })}
+            >
+              Limpiar
+            </Button>
+            <Button
+              onClick={() => {
+                setEditTarget(null);
+                setShowForm(true);
+              }}
+            >
+              <Plus size={16} />
+              Nuevo vehículo
+            </Button>
+          </div>
 
-  // ── Fuel field helper ─────────────────────────────────────────────────────
-  function fuelField(key: keyof FuelFormState, label: string, type = "text", options?: string[]) {
-    const hasErr = fuelErrors.includes(key);
-    const base: React.CSSProperties = {
-      width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, outline: "none",
-      fontFamily: "Inter, sans-serif", boxSizing: "border-box",
-      border: `1px solid ${hasErr ? "var(--brand-500)" : BORDER}`,
-      background: hasErr ? "#fff5f5" : "#fff",
-    };
-    if (options) {
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
-          <select value={fuelForm[key] as string} onChange={(ev) => setFuelForm((f) => ({ ...f, [key]: ev.target.value }))} style={base}>
-            {options.map((o) => <option key={o}>{o}</option>)}
-          </select>
+          {error && (
+            <div
+              className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm"
+              style={{ borderColor: "var(--brand-300)", background: "var(--brand-100)", color: "var(--brand-700)" }}
+            >
+              <AlertTriangle size={16} />
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-44 w-full rounded-2xl" />
+              ))}
+            </div>
+          ) : vehiculos.length === 0 ? (
+            <div className="rounded-2xl" style={CARD_STYLE}>
+              <EmptyState
+                icon={Truck}
+                title="Sin vehículos registrados"
+                description="Usa el botón «Nuevo vehículo» de la barra superior para registrar la primera unidad."
+              />
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {vehiculos.map((v) => (
+                <button
+                  key={v.vehiculoId}
+                  type="button"
+                  onClick={() => void abrirDetalle(v)}
+                  className="flex flex-col gap-3 rounded-2xl p-4 text-left transition-transform hover:-translate-y-0.5"
+                  style={CARD_STYLE}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-11 w-11 items-center justify-center rounded-xl"
+                        style={{ background: "var(--brand-100)", color: "var(--brand-600)" }}
+                      >
+                        <Truck size={22} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-extrabold" style={{ color: "var(--text-1)" }}>
+                          {v.marca} {v.modelo} {v.anio ?? ""}
+                        </p>
+                        <p className="text-xs" style={{ color: "var(--text-2)" }}>
+                          {v.tipoNombre || "Vehículo"} · Unidad {v.noUnidad || v.codigo || "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant={estadoOperativoVariant(v.estadoOperativo)} dot>
+                      {v.estadoOperativo}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs" style={{ color: "var(--text-2)" }}>
+                    <span>Placa: <strong style={{ color: "var(--text-1)" }}>{v.placa || "—"}</strong></span>
+                    <span>Kilometraje: <strong style={{ color: "var(--text-1)" }}>{v.kilometraje.toLocaleString("es-GT")} km</strong></span>
+                    <span>Chasis: <strong style={{ color: "var(--text-1)" }}>{v.chasis || "—"}</strong></span>
+                    <span>Valor: <strong style={{ color: "var(--text-1)" }}>{formatMoneda(v.valorUnitario)}</strong></span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge variant={origenVariant(v.origen)}>{v.origen}</Badge>
+                      <Badge variant={registroVariant(v.estado)}>{v.estado}</Badge>
+                    </div>
+                    {v.mantenimientos && v.mantenimientos.length > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs" style={{ color: "var(--text-2)" }}>
+                        <Wrench size={12} />
+                        {v.mantenimientos.length}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {paginacion.totalPaginas > 1 && (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs" style={{ color: "var(--text-2)" }}>
+                Página {paginacion.paginaActual} de {paginacion.totalPaginas} · {paginacion.totalItems} vehículos
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={paginacion.paginaActual <= 1}
+                  onClick={() => setFiltros({ pagina: paginacion.paginaActual - 1 })}
+                >
+                  <ChevronLeft size={14} />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={paginacion.paginaActual >= paginacion.totalPaginas}
+                  onClick={() => setFiltros({ pagina: paginacion.paginaActual + 1 })}
+                >
+                  Siguiente
+                  <ChevronRight size={14} />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
-      );
-    }
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
-        <input type={type} value={fuelForm[key] as string} onChange={(ev) => setFuelForm((f) => ({ ...f, [key]: ev.target.value }))} style={base} />
-      </div>
-    );
-  }
-
-  // ── Vehicle field helper ──────────────────────────────────────────────────
-  function vehicleField(key: keyof VehicleFormState, label: string, type = "text", options?: string[]) {
-    const hasErr = vehicleErrors.includes(key);
-    const base: React.CSSProperties = {
-      width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, outline: "none",
-      fontFamily: "Inter, sans-serif", boxSizing: "border-box",
-      border: `1px solid ${hasErr ? "var(--brand-500)" : BORDER}`,
-      background: hasErr ? "#fff5f5" : "#fff",
-    };
-    if (options) {
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
-          <select value={vehicleForm[key] as string} onChange={(ev) => setVehicleForm((f) => ({ ...f, [key]: ev.target.value }))} style={base}>
-            {options.map((o) => <option key={o}>{o}</option>)}
-          </select>
-        </div>
-      );
-    }
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
-        <input type={type} value={vehicleForm[key] as string} onChange={(ev) => setVehicleForm((f) => ({ ...f, [key]: ev.target.value }))} style={base} />
-      </div>
-    );
-  }
-
-  // ── Maintenance field helper ──────────────────────────────────────────────
-  function maintField(key: keyof MaintFormState, label: string, type = "text", options?: string[]) {
-    const hasErr = maintErrors.includes(key);
-    const base: React.CSSProperties = {
-      width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, outline: "none",
-      fontFamily: "Inter, sans-serif", boxSizing: "border-box",
-      border: `1px solid ${hasErr ? "var(--brand-500)" : BORDER}`,
-      background: hasErr ? "#fff5f5" : "#fff",
-    };
-    if (options) {
-      return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
-          <select value={maintForm[key] as string} onChange={(ev) => setMaintForm((f) => ({ ...f, [key]: ev.target.value }))} style={base}>
-            {options.map((o) => <option key={o}>{o}</option>)}
-          </select>
-        </div>
-      );
-    }
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>{label}{hasErr && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
-        <input type={type} value={maintForm[key] as string} onChange={(ev) => setMaintForm((f) => ({ ...f, [key]: ev.target.value }))} style={base} />
-      </div>
-    );
-  }
-
-  const vehColumns: DataTableColumn<FuelEntry>[] = [
-    { key: "fecha", header: "Fecha", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.fecha}</span> },
-    { key: "responsable", header: "Responsable", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.responsable}</span> },
-    { key: "placas", header: "Placas", cell: (e) => <span className="font-semibold" style={{ color: "var(--neutral-900)" }}>{e.placas}</span> },
-    { key: "tipoUnidad", header: "Tipo Unidad", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.tipoUnidad}</span> },
-    { key: "galonaje", header: "Galonaje", headerClassName: "text-right", className: "text-right", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.galonaje} gal</span> },
-    { key: "comision", header: "Comisión Realizada", className: "max-w-[180px] truncate", cell: (e) => <span style={{ color: MUTED }}>{e.comision}</span> },
-    { key: "gasolinera", header: "Gasolinera", cell: (e) => <span style={{ background: "#fef9c3", color: "#b45309", borderRadius: 999, padding: "2px 8px", fontWeight: 600, fontSize: 11 }}>{e.gasolinera}</span> },
-    { key: "cuponDel", header: "Cupones Del", headerClassName: "text-right", className: "text-right", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.cuponDel}</span> },
-    { key: "cuponAl", header: "Cupones Al", headerClassName: "text-right", className: "text-right", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>{e.cuponAl}</span> },
-    { key: "total", header: "Total", headerClassName: "text-right", className: "text-right", cell: (e) => <span className="font-bold" style={{ color: "var(--neutral-900)" }}>{e.totalCupones}</span> },
-    { key: "valor", header: "Valor Q", headerClassName: "text-right", className: "text-right", cell: (e) => <span style={{ color: "var(--neutral-900)" }}>Q{e.valorCupon}</span> },
-    { key: "haber", header: "Haber (Q)", headerClassName: "text-right", className: "text-right", cell: (e) => <span className="font-bold" style={{ color: "var(--success-600)" }}>Q{e.haber.toLocaleString()}</span> },
-    { key: "saldo", header: "Saldo (Q)", headerClassName: "text-right", className: "text-right", cell: (e) => <span className="font-bold" style={{ color: e.saldoRestante < 500 ? "var(--brand-600)" : "var(--neutral-900)" }}>Q{e.saldoRestante.toLocaleString()}</span> },
-    { key: "acciones", header: "Acciones", cell: (e) => (
-      <div className="flex gap-1.5">
-        <button onClick={() => setDetailEntry(e)} title="Ver" style={iconBtn("var(--info-50)", "#1d4ed8")}><Eye size={13} /></button>
-        <button onClick={() => openEditFuel(e)} title="Editar" style={iconBtn("#fefce8", "#b45309")}><Pencil size={13} /></button>
-        <button onClick={() => requestDelete(e.id)} title="Eliminar" style={iconBtn("#fff5f5", "var(--brand-600)")}><Trash2 size={13} /></button>
-      </div>
-    ) },
+      ),
+    },
+    {
+      id: "cupones",
+      label: "Cupones",
+      icon: <Ticket size={16} />,
+      content: <CuponesTab />,
+    },
+    {
+      id: "mantenimiento",
+      label: "Mantenimiento",
+      icon: <Wrench size={16} />,
+      content: (
+        <MantenimientoPanel
+          vehiculos={stats.length > 0 ? stats : vehiculos}
+          talleres={talleres}
+          cargarMantenimientos={cargarMantenimientos}
+          crearMantenimiento={crearMantenimiento}
+          actualizarMantenimiento={actualizarMantenimiento}
+          eliminarMantenimiento={eliminarMantenimiento}
+          onChanged={async () => {
+            await recargar();
+            await cargarStats();
+          }}
+        />
+      ),
+    },
   ];
 
-  // ──────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ background: BG, minHeight: "100vh", fontFamily: "Inter, sans-serif", padding: "28px 24px" }}>
-
-      {/* ── Page header ───────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--neutral-900)", margin: 0, display: "flex", alignItems: "center", gap: 10, fontFamily: "Manrope, sans-serif" }}>
-          <Truck size={22} color={RED} /> Vehículos &amp; Combustible
-        </h1>
-        <p style={{ fontSize: 13, color: MUTED, margin: "4px 0 0" }}>33ª Compañía Bomberos Voluntarios San Lucas Tolimán</p>
+    <div style={{ background: "var(--bg-hover)", minHeight: "100vh", padding: "28px 24px", boxSizing: "border-box" }}>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold" style={{ color: "var(--neutral-900)" }}>
+            Vehículos
+          </h1>
+          <p className="text-sm" style={{ color: "var(--text-2)" }}>
+            33ª Compañía de Bomberos Voluntarios — Flota, cupones de combustible y mantenimiento
+          </p>
+        </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* SECTION 1 — Fleet status cards                                      */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      <section style={{ marginBottom: 32 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--neutral-900)", margin: 0, fontFamily: "Manrope, sans-serif" }}>Estado de la Flota</h2>
-          <Button variant="brand" onClick={openNewVehicle}>
-            <Plus size={15} /> Nuevo Vehículo
-          </Button>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-          {vehicles.map((v) => (
-            <div
-              key={v.code}
-              className="transition-transform duration-200 hover:-translate-y-0.5"
-              style={{ background: "var(--bg-card)", borderRadius: 16, boxShadow: CARD_SHADOW, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Truck size={18} color={RED} />
-                  <span style={{ fontWeight: 700, fontSize: 16, color: "var(--neutral-900)", fontFamily: "Manrope, sans-serif" }}>{v.code}</span>
-                </div>
-                <StatusBadge status={v.status} />
-              </div>
-              <div>
-                <p style={{ fontWeight: 600, fontSize: 14, color: "var(--neutral-900)", margin: 0 }}>{v.type} {v.brand}</p>
-                <p style={{ fontSize: 12, color: MUTED, margin: "2px 0 0" }}>Placa: {v.plate} &nbsp;·&nbsp; Año: {v.year}</p>
-              </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                <button
-                  onClick={() => setDetailVehicle(v)}
-                  style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: "6px 0", borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--bg-card)", color: "var(--neutral-900)", cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                >
-                  <Eye size={12} /> Ver Detalle
-                </button>
-                <button
-                  onClick={() => openMaintModal(v.code)}
-                  style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: "6px 4px", borderRadius: 7, border: "none", background: RED, color: "#fff", cursor: "pointer", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                >
-                  <Wrench size={12} /> Registrar Mantenimiento
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <div className="mb-5 flex flex-wrap gap-3">
+        <KpiCard label="Unidades" value={String(resumen.total)} icon={<Truck size={20} />} />
+        <KpiCard label="Operativas" value={String(resumen.operativas)} icon={<Fuel size={20} />} color="var(--success-600)" />
+        <KpiCard label="En mantenimiento" value={String(resumen.mantenimiento)} icon={<Wrench size={20} />} color="var(--warning-600)" />
+        <KpiCard label="Donados" value={String(resumen.donados)} icon={<Gift size={20} />} color="var(--brand-600)" />
+        <KpiCard label="Valor de la flota" value={formatMoneda(resumen.valor)} icon={<Wallet size={20} />} />
+      </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* SECTION 2 — Control de Combustible                                  */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      <section>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--neutral-900)", margin: 0, display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
-            <Fuel size={16} color={RED} /> Control de Combustible — Cupones Shell
-          </h2>
-          <Button variant="brand" onClick={openAddFuel}>
-            <Plus size={15} /> Nuevo Cupón
-          </Button>
-        </div>
+      <Tabs tabs={tabs} defaultTab="flota" variant="glass" />
 
-        <DataTable<FuelEntry>
-          columns={vehColumns}
-          data={filtered}
-          getRowKey={(e) => e.id}
-          pageSize={PAGE_SIZE}
-          dense
-          emptyTitle="Sin registros encontrados"
-          emptyDescription="No hay cupones que coincidan con la búsqueda."
-          toolbar={
-            <div className="flex w-full flex-wrap gap-3">
-              <div className="relative min-w-[200px] flex-1">
-                <Search size={14} color={MUTED} className="absolute left-2.5 top-1/2 -translate-y-1/2" />
-                <input
-                  placeholder="Buscar por responsable, placa, unidad…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-lg border py-2 pl-8 pr-3 text-[13px] outline-none"
-                  style={{ borderColor: BORDER, fontFamily: "Inter, sans-serif", background: "var(--bg-input)", color: "var(--text-1)" }}
-                />
-              </div>
-              <select
-                value={gasFilter}
-                onChange={(e) => setGasFilter(e.target.value as GasolineraFilter)}
-                className="rounded-lg border px-3 py-2 text-[13px]"
-                style={{ borderColor: BORDER, background: "var(--bg-card)", fontFamily: "Inter, sans-serif", cursor: "pointer", color: "var(--text-1)" }}
-              >
-                {(["Todas", "Shell Jireh", "Shell Atitlán"] as GasolineraFilter[]).map((g) => <option key={g}>{g}</option>)}
-              </select>
-            </div>
-          }
-        />
-      </section>
+      <VehiculoFormModal
+        open={showForm}
+        onClose={() => {
+          setShowForm(false);
+          setEditTarget(null);
+        }}
+        vehiculo={editTarget}
+        tipos={tipos}
+        onSubmit={handleSubmit}
+        onTipoCreado={() => void recargarTipos()}
+      />
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Nuevo Vehículo modal (2 steps)                                      */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {showVehicleModal && (
-        <Overlay onClose={() => setShowVehicleModal(false)} wide>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
-              <Truck size={16} color={RED} /> {vehicleStep === 1 ? "Origen del Vehículo" : "Registrar Vehículo"}
-            </h3>
-            <button onClick={() => setShowVehicleModal(false)} style={closeBtn}><X size={16} /></button>
-          </div>
-
-          {/* Step indicator */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-            <div style={{ width: 24, height: 24, borderRadius: "50%", background: RED, color: "#fff", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>1</div>
-            <div style={{ flex: 1, height: 2, background: vehicleStep === 2 ? RED : BORDER }} />
-            <div style={{ width: 24, height: 24, borderRadius: "50%", background: vehicleStep === 2 ? RED : BORDER, color: vehicleStep === 2 ? "#fff" : MUTED, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</div>
-          </div>
-
-          {vehicleStep === 1 && (
-            <>
-              <p style={{ fontSize: 13, color: MUTED, marginBottom: 16 }}>Seleccione cómo se adquirió este vehículo:</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
-                {/* Propiedad de Estación */}
-                <button
-                  onClick={() => setVehicleOrigin("estacion")}
-                  style={{
-                    border: `2px solid ${vehicleOrigin === "estacion" ? RED : BORDER}`,
-                    borderRadius: 12,
-                    background: vehicleOrigin === "estacion" ? "#fff5f5" : "#fff",
-                    padding: "20px 16px",
-                    cursor: "pointer",
-                    textAlign: "center",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span style={{ fontSize: 28 }}>🏠</span>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: "var(--neutral-900)", fontFamily: "Manrope, sans-serif" }}>Propiedad de Estación</span>
-                  <span style={{ fontSize: 12, color: MUTED }}>Adquisición normal</span>
-                </button>
-                {/* Donación */}
-                <button
-                  onClick={() => setVehicleOrigin("donacion")}
-                  style={{
-                    border: `2px solid ${vehicleOrigin === "donacion" ? RED : BORDER}`,
-                    borderRadius: 12,
-                    background: vehicleOrigin === "donacion" ? "#fff5f5" : "#fff",
-                    padding: "20px 16px",
-                    cursor: "pointer",
-                    textAlign: "center",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span style={{ fontSize: 28 }}>🎁</span>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: "var(--neutral-900)", fontFamily: "Manrope, sans-serif" }}>Donación</span>
-                  <span style={{ fontSize: 12, color: MUTED }}>Se vinculará al módulo de Donaciones</span>
-                </button>
-              </div>
-              {vehicleOrigin === "donacion" && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "var(--info-50)", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
-                  <Info size={16} color="#1565c0" style={{ flexShrink: 0, marginTop: 1 }} />
-                  <span style={{ fontSize: 13, color: "#1565c0" }}>Este vehículo será registrado como donación en el módulo de Donaciones.</span>
-                </div>
-              )}
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setShowVehicleModal(false)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>Cancelar</button>
-                <button
-                  onClick={handleVehicleStep1Next}
-                  disabled={!vehicleOrigin}
-                  style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: vehicleOrigin ? RED : "var(--neutral-300)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: vehicleOrigin ? "pointer" : "default", fontFamily: "Inter, sans-serif" }}
-                >
-                  Siguiente →
-                </button>
-              </div>
-            </>
-          )}
-
-          {vehicleStep === 2 && (
-            <>
-              {vehicleOrigin === "donacion" && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "var(--info-50)", border: "1px solid #bfdbfe", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
-                  <Info size={16} color="#1565c0" style={{ flexShrink: 0, marginTop: 1 }} />
-                  <span style={{ fontSize: 13, color: "#1565c0" }}>Este vehículo será registrado como donación en el módulo de Donaciones.</span>
-                </div>
-              )}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                {vehicleField("code", "Código Interno* (ej. X-33)")}
-                {vehicleField("type", "Tipo*", "text", ["Ambulancia", "Bombatanque", "Autobomba", "Vehículo de Rescate", "Motobomba", "Lancha"])}
-                {vehicleField("brand", "Marca*")}
-                {vehicleField("model", "Modelo*")}
-                {vehicleField("year", "Año*", "number")}
-                {vehicleField("plate", "Placas*")}
-                {vehicleField("color", "Color")}
-                {vehicleField("km", "Kilometraje actual")}
-                {vehicleField("status", "Estado", "text", ["Operativa", "En Servicio", "Mantenimiento"])}
-                {vehicleOrigin === "donacion" && (
-                  <>
-                    <div style={{ gridColumn: "1 / -1", borderTop: `1px solid ${BORDER}`, paddingTop: 12, marginTop: 4 }}>
-                      <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: "#1565c0", fontFamily: "Manrope, sans-serif" }}>Datos de la Donación</p>
-                    </div>
-                    {vehicleField("donante", "Donante*")}
-                    {vehicleField("fechaDonacion", "Fecha de donación*", "date")}
-                    {vehicleField("noRecibo", "No. Recibo*")}
-                  </>
-                )}
-              </div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "space-between", marginTop: 20 }}>
-                <button onClick={() => setVehicleStep(1)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>← Atrás</button>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <Button variant="brand-outline" onClick={() => setShowVehicleModal(false)}>Cancelar</Button>
-                  <Button variant="brand" onClick={handleVehicleSave}>
-                    <Check size={14} /> Registrar Vehículo
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </Overlay>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Maintenance modal                                                    */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {showMaintModal && (
-        <Overlay onClose={() => setShowMaintModal(false)} wide>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
-              <Wrench size={16} color={RED} /> Registrar Mantenimiento / Taller
-            </h3>
-            <button onClick={() => setShowMaintModal(false)} style={closeBtn}><X size={16} /></button>
-          </div>
-
-          {maintErrors.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--brand-50)", border: "1px solid var(--brand-200)", borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
-              <AlertTriangle size={15} color="var(--brand-600)" />
-              <span style={{ fontSize: 13, color: "var(--brand-600)", fontWeight: 600 }}>Por favor complete todos los campos obligatorios.</span>
-            </div>
-          )}
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {/* Vehículo (readonly) */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Vehículo</label>
-              <input
-                readOnly
-                value={maintForm.vehicleCode}
-                style={{ width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--neutral-100)", fontFamily: "Inter, sans-serif", boxSizing: "border-box", fontWeight: 700, color: "var(--neutral-900)" }}
-              />
-            </div>
-
-            {/* Taller */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Taller*</label>
-              <select
-                value={maintForm.taller}
-                onChange={(ev) => setMaintForm((f) => ({ ...f, taller: ev.target.value }))}
-                style={{ width: "100%", fontSize: 13, padding: "7px 10px", borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--bg-card)", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}
-              >
-                {TALLERES.map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-
-            {/* Otro taller */}
-            {maintForm.taller === "Otro" && (
-              <div style={{ gridColumn: "1 / -1" }}>
-                {maintField("tallerOtro", "Nombre del taller*")}
-              </div>
-            )}
-
-            {/* Tipo segmented toggle */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Tipo*</label>
-              <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: `1px solid ${BORDER}` }}>
-                {(["Preventivo", "Correctivo"] as MantenimientoTipo[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setMaintForm((f) => ({ ...f, tipo: t }))}
-                    style={{
-                      flex: 1,
-                      padding: "7px 0",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      border: "none",
-                      cursor: "pointer",
-                      fontFamily: "Inter, sans-serif",
-                      background: maintForm.tipo === t ? RED : "#fff",
-                      color: maintForm.tipo === t ? "#fff" : "var(--neutral-900)",
-                    }}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Estado segmented toggle */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Estado</label>
-              <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: `1px solid ${BORDER}` }}>
-                {(["En proceso", "Finalizado"] as MantenimientoEstado[]).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setMaintForm((f) => ({ ...f, estado: s }))}
-                    style={{
-                      flex: 1,
-                      padding: "7px 0",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      border: "none",
-                      cursor: "pointer",
-                      fontFamily: "Inter, sans-serif",
-                      background: maintForm.estado === s ? "#1565c0" : "#fff",
-                      color: maintForm.estado === s ? "#fff" : "var(--neutral-900)",
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {maintField("fechaIngreso", "Fecha de ingreso*", "date")}
-            {maintField("fechaRetorno", "Fecha estimada de retorno", "date")}
-            {maintField("km", "Kilometraje actual*", "number")}
-            {maintField("costoEstimado", "Costo estimado (Q)", "number")}
-            <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Descripción del trabajo*{maintErrors.includes("descripcion") && <span style={{ color: "var(--brand-500)" }}> *</span>}</label>
-              <textarea
-                value={maintForm.descripcion}
-                onChange={(ev) => setMaintForm((f) => ({ ...f, descripcion: ev.target.value }))}
-                rows={3}
-                style={{
-                  width: "100%",
-                  fontSize: 13,
-                  padding: "7px 10px",
-                  borderRadius: 7,
-                  border: `1px solid ${maintErrors.includes("descripcion") ? "var(--brand-500)" : BORDER}`,
-                  background: maintErrors.includes("descripcion") ? "#fff5f5" : "#fff",
-                  fontFamily: "Inter, sans-serif",
-                  boxSizing: "border-box",
-                  resize: "vertical",
-                  outline: "none",
-                }}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <Button variant="brand-outline" onClick={() => setShowMaintModal(false)}>Cancelar</Button>
-            <Button variant="brand" onClick={handleMaintSave}>
-              <Check size={14} /> Guardar Mantenimiento
-            </Button>
-          </div>
-        </Overlay>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Fuel detail modal                                                    */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {detailEntry && (
-        <Overlay onClose={() => setDetailEntry(null)}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
-              <Fuel size={16} color={RED} /> Detalle de Registro
-            </h3>
-            <button onClick={() => setDetailEntry(null)} style={closeBtn}><X size={16} /></button>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 24px" }}>
-            {([
-              ["Fecha",           detailEntry.fecha],
-              ["Responsable",     detailEntry.responsable],
-              ["Placas",          detailEntry.placas],
-              ["Tipo Unidad",     detailEntry.tipoUnidad],
-              ["Galonaje",        `${detailEntry.galonaje} gal`],
-              ["Comisión",        detailEntry.comision],
-              ["Gasolinera",      detailEntry.gasolinera],
-              ["Cupón Del / Al",  `${detailEntry.cuponDel} / ${detailEntry.cuponAl}`],
-              ["Total Cupones",   String(detailEntry.totalCupones)],
-              ["Valor Cupón",     `Q${detailEntry.valorCupon}`],
-              ["Haber (Q)",       `Q${detailEntry.haber.toLocaleString()}`],
-              ["Saldo Restante",  `Q${detailEntry.saldoRestante.toLocaleString()}`],
-            ] as [string, string][]).map(([k, v]) => (
-              <div key={k}>
-                <p style={{ margin: 0, fontSize: 11, color: MUTED, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--neutral-900)", fontWeight: 500 }}>{v}</p>
-              </div>
-            ))}
-          </div>
-        </Overlay>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Fuel add / edit modal                                               */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {showFuelModal && (
-        <Overlay onClose={closeFuelModal} wide>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--neutral-900)", display: "flex", alignItems: "center", gap: 8, fontFamily: "Manrope, sans-serif" }}>
-              <Fuel size={16} color={RED} /> {editId ? "Editar Registro" : "Nuevo Cupón de Combustible"}
-            </h3>
-            <button onClick={closeFuelModal} style={closeBtn}><X size={16} /></button>
-          </div>
-
-          {!editId && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 8, fontFamily: "Inter, sans-serif" }}>
-                Origen del Cupón
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {(["subestacion", "donacion"] as const).map(opt => (
-                  <button
-                    key={opt}
-                    onClick={() => setFuelOrigen(opt)}
-                    style={{
-                      flex: 1, padding: "8px 12px", borderRadius: 8, border: `1px solid ${fuelOrigen === opt ? "var(--red)" : "var(--border)"}`,
-                      background: fuelOrigen === opt ? "var(--red-bg)" : "var(--bg-input)",
-                      color: fuelOrigen === opt ? "var(--red)" : "var(--text-2)",
-                      fontWeight: fuelOrigen === opt ? 700 : 500, fontSize: 13, cursor: "pointer", fontFamily: "Inter, sans-serif"
-                    }}
-                  >
-                    {opt === "subestacion" ? "🏠 Gasto de Subestación" : "🤝 Donación Directa"}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {fuelField("fecha",       "Fecha",          "date")}
-            {fuelField("responsable", "Responsable")}
-            {fuelField("placas",      "Placas")}
-            {fuelField("tipoUnidad",  "Tipo Unidad",    "text", ["Ambulancia Toyota","Pick-Up Mazda","Ambulancia Ford","Lancha Acuática Yamaha","Hidrodeslizador"])}
-            {fuelField("galonaje",    "Galonaje (gal)", "number")}
-            {fuelField("gasolinera",  "Gasolinera",     "text", ["Shell Jireh","Shell Atitlán"])}
-            {fuelField("cuponDel",    "Cupón Del",      "number")}
-            {fuelField("cuponAl",     "Cupón Al",       "number")}
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Total Cupones (auto)</label>
-              <input readOnly value={totalCupones} style={{ width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--neutral-100)", fontFamily: "Inter, sans-serif", boxSizing: "border-box", fontWeight: 700, color: "var(--neutral-900)" }} />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--neutral-900)" }}>Haber Q (auto)</label>
-              <input readOnly value={`Q${haber.toLocaleString()}`} style={{ width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 7, border: `1px solid ${BORDER}`, background: "var(--neutral-100)", fontFamily: "Inter, sans-serif", boxSizing: "border-box", fontWeight: 700, color: "var(--success-600)" }} />
-            </div>
-            {fuelField("saldoRestante", "Saldo Restante (Q)", "number")}
-            <div style={{ gridColumn: "1 / -1" }}>{fuelField("comision", "Comisión Realizada")}</div>
-          </div>
-
-          {fuelOrigen === "donacion" && !editId && (
-            <div style={{ marginTop: 12, padding: "14px 16px", borderRadius: 10, background: "var(--info-50)", border: "1px solid #BFDBFE" }}>
-              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: "#1565c0", fontFamily: "Inter, sans-serif" }}>
-                Datos de la Donación Directa
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", fontFamily: "Inter, sans-serif" }}>Donante / Institución *</label>
-                  <input
-                    value={fuelDonante}
-                    onChange={e => setFuelDonante(e.target.value)}
-                    placeholder="Nombre del donante o institución"
-                    style={{ width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}
-                  />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", fontFamily: "Inter, sans-serif" }}>No. de Documento / Acta</label>
-                  <input
-                    value={fuelNoDoc}
-                    onChange={e => setFuelNoDoc(e.target.value)}
-                    placeholder="Ej. ACT-2026-001"
-                    style={{ width: "100%", padding: "7px 10px", fontSize: 13, borderRadius: 7, border: "1px solid var(--border)", background: "var(--bg-input)", color: "var(--text-1)", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}
-                  />
-                </div>
-              </div>
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#1565c0", fontFamily: "Inter, sans-serif" }}>
-                ⚠ Este cupón no afectará el saldo de la subestación.
-              </p>
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <Button variant="brand-outline" onClick={closeFuelModal}>Cancelar</Button>
-            <Button variant="brand" onClick={handleFuelSave}>
-              <Check size={14} /> Guardar
-            </Button>
-          </div>
-        </Overlay>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Vehicle detail Drawer — Detalle de Unidad                            */}
-      {detailVehicle && (() => {
-        const det = VEHICLE_DETAILS[detailVehicle.code];
-        const tireColor: Record<string, string> = { Bueno: "var(--success-600)", Regular: "#D97706", Crítico: "var(--red)" };
-        const maintTypeStyle = (t: "Preventivo" | "Correctivo"): React.CSSProperties =>
-          t === "Preventivo"
-            ? { background: "var(--info-50)", color: "#1565c0", border: "1px solid #bfdbfe", borderRadius: 999, padding: "2px 9px", fontSize: 11, fontWeight: 700 }
-            : { background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa", borderRadius: 999, padding: "2px 9px", fontSize: 11, fontWeight: 700 };
-
-        const specs: [string, string][] = [
-          ["Código Interno",       detailVehicle.code],
-          ["Tipo de Unidad",       detailVehicle.type],
-          ["Marca y Modelo",       `${detailVehicle.brand} ${detailVehicle.model}`],
-          ["Año",                  String(detailVehicle.year)],
-          ["No. de Placa",         detailVehicle.plate],
-          ["No. de Chasis",        det ? det.chassis : "—"],
-          ["No. de Motor",         det ? det.motor : "—"],
-          ["Tipo de Combustible",  det ? det.fuel : "—"],
-          ["Kilometraje / Horas",  det ? det.kmHours : detailVehicle.km],
-          ["Capacidad del Tanque", det ? det.tankCapacity : "—"],
-          ["Estado de Llantas",    det ? det.tireCondition : "—"],
-          ["Seguro Vigente hasta", det ? det.insuranceUntil : "—"],
-        ];
-
-        const tabs: TabItem[] = [
-          {
-            id: "informacion",
-            label: "Información",
-            icon: <Info size={15} />,
-            content: (
-              <div className="flex flex-col gap-6">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-5 rounded-xl p-5" style={{ background: "var(--bg-input)", border: `1px solid ${BORDER}` }}>
-                  {specs.map(([label, value]) => (
-                    <div key={label} className="flex flex-col gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.05em]" style={{ color: MUTED }}>{label}</span>
-                      {label === "Estado de Llantas" && det ? (
-                        <span className="inline-flex items-center gap-2">
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: tireColor[det.tireCondition] }} />
-                          <span className="text-sm font-semibold" style={{ color: tireColor[det.tireCondition] }}>{value}</span>
-                        </span>
-                      ) : (
-                        <span className="text-sm font-medium" style={{ color: "var(--text-1)" }}>{value}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {det && (
-                  <div>
-                    <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.06em]" style={{ color: "var(--text-1)" }}>Equipo Asignado</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {det.equipment.map((eq) => (
-                        <div key={eq.item} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "var(--bg-card)", border: `1px solid ${BORDER}` }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: RED }} />
-                          <span className="text-sm" style={{ color: "var(--text-1)" }}>{eq.item}</span>
-                          <span className="text-xs font-bold" style={{ color: MUTED }}>{eq.qty}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ),
-          },
-          {
-            id: "mantenimiento",
-            label: "Mantenimiento",
-            icon: <Wrench size={15} />,
-            content: det && det.maintenance.length > 0 ? (
-              <div className="flex flex-col">
-                {det.maintenance.map((m, idx) => (
-                  <div key={idx} className="flex gap-4" style={{ paddingBottom: idx < det.maintenance.length - 1 ? 20 : 0 }}>
-                    <div className="flex shrink-0 flex-col items-center">
-                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: m.type === "Preventivo" ? "#1565c0" : "#c2410c", marginTop: 4 }} />
-                      {idx < det.maintenance.length - 1 && <div style={{ width: 2, flex: 1, background: BORDER, marginTop: 4 }} />}
-                    </div>
-                    <div className="flex flex-1 flex-col gap-1.5 rounded-xl p-3" style={{ background: "var(--bg-input)", border: `1px solid ${BORDER}` }}>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold" style={{ color: "var(--text-1)" }}>{m.date}</span>
-                          <span style={maintTypeStyle(m.type)}>{m.type}</span>
-                        </div>
-                        <span className="text-sm font-bold" style={{ color: "var(--success-600)" }}>{m.cost}</span>
-                      </div>
-                      <p className="m-0 text-sm" style={{ color: "var(--text-1)" }}>{m.desc}</p>
-                      <p className="m-0 text-xs" style={{ color: MUTED }}>{m.taller}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState icon={Wrench} title="Sin mantenimientos" description="El historial de mantenimiento aparecerá aquí." />
-            ),
-          },
-          {
-            id: "combustible",
-            label: "Combustible",
-            icon: <Fuel size={15} />,
-            content: <EmptyState icon={Fuel} title="Sin registros de combustible" description="El historial de combustible aparecerá aquí." />,
-          },
-          {
-            id: "documentos",
-            label: "Documentos",
-            icon: <FileText size={15} />,
-            content: <EmptyState icon={FileText} title="Sin documentos" description="Los documentos del vehículo aparecerán aquí." />,
-          },
-        ];
-
-        return (
-          <Drawer
-            open
-            onClose={() => { setDetailVehicle(null); setConfirmInactivate(null); }}
-            side="right"
-            size="xl"
-            title={detailVehicle.code}
-            icon={<Truck className="size-6" />}
-            statusBadge={<StatusBadge status={detailVehicle.status} />}
-            footer={
-              <>
-                <Button variant="outline" onClick={() => window.print()}><Printer className="size-4" /> Imprimir</Button>
-                {detailVehicle.estado !== "Inactivo" && (
-                  <Button variant="brand-outline" onClick={() => setConfirmInactivate(detailVehicle.code)}><Power className="size-4" /> Desactivar</Button>
-                )}
-                <Button variant="brand-outline" onClick={() => { setDetailVehicle(null); openMaintModal(detailVehicle.code); }}><Wrench className="size-4" /> Mantenimiento</Button>
-                <Button variant="brand" onClick={() => { setEditingVehicle({ ...detailVehicle }); setDetailVehicle(null); setConfirmInactivate(null); }}><Pencil className="size-4" /> Editar</Button>
-              </>
-            }
-          >
-            {confirmInactivate === detailVehicle.code && (
-              <div className="mb-4 flex flex-col gap-2 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--warning-500)", background: "var(--warning-50)", color: "var(--warning-700)" }}>
-                <span className="font-semibold">¿Marcar como Inactivo?</span>
-                <span>El vehículo cambiará de estado a Inactivo.</span>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setConfirmInactivate(null)}>Cancelar</Button>
-                  <Button variant="brand" size="sm" onClick={() => {
-                    setVehicles((prev) => prev.map((v) => v.code === detailVehicle.code ? { ...v, estado: "Inactivo" } : v));
-                    setDetailVehicle((prev) => prev ? { ...prev, estado: "Inactivo" } : prev);
-                    setConfirmInactivate(null);
-                    toast.info("Vehículo marcado como Inactivo.");
-                  }}>Confirmar</Button>
-                </div>
-              </div>
-            )}
-            <Tabs variant="glass" tabs={tabs} />
-          </Drawer>
-        );
-      })()}
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Delete confirmation dialog                                           */}
-      {/* ── Edit Vehicle Modal ───────────────────────────────────────────────── */}
-      {editingVehicle && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
-              <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Editar Vehículo — {editingVehicle.code}</span>
-              <button onClick={() => setEditingVehicle(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
-            </div>
-            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px" }}>
-              {([
-                { key: "type" as const, label: "Tipo" },
-                { key: "brand" as const, label: "Marca" },
-                { key: "model" as const, label: "Modelo" },
-                { key: "plate" as const, label: "Placa" },
-                { key: "color" as const, label: "Color" },
-                { key: "km" as const, label: "Km / Horas" },
-              ] as { key: keyof Vehicle; label: string }[]).map(({ key, label }) => (
-                <div key={key}>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>{label}</label>
-                  <input value={editingVehicle[key] as string}
-                    onChange={(e) => setEditingVehicle((prev) => prev ? { ...prev, [key]: e.target.value } : prev)}
-                    style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }} />
-                </div>
-              ))}
-              <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado Operativo</label>
-                <select value={editingVehicle.status}
-                  onChange={(e) => setEditingVehicle((prev) => prev ? { ...prev, status: e.target.value as VehicleStatus } : prev)}
-                  style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}>
-                  <option>Operativa</option><option>En Servicio</option><option>Mantenimiento</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--neutral-500)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, fontFamily: "Inter, sans-serif" }}>Estado Registro</label>
-                <select value={editingVehicle.estado ?? "Activo"}
-                  onChange={(e) => setEditingVehicle((prev) => prev ? { ...prev, estado: e.target.value as "Activo" | "Inactivo" } : prev)}
-                  style={{ width: "100%", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }}>
-                  <option>Activo</option><option>Inactivo</option>
-                </select>
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
-              <Button variant="brand-outline" onClick={() => setEditingVehicle(null)}>Cancelar</Button>
-              <Button variant="brand" onClick={() => {
-                if (!editingVehicle) return;
-                setVehicles((prev) => prev.map((v) => v.code === editingVehicle.code ? editingVehicle : v));
-                toast.success("Vehículo actualizado exitosamente.");
-                setEditingVehicle(null);
-              }}>Guardar</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <VehiculoDrawer
+        open={drawerOpen}
+        vehiculo={detalle}
+        onClose={() => setDrawerOpen(false)}
+        onEdit={(v) => {
+          setEditTarget(v);
+          setShowForm(true);
+        }}
+        onToggleEstado={toggleEstado}
+      />
     </div>
   );
 }
 
-// ─── Shared helpers ───────────────────────────────────────────────────────────
-function iconBtn(bg: string, color: string): React.CSSProperties {
-  return { background: bg, color, border: "none", borderRadius: 6, padding: "5px 6px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
+function KpiCard({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  color?: string;
+}) {
+  return (
+    <div className="flex min-w-[160px] flex-1 items-center gap-3 rounded-2xl px-4 py-3" style={CARD_STYLE}>
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-xl"
+        style={{ background: "var(--bg-hover)", color: color ?? "var(--text-2)" }}
+      >
+        {icon}
+      </div>
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+          {label}
+        </p>
+        <p className="text-base font-extrabold" style={{ color: "var(--text-1)" }}>
+          {value}
+        </p>
+      </div>
+    </div>
+  );
 }
 
-const closeBtn: React.CSSProperties = {
-  background: "none", border: "none", cursor: "pointer", color: MUTED, display: "flex", alignItems: "center", padding: 4, borderRadius: 6,
-};
+function MantenimientoPanel({
+  vehiculos,
+  talleres,
+  cargarMantenimientos,
+  crearMantenimiento,
+  actualizarMantenimiento,
+  eliminarMantenimiento,
+  onChanged,
+}: {
+  vehiculos: Vehiculo[];
+  talleres: CatalogoItem[];
+  cargarMantenimientos: (id: number) => Promise<VehiculoMantenimiento[]>;
+  crearMantenimiento: (id: number, data: VehiculoMantenimientoCreate) => Promise<VehiculoMantenimiento>;
+  actualizarMantenimiento: (id: number, data: VehiculoMantenimientoCreate) => Promise<VehiculoMantenimiento>;
+  eliminarMantenimiento: (id: number) => Promise<void>;
+  onChanged: () => Promise<void>;
+}) {
+  const { alert, toast } = useAlert();
+  const [vehiculoId, setVehiculoId] = useState<string>("");
+  const [mantenimientos, setMantenimientos] = useState<VehiculoMantenimiento[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<VehiculoMantenimiento | null>(null);
 
-function Overlay({ children, onClose, wide }: { children: ReactNode; onClose: () => void; wide?: boolean }) {
+  const vehiculo = vehiculos.find((v) => String(v.vehiculoId) === vehiculoId) ?? null;
+
+  useEffect(() => {
+    if (!vehiculoId && vehiculos.length > 0) {
+      setVehiculoId(String(vehiculos[0].vehiculoId));
+    }
+  }, [vehiculoId, vehiculos]);
+
+  const recargarLista = useCallback(async () => {
+    if (!vehiculoId) return;
+    setLoading(true);
+    try {
+      setMantenimientos(await cargarMantenimientos(Number(vehiculoId)));
+    } catch {
+      setMantenimientos([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [cargarMantenimientos, vehiculoId]);
+
+  useEffect(() => {
+    void recargarLista();
+  }, [recargarLista]);
+
+  const totalCosto = mantenimientos.reduce((s, m) => s + Number(m.costo || 0), 0);
+
+  async function guardar(data: VehiculoMantenimientoCreate) {
+    if (!vehiculoId) return;
+    try {
+      if (editTarget) {
+        await actualizarMantenimiento(editTarget.mantenimientoId, data);
+        toast.success("Mantenimiento actualizado");
+      } else {
+        await crearMantenimiento(Number(vehiculoId), data);
+        toast.success("Mantenimiento registrado");
+      }
+      await recargarLista();
+      await onChanged();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar el mantenimiento");
+      throw e;
+    }
+  }
+
+  async function eliminar(m: VehiculoMantenimiento) {
+    const ok = await alert.confirm("Eliminar mantenimiento", "Esta acción no se puede deshacer.");
+    if (!ok) return;
+    try {
+      await eliminarMantenimiento(m.mantenimientoId);
+      await recargarLista();
+      await onChanged();
+      toast.success("Mantenimiento eliminado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo eliminar el mantenimiento");
+    }
+  }
+
   return (
-    <div
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-    >
-      <div style={{ background: "var(--bg-card)", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", padding: "24px 28px", width: "100%", maxWidth: wide ? 720 : 480, maxHeight: "90vh", overflowY: "auto", fontFamily: "Inter, sans-serif" }}>
-        {children}
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="w-full max-w-sm">
+          <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
+            Vehículo
+          </label>
+          <SelectField
+            label=""
+            placeholder="Selecciona vehículo"
+            value={vehiculoId}
+            onChange={setVehiculoId}
+            options={vehiculos.map((v) => ({
+              value: String(v.vehiculoId),
+              label: `${v.codigo ? `#${v.codigo} · ` : ""}${v.marca} ${v.modelo}${v.noUnidad ? ` · Unidad ${v.noUnidad}` : ""}`,
+            }))}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-2)" }}>
+            {mantenimientos.length} registros · {formatMoneda(totalCosto)}
+          </div>
+          <Button
+            disabled={!vehiculoId}
+            onClick={() => {
+              setEditTarget(null);
+              setModalOpen(true);
+            }}
+          >
+            <Plus size={16} />
+            Nuevo mantenimiento
+          </Button>
+        </div>
       </div>
+
+      <div className="rounded-2xl p-4" style={CARD_STYLE}>
+        {!vehiculoId ? (
+          <EmptyState icon={Truck} title="Selecciona un vehículo" description="Elige una unidad para ver su historial de mantenimiento." />
+        ) : loading ? (
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : mantenimientos.length === 0 ? (
+          <EmptyState
+            icon={Wrench}
+            title="Sin mantenimientos"
+            description="Registra el primer mantenimiento preventivo o correctivo de esta unidad."
+            action={
+              <Button onClick={() => setModalOpen(true)}>
+                <Plus size={16} />
+                Nuevo mantenimiento
+              </Button>
+            }
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[820px] border-collapse text-sm">
+              <thead>
+                <tr style={{ color: "var(--text-3)" }}>
+                  {["Ingreso", "Retorno", "Tipo", "Taller", "Kilometraje", "Costo", "Estado", "Descripción", ""].map((h) => (
+                    <th key={h} className="border-b px-2 py-2 text-left text-[11px] font-bold uppercase tracking-wide" style={{ borderColor: "var(--border)" }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {mantenimientos.map((m) => (
+                  <tr key={m.mantenimientoId} style={{ color: "var(--text-1)" }}>
+                    <td className="border-b px-2 py-2 whitespace-nowrap" style={{ borderColor: "var(--divider)" }}>
+                      {m.fechaIngreso ? m.fechaIngreso.slice(0, 10) : "—"}
+                    </td>
+                    <td className="border-b px-2 py-2 whitespace-nowrap" style={{ borderColor: "var(--divider)" }}>
+                      {m.fechaRetorno ? m.fechaRetorno.slice(0, 10) : "—"}
+                    </td>
+                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>{m.tipo}</td>
+                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>{m.tallerNombre || "—"}</td>
+                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
+                      {m.kilometraje?.toLocaleString("es-GT") ?? "—"}
+                    </td>
+                    <td className="border-b px-2 py-2 whitespace-nowrap" style={{ borderColor: "var(--divider)" }}>
+                      {formatMoneda(m.costo)}
+                    </td>
+                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
+                      <Badge variant={m.estado === "Finalizado" ? "success" : "warning"}>{m.estado}</Badge>
+                    </td>
+                    <td className="max-w-[220px] truncate border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
+                      {m.descripcion || "—"}
+                    </td>
+                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5"
+                          style={{ color: "var(--text-2)" }}
+                          onClick={() => {
+                            setEditTarget(m);
+                            setModalOpen(true);
+                          }}
+                          title="Editar"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5"
+                          style={{ color: "var(--brand-600)" }}
+                          onClick={() => eliminar(m)}
+                          title="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <MantenimientoModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setEditTarget(null);
+        }}
+        vehiculo={vehiculo}
+        mantenimiento={editTarget}
+        talleres={talleres}
+        onSubmit={guardar}
+      />
     </div>
   );
 }

@@ -86,7 +86,11 @@ export type CatalogoTipo =
   | "categorias-inventario"
   | "proveedores"
   | "tipos-movimiento"
-  | "estados-entrega";
+  | "estados-entrega"
+  | "tipos-vehiculo"
+  | "gasolineras"
+  | "talleres"
+  | "tipos-documento";
 
 export interface CatalogoItem {
   id: number;

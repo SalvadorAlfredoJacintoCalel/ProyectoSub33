@@ -70,7 +70,7 @@ export function Modal({
             <div className="absolute inset-x-0 top-0 h-1 bg-[var(--grad-primary)]" />
           )}
           {title && (
-            <div className="flex items-start gap-4 border-b border-[var(--divider)] px-6 py-5">
+            <div className="flex shrink-0 items-start gap-4 border-b border-[var(--divider)] px-6 py-5">
               {icon && (
                 <div className="animate-icon-bounce flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--grad-primary-soft)] text-[var(--brand-600)]">
                   {icon}
@@ -96,10 +96,10 @@ export function Modal({
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
 
           {footer && (
-            <div className="flex items-center justify-end gap-3 border-t border-[var(--divider)] bg-[var(--bg-card)] px-6 py-4">
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--divider)] bg-[var(--bg-card)] px-6 py-4">
               {footer}
             </div>
           )}

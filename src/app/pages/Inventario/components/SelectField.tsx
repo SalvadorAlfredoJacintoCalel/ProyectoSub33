@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 export function SelectField({
   label,
   required = false,
@@ -15,12 +17,21 @@ export function SelectField({
   error?: string;
   placeholder: string;
 }) {
+  const id = useId();
+  const errorId = error ? `${id}-error` : undefined;
+
   return (
     <div className="w-full">
-      <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
-        {label} {required && <span style={{ color: "var(--brand-600)" }}>*</span>}
-      </label>
+      {label && (
+        <label htmlFor={id} className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
+          {label} {required && <span style={{ color: "var(--brand-600)" }}>*</span>}
+        </label>
+      )}
       <select
+        id={id}
+        aria-label={label || placeholder}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={errorId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-lg px-3 py-2.5 text-sm outline-none focus-ring-premium"
@@ -38,7 +49,7 @@ export function SelectField({
         ))}
       </select>
       {error && (
-        <p className="mt-1 text-xs font-medium" style={{ color: "var(--brand-600)" }}>
+        <p id={errorId} className="mt-1 text-xs font-medium" style={{ color: "var(--brand-600)" }}>
           {error}
         </p>
       )}

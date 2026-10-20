@@ -84,3 +84,46 @@ export interface ApiEnvelope<T> {
   message: string;
   data: T;
 }
+
+export interface DonacionMovimiento {
+  movimientoId: number;
+  libroId: number;
+  fecha: string;
+  descripcion: string;
+  firmado: boolean;
+  tipoDocumentoId?: number | null;
+  tipoDocumentoNombre?: string | null;
+  noDocumento?: string | null;
+  entrada: number;
+  salida: number;
+  saldo: number;
+  donacionId?: number | null;
+  vehiculoId?: number | null;
+  createdAt?: string | null;
+}
+
+export interface DonacionLibro {
+  libroId: number;
+  anio: number;
+  mes: number;
+  saldoInicial: number;
+  saldoFinal: number;
+  notas?: string | null;
+  totalEntradas: number;
+  totalSalidas: number;
+  movimientos: DonacionMovimiento[];
+}
+
+export interface DonacionMovimientoCreate {
+  anio: number;
+  mes: number;
+  descripcion: string;
+  fecha: string;
+  firmado: boolean;
+  tipoDocumentoId?: number | null;
+  noDocumento?: string | null;
+  entrada: number;
+  salida: number;
+}
+
+export type DonacionMovimientoUpdate = Omit<DonacionMovimientoCreate, "anio" | "mes">;

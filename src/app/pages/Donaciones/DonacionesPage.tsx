@@ -16,6 +16,8 @@ import {
   History,
   Gift,
   CheckCircle2,
+  BookOpen,
+  List,
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { Drawer } from "@/app/components/ui/drawer";
@@ -27,6 +29,7 @@ import { Input } from "@/app/components/ui/input";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { useDonaciones } from "@/hooks/useDonaciones";
+import { LibroDonacionesTab } from "./LibroDonacionesTab";
 import type {
   Donacion,
   DonacionCreate,
@@ -533,6 +536,7 @@ export function DonacionesPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("Todos");
   const [page, setPage] = useState(1);
+  const [vista, setVista] = useState<"registros" | "libro">("registros");
 
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Donacion | null>(null);
@@ -740,12 +744,46 @@ export function DonacionesPage() {
             33ª Compañía de Bomberos Voluntarios — Gestión de donaciones recibidas
           </p>
         </div>
-        <Button variant="brand" onClick={() => { setEditTarget(null); setShowForm(true); }}>
-          <Plus size={16} />
-          Nueva Donación
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <button
+              type="button"
+              onClick={() => setVista("registros")}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
+              style={{
+                background: vista === "registros" ? "var(--brand-600)" : "transparent",
+                color: vista === "registros" ? "#fff" : "var(--text-2)",
+              }}
+            >
+              <List size={15} />
+              Registros
+            </button>
+            <button
+              type="button"
+              onClick={() => setVista("libro")}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all"
+              style={{
+                background: vista === "libro" ? "var(--brand-600)" : "transparent",
+                color: vista === "libro" ? "#fff" : "var(--text-2)",
+              }}
+            >
+              <BookOpen size={15} />
+              Libro mensual
+            </button>
+          </div>
+          {vista === "registros" && (
+            <Button variant="brand" onClick={() => { setEditTarget(null); setShowForm(true); }}>
+              <Plus size={16} />
+              Nueva Donación
+            </Button>
+          )}
+        </div>
       </div>
 
+      {vista === "libro" ? (
+        <LibroDonacionesTab />
+      ) : (
+        <>
       <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
         <KpiCard label="Total Donaciones" value={formatQ(totalDonaciones)} color="#D97706" icon={<DollarSign size={22} />} />
         <KpiCard label="Donaciones Efectivo" value={formatQ(totalEfectivo)} color="var(--success-600)" icon={<DollarSign size={22} />} />
@@ -812,6 +850,8 @@ export function DonacionesPage() {
           onClose={() => setViewTarget(null)}
           onEdit={() => { setEditTarget(viewTarget); setViewTarget(null); setShowForm(true); }}
         />
+      )}
+        </>
       )}
     </div>
   );
