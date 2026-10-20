@@ -39,6 +39,23 @@ namespace Backend_Sub33.Models.Entities
         [Column("unidad_medida")]
         public string? UnidadMedida { get; set; }
 
+        [Column("valor_unitario")]
+        public decimal? ValorUnitario { get; set; }
+
+        [MaxLength(10)]
+        [Column("estado")]
+        public string Estado { get; set; } = "Activo";
+
+        [Column("fecha_baja")]
+        public DateTime? FechaBaja { get; set; }
+
+        [MaxLength(120)]
+        [Column("ubicacion")]
+        public string? Ubicacion { get; set; }
+
+        [Column("es_central")]
+        public bool EsCentral { get; set; }
+
         [Column("donacion_id")]
         public int? DonacionId { get; set; }
 

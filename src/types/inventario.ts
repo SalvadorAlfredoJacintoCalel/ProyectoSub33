@@ -9,6 +9,12 @@ export interface InventarioItem {
   stockActual: number;
   stockMinimo: number;
   unidadMedida: string;
+  valorUnitario?: number | null;
+  total?: number;
+  estado?: string | null;
+  fechaBaja?: string | null;
+  ubicacion?: string | null;
+  esCentral?: boolean;
   donacionId?: number | null;
   origen?: string | null;
   nombreDonante?: string | null;
@@ -70,6 +76,7 @@ export interface InventarioResumenCategoria {
   categoria: string;
   items: number;
   stockTotal: number;
+  valorTotal: number;
 }
 
 export interface InventarioResumen {
@@ -78,6 +85,7 @@ export interface InventarioResumen {
   stockBajo: number;
   totalMovimientos: number;
   movimientosHoy: number;
+  valorTotal: number;
   categorias: InventarioResumenCategoria[];
 }
 
@@ -89,6 +97,10 @@ export interface InventarioItemCreate {
   stockActual: number;
   stockMinimo: number;
   unidadMedida?: string;
+  valorUnitario?: number | null;
+  estado?: string;
+  ubicacion?: string;
+  esCentral?: boolean;
   donacionId?: number | null;
   origen?: string;
   nombreDonante?: string;
@@ -102,6 +114,10 @@ export interface InventarioItemUpdate {
   nombre: string;
   stockMinimo: number;
   unidadMedida?: string;
+  valorUnitario?: number | null;
+  estado?: string;
+  ubicacion?: string;
+  esCentral?: boolean;
   donacionId?: number | null;
   origen?: string;
   nombreDonante?: string;
@@ -158,6 +174,7 @@ export interface InventarioItemFiltros {
   busqueda?: string;
   categoriaInvId?: number;
   stockStatus?: string;
+  estado?: string;
   pagina: number;
   tamanio: number;
 }

@@ -22,6 +22,7 @@ public class InventarioController : ApiControllerBase
         [FromQuery] string? busqueda = null,
         [FromQuery] int? categoriaInvId = null,
         [FromQuery] string? stockStatus = null,
+        [FromQuery] string? estado = null,
         [FromQuery] int pagina = 1,
         [FromQuery] int tamanio = 10)
         {
@@ -30,6 +31,7 @@ public class InventarioController : ApiControllerBase
                 Busqueda = busqueda,
                 CategoriaInvId = categoriaInvId,
                 StockStatus = stockStatus,
+                Estado = estado,
                 Pagina = pagina,
                 TamanoPagina = tamanio
             };
@@ -67,6 +69,12 @@ public class InventarioController : ApiControllerBase
             await _inventarioService.UpdateItemAsync(id, dto),
             "Item actualizado correctamente.");
     }
+
+    [HttpPost("items/{id:int}/baja")]
+    public async Task<IActionResult> DarDeBajaItem(int id, [FromBody] InventarioItemBajaDto dto)
+        => Respond(
+            await _inventarioService.DarDeBajaAsync(id, dto?.ResponsableId),
+            "Item dado de baja correctamente.");
 
     [HttpDelete("items/{id:int}")]
     public async Task<IActionResult> DeleteItem(int id)

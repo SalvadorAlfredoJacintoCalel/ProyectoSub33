@@ -15,6 +15,12 @@ public class InventarioItemDto
     public int StockActual { get; set; }
     public int StockMinimo { get; set; }
     public string UnidadMedida { get; set; } = string.Empty;
+    public decimal? ValorUnitario { get; set; }
+    public decimal Total { get; set; }
+    public string Estado { get; set; } = "Activo";
+    public DateTime? FechaBaja { get; set; }
+    public string? Ubicacion { get; set; }
+    public bool EsCentral { get; set; }
     public int? DonacionId { get; set; }
     public string? Origen { get; set; }
     public string? NombreDonante { get; set; }
@@ -31,6 +37,10 @@ public class InventarioItemCreateDto
     public int StockActual { get; set; }
     public int StockMinimo { get; set; }
     public string? UnidadMedida { get; set; }
+    public decimal? ValorUnitario { get; set; }
+    public string? Estado { get; set; }
+    public string? Ubicacion { get; set; }
+    public bool EsCentral { get; set; }
     public int? DonacionId { get; set; }
     public string? Origen { get; set; }
     public string? NombreDonante { get; set; }
@@ -45,10 +55,19 @@ public class InventarioItemUpdateDto
     public string Nombre { get; set; } = string.Empty;
     public int StockMinimo { get; set; }
     public string? UnidadMedida { get; set; }
+    public decimal? ValorUnitario { get; set; }
+    public string? Estado { get; set; }
+    public string? Ubicacion { get; set; }
+    public bool EsCentral { get; set; }
     public int? DonacionId { get; set; }
     public string? Origen { get; set; }
     public string? NombreDonante { get; set; }
     public string? NoRecibo { get; set; }
+}
+
+public class InventarioItemBajaDto
+{
+    public Guid? ResponsableId { get; set; }
 }
 
 public class InventarioItemFiltrosDto
@@ -56,6 +75,7 @@ public class InventarioItemFiltrosDto
     public string? Busqueda { get; set; }
     public int? CategoriaInvId { get; set; }
     public string? StockStatus { get; set; }
+    public string? Estado { get; set; }
     public int Pagina { get; set; } = 1;
     public int TamanoPagina { get; set; } = 10;
 }
@@ -146,6 +166,7 @@ public class InventarioResumenDto
     public int StockBajo { get; set; }
     public int TotalMovimientos { get; set; }
     public int MovimientosHoy { get; set; }
+    public decimal ValorTotal { get; set; }
     public List<InventarioResumenCategoriaDto> Categorias { get; set; } = new();
 }
 
@@ -154,4 +175,5 @@ public class InventarioResumenCategoriaDto
     public string Categoria { get; set; } = string.Empty;
     public int Items { get; set; }
     public int StockTotal { get; set; }
+    public decimal ValorTotal { get; set; }
 }

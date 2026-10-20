@@ -12,6 +12,12 @@ export function formatFechaCorta(iso?: string | null): string {
   return d.toLocaleDateString("es-GT", { dateStyle: "short" });
 }
 
+export function formatMoneda(valor?: number | null): string {
+  const n = Number(valor ?? 0);
+  if (Number.isNaN(n)) return "Q0.00";
+  return n.toLocaleString("es-GT", { style: "currency", currency: "GTQ", minimumFractionDigits: 2 });
+}
+
 export function toCsv(headers: string[], rows: (string | number)[][]): string {
   const escape = (v: string | number) => {
     const s = String(v ?? "").replace(/"/g, '""');

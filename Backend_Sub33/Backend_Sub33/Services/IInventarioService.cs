@@ -9,6 +9,7 @@ public interface IInventarioService
     Task<ServiceResult<InventarioItemDto>> GetItemByIdAsync(int id);
     Task<ServiceResult<InventarioItemDto>> CreateItemAsync(InventarioItemCreateDto dto);
     Task<ServiceResult<InventarioItemDto>> UpdateItemAsync(int id, InventarioItemUpdateDto dto);
+    Task<ServiceResult> DarDeBajaAsync(int id, Guid? responsableId);
     Task<ServiceResult> DeleteItemAsync(int id);
 
     Task<ServiceResult<PaginatedResult<InventarioMovimientoDto>>> GetMovimientosAsync(InventarioMovimientoFiltrosDto filtros);

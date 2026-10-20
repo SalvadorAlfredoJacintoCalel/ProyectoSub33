@@ -32,6 +32,7 @@ export const inventarioService = {
     if (filtros.busqueda) params.busqueda = filtros.busqueda;
     if (filtros.categoriaInvId) params.categoriaInvId = filtros.categoriaInvId;
     if (filtros.stockStatus) params.stockStatus = filtros.stockStatus;
+    if (filtros.estado) params.estado = filtros.estado;
 
     const res = await apiClient.get<ApiEnvelope<PaginacionInventario>>(`${API_BASE}/items`, { params });
     return res.data;
@@ -54,6 +55,10 @@ export const inventarioService = {
 
   deleteItem: async (id: number): Promise<void> => {
     await apiClient.delete<ApiEnvelope<unknown>>(`${API_BASE}/items/${id}`);
+  },
+
+  darDeBajaItem: async (id: number, responsableId?: string | null): Promise<void> => {
+    await apiClient.post<ApiEnvelope<unknown>>(`${API_BASE}/items/${id}/baja`, { responsableId: responsableId ?? null });
   },
 
   // ── Movimientos ────────────────────────────────────────────────────────

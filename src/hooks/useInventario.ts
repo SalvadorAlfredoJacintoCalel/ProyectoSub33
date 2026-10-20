@@ -59,6 +59,7 @@ interface UseInventarioReturn {
   createItem: (dto: InventarioItemCreate) => Promise<InventarioItem>;
   updateItem: (id: number, dto: InventarioItemUpdate) => Promise<InventarioItem>;
   deleteItem: (id: number) => Promise<void>;
+  darDeBajaItem: (id: number, responsableId?: string | null) => Promise<void>;
   createMovimiento: (dto: InventarioMovimientoCreate) => Promise<InventarioMovimiento>;
   asignarEquipo: (dto: EquipoUnidadCreate) => Promise<void>;
 
@@ -192,6 +193,10 @@ export function useInventario(): UseInventarioReturn {
     return inventarioService.deleteItem(id);
   }, []);
 
+  const darDeBajaItem = useCallback(async (id: number, responsableId?: string | null): Promise<void> => {
+    return inventarioService.darDeBajaItem(id, responsableId);
+  }, []);
+
   const createMovimiento = useCallback(async (dto: InventarioMovimientoCreate): Promise<InventarioMovimiento> => {
     return inventarioService.createMovimiento(dto);
   }, []);
@@ -223,6 +228,7 @@ export function useInventario(): UseInventarioReturn {
     createItem,
     updateItem,
     deleteItem,
+    darDeBajaItem,
     createMovimiento,
     asignarEquipo,
     limpiarError,

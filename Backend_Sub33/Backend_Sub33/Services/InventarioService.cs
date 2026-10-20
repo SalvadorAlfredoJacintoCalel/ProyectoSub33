@@ -41,6 +41,12 @@ namespace Backend_Sub33.Services
                    i.stock_actual,
                    i.stock_minimo,
                    COALESCE(i.unidad_medida, '') AS unidad_medida,
+                   i.valor_unitario,
+                   (i.stock_actual * COALESCE(i.valor_unitario, 0))::numeric(12,2) AS total,
+                   COALESCE(i.estado, 'Activo') AS estado,
+                   i.fecha_baja,
+                   i.ubicacion,
+                   COALESCE(i.es_central, false) AS es_central,
                    i.donacion_id,
                    i.origen,
                    i.nombre_donante,
@@ -80,6 +86,12 @@ namespace Backend_Sub33.Services
                 else if (string.Equals(filtros.StockStatus, "bajo", StringComparison.OrdinalIgnoreCase))
                 {
                     where.Add("i.stock_actual > 0 AND i.stock_actual <= i.stock_minimo");
+                }
+
+                if (!string.IsNullOrWhiteSpace(filtros.Estado))
+                {
+                    where.Add("COALESCE(i.estado, 'Activo') = @Estado");
+                    parameters.Add("Estado", filtros.Estado);
                 }
 
                 var whereClause = string.Join(" AND ", where);
@@ -160,20 +172,9 @@ namespace Backend_Sub33.Services
                     return ServiceResult<InventarioItemDto>.BadRequest("El stock no puede ser negativo.");
                 }
 
-                if (!string.IsNullOrWhiteSpace(dto.CodigoBarras))
-                {
-                    var codigoDuplicado = await connection.ExecuteScalarAsync<bool>(
-                        "SELECT EXISTS(SELECT 1 FROM inventario_items WHERE codigo_barras = @Codigo)",
-                        new { Codigo = dto.CodigoBarras.Trim() });
-                    if (codigoDuplicado)
-                    {
-                        return ServiceResult<InventarioItemDto>.Conflict("El código de barras ya existe.");
-                    }
-                }
-
                 var itemId = await connection.QuerySingleAsync<int>(@"
-                    INSERT INTO inventario_items (categoria_inv_id, proveedor_id, codigo_barras, nombre, stock_actual, stock_minimo, unidad_medida, donacion_id, origen, nombre_donante, no_recibo, created_at)
-                    VALUES (@CategoriaInvId, @ProveedorId, @CodigoBarras, @Nombre, @StockActual, @StockMinimo, @UnidadMedida, @DonacionId, @Origen, @NombreDonante, @NoRecibo, CURRENT_TIMESTAMP)
+                    INSERT INTO inventario_items (categoria_inv_id, proveedor_id, codigo_barras, nombre, stock_actual, stock_minimo, unidad_medida, valor_unitario, estado, ubicacion, es_central, donacion_id, origen, nombre_donante, no_recibo, created_at)
+                    VALUES (@CategoriaInvId, @ProveedorId, @CodigoBarras, @Nombre, @StockActual, @StockMinimo, @UnidadMedida, @ValorUnitario, @Estado, @Ubicacion, @EsCentral, @DonacionId, @Origen, @NombreDonante, @NoRecibo, CURRENT_TIMESTAMP)
                     RETURNING item_id;",
                     new
                     {
@@ -183,7 +184,11 @@ namespace Backend_Sub33.Services
                         Nombre = nombre,
                         StockActual = dto.StockActual,
                         StockMinimo = dto.StockMinimo,
-                        UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? "Unidad" : dto.UnidadMedida.Trim(),
+                        UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? null : dto.UnidadMedida.Trim(),
+                        ValorUnitario = dto.ValorUnitario,
+                        Estado = string.Equals(dto.Estado, "Baja", StringComparison.OrdinalIgnoreCase) ? "Baja" : "Activo",
+                        Ubicacion = string.IsNullOrWhiteSpace(dto.Ubicacion) ? null : dto.Ubicacion.Trim(),
+                        EsCentral = dto.EsCentral,
                         DonacionId = dto.DonacionId,
                         Origen = string.IsNullOrWhiteSpace(dto.Origen) ? "Compra Propia" : dto.Origen,
                         NombreDonante = dto.NombreDonante,
@@ -244,17 +249,6 @@ namespace Backend_Sub33.Services
                     return ServiceResult<InventarioItemDto>.BadRequest("El stock mínimo no puede ser negativo.");
                 }
 
-                if (!string.IsNullOrWhiteSpace(dto.CodigoBarras))
-                {
-                    var codigoDuplicado = await connection.ExecuteScalarAsync<bool>(
-                        "SELECT EXISTS(SELECT 1 FROM inventario_items WHERE codigo_barras = @Codigo AND item_id <> @Id)",
-                        new { Codigo = dto.CodigoBarras.Trim(), Id = id });
-                    if (codigoDuplicado)
-                    {
-                        return ServiceResult<InventarioItemDto>.Conflict("El código de barras ya existe.");
-                    }
-                }
-
                 await connection.ExecuteAsync(@"
                     UPDATE inventario_items SET
                         categoria_inv_id = @CategoriaInvId,
@@ -263,6 +257,11 @@ namespace Backend_Sub33.Services
                         nombre = @Nombre,
                         stock_minimo = @StockMinimo,
                         unidad_medida = @UnidadMedida,
+                        valor_unitario = @ValorUnitario,
+                        estado = @Estado,
+                        fecha_baja = CASE WHEN @Estado = 'Activo' THEN NULL ELSE fecha_baja END,
+                        ubicacion = @Ubicacion,
+                        es_central = @EsCentral,
                         donacion_id = @DonacionId,
                         origen = @Origen,
                         nombre_donante = @NombreDonante,
@@ -276,7 +275,11 @@ namespace Backend_Sub33.Services
                         CodigoBarras = string.IsNullOrWhiteSpace(dto.CodigoBarras) ? null : dto.CodigoBarras.Trim(),
                         Nombre = nombre,
                         StockMinimo = dto.StockMinimo,
-                        UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? "Unidad" : dto.UnidadMedida.Trim(),
+                        UnidadMedida = string.IsNullOrWhiteSpace(dto.UnidadMedida) ? null : dto.UnidadMedida.Trim(),
+                        ValorUnitario = dto.ValorUnitario,
+                        Estado = string.Equals(dto.Estado, "Baja", StringComparison.OrdinalIgnoreCase) ? "Baja" : "Activo",
+                        Ubicacion = string.IsNullOrWhiteSpace(dto.Ubicacion) ? null : dto.Ubicacion.Trim(),
+                        EsCentral = dto.EsCentral,
                         DonacionId = dto.DonacionId,
                         Origen = string.IsNullOrWhiteSpace(dto.Origen) ? "Compra Propia" : dto.Origen,
                         NombreDonante = dto.NombreDonante,
@@ -291,6 +294,61 @@ namespace Backend_Sub33.Services
             catch (Exception ex)
             {
                 return ServiceResult<InventarioItemDto>.Internal($"Error al actualizar item: {ex.Message}");
+            }
+        }
+
+        public async Task<ServiceResult> DarDeBajaAsync(int id, Guid? responsableId)
+        {
+            using var connection = AbrirConexion();
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                var item = await connection.QueryFirstOrDefaultAsync<(int StockActual, string Estado)>(
+                    "SELECT stock_actual, COALESCE(estado, 'Activo') AS estado FROM inventario_items WHERE item_id = @Id",
+                    new { Id = id }, transaction);
+
+                if (item == default)
+                {
+                    return ServiceResult.NotFound("Item no encontrado.");
+                }
+
+                if (string.Equals(item.Estado, "Baja", StringComparison.OrdinalIgnoreCase))
+                {
+                    return ServiceResult.BadRequest("El item ya está dado de baja.");
+                }
+
+                var tipoBaja = await connection.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'BAJA' LIMIT 1", null, transaction);
+
+                if (tipoBaja.HasValue && item.StockActual > 0)
+                {
+                    await connection.ExecuteAsync(@"
+                        INSERT INTO inventario_movimientos (item_id, tipo_mov_id, cantidad, motivo, responsable_id, fecha_hora)
+                        VALUES (@ItemId, @TipoMovId, @Cantidad, @Motivo, @ResponsableId, CURRENT_TIMESTAMP);",
+                        new
+                        {
+                            ItemId = id,
+                            TipoMovId = tipoBaja.Value,
+                            Cantidad = -item.StockActual,
+                            Motivo = "Baja de inventario",
+                            ResponsableId = responsableId
+                        }, transaction);
+                }
+
+                await connection.ExecuteAsync(@"
+                    UPDATE inventario_items
+                    SET estado = 'Baja', fecha_baja = CURRENT_DATE, stock_actual = 0
+                    WHERE item_id = @Id",
+                    new { Id = id }, transaction);
+
+                transaction.Commit();
+                return ServiceResult.Success();
+            }
+            catch (Exception ex)
+            {
+                try { transaction.Rollback(); } catch { }
+                return ServiceResult.Internal($"Error al dar de baja el item: {ex.Message}");
             }
         }
 
@@ -652,14 +710,16 @@ namespace Backend_Sub33.Services
 
                 var resumen = new InventarioResumenDto();
 
-                var conteos = await connection.QueryFirstAsync<(int Total, int Agotados, int Bajo)>(
+                var conteos = await connection.QueryFirstAsync<(int Total, int Agotados, int Bajo, decimal Valor)>(
                     @"SELECT COUNT(*)::int AS total,
                              COUNT(*) FILTER (WHERE stock_actual <= 0)::int AS agotados,
-                             COUNT(*) FILTER (WHERE stock_actual > 0 AND stock_actual <= stock_minimo)::int AS bajo
+                             COUNT(*) FILTER (WHERE stock_actual > 0 AND stock_actual <= stock_minimo)::int AS bajo,
+                             COALESCE(SUM(stock_actual * COALESCE(valor_unitario, 0)), 0)::numeric(12,2) AS valor
                       FROM inventario_items");
                 resumen.TotalItems = conteos.Total;
                 resumen.Agotados = conteos.Agotados;
                 resumen.StockBajo = conteos.Bajo;
+                resumen.ValorTotal = conteos.Valor;
 
                 var movs = await connection.QueryFirstAsync<(int Total, int Hoy)>(
                     @"SELECT COUNT(*)::int AS total,
@@ -671,7 +731,8 @@ namespace Backend_Sub33.Services
                 var categorias = await connection.QueryAsync<InventarioResumenCategoriaDto>(
                     @"SELECT COALESCE(c.nombre, 'Sin categoría') AS categoria,
                              COUNT(i.item_id)::int AS items,
-                             COALESCE(SUM(i.stock_actual), 0)::int AS stock_total
+                             COALESCE(SUM(i.stock_actual), 0)::int AS stock_total,
+                             COALESCE(SUM(i.stock_actual * COALESCE(i.valor_unitario, 0)), 0)::numeric(12,2) AS valor_total
                       FROM inventario_items i
                       LEFT JOIN cat_categorias_inventario c ON c.categoria_inv_id = i.categoria_inv_id
                       GROUP BY COALESCE(c.nombre, 'Sin categoría')
