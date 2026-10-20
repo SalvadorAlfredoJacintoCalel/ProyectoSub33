@@ -40,7 +40,14 @@ textarea:disabled { opacity: 0.7; }
 }
 
 /* ── Print ── */
-@media print { .no-print { display: none !important; } }
+.print-area { display: none; }
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+  body > *:not(.print-area) { display: none !important; }
+  .print-area { display: block !important; width: 100% !important; }
+  .no-print { display: none !important; }
+}
 
 /* ── Utility Classes for Layout ── */
 .flex-center { display: flex; align-items: center; justify-content: center; }

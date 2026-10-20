@@ -62,11 +62,11 @@ public class VehiculoService : IVehiculoService
         SELECT v.vehiculo_id, v.codigo, v.tipo_id, t.nombre AS tipo_nombre,
                v.marca, v.modelo, v.anio, v.color, v.placa, v.chasis, v.motor,
                v.no_unidad, v.combustible, v.capacidad_tanque, v.kilometraje,
-               v.condicion_llantas, v.seguro_hasta, v.estado_operativo,
+               v.condicion_llantas, v.volante_direccion, v.seguro_hasta, v.estado_operativo,
                v.origen, v.donacion_id, v.estado, v.valor_unitario, v.ubicacion,
                v.created_at, v.updated_at,
                d.donante, d.no_recibo AS no_recibo_donacion,
-               i.item_id
+               i.item_id, i.fecha_baja
         FROM vehiculos v
         LEFT JOIN cat_tipos_vehiculo t ON t.tipo_vehiculo_id = v.tipo_id
         LEFT JOIN donaciones d ON d.donacion_id = v.donacion_id
@@ -92,7 +92,7 @@ public class VehiculoService : IVehiculoService
         try
         {
             var pagina = filtros.Pagina < 1 ? 1 : filtros.Pagina;
-            var tamano = filtros.TamanoPagina is < 1 or > 200 ? 10 : filtros.TamanoPagina;
+            var tamano = filtros.TamanoPagina is < 1 or > 500 ? 10 : filtros.TamanoPagina;
 
             var where = new List<string>();
             var parameters = new DynamicParameters();
@@ -179,10 +179,7 @@ public class VehiculoService : IVehiculoService
             }
 
             vehiculo.Mantenimientos = (await connection.QueryAsync<VehiculoMantenimientoDto>(@"
-                SELECT m.mantenimiento_id, m.vehiculo_id, m.taller_id,
-                       tl.nombre AS taller_nombre, m.tipo, m.fecha_ingreso,
-                       m.fecha_retorno, m.kilometraje, m.descripcion, m.costo,
-                       m.estado, m.created_at
+                SELECT m.*, tl.nombre AS taller_nombre
                 FROM vehiculo_mantenimientos m
                 LEFT JOIN cat_talleres tl ON tl.taller_id = m.taller_id
                 WHERE m.vehiculo_id = @Id
@@ -230,12 +227,12 @@ public class VehiculoService : IVehiculoService
             var id = await connection.QuerySingleAsync<int>($@"
                 INSERT INTO vehiculos
                     (codigo, tipo_id, marca, modelo, anio, color, placa, chasis, motor,
-                     no_unidad, combustible, capacidad_tanque, kilometraje, condicion_llantas,
+                     no_unidad, combustible, capacidad_tanque, kilometraje, condicion_llantas, volante_direccion,
                      seguro_hasta, estado_operativo, origen, estado, valor_unitario, ubicacion,
                      created_at, updated_at)
                 VALUES
                     (@Codigo, @TipoId, @Marca, @Modelo, @Anio, @Color, @Placa, @Chasis, @Motor,
-                     @NoUnidad, @Combustible, @CapacidadTanque, @Kilometraje, @CondicionLlantas,
+                     @NoUnidad, @Combustible, @CapacidadTanque, @Kilometraje, @CondicionLlantas, @VolanteDireccion,
                      @SeguroHasta, @EstadoOperativo, @Origen, @Estado, @ValorUnitario, @Ubicacion,
                      CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 RETURNING vehiculo_id;",
@@ -304,6 +301,7 @@ public class VehiculoService : IVehiculoService
                     capacidad_tanque = @CapacidadTanque,
                     kilometraje = @Kilometraje,
                     condicion_llantas = @CondicionLlantas,
+                    volante_direccion = @VolanteDireccion,
                     seguro_hasta = @SeguroHasta,
                     estado_operativo = @EstadoOperativo,
                     origen = @Origen,
@@ -382,10 +380,7 @@ public class VehiculoService : IVehiculoService
         {
             using var connection = AbrirConexion();
             var items = (await connection.QueryAsync<VehiculoMantenimientoDto>(@"
-                SELECT m.mantenimiento_id, m.vehiculo_id, m.taller_id,
-                       tl.nombre AS taller_nombre, m.tipo, m.fecha_ingreso,
-                       m.fecha_retorno, m.kilometraje, m.descripcion, m.costo,
-                       m.estado, m.created_at
+                SELECT m.*, tl.nombre AS taller_nombre
                 FROM vehiculo_mantenimientos m
                 LEFT JOIN cat_talleres tl ON tl.taller_id = m.taller_id
                 WHERE m.vehiculo_id = @Id
@@ -425,10 +420,28 @@ public class VehiculoService : IVehiculoService
             var id = await connection.QuerySingleAsync<int>(@"
                 INSERT INTO vehiculo_mantenimientos
                     (vehiculo_id, taller_id, tipo, fecha_ingreso, fecha_retorno, kilometraje,
-                     descripcion, costo, estado, created_at, updated_at)
+                     descripcion, costo, estado,
+                     combustible_entrada, combustible_salida,
+                     pedales_clutch, pedales_frenos, pedales_acelerador,
+                     aceite_motor, estado_bateria, nivel_refrigerante, sistema_direccion,
+                     torreta_luces, sirena_bocina,
+                     espejo_izquierdo, espejo_derecho, calavera_izquierda, calavera_derecha,
+                     faro_izquierdo, faro_derecho, recomendaciones,
+                     piloto_permanente, piloto_voluntario, escuadra, horario_turno,
+                     jefe_servicio, firma_piloto, firma_jefe_servicio,
+                     created_at, updated_at)
                 VALUES
                     (@VehiculoId, @TallerId, @Tipo, @FechaIngreso, @FechaRetorno, @Kilometraje,
-                     @Descripcion, @Costo, @Estado, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                     @Descripcion, @Costo, @Estado,
+                     @CombustibleEntrada, @CombustibleSalida,
+                     @PedalesClutch, @PedalesFrenos, @PedalesAcelerador,
+                     @AceiteMotor, @EstadoBateria, @NivelRefrigerante, @SistemaDireccion,
+                     @TorretaLuces, @SirenaBocina,
+                     @EspejoIzquierdo, @EspejoDerecho, @CalaveraIzquierda, @CalaveraDerecha,
+                     @FaroIzquierdo, @FaroDerecho, @Recomendaciones,
+                     @PilotoPermanente, @PilotoVoluntario, @Escuadra, @HorarioTurno,
+                     @JefeServicio, @FirmaPiloto, @FirmaJefeServicio,
+                     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 RETURNING mantenimiento_id;",
                 new
                 {
@@ -438,19 +451,41 @@ public class VehiculoService : IVehiculoService
                     FechaIngreso = dto.FechaIngreso.Date,
                     FechaRetorno = dto.FechaRetorno?.Date,
                     dto.Kilometraje,
-                    Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim(),
+                    Descripcion = Limpiar(dto.Descripcion),
                     dto.Costo,
-                    Estado = Normalizar(dto.Estado)
+                    Estado = Normalizar(dto.Estado),
+                    CombustibleEntrada = Limpiar(dto.CombustibleEntrada),
+                    CombustibleSalida = Limpiar(dto.CombustibleSalida),
+                    PedalesClutch = Limpiar(dto.PedalesClutch),
+                    PedalesFrenos = Limpiar(dto.PedalesFrenos),
+                    PedalesAcelerador = Limpiar(dto.PedalesAcelerador),
+                    AceiteMotor = Limpiar(dto.AceiteMotor),
+                    EstadoBateria = Limpiar(dto.EstadoBateria),
+                    NivelRefrigerante = Limpiar(dto.NivelRefrigerante),
+                    SistemaDireccion = Limpiar(dto.SistemaDireccion),
+                    TorretaLuces = Limpiar(dto.TorretaLuces),
+                    SirenaBocina = Limpiar(dto.SirenaBocina),
+                    EspejoIzquierdo = Limpiar(dto.EspejoIzquierdo),
+                    EspejoDerecho = Limpiar(dto.EspejoDerecho),
+                    CalaveraIzquierda = Limpiar(dto.CalaveraIzquierda),
+                    CalaveraDerecha = Limpiar(dto.CalaveraDerecha),
+                    FaroIzquierdo = Limpiar(dto.FaroIzquierdo),
+                    FaroDerecho = Limpiar(dto.FaroDerecho),
+                    Recomendaciones = Limpiar(dto.Recomendaciones),
+                    PilotoPermanente = Limpiar(dto.PilotoPermanente),
+                    PilotoVoluntario = Limpiar(dto.PilotoVoluntario),
+                    Escuadra = Limpiar(dto.Escuadra),
+                    HorarioTurno = Limpiar(dto.HorarioTurno),
+                    JefeServicio = Limpiar(dto.JefeServicio),
+                    FirmaPiloto = Limpiar(dto.FirmaPiloto),
+                    FirmaJefeServicio = Limpiar(dto.FirmaJefeServicio)
                 }, transaction);
 
             await RecalcularEstadoOperativoAsync(connection, transaction, vehiculoId);
             transaction.Commit();
 
             var creado = await connection.QueryFirstOrDefaultAsync<VehiculoMantenimientoDto>(@"
-                SELECT m.mantenimiento_id, m.vehiculo_id, m.taller_id,
-                       tl.nombre AS taller_nombre, m.tipo, m.fecha_ingreso,
-                       m.fecha_retorno, m.kilometraje, m.descripcion, m.costo,
-                       m.estado, m.created_at
+                SELECT m.*, tl.nombre AS taller_nombre
                 FROM vehiculo_mantenimientos m
                 LEFT JOIN cat_talleres tl ON tl.taller_id = m.taller_id
                 WHERE m.mantenimiento_id = @Id", new { Id = id });
@@ -496,6 +531,31 @@ public class VehiculoService : IVehiculoService
                     descripcion = @Descripcion,
                     costo = @Costo,
                     estado = @Estado,
+                    combustible_entrada = @CombustibleEntrada,
+                    combustible_salida = @CombustibleSalida,
+                    pedales_clutch = @PedalesClutch,
+                    pedales_frenos = @PedalesFrenos,
+                    pedales_acelerador = @PedalesAcelerador,
+                    aceite_motor = @AceiteMotor,
+                    estado_bateria = @EstadoBateria,
+                    nivel_refrigerante = @NivelRefrigerante,
+                    sistema_direccion = @SistemaDireccion,
+                    torreta_luces = @TorretaLuces,
+                    sirena_bocina = @SirenaBocina,
+                    espejo_izquierdo = @EspejoIzquierdo,
+                    espejo_derecho = @EspejoDerecho,
+                    calavera_izquierda = @CalaveraIzquierda,
+                    calavera_derecha = @CalaveraDerecha,
+                    faro_izquierdo = @FaroIzquierdo,
+                    faro_derecho = @FaroDerecho,
+                    recomendaciones = @Recomendaciones,
+                    piloto_permanente = @PilotoPermanente,
+                    piloto_voluntario = @PilotoVoluntario,
+                    escuadra = @Escuadra,
+                    horario_turno = @HorarioTurno,
+                    jefe_servicio = @JefeServicio,
+                    firma_piloto = @FirmaPiloto,
+                    firma_jefe_servicio = @FirmaJefeServicio,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE mantenimiento_id = @Id",
                 new
@@ -506,19 +566,41 @@ public class VehiculoService : IVehiculoService
                     FechaIngreso = dto.FechaIngreso.Date,
                     FechaRetorno = dto.FechaRetorno?.Date,
                     dto.Kilometraje,
-                    Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim(),
+                    Descripcion = Limpiar(dto.Descripcion),
                     dto.Costo,
-                    Estado = Normalizar(dto.Estado)
+                    Estado = Normalizar(dto.Estado),
+                    CombustibleEntrada = Limpiar(dto.CombustibleEntrada),
+                    CombustibleSalida = Limpiar(dto.CombustibleSalida),
+                    PedalesClutch = Limpiar(dto.PedalesClutch),
+                    PedalesFrenos = Limpiar(dto.PedalesFrenos),
+                    PedalesAcelerador = Limpiar(dto.PedalesAcelerador),
+                    AceiteMotor = Limpiar(dto.AceiteMotor),
+                    EstadoBateria = Limpiar(dto.EstadoBateria),
+                    NivelRefrigerante = Limpiar(dto.NivelRefrigerante),
+                    SistemaDireccion = Limpiar(dto.SistemaDireccion),
+                    TorretaLuces = Limpiar(dto.TorretaLuces),
+                    SirenaBocina = Limpiar(dto.SirenaBocina),
+                    EspejoIzquierdo = Limpiar(dto.EspejoIzquierdo),
+                    EspejoDerecho = Limpiar(dto.EspejoDerecho),
+                    CalaveraIzquierda = Limpiar(dto.CalaveraIzquierda),
+                    CalaveraDerecha = Limpiar(dto.CalaveraDerecha),
+                    FaroIzquierdo = Limpiar(dto.FaroIzquierdo),
+                    FaroDerecho = Limpiar(dto.FaroDerecho),
+                    Recomendaciones = Limpiar(dto.Recomendaciones),
+                    PilotoPermanente = Limpiar(dto.PilotoPermanente),
+                    PilotoVoluntario = Limpiar(dto.PilotoVoluntario),
+                    Escuadra = Limpiar(dto.Escuadra),
+                    HorarioTurno = Limpiar(dto.HorarioTurno),
+                    JefeServicio = Limpiar(dto.JefeServicio),
+                    FirmaPiloto = Limpiar(dto.FirmaPiloto),
+                    FirmaJefeServicio = Limpiar(dto.FirmaJefeServicio)
                 }, transaction);
 
             await RecalcularEstadoOperativoAsync(connection, transaction, vehiculoId.Value);
             transaction.Commit();
 
             var actualizado = await connection.QueryFirstOrDefaultAsync<VehiculoMantenimientoDto>(@"
-                SELECT m.mantenimiento_id, m.vehiculo_id, m.taller_id,
-                       tl.nombre AS taller_nombre, m.tipo, m.fecha_ingreso,
-                       m.fecha_retorno, m.kilometraje, m.descripcion, m.costo,
-                       m.estado, m.created_at
+                SELECT m.*, tl.nombre AS taller_nombre
                 FROM vehiculo_mantenimientos m
                 LEFT JOIN cat_talleres tl ON tl.taller_id = m.taller_id
                 WHERE m.mantenimiento_id = @Id", new { Id = id });
@@ -824,6 +906,7 @@ public class VehiculoService : IVehiculoService
         parameters.Add("CapacidadTanque", dto.CapacidadTanque);
         parameters.Add("Kilometraje", dto.Kilometraje < 0 ? 0 : dto.Kilometraje);
         parameters.Add("CondicionLlantas", string.IsNullOrWhiteSpace(dto.CondicionLlantas) ? null : dto.CondicionLlantas.Trim());
+        parameters.Add("VolanteDireccion", string.IsNullOrWhiteSpace(dto.VolanteDireccion) ? null : dto.VolanteDireccion.Trim());
         parameters.Add("SeguroHasta", dto.SeguroHasta?.Date);
         parameters.Add("EstadoOperativo", string.IsNullOrWhiteSpace(dto.EstadoOperativo) ? "Operativa" : Normalizar(dto.EstadoOperativo));
         parameters.Add("Origen", string.IsNullOrWhiteSpace(dto.Origen) ? "Compra Propia" : Normalizar(dto.Origen));
@@ -874,6 +957,9 @@ public class VehiculoService : IVehiculoService
         var nombre = string.Join(' ', partes);
         return nombre.Length > 200 ? nombre[..200] : nombre;
     }
+
+    private static string? Limpiar(string? valor)
+        => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 
     private static string Normalizar(string valor)
     {

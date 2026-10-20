@@ -70,6 +70,11 @@ export function useVehiculos() {
     if (lista) setTipos(lista);
   }, []);
 
+  const recargarTalleres = useCallback(async () => {
+    const lista = await vehiculosService.getTalleres().catch(() => null);
+    if (lista) setTalleres(lista);
+  }, []);
+
   const setFiltros = useCallback((patch: Partial<VehiculoFiltros>) => {
     setFiltrosState((prev) => ({ ...prev, ...patch }));
   }, []);
@@ -155,6 +160,7 @@ export function useVehiculos() {
     talleres,
     recargar,
     recargarTipos,
+    recargarTalleres,
     crear,
     actualizar,
     cambiarEstado,

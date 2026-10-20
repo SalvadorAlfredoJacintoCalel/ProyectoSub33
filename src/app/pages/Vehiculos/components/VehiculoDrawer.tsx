@@ -1,10 +1,10 @@
-import { Ban, Pencil, RotateCcw, Wrench } from "lucide-react";
+import { Ban, FileText, Pencil, Plus, Printer, RotateCcw, Wrench } from "lucide-react";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Drawer } from "@/app/components/ui/drawer";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { formatFechaCorta, formatMoneda } from "@/app/pages/Inventario/components/format";
-import type { Vehiculo } from "@/types/vehiculos";
+import type { Vehiculo, VehiculoMantenimiento } from "@/types/vehiculos";
 import { estadoOperativoVariant, origenVariant, registroVariant } from "./vehiculoHelpers";
 
 interface Props {
@@ -13,9 +13,21 @@ interface Props {
   onClose: () => void;
   onEdit: (v: Vehiculo) => void;
   onToggleEstado: (v: Vehiculo) => void;
+  onAddMantenimiento: (v: Vehiculo) => void;
+  onEditMantenimiento?: (m: VehiculoMantenimiento) => void;
+  onPrintMantenimiento?: (m: VehiculoMantenimiento) => void;
 }
 
-export function VehiculoDrawer({ open, vehiculo, onClose, onEdit, onToggleEstado }: Props) {
+export function VehiculoDrawer({
+  open,
+  vehiculo,
+  onClose,
+  onEdit,
+  onToggleEstado,
+  onAddMantenimiento,
+  onEditMantenimiento,
+  onPrintMantenimiento,
+}: Props) {
   if (!vehiculo) return null;
   const v = vehiculo;
 
@@ -75,6 +87,7 @@ export function VehiculoDrawer({ open, vehiculo, onClose, onEdit, onToggleEstado
             <InfoField label="Capacidad tanque" value={v.capacidadTanque != null ? `${v.capacidadTanque} gal` : "—"} />
             <InfoField label="Kilometraje" value={`${v.kilometraje.toLocaleString("es-GT")} km`} />
             <InfoField label="Condición de llantas" value={v.condicionLlantas || "—"} />
+            <InfoField label="Volante / Sistema de Dirección" value={v.volanteDireccion || "—"} />
           </div>
         </section>
 
@@ -91,17 +104,37 @@ export function VehiculoDrawer({ open, vehiculo, onClose, onEdit, onToggleEstado
             <InfoField label="No. recibo" value={v.noReciboDonacion || "—"} />
             <InfoField label="Ítem de inventario" value={v.itemId ? `#${v.itemId}` : "—"} />
             <InfoField label="Registrado" value={formatFechaCorta(v.createdAt)} />
+            {v.estado === "Inactivo" && (
+              <InfoField label="Fecha de baja" value={formatFechaCorta(v.fechaBaja)} />
+            )}
           </div>
         </section>
 
         <section>
-          <h3 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
-            Mantenimientos ({v.mantenimientos?.length ?? 0})
-          </h3>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+              Mantenimientos ({v.mantenimientos?.length ?? 0})
+            </h3>
+            {(v.mantenimientos?.length ?? 0) > 0 && (
+              <Button size="sm" variant="brand-outline" onClick={() => onAddMantenimiento(v)}>
+                <Plus size={14} />
+                Registrar
+              </Button>
+            )}
+          </div>
           {(v.mantenimientos?.length ?? 0) === 0 ? (
-            <p className="text-sm" style={{ color: "var(--text-3)" }}>
-              Sin mantenimientos registrados.
-            </p>
+            <div
+              className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-5 text-center"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <p className="text-sm" style={{ color: "var(--text-3)" }}>
+                Sin mantenimientos registrados.
+              </p>
+              <Button size="sm" variant="brand-outline" onClick={() => onAddMantenimiento(v)}>
+                <Plus size={14} />
+                Registrar mantenimiento
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {v.mantenimientos!.map((m) => (
@@ -110,20 +143,61 @@ export function VehiculoDrawer({ open, vehiculo, onClose, onEdit, onToggleEstado
                   className="rounded-xl px-3 py-2.5"
                   style={{ background: "var(--bg-hover)" }}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold" style={{ color: "var(--text-1)" }}>
-                      {m.tipo} · {m.tallerNombre || "Taller no especificado"}
-                    </span>
-                    <Badge variant={m.estado === "Finalizado" ? "success" : "warning"}>{m.estado}</Badge>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold" style={{ color: "var(--text-1)" }}>
+                        {m.tipo} · {m.tallerNombre || "Taller no especificado"}
+                      </span>
+                      <div className="mt-1 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--text-2)" }}>
+                        <span>Ingreso: {formatFechaCorta(m.fechaIngreso)}</span>
+                        <span>Salida: {formatFechaCorta(m.fechaRetorno)}</span>
+                        <span>Costo: {formatMoneda(m.costo)}</span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Badge variant={m.estado === "Finalizado" ? "success" : "warning"}>{m.estado}</Badge>
+                      {onEditMantenimiento && (
+                        <button
+                          type="button"
+                          onClick={() => onEditMantenimiento(m)}
+                          className="rounded-lg p-1.5"
+                          style={{ color: "var(--text-2)" }}
+                          title={m.estado === "En proceso" ? "Completar / finalizar" : "Ver hoja de control"}
+                        >
+                          {m.estado === "En proceso" ? <FileText size={14} /> : <Pencil size={14} />}
+                        </button>
+                      )}
+                      {onPrintMantenimiento && (
+                        <button
+                          type="button"
+                          onClick={() => onPrintMantenimiento(m)}
+                          className="rounded-lg p-1.5"
+                          style={{ color: "var(--text-2)" }}
+                          title="Imprimir hoja"
+                        >
+                          <Printer size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-4 text-xs" style={{ color: "var(--text-2)" }}>
-                    <span>Ingreso: {formatFechaCorta(m.fechaIngreso)}</span>
-                    <span>Retorno: {formatFechaCorta(m.fechaRetorno)}</span>
-                    <span>Costo: {formatMoneda(m.costo)}</span>
-                  </div>
-                  {m.descripcion && (
+                  {(m.combustibleEntrada || m.combustibleSalida) && (
                     <p className="mt-1 text-xs" style={{ color: "var(--text-2)" }}>
-                      {m.descripcion}
+                      Combustible: {m.combustibleEntrada || "—"} → {m.combustibleSalida || "—"}
+                    </p>
+                  )}
+                  {(m.pilotoPermanente || m.pilotoVoluntario || m.jefeServicio) && (
+                    <p className="mt-1 text-xs" style={{ color: "var(--text-2)" }}>
+                      Personal: {[m.pilotoPermanente, m.pilotoVoluntario, m.jefeServicio].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                  {m.descripcion && (
+                    <p className="mt-1 line-clamp-2 text-xs" style={{ color: "var(--text-2)" }}>
+                      Observaciones: {m.descripcion}
+                    </p>
+                  )}
+                  {m.recomendaciones && (
+                    <p className="mt-1 line-clamp-2 text-xs" style={{ color: "var(--text-3)" }}>
+                      Recomendaciones: {m.recomendaciones}
                     </p>
                   )}
                 </div>

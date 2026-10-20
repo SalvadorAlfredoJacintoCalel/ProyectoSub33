@@ -1,18 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
+  Ban,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Fuel,
   Gift,
+  History,
   Pencil,
   Plus,
+  Printer,
   Search,
   Ticket,
   Trash2,
   Truck,
   Wallet,
   Wrench,
+  X,
 } from "lucide-react";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
@@ -22,23 +28,38 @@ import { Skeleton } from "@/app/components/ui/skeleton";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
-import { formatMoneda } from "@/app/pages/Inventario/components/format";
+import { formatFechaCorta, formatMoneda } from "@/app/pages/Inventario/components/format";
 import { useVehiculos } from "@/hooks/useVehiculos";
 import { vehiculosService } from "@/services/vehiculosService";
 import type {
   CatalogoItem,
   Vehiculo,
   VehiculoCreate,
+  VehiculoFiltros,
   VehiculoMantenimiento,
   VehiculoMantenimientoCreate,
 } from "@/types/vehiculos";
 import { CuponesTab } from "./CuponesTab";
 import { VehiculoFormModal } from "./components/VehiculoFormModal";
 import { VehiculoDrawer } from "./components/VehiculoDrawer";
+import { VehiculoCard } from "./components/VehiculoCard";
 import { MantenimientoModal } from "./components/MantenimientoModal";
-import { CARD_STYLE, estadoOperativoVariant, origenVariant, registroVariant } from "./components/vehiculoHelpers";
+import { MantenimientoPrintModal } from "./components/MantenimientoPrintModal";
+import { MantenimientoPrintSheet } from "./components/MantenimientoPrintSheet";
+import { CARD_STYLE } from "./components/vehiculoHelpers";
 
 const ESTADOS_OPERATIVOS = ["Operativa", "En Servicio", "Mantenimiento", "Fuera de Servicio"];
+
+type KpiFiltro = "unidades" | "operativas" | "mantenimiento" | "donados" | "bajas" | "valor";
+
+const KPI_LABELS: Record<KpiFiltro, string> = {
+  unidades: "Todas las unidades",
+  operativas: "Operativas",
+  mantenimiento: "En mantenimiento",
+  donados: "Donados",
+  bajas: "Bajas",
+  valor: "Valor de la flota",
+};
 
 export function VehiculosPage() {
   const { alert, toast } = useAlert();
@@ -53,6 +74,7 @@ export function VehiculosPage() {
     talleres,
     recargar,
     recargarTipos,
+    recargarTalleres,
     crear,
     actualizar,
     cambiarEstado,
@@ -67,6 +89,13 @@ export function VehiculosPage() {
   const [editTarget, setEditTarget] = useState<Vehiculo | null>(null);
   const [detalle, setDetalle] = useState<Vehiculo | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mantenimientoOpen, setMantenimientoOpen] = useState(false);
+  const [mantenimientoVehiculo, setMantenimientoVehiculo] = useState<Vehiculo | null>(null);
+  const [mantenimientoTarget, setMantenimientoTarget] = useState<VehiculoMantenimiento | null>(null);
+  const [activeTab, setActiveTab] = useState("flota");
+  const [kpiFiltro, setKpiFiltro] = useState<KpiFiltro | null>(null);
+  const [printTarget, setPrintTarget] = useState<{ vehiculo: Vehiculo; mantenimiento: VehiculoMantenimiento } | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
 
   const cargarStats = useCallback(async () => {
     try {
@@ -82,13 +111,67 @@ export function VehiculosPage() {
   }, [cargarStats]);
 
   const resumen = useMemo(() => {
+    const activos = stats.filter((v) => v.estado === "Activo");
     const total = stats.length;
-    const operativas = stats.filter((v) => v.estadoOperativo === "Operativa" || v.estadoOperativo === "En Servicio").length;
-    const mantenimiento = stats.filter((v) => v.estadoOperativo === "Mantenimiento").length;
-    const donados = stats.filter((v) => v.origen === "Donado").length;
-    const valor = stats.reduce((s, v) => s + Number(v.valorUnitario || 0), 0);
-    return { total, operativas, mantenimiento, donados, valor };
+    const operativas = activos.filter((v) => v.estadoOperativo === "Operativa" || v.estadoOperativo === "En Servicio").length;
+    const mantenimiento = activos.filter((v) => v.estadoOperativo === "Mantenimiento").length;
+    const donados = activos.filter((v) => v.origen === "Donado").length;
+    const valor = activos.reduce((s, v) => s + Number(v.valorUnitario || 0), 0);
+    const bajas = stats.filter((v) => v.estado === "Inactivo").length;
+    return { total, operativas, mantenimiento, donados, valor, bajas };
   }, [stats]);
+
+  const aplicarFiltros = useCallback(
+    (patch: Partial<VehiculoFiltros>) => {
+      setKpiFiltro(null);
+      setFiltros(patch);
+    },
+    [setFiltros],
+  );
+
+  const vehiculosVista = useMemo(() => {
+    if (!kpiFiltro) return vehiculos;
+    const base = stats.length > 0 ? stats : vehiculos;
+
+    switch (kpiFiltro) {
+      case "operativas":
+        return base.filter(
+          (v) => v.estado === "Activo" && (v.estadoOperativo === "Operativa" || v.estadoOperativo === "En Servicio"),
+        );
+      case "mantenimiento":
+        return base.filter((v) => v.estado === "Activo" && v.estadoOperativo === "Mantenimiento");
+      case "donados":
+        return base.filter((v) => v.estado === "Activo" && v.origen === "Donado");
+      case "bajas":
+        return base.filter((v) => v.estado === "Inactivo");
+      case "valor":
+        return base
+          .filter((v) => v.estado === "Activo")
+          .sort((a, b) => Number(b.valorUnitario) - Number(a.valorUnitario));
+      default:
+        return base;
+    }
+  }, [kpiFiltro, stats, vehiculos]);
+
+  const hayFiltros = Boolean(
+    filtros.busqueda || filtros.tipoId || filtros.estadoOperativo || filtros.origen || filtros.estado || kpiFiltro,
+  );
+
+  function seleccionarKpi(filtro: KpiFiltro) {
+    setActiveTab("flota");
+    const siguiente = kpiFiltro === filtro ? null : filtro;
+    setKpiFiltro(siguiente);
+    if (siguiente) {
+      setFiltros({
+        busqueda: "",
+        tipoId: undefined,
+        estadoOperativo: undefined,
+        origen: undefined,
+        estado: undefined,
+        pagina: 1,
+      });
+    }
+  }
 
   async function abrirDetalle(v: Vehiculo) {
     setDetalle(v);
@@ -139,6 +222,44 @@ export function VehiculosPage() {
     }
   }
 
+  function abrirNuevoMantenimiento(v: Vehiculo) {
+    setMantenimientoVehiculo(v);
+    setMantenimientoTarget(null);
+    setMantenimientoOpen(true);
+  }
+
+  function abrirHojaMantenimiento(m: VehiculoMantenimiento) {
+    if (!detalle) return;
+    setMantenimientoVehiculo(detalle);
+    setMantenimientoTarget(m);
+    setMantenimientoOpen(true);
+  }
+
+  function abrirImpresion(vehiculo: Vehiculo, mantenimiento: VehiculoMantenimiento) {
+    setPrintTarget({ vehiculo, mantenimiento });
+    setPrintOpen(true);
+  }
+
+  async function guardarMantenimientoDesdeDetalle(data: VehiculoMantenimientoCreate) {
+    if (!mantenimientoVehiculo) return;
+    try {
+      if (mantenimientoTarget) {
+        await actualizarMantenimiento(mantenimientoTarget.mantenimientoId, data);
+        toast.success(data.estado === "Finalizado" ? "Mantenimiento finalizado" : "Hoja de mantenimiento actualizada");
+      } else {
+        await crearMantenimiento(mantenimientoVehiculo.vehiculoId, data);
+        toast.success("Ingreso de mantenimiento registrado");
+      }
+      const actualizado = await vehiculosService.getVehiculoById(mantenimientoVehiculo.vehiculoId);
+      setDetalle(actualizado);
+      setMantenimientoVehiculo(actualizado);
+      await cargarStats();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar la hoja de mantenimiento");
+      throw e;
+    }
+  }
+
   const tabs: TabItem[] = [
     {
       id: "flota",
@@ -158,7 +279,7 @@ export function VehiculosPage() {
                 }}
                 placeholder="Buscar por código, placa, marca o modelo…"
                 value={filtros.busqueda ?? ""}
-                onChange={(e) => setFiltros({ busqueda: e.target.value, pagina: 1 })}
+                onChange={(e) => aplicarFiltros({ busqueda: e.target.value, pagina: 1 })}
               />
             </div>
             <div className="w-44">
@@ -166,7 +287,7 @@ export function VehiculosPage() {
                 label=""
                 placeholder="Todos los tipos"
                 value={filtros.tipoId ? String(filtros.tipoId) : ""}
-                onChange={(v) => setFiltros({ tipoId: v ? Number(v) : undefined, pagina: 1 })}
+                onChange={(v) => aplicarFiltros({ tipoId: v ? Number(v) : undefined, pagina: 1 })}
                 options={tipos.map((t) => ({ value: String(t.id), label: t.nombre }))}
               />
             </div>
@@ -175,7 +296,7 @@ export function VehiculosPage() {
                 label=""
                 placeholder="Todos los estados"
                 value={filtros.estadoOperativo ?? ""}
-                onChange={(v) => setFiltros({ estadoOperativo: v || undefined, pagina: 1 })}
+                onChange={(v) => aplicarFiltros({ estadoOperativo: v || undefined, pagina: 1 })}
                 options={ESTADOS_OPERATIVOS.map((v) => ({ value: v, label: v }))}
               />
             </div>
@@ -184,16 +305,39 @@ export function VehiculosPage() {
                 label=""
                 placeholder="Todos los orígenes"
                 value={filtros.origen ?? ""}
-                onChange={(v) => setFiltros({ origen: v || undefined, pagina: 1 })}
+                onChange={(v) => aplicarFiltros({ origen: v || undefined, pagina: 1 })}
                 options={[
                   { value: "Compra Propia", label: "Compra Propia" },
                   { value: "Donado", label: "Donado" },
                 ]}
               />
             </div>
+            <div className="w-44">
+              <SelectField
+                label=""
+                placeholder="Todos los registros"
+                value={filtros.estado ?? ""}
+                onChange={(v) => aplicarFiltros({ estado: (v as "Activo" | "Inactivo") || undefined, pagina: 1 })}
+                options={[
+                  { value: "Activo", label: "Activos" },
+                  { value: "Inactivo", label: "Inactivos / Bajas" },
+                ]}
+              />
+            </div>
+            {kpiFiltro && (
+              <Button
+                variant="brand-outline"
+                size="sm"
+                onClick={() => setKpiFiltro(null)}
+                title="Quitar vista rápida"
+              >
+                Viendo: {KPI_LABELS[kpiFiltro]}
+                <X size={14} />
+              </Button>
+            )}
             <Button
               variant="outline"
-              onClick={() => setFiltros({ busqueda: "", tipoId: undefined, estadoOperativo: undefined, origen: undefined, pagina: 1 })}
+              onClick={() => aplicarFiltros({ busqueda: "", tipoId: undefined, estadoOperativo: undefined, origen: undefined, estado: undefined, pagina: 1 })}
             >
               Limpiar
             </Button>
@@ -218,77 +362,33 @@ export function VehiculosPage() {
             </div>
           )}
 
-          {loading ? (
+          {loading && !kpiFiltro ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-44 w-full rounded-2xl" />
               ))}
             </div>
-          ) : vehiculos.length === 0 ? (
+          ) : vehiculosVista.length === 0 ? (
             <div className="rounded-2xl" style={CARD_STYLE}>
               <EmptyState
                 icon={Truck}
-                title="Sin vehículos registrados"
-                description="Usa el botón «Nuevo vehículo» de la barra superior para registrar la primera unidad."
+                title={hayFiltros ? "Sin resultados" : "Sin vehículos registrados"}
+                description={
+                  hayFiltros
+                    ? "No hay vehículos que coincidan con los filtros o la vista seleccionada."
+                    : "Usa el botón «Nuevo vehículo» de la barra superior para registrar la primera unidad."
+                }
               />
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {vehiculos.map((v) => (
-                <button
-                  key={v.vehiculoId}
-                  type="button"
-                  onClick={() => void abrirDetalle(v)}
-                  className="flex flex-col gap-3 rounded-2xl p-4 text-left transition-transform hover:-translate-y-0.5"
-                  style={CARD_STYLE}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-11 w-11 items-center justify-center rounded-xl"
-                        style={{ background: "var(--brand-100)", color: "var(--brand-600)" }}
-                      >
-                        <Truck size={22} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-extrabold" style={{ color: "var(--text-1)" }}>
-                          {v.marca} {v.modelo} {v.anio ?? ""}
-                        </p>
-                        <p className="text-xs" style={{ color: "var(--text-2)" }}>
-                          {v.tipoNombre || "Vehículo"} · Unidad {v.noUnidad || v.codigo || "—"}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant={estadoOperativoVariant(v.estadoOperativo)} dot>
-                      {v.estadoOperativo}
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs" style={{ color: "var(--text-2)" }}>
-                    <span>Placa: <strong style={{ color: "var(--text-1)" }}>{v.placa || "—"}</strong></span>
-                    <span>Kilometraje: <strong style={{ color: "var(--text-1)" }}>{v.kilometraje.toLocaleString("es-GT")} km</strong></span>
-                    <span>Chasis: <strong style={{ color: "var(--text-1)" }}>{v.chasis || "—"}</strong></span>
-                    <span>Valor: <strong style={{ color: "var(--text-1)" }}>{formatMoneda(v.valorUnitario)}</strong></span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex flex-wrap gap-1.5">
-                      <Badge variant={origenVariant(v.origen)}>{v.origen}</Badge>
-                      <Badge variant={registroVariant(v.estado)}>{v.estado}</Badge>
-                    </div>
-                    {v.mantenimientos && v.mantenimientos.length > 0 && (
-                      <span className="inline-flex items-center gap-1 text-xs" style={{ color: "var(--text-2)" }}>
-                        <Wrench size={12} />
-                        {v.mantenimientos.length}
-                      </span>
-                    )}
-                  </div>
-                </button>
+              {vehiculosVista.map((v) => (
+                <VehiculoCard key={v.vehiculoId} vehiculo={v} onSelect={() => void abrirDetalle(v)} />
               ))}
             </div>
           )}
 
-          {paginacion.totalPaginas > 1 && (
+          {!kpiFiltro && paginacion.totalPaginas > 1 && (
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs" style={{ color: "var(--text-2)" }}>
                 Página {paginacion.paginaActual} de {paginacion.totalPaginas} · {paginacion.totalItems} vehículos
@@ -298,7 +398,7 @@ export function VehiculosPage() {
                   variant="outline"
                   size="sm"
                   disabled={paginacion.paginaActual <= 1}
-                  onClick={() => setFiltros({ pagina: paginacion.paginaActual - 1 })}
+                  onClick={() => aplicarFiltros({ pagina: paginacion.paginaActual - 1 })}
                 >
                   <ChevronLeft size={14} />
                   Anterior
@@ -307,7 +407,7 @@ export function VehiculosPage() {
                   variant="outline"
                   size="sm"
                   disabled={paginacion.paginaActual >= paginacion.totalPaginas}
-                  onClick={() => setFiltros({ pagina: paginacion.paginaActual + 1 })}
+                  onClick={() => aplicarFiltros({ pagina: paginacion.paginaActual + 1 })}
                 >
                   Siguiente
                   <ChevronRight size={14} />
@@ -326,8 +426,8 @@ export function VehiculosPage() {
     },
     {
       id: "mantenimiento",
-      label: "Mantenimiento",
-      icon: <Wrench size={16} />,
+      label: "Historial",
+      icon: <History size={16} />,
       content: (
         <MantenimientoPanel
           vehiculos={stats.length > 0 ? stats : vehiculos}
@@ -340,6 +440,8 @@ export function VehiculosPage() {
             await recargar();
             await cargarStats();
           }}
+          onPrint={abrirImpresion}
+          onTallerCreado={() => void recargarTalleres()}
         />
       ),
     },
@@ -359,14 +461,55 @@ export function VehiculosPage() {
       </div>
 
       <div className="mb-5 flex flex-wrap gap-3">
-        <KpiCard label="Unidades" value={String(resumen.total)} icon={<Truck size={20} />} />
-        <KpiCard label="Operativas" value={String(resumen.operativas)} icon={<Fuel size={20} />} color="var(--success-600)" />
-        <KpiCard label="En mantenimiento" value={String(resumen.mantenimiento)} icon={<Wrench size={20} />} color="var(--warning-600)" />
-        <KpiCard label="Donados" value={String(resumen.donados)} icon={<Gift size={20} />} color="var(--brand-600)" />
-        <KpiCard label="Valor de la flota" value={formatMoneda(resumen.valor)} icon={<Wallet size={20} />} />
+        <KpiCard
+          label="Unidades"
+          value={String(resumen.total)}
+          icon={<Truck size={20} />}
+          active={kpiFiltro === "unidades"}
+          onClick={() => seleccionarKpi("unidades")}
+        />
+        <KpiCard
+          label="Operativas"
+          value={String(resumen.operativas)}
+          icon={<Fuel size={20} />}
+          color="var(--success-600)"
+          active={kpiFiltro === "operativas"}
+          onClick={() => seleccionarKpi("operativas")}
+        />
+        <KpiCard
+          label="En mantenimiento"
+          value={String(resumen.mantenimiento)}
+          icon={<Wrench size={20} />}
+          color="var(--warning-600)"
+          active={kpiFiltro === "mantenimiento"}
+          onClick={() => seleccionarKpi("mantenimiento")}
+        />
+        <KpiCard
+          label="Donados"
+          value={String(resumen.donados)}
+          icon={<Gift size={20} />}
+          color="var(--brand-600)"
+          active={kpiFiltro === "donados"}
+          onClick={() => seleccionarKpi("donados")}
+        />
+        <KpiCard
+          label="Bajas"
+          value={String(resumen.bajas)}
+          icon={<Ban size={20} />}
+          color="var(--brand-600)"
+          active={kpiFiltro === "bajas"}
+          onClick={() => seleccionarKpi("bajas")}
+        />
+        <KpiCard
+          label="Valor de la flota"
+          value={formatMoneda(resumen.valor)}
+          icon={<Wallet size={20} />}
+          active={kpiFiltro === "valor"}
+          onClick={() => seleccionarKpi("valor")}
+        />
       </div>
 
-      <Tabs tabs={tabs} defaultTab="flota" variant="glass" />
+      <Tabs tabs={tabs} value={activeTab} onChange={setActiveTab} variant="glass" />
 
       <VehiculoFormModal
         open={showForm}
@@ -389,7 +532,42 @@ export function VehiculosPage() {
           setShowForm(true);
         }}
         onToggleEstado={toggleEstado}
+        onAddMantenimiento={abrirNuevoMantenimiento}
+        onEditMantenimiento={abrirHojaMantenimiento}
+        onPrintMantenimiento={(m) => detalle && abrirImpresion(detalle, m)}
       />
+
+      <MantenimientoModal
+        open={mantenimientoOpen}
+        onClose={() => {
+          setMantenimientoOpen(false);
+          setMantenimientoTarget(null);
+        }}
+        vehiculo={mantenimientoVehiculo}
+        mantenimiento={mantenimientoTarget}
+        talleres={talleres}
+        onSubmit={guardarMantenimientoDesdeDetalle}
+        onTallerCreado={() => void recargarTalleres()}
+        onPrint={(m) => mantenimientoVehiculo && abrirImpresion(mantenimientoVehiculo, m)}
+      />
+
+      <MantenimientoPrintModal
+        open={printOpen}
+        onClose={() => {
+          setPrintOpen(false);
+          setPrintTarget(null);
+        }}
+        vehiculo={printTarget?.vehiculo ?? null}
+        mantenimiento={printTarget?.mantenimiento ?? null}
+      />
+
+      {printTarget &&
+        createPortal(
+          <div className="print-area">
+            <MantenimientoPrintSheet vehiculo={printTarget.vehiculo} mantenimiento={printTarget.mantenimiento} />
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -399,14 +577,30 @@ function KpiCard({
   value,
   icon,
   color,
+  active = false,
+  onClick,
 }: {
   label: string;
   value: string;
   icon: React.ReactNode;
   color?: string;
+  active?: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="flex min-w-[160px] flex-1 items-center gap-3 rounded-2xl px-4 py-3" style={CARD_STYLE}>
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-w-[160px] flex-1 items-center gap-3 rounded-2xl px-4 py-3 text-left transition-transform hover:-translate-y-0.5"
+      style={{
+        ...CARD_STYLE,
+        cursor: "pointer",
+        ...(active ? { borderColor: "var(--brand-500)", boxShadow: "0 0 0 3px var(--brand-100)" } : {}),
+      }}
+      aria-label={`Ver ${label} en las tarjetas`}
+      aria-pressed={active}
+      title={`Mostrar ${label} en las tarjetas`}
+    >
       <div
         className="flex h-10 w-10 items-center justify-center rounded-xl"
         style={{ background: "var(--bg-hover)", color: color ?? "var(--text-2)" }}
@@ -421,7 +615,7 @@ function KpiCard({
           {value}
         </p>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -433,6 +627,8 @@ function MantenimientoPanel({
   actualizarMantenimiento,
   eliminarMantenimiento,
   onChanged,
+  onPrint,
+  onTallerCreado,
 }: {
   vehiculos: Vehiculo[];
   talleres: CatalogoItem[];
@@ -441,6 +637,8 @@ function MantenimientoPanel({
   actualizarMantenimiento: (id: number, data: VehiculoMantenimientoCreate) => Promise<VehiculoMantenimiento>;
   eliminarMantenimiento: (id: number) => Promise<void>;
   onChanged: () => Promise<void>;
+  onPrint: (vehiculo: Vehiculo, mantenimiento: VehiculoMantenimiento) => void;
+  onTallerCreado: () => void;
 }) {
   const { alert, toast } = useAlert();
   const [vehiculoId, setVehiculoId] = useState<string>("");
@@ -474,6 +672,8 @@ function MantenimientoPanel({
   }, [recargarLista]);
 
   const totalCosto = mantenimientos.reduce((s, m) => s + Number(m.costo || 0), 0);
+  const ultimo = mantenimientos[0] ?? null;
+  const enProceso = mantenimientos.filter((m) => m.estado === "En proceso").length;
 
   async function guardar(data: VehiculoMantenimientoCreate) {
     if (!vehiculoId) return;
@@ -508,7 +708,16 @@ function MantenimientoPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <h2 className="text-lg font-extrabold" style={{ color: "var(--text-1)" }}>
+          Historial de mantenimiento
+        </h2>
+        <p className="text-xs" style={{ color: "var(--text-3)" }}>
+          Consulta las hojas por unidad y registra nuevas intervenciones.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="w-full max-w-sm">
           <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
             Vehículo
@@ -524,21 +733,24 @@ function MantenimientoPanel({
             }))}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="rounded-xl px-3 py-2 text-sm" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-2)" }}>
-            {mantenimientos.length} registros · {formatMoneda(totalCosto)}
-          </div>
-          <Button
-            disabled={!vehiculoId}
-            onClick={() => {
-              setEditTarget(null);
-              setModalOpen(true);
-            }}
-          >
-            <Plus size={16} />
-            Nuevo mantenimiento
-          </Button>
-        </div>
+        <Button
+          variant="brand-outline"
+          disabled={!vehiculoId}
+          onClick={() => {
+            setEditTarget(null);
+            setModalOpen(true);
+          }}
+        >
+          <Plus size={16} />
+          Nueva hoja
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <SummaryPill label="Registros" value={String(mantenimientos.length)} />
+        <SummaryPill label="Costo total" value={formatMoneda(totalCosto)} />
+        <SummaryPill label="Último servicio" value={ultimo ? formatFechaCorta(ultimo.fechaIngreso) : "—"} />
+        <SummaryPill label="En proceso" value={String(enProceso)} />
       </div>
 
       <div className="rounded-2xl p-4" style={CARD_STYLE}>
@@ -556,9 +768,9 @@ function MantenimientoPanel({
             title="Sin mantenimientos"
             description="Registra el primer mantenimiento preventivo o correctivo de esta unidad."
             action={
-              <Button onClick={() => setModalOpen(true)}>
+              <Button variant="brand-outline" onClick={() => setModalOpen(true)}>
                 <Plus size={16} />
-                Nuevo mantenimiento
+                Nueva hoja
               </Button>
             }
           />
@@ -567,7 +779,7 @@ function MantenimientoPanel({
             <table className="w-full min-w-[820px] border-collapse text-sm">
               <thead>
                 <tr style={{ color: "var(--text-3)" }}>
-                  {["Ingreso", "Retorno", "Tipo", "Taller", "Kilometraje", "Costo", "Estado", "Descripción", ""].map((h) => (
+                  {["Ingreso", "Retorno", "Tipo", "Taller", "Kilometraje", "Costo", "Estado", "Observaciones", ""].map((h) => (
                     <th key={h} className="border-b px-2 py-2 text-left text-[11px] font-bold uppercase tracking-wide" style={{ borderColor: "var(--border)" }}>
                       {h}
                     </th>
@@ -607,9 +819,19 @@ function MantenimientoPanel({
                             setEditTarget(m);
                             setModalOpen(true);
                           }}
-                          title="Editar"
+                          title={m.estado === "En proceso" ? "Completar / finalizar" : "Editar"}
                         >
-                          <Pencil size={14} />
+                          {m.estado === "En proceso" ? <CheckCircle2 size={14} /> : <Pencil size={14} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg p-1.5"
+                          style={{ color: "var(--text-2)" }}
+                          onClick={() => vehiculo && onPrint(vehiculo, m)}
+                          title="Imprimir hoja"
+                          disabled={!vehiculo}
+                        >
+                          <Printer size={14} />
                         </button>
                         <button
                           type="button"
@@ -640,7 +862,25 @@ function MantenimientoPanel({
         mantenimiento={editTarget}
         talleres={talleres}
         onSubmit={guardar}
+        onTallerCreado={onTallerCreado}
+        onPrint={(m) => vehiculo && onPrint(vehiculo, m)}
       />
+    </div>
+  );
+}
+
+function SummaryPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      className="rounded-xl px-3 py-2"
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+        {label}
+      </p>
+      <p className="text-sm font-extrabold" style={{ color: "var(--text-1)" }}>
+        {value}
+      </p>
     </div>
   );
 }

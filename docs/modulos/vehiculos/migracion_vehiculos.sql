@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS vehiculos (
     capacidad_tanque  NUMERIC(8,2),
     kilometraje       INT NOT NULL DEFAULT 0,
     condicion_llantas VARCHAR(20),
+    volante_direccion VARCHAR(120),
     seguro_hasta      DATE,
     estado_operativo  VARCHAR(20) NOT NULL DEFAULT 'Operativa'
                       CHECK (estado_operativo IN ('Operativa', 'En Servicio', 'Mantenimiento', 'Fuera de Servicio')),
@@ -65,6 +66,8 @@ CREATE TABLE IF NOT EXISTS vehiculos (
     created_at        TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS volante_direccion VARCHAR(120);
 
 CREATE INDEX IF NOT EXISTS ix_vehiculos_placa ON vehiculos(placa);
 CREATE INDEX IF NOT EXISTS ix_vehiculos_codigo ON vehiculos(codigo);
@@ -88,6 +91,34 @@ CREATE TABLE IF NOT EXISTS vehiculo_mantenimientos (
 );
 
 CREATE INDEX IF NOT EXISTS ix_mantenimientos_vehiculo ON vehiculo_mantenimientos(vehiculo_id, fecha_ingreso DESC);
+
+-- Hoja de control y reporte de mantenimiento (campos descriptivos)
+ALTER TABLE vehiculo_mantenimientos
+    ADD COLUMN IF NOT EXISTS combustible_entrada  VARCHAR(80),
+    ADD COLUMN IF NOT EXISTS combustible_salida   VARCHAR(80),
+    ADD COLUMN IF NOT EXISTS pedales_clutch       TEXT,
+    ADD COLUMN IF NOT EXISTS pedales_frenos       TEXT,
+    ADD COLUMN IF NOT EXISTS pedales_acelerador   TEXT,
+    ADD COLUMN IF NOT EXISTS aceite_motor         TEXT,
+    ADD COLUMN IF NOT EXISTS estado_bateria       TEXT,
+    ADD COLUMN IF NOT EXISTS nivel_refrigerante   TEXT,
+    ADD COLUMN IF NOT EXISTS sistema_direccion    TEXT,
+    ADD COLUMN IF NOT EXISTS torreta_luces        TEXT,
+    ADD COLUMN IF NOT EXISTS sirena_bocina        TEXT,
+    ADD COLUMN IF NOT EXISTS espejo_izquierdo     TEXT,
+    ADD COLUMN IF NOT EXISTS espejo_derecho       TEXT,
+    ADD COLUMN IF NOT EXISTS calavera_izquierda   TEXT,
+    ADD COLUMN IF NOT EXISTS calavera_derecha     TEXT,
+    ADD COLUMN IF NOT EXISTS faro_izquierdo       TEXT,
+    ADD COLUMN IF NOT EXISTS faro_derecho         TEXT,
+    ADD COLUMN IF NOT EXISTS recomendaciones      TEXT,
+    ADD COLUMN IF NOT EXISTS piloto_permanente    VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS piloto_voluntario    VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS escuadra             VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS horario_turno        VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS jefe_servicio        VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS firma_piloto         VARCHAR(150),
+    ADD COLUMN IF NOT EXISTS firma_jefe_servicio  VARCHAR(150);
 
 -- ────────────────────────────────────────────────────────────
 -- 3. Cupones de combustible (libro mensual con saldo corrido)

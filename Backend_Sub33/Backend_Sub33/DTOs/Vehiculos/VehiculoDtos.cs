@@ -42,6 +42,7 @@ public class VehiculoDto
     public decimal? CapacidadTanque { get; set; }
     public int Kilometraje { get; set; }
     public string? CondicionLlantas { get; set; }
+    public string? VolanteDireccion { get; set; }
     public DateTime? SeguroHasta { get; set; }
     public string EstadoOperativo { get; set; } = "Operativa";
     public string Origen { get; set; } = "Compra Propia";
@@ -52,6 +53,7 @@ public class VehiculoDto
     public decimal ValorUnitario { get; set; }
     public string? Ubicacion { get; set; }
     public int? ItemId { get; set; }
+    public DateTime? FechaBaja { get; set; }
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public List<VehiculoMantenimientoDto>? Mantenimientos { get; set; }
@@ -79,6 +81,7 @@ public class VehiculoCreateDto
     public decimal? CapacidadTanque { get; set; }
     public int Kilometraje { get; set; }
     public string? CondicionLlantas { get; set; }
+    public string? VolanteDireccion { get; set; }
     public DateTime? SeguroHasta { get; set; }
     public string EstadoOperativo { get; set; } = "Operativa";
     public string Origen { get; set; } = "Compra Propia";
@@ -117,6 +120,31 @@ public class VehiculoMantenimientoDto
     public string? Descripcion { get; set; }
     public decimal Costo { get; set; }
     public string Estado { get; set; } = "En proceso";
+    public string? CombustibleEntrada { get; set; }
+    public string? CombustibleSalida { get; set; }
+    public string? PedalesClutch { get; set; }
+    public string? PedalesFrenos { get; set; }
+    public string? PedalesAcelerador { get; set; }
+    public string? AceiteMotor { get; set; }
+    public string? EstadoBateria { get; set; }
+    public string? NivelRefrigerante { get; set; }
+    public string? SistemaDireccion { get; set; }
+    public string? TorretaLuces { get; set; }
+    public string? SirenaBocina { get; set; }
+    public string? EspejoIzquierdo { get; set; }
+    public string? EspejoDerecho { get; set; }
+    public string? CalaveraIzquierda { get; set; }
+    public string? CalaveraDerecha { get; set; }
+    public string? FaroIzquierdo { get; set; }
+    public string? FaroDerecho { get; set; }
+    public string? Recomendaciones { get; set; }
+    public string? PilotoPermanente { get; set; }
+    public string? PilotoVoluntario { get; set; }
+    public string? Escuadra { get; set; }
+    public string? HorarioTurno { get; set; }
+    public string? JefeServicio { get; set; }
+    public string? FirmaPiloto { get; set; }
+    public string? FirmaJefeServicio { get; set; }
     public DateTime? CreatedAt { get; set; }
 }
 
@@ -130,6 +158,31 @@ public class VehiculoMantenimientoCreateDto
     public string? Descripcion { get; set; }
     public decimal Costo { get; set; }
     public string Estado { get; set; } = "En proceso";
+    public string? CombustibleEntrada { get; set; }
+    public string? CombustibleSalida { get; set; }
+    public string? PedalesClutch { get; set; }
+    public string? PedalesFrenos { get; set; }
+    public string? PedalesAcelerador { get; set; }
+    public string? AceiteMotor { get; set; }
+    public string? EstadoBateria { get; set; }
+    public string? NivelRefrigerante { get; set; }
+    public string? SistemaDireccion { get; set; }
+    public string? TorretaLuces { get; set; }
+    public string? SirenaBocina { get; set; }
+    public string? EspejoIzquierdo { get; set; }
+    public string? EspejoDerecho { get; set; }
+    public string? CalaveraIzquierda { get; set; }
+    public string? CalaveraDerecha { get; set; }
+    public string? FaroIzquierdo { get; set; }
+    public string? FaroDerecho { get; set; }
+    public string? Recomendaciones { get; set; }
+    public string? PilotoPermanente { get; set; }
+    public string? PilotoVoluntario { get; set; }
+    public string? Escuadra { get; set; }
+    public string? HorarioTurno { get; set; }
+    public string? JefeServicio { get; set; }
+    public string? FirmaPiloto { get; set; }
+    public string? FirmaJefeServicio { get; set; }
 }
 
 // ── Cupones de combustible ───────────────────────────────────────────────────

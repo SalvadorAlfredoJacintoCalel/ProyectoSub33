@@ -22,6 +22,31 @@ export interface VehiculoMantenimiento {
   descripcion?: string | null;
   costo: number;
   estado: EstadoMantenimiento;
+  combustibleEntrada?: string | null;
+  combustibleSalida?: string | null;
+  pedalesClutch?: string | null;
+  pedalesFrenos?: string | null;
+  pedalesAcelerador?: string | null;
+  aceiteMotor?: string | null;
+  estadoBateria?: string | null;
+  nivelRefrigerante?: string | null;
+  sistemaDireccion?: string | null;
+  torretaLuces?: string | null;
+  sirenaBocina?: string | null;
+  espejoIzquierdo?: string | null;
+  espejoDerecho?: string | null;
+  calaveraIzquierda?: string | null;
+  calaveraDerecha?: string | null;
+  faroIzquierdo?: string | null;
+  faroDerecho?: string | null;
+  recomendaciones?: string | null;
+  pilotoPermanente?: string | null;
+  pilotoVoluntario?: string | null;
+  escuadra?: string | null;
+  horarioTurno?: string | null;
+  jefeServicio?: string | null;
+  firmaPiloto?: string | null;
+  firmaJefeServicio?: string | null;
   createdAt?: string | null;
 }
 
@@ -34,6 +59,31 @@ export interface VehiculoMantenimientoCreate {
   descripcion?: string | null;
   costo: number;
   estado: EstadoMantenimiento;
+  combustibleEntrada?: string | null;
+  combustibleSalida?: string | null;
+  pedalesClutch?: string | null;
+  pedalesFrenos?: string | null;
+  pedalesAcelerador?: string | null;
+  aceiteMotor?: string | null;
+  estadoBateria?: string | null;
+  nivelRefrigerante?: string | null;
+  sistemaDireccion?: string | null;
+  torretaLuces?: string | null;
+  sirenaBocina?: string | null;
+  espejoIzquierdo?: string | null;
+  espejoDerecho?: string | null;
+  calaveraIzquierda?: string | null;
+  calaveraDerecha?: string | null;
+  faroIzquierdo?: string | null;
+  faroDerecho?: string | null;
+  recomendaciones?: string | null;
+  pilotoPermanente?: string | null;
+  pilotoVoluntario?: string | null;
+  escuadra?: string | null;
+  horarioTurno?: string | null;
+  jefeServicio?: string | null;
+  firmaPiloto?: string | null;
+  firmaJefeServicio?: string | null;
 }
 
 export interface VehiculoCupon {
@@ -79,6 +129,7 @@ export interface Vehiculo {
   capacidadTanque?: number | null;
   kilometraje: number;
   condicionLlantas?: string | null;
+  volanteDireccion?: string | null;
   estadoOperativo: EstadoOperativo;
   origen: OrigenVehiculo;
   donacionId?: number | null;
@@ -88,6 +139,7 @@ export interface Vehiculo {
   valorUnitario: number;
   ubicacion?: string | null;
   itemId?: number | null;
+  fechaBaja?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   mantenimientos?: VehiculoMantenimiento[];
@@ -109,6 +161,7 @@ export interface VehiculoCreate {
   capacidadTanque?: number | null;
   kilometraje: number;
   condicionLlantas?: string | null;
+  volanteDireccion?: string | null;
   estadoOperativo: EstadoOperativo;
   origen: OrigenVehiculo;
   estado?: EstadoRegistro;

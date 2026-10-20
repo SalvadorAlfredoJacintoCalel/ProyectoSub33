@@ -36,6 +36,7 @@ interface FormState {
   capacidadTanque: string;
   kilometraje: string;
   condicionLlantas: string;
+  volanteDireccion: string;
   estadoOperativo: EstadoOperativo;
   origen: OrigenVehiculo;
   valorUnitario: string;
@@ -62,6 +63,7 @@ const EMPTY: FormState = {
   capacidadTanque: "",
   kilometraje: "0",
   condicionLlantas: "",
+  volanteDireccion: "",
   estadoOperativo: "Operativa",
   origen: "Compra Propia",
   valorUnitario: "0",
@@ -89,6 +91,7 @@ function fromVehiculo(v: Vehiculo): FormState {
     capacidadTanque: v.capacidadTanque != null ? String(v.capacidadTanque) : "",
     kilometraje: String(v.kilometraje ?? 0),
     condicionLlantas: v.condicionLlantas ?? "",
+    volanteDireccion: v.volanteDireccion ?? "",
     estadoOperativo: v.estadoOperativo,
     origen: v.origen,
     valorUnitario: String(v.valorUnitario ?? 0),
@@ -202,6 +205,7 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
         capacidadTanque: numOrNull(form.capacidadTanque),
         kilometraje: Number(form.kilometraje) || 0,
         condicionLlantas: form.condicionLlantas.trim() || null,
+        volanteDireccion: form.volanteDireccion.trim() || null,
         estadoOperativo: form.estadoOperativo,
         origen: form.origen,
         estado: vehiculo ? vehiculo.estado : "Activo",
@@ -388,6 +392,14 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
               onChange={(v) => set("condicionLlantas", v)}
               options={opcionesLlantas}
             />
+            <Field label="Volante / Sistema de Dirección">
+              <Input
+                value={form.volanteDireccion}
+                onChange={(e) => set("volanteDireccion", e.target.value)}
+                placeholder="Ej. Buen estado"
+                maxLength={120}
+              />
+            </Field>
             <Field label="Ubicación">
               <Input
                 value={form.ubicacion}

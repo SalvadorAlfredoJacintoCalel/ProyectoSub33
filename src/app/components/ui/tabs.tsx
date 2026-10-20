@@ -17,6 +17,7 @@ type TabsVariant = "default" | "brand" | "glass";
 interface TabsProps {
   tabs: TabItem[];
   defaultTab?: string;
+  value?: string;
   onChange?: (id: string) => void;
   variant?: TabsVariant;
   className?: string;
@@ -31,14 +32,16 @@ const INDICATOR_VARIANT: Record<TabsVariant, string> = {
 export function Tabs({
   tabs,
   defaultTab,
+  value,
   onChange,
   variant = "default",
   className,
 }: TabsProps) {
-  const [active, setActive] = React.useState(defaultTab ?? tabs[0]?.id);
+  const [internal, setInternal] = React.useState(defaultTab ?? tabs[0]?.id);
+  const active = value ?? internal;
 
   const handleSelect = (id: string) => {
-    setActive(id);
+    setInternal(id);
     onChange?.(id);
   };
 
