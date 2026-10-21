@@ -160,9 +160,9 @@ namespace Backend_Sub33.Controllers
             }
 
             var estado = dto.Estado;
-            if (estado != "Activo" && estado != "Inactivo")
+            if (estado != "En proceso" && estado != "Terminado" && estado != "Inactivo")
             {
-                return BadRequest(new { exito = false, mensaje = "El estado debe ser 'Activo' o 'Inactivo'." });
+                return BadRequest(new { exito = false, mensaje = "El estado debe ser 'En proceso', 'Terminado' o 'Inactivo'." });
             }
 
             try
@@ -174,6 +174,10 @@ namespace Backend_Sub33.Controllers
                 }
 
                 return Ok(new { exito = true, mensaje = "Estado actualizado correctamente.", estado });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { exito = false, mensaje = ex.Message });
             }
             catch (Exception ex)
             {

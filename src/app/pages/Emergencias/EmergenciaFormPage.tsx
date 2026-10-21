@@ -7,8 +7,10 @@ import { Button } from "@/app/components/ui/button";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
 import { inventarioService } from "@/services/inventarioService";
+import { vehiculosService } from "@/services/vehiculosService";
 import type { PersonalAsignado } from "@/types/emergencia";
 import type { InventarioItem } from "@/types/inventario";
+import type { Vehiculo } from "@/types/vehiculos";
 
 type Mode = "create" | "edit";
 
@@ -79,6 +81,10 @@ function normalizeRol(s: string): string {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
+function nombreVehiculo(v: Vehiculo): string {
+  return v.noUnidad || v.codigo || `${v.marca} ${v.modelo}`.trim();
+}
+
 interface PersonalSel {
   personalId: string | null;
   nombre: string;
@@ -114,7 +120,8 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
   const [saturacion, setSaturacion] = useState("");
   const [horaToma, setHoraToma] = useState(() => getNow());
   const [estadoEntrega, setEstadoEntrega] = useState("");
-  const [unidadAsignadaId, setUnidadAsignadaId] = useState("");
+  const [vehiculoId, setVehiculoId] = useState("");
+  const [vehiculoAnexo, setVehiculoAnexo] = useState<Vehiculo | null>(null);
   const [personalSeleccionado, setPersonalSeleccionado] = useState<PersonalSel[]>([]);
   const [resumen, setResumen] = useState("");
   const [fecha, setFecha] = useState(() => new Date().toISOString().split("T")[0]);
@@ -153,7 +160,11 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
           setFallecido(em.fallecio ?? false);
           setDomicilio(em.domicilio ?? "");
           setEstadoEntrega(em.estadoEntrega ?? "");
-          setUnidadAsignadaId(em.unidadAsignadaId ? String(em.unidadAsignadaId) : "");
+          setVehiculoId(em.vehiculoId ? String(em.vehiculoId) : "");
+          if (em.vehiculoId) {
+            const anexo = await vehiculosService.getVehiculoById(em.vehiculoId).catch(() => null);
+            if (mounted) setVehiculoAnexo(anexo);
+          }
           setResumen(em.resumen ?? "");
           setFecha(em.fecha ? em.fecha.split("T")[0] : new Date().toISOString().split("T")[0]);
           setFormuladoPorIdOriginal(em.formuladoPorId ?? null);
@@ -262,6 +273,12 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     return [...base, ...extra];
   }, [catalogos.personal, personalSeleccionado]);
 
+  const vehiculosOpciones = useMemo(() => {
+    const base = catalogos.vehiculosDisponibles;
+    if (!vehiculoAnexo || base.some((v) => v.vehiculoId === vehiculoAnexo.vehiculoId)) return base;
+    return [...base, vehiculoAnexo];
+  }, [catalogos.vehiculosDisponibles, vehiculoAnexo]);
+
   async function handleSubmit() {
     const newErrors: Record<string, boolean> = {};
     let personalErrorMsg = "";
@@ -271,7 +288,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     if (!ubicacion.trim()) newErrors.ubicacion = true;
     if (!nombrePaciente.trim()) newErrors.nombrePaciente = true;
     if (!hospitalDestinoId) newErrors.hospitalDestinoId = true;
-    if (!unidadAsignadaId) newErrors.unidadAsignadaId = true;
+    if (!vehiculoId) newErrors.vehiculoId = true;
 
     const edadNum = Number(edad);
     if (edad && (Number.isNaN(edadNum) || edadNum < 0 || edadNum > 120)) newErrors.edad = true;
@@ -348,7 +365,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
         fallecio: fallecido,
         domicilio: domicilio || undefined,
         estadoEntrega: estadoEntrega || undefined,
-        unidadAsignadaId: Number(unidadAsignadaId),
+        vehiculoId: Number(vehiculoId),
         formuladoPorId: isEdit ? (formuladoPorIdOriginal ?? undefined) : (user?.personalId ?? undefined),
         creadoPorNombre: isEdit
           ? (creadoPorNombreOriginal || undefined)
@@ -1006,27 +1023,32 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
             </p>
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
-                Unidad / Vehículo <span style={{ color: "var(--red)" }}>*</span>
+                Unidad (es) destacada (s) <span style={{ color: "var(--red)" }}>*</span>
               </label>
               <div style={{ position: "relative" }}>
                 <select
-                  value={unidadAsignadaId}
+                  value={vehiculoId}
                   onChange={(e) => {
-                    setUnidadAsignadaId(e.target.value);
-                    setErrors((prev) => ({ ...prev, unidadAsignadaId: false }));
+                    setVehiculoId(e.target.value);
+                    setErrors((prev) => ({ ...prev, vehiculoId: false }));
                   }}
                   style={{
                     ...selectBase,
                     paddingRight: 32,
-                    ...errorField(errors.unidadAsignadaId),
+                    ...errorField(errors.vehiculoId),
                   }}
                 >
                   <option value="">Seleccionar unidad…</option>
-                  {catalogos.unidades.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nombre}
-                    </option>
-                  ))}
+                  {vehiculosOpciones.map((v) => {
+                    const noDisponible =
+                      vehiculoAnexo?.vehiculoId === v.vehiculoId &&
+                      (v.estado !== "Activo" || v.estadoOperativo !== "Operativa");
+                    return (
+                      <option key={v.vehiculoId} value={v.vehiculoId}>
+                        {nombreVehiculo(v)}{noDisponible ? " (no disponible)" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
                 <ChevronDown
                   style={{

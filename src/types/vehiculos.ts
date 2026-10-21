@@ -108,6 +108,7 @@ export interface VehiculoCupon {
   valorCupon: number;
   haber: number;
   firmado: boolean;
+  firmaBase64?: string | null;
   saldo: number;
   observaciones?: string | null;
 }
@@ -234,7 +235,7 @@ export interface CuponCreate {
   cuponDel: number;
   cuponAl: number;
   valorCupon: number;
-  firmado: boolean;
+  firmaBase64?: string | null;
   observaciones?: string | null;
 }
 

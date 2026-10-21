@@ -3,36 +3,29 @@ import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Ban,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Fuel,
   Gift,
   History,
-  Pencil,
   Plus,
-  Printer,
   Search,
   Ticket,
-  Trash2,
   Truck,
   Wallet,
   Wrench,
-  X,
 } from "lucide-react";
-import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
-import { Input } from "@/app/components/ui/input";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
-import { formatFechaCorta, formatMoneda } from "@/app/pages/Inventario/components/format";
+import { formatMoneda } from "@/app/pages/Inventario/components/format";
 import { useVehiculos } from "@/hooks/useVehiculos";
 import { vehiculosService } from "@/services/vehiculosService";
 import type {
-  CatalogoItem,
+  EstadoOperativo,
   Vehiculo,
   VehiculoCreate,
   VehiculoFiltros,
@@ -40,26 +33,16 @@ import type {
   VehiculoMantenimientoCreate,
 } from "@/types/vehiculos";
 import { CuponesTab } from "./CuponesTab";
+import { MantenimientoTab } from "./components/MantenimientoTab";
 import { VehiculoFormModal } from "./components/VehiculoFormModal";
 import { VehiculoDrawer } from "./components/VehiculoDrawer";
 import { VehiculoCard } from "./components/VehiculoCard";
 import { MantenimientoModal } from "./components/MantenimientoModal";
 import { MantenimientoPrintModal } from "./components/MantenimientoPrintModal";
 import { MantenimientoPrintSheet } from "./components/MantenimientoPrintSheet";
-import { CARD_STYLE } from "./components/vehiculoHelpers";
-
-const ESTADOS_OPERATIVOS = ["Operativa", "En Servicio", "Mantenimiento", "Fuera de Servicio"];
+import { CARD_STYLE, ESTADOS_OPERATIVOS } from "./components/vehiculoHelpers";
 
 type KpiFiltro = "unidades" | "operativas" | "mantenimiento" | "donados" | "bajas" | "valor";
-
-const KPI_LABELS: Record<KpiFiltro, string> = {
-  unidades: "Todas las unidades",
-  operativas: "Operativas",
-  mantenimiento: "En mantenimiento",
-  donados: "Donados",
-  bajas: "Bajas",
-  valor: "Valor de la flota",
-};
 
 export function VehiculosPage() {
   const { alert, toast } = useAlert();
@@ -222,6 +205,24 @@ export function VehiculosPage() {
     }
   }
 
+  async function cambiarEstadoOperativoRapido(v: Vehiculo, nuevoEstado: EstadoOperativo) {
+    if (v.estadoOperativo === nuevoEstado) return;
+    const ok = await alert.confirm(
+      "Cambiar estado operativo",
+      `${v.marca} ${v.modelo} pasará a ${nuevoEstado}.`,
+    );
+    if (!ok) return;
+    try {
+      const actualizado = await vehiculosService.cambiarEstadoOperativo(v.vehiculoId, nuevoEstado);
+      setDetalle((prev) => (prev && prev.vehiculoId === actualizado.vehiculoId ? { ...prev, ...actualizado } : prev));
+      await recargar();
+      await cargarStats();
+      toast.success("Estado operativo actualizado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo cambiar el estado operativo");
+    }
+  }
+
   function abrirNuevoMantenimiento(v: Vehiculo) {
     setMantenimientoVehiculo(v);
     setMantenimientoTarget(null);
@@ -324,17 +325,6 @@ export function VehiculosPage() {
                 ]}
               />
             </div>
-            {kpiFiltro && (
-              <Button
-                variant="brand-outline"
-                size="sm"
-                onClick={() => setKpiFiltro(null)}
-                title="Quitar vista rápida"
-              >
-                Viendo: {KPI_LABELS[kpiFiltro]}
-                <X size={14} />
-              </Button>
-            )}
             <Button
               variant="outline"
               onClick={() => aplicarFiltros({ busqueda: "", tipoId: undefined, estadoOperativo: undefined, origen: undefined, estado: undefined, pagina: 1 })}
@@ -429,19 +419,17 @@ export function VehiculosPage() {
       label: "Historial",
       icon: <History size={16} />,
       content: (
-        <MantenimientoPanel
+        <MantenimientoTab
           vehiculos={stats.length > 0 ? stats : vehiculos}
-          talleres={talleres}
           cargarMantenimientos={cargarMantenimientos}
-          crearMantenimiento={crearMantenimiento}
-          actualizarMantenimiento={actualizarMantenimiento}
-          eliminarMantenimiento={eliminarMantenimiento}
           onChanged={async () => {
             await recargar();
             await cargarStats();
           }}
-          onPrint={abrirImpresion}
-          onTallerCreado={() => void recargarTalleres()}
+          onImprimir={abrirImpresion}
+          onEliminar={async (_vehiculoId, m) => {
+            await eliminarMantenimiento(m.mantenimientoId);
+          }}
         />
       ),
     },
@@ -532,6 +520,7 @@ export function VehiculosPage() {
           setShowForm(true);
         }}
         onToggleEstado={toggleEstado}
+        onCambioEstadoOperativo={cambiarEstadoOperativoRapido}
         onAddMantenimiento={abrirNuevoMantenimiento}
         onEditMantenimiento={abrirHojaMantenimiento}
         onPrintMantenimiento={(m) => detalle && abrirImpresion(detalle, m)}
@@ -616,271 +605,5 @@ function KpiCard({
         </p>
       </div>
     </button>
-  );
-}
-
-function MantenimientoPanel({
-  vehiculos,
-  talleres,
-  cargarMantenimientos,
-  crearMantenimiento,
-  actualizarMantenimiento,
-  eliminarMantenimiento,
-  onChanged,
-  onPrint,
-  onTallerCreado,
-}: {
-  vehiculos: Vehiculo[];
-  talleres: CatalogoItem[];
-  cargarMantenimientos: (id: number) => Promise<VehiculoMantenimiento[]>;
-  crearMantenimiento: (id: number, data: VehiculoMantenimientoCreate) => Promise<VehiculoMantenimiento>;
-  actualizarMantenimiento: (id: number, data: VehiculoMantenimientoCreate) => Promise<VehiculoMantenimiento>;
-  eliminarMantenimiento: (id: number) => Promise<void>;
-  onChanged: () => Promise<void>;
-  onPrint: (vehiculo: Vehiculo, mantenimiento: VehiculoMantenimiento) => void;
-  onTallerCreado: () => void;
-}) {
-  const { alert, toast } = useAlert();
-  const [vehiculoId, setVehiculoId] = useState<string>("");
-  const [mantenimientos, setMantenimientos] = useState<VehiculoMantenimiento[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<VehiculoMantenimiento | null>(null);
-
-  const vehiculo = vehiculos.find((v) => String(v.vehiculoId) === vehiculoId) ?? null;
-
-  useEffect(() => {
-    if (!vehiculoId && vehiculos.length > 0) {
-      setVehiculoId(String(vehiculos[0].vehiculoId));
-    }
-  }, [vehiculoId, vehiculos]);
-
-  const recargarLista = useCallback(async () => {
-    if (!vehiculoId) return;
-    setLoading(true);
-    try {
-      setMantenimientos(await cargarMantenimientos(Number(vehiculoId)));
-    } catch {
-      setMantenimientos([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [cargarMantenimientos, vehiculoId]);
-
-  useEffect(() => {
-    void recargarLista();
-  }, [recargarLista]);
-
-  const totalCosto = mantenimientos.reduce((s, m) => s + Number(m.costo || 0), 0);
-  const ultimo = mantenimientos[0] ?? null;
-  const enProceso = mantenimientos.filter((m) => m.estado === "En proceso").length;
-
-  async function guardar(data: VehiculoMantenimientoCreate) {
-    if (!vehiculoId) return;
-    try {
-      if (editTarget) {
-        await actualizarMantenimiento(editTarget.mantenimientoId, data);
-        toast.success("Mantenimiento actualizado");
-      } else {
-        await crearMantenimiento(Number(vehiculoId), data);
-        toast.success("Mantenimiento registrado");
-      }
-      await recargarLista();
-      await onChanged();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo guardar el mantenimiento");
-      throw e;
-    }
-  }
-
-  async function eliminar(m: VehiculoMantenimiento) {
-    const ok = await alert.confirm("Eliminar mantenimiento", "Esta acción no se puede deshacer.");
-    if (!ok) return;
-    try {
-      await eliminarMantenimiento(m.mantenimientoId);
-      await recargarLista();
-      await onChanged();
-      toast.success("Mantenimiento eliminado");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo eliminar el mantenimiento");
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-lg font-extrabold" style={{ color: "var(--text-1)" }}>
-          Historial de mantenimiento
-        </h2>
-        <p className="text-xs" style={{ color: "var(--text-3)" }}>
-          Consulta las hojas por unidad y registra nuevas intervenciones.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="w-full max-w-sm">
-          <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
-            Vehículo
-          </label>
-          <SelectField
-            label=""
-            placeholder="Selecciona vehículo"
-            value={vehiculoId}
-            onChange={setVehiculoId}
-            options={vehiculos.map((v) => ({
-              value: String(v.vehiculoId),
-              label: `${v.codigo ? `#${v.codigo} · ` : ""}${v.marca} ${v.modelo}${v.noUnidad ? ` · Unidad ${v.noUnidad}` : ""}`,
-            }))}
-          />
-        </div>
-        <Button
-          variant="brand-outline"
-          disabled={!vehiculoId}
-          onClick={() => {
-            setEditTarget(null);
-            setModalOpen(true);
-          }}
-        >
-          <Plus size={16} />
-          Nueva hoja
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <SummaryPill label="Registros" value={String(mantenimientos.length)} />
-        <SummaryPill label="Costo total" value={formatMoneda(totalCosto)} />
-        <SummaryPill label="Último servicio" value={ultimo ? formatFechaCorta(ultimo.fechaIngreso) : "—"} />
-        <SummaryPill label="En proceso" value={String(enProceso)} />
-      </div>
-
-      <div className="rounded-2xl p-4" style={CARD_STYLE}>
-        {!vehiculoId ? (
-          <EmptyState icon={Truck} title="Selecciona un vehículo" description="Elige una unidad para ver su historial de mantenimiento." />
-        ) : loading ? (
-          <div className="flex flex-col gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
-          </div>
-        ) : mantenimientos.length === 0 ? (
-          <EmptyState
-            icon={Wrench}
-            title="Sin mantenimientos"
-            description="Registra el primer mantenimiento preventivo o correctivo de esta unidad."
-            action={
-              <Button variant="brand-outline" onClick={() => setModalOpen(true)}>
-                <Plus size={16} />
-                Nueva hoja
-              </Button>
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] border-collapse text-sm">
-              <thead>
-                <tr style={{ color: "var(--text-3)" }}>
-                  {["Ingreso", "Retorno", "Tipo", "Taller", "Kilometraje", "Costo", "Estado", "Observaciones", ""].map((h) => (
-                    <th key={h} className="border-b px-2 py-2 text-left text-[11px] font-bold uppercase tracking-wide" style={{ borderColor: "var(--border)" }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {mantenimientos.map((m) => (
-                  <tr key={m.mantenimientoId} style={{ color: "var(--text-1)" }}>
-                    <td className="border-b px-2 py-2 whitespace-nowrap" style={{ borderColor: "var(--divider)" }}>
-                      {m.fechaIngreso ? m.fechaIngreso.slice(0, 10) : "—"}
-                    </td>
-                    <td className="border-b px-2 py-2 whitespace-nowrap" style={{ borderColor: "var(--divider)" }}>
-                      {m.fechaRetorno ? m.fechaRetorno.slice(0, 10) : "—"}
-                    </td>
-                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>{m.tipo}</td>
-                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>{m.tallerNombre || "—"}</td>
-                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
-                      {m.kilometraje?.toLocaleString("es-GT") ?? "—"}
-                    </td>
-                    <td className="border-b px-2 py-2 whitespace-nowrap" style={{ borderColor: "var(--divider)" }}>
-                      {formatMoneda(m.costo)}
-                    </td>
-                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
-                      <Badge variant={m.estado === "Finalizado" ? "success" : "warning"}>{m.estado}</Badge>
-                    </td>
-                    <td className="max-w-[220px] truncate border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
-                      {m.descripcion || "—"}
-                    </td>
-                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          className="rounded-lg p-1.5"
-                          style={{ color: "var(--text-2)" }}
-                          onClick={() => {
-                            setEditTarget(m);
-                            setModalOpen(true);
-                          }}
-                          title={m.estado === "En proceso" ? "Completar / finalizar" : "Editar"}
-                        >
-                          {m.estado === "En proceso" ? <CheckCircle2 size={14} /> : <Pencil size={14} />}
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-lg p-1.5"
-                          style={{ color: "var(--text-2)" }}
-                          onClick={() => vehiculo && onPrint(vehiculo, m)}
-                          title="Imprimir hoja"
-                          disabled={!vehiculo}
-                        >
-                          <Printer size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-lg p-1.5"
-                          style={{ color: "var(--brand-600)" }}
-                          onClick={() => eliminar(m)}
-                          title="Eliminar"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <MantenimientoModal
-        open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setEditTarget(null);
-        }}
-        vehiculo={vehiculo}
-        mantenimiento={editTarget}
-        talleres={talleres}
-        onSubmit={guardar}
-        onTallerCreado={onTallerCreado}
-        onPrint={(m) => vehiculo && onPrint(vehiculo, m)}
-      />
-    </div>
-  );
-}
-
-function SummaryPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      className="rounded-xl px-3 py-2"
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-    >
-      <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
-        {label}
-      </p>
-      <p className="text-sm font-extrabold" style={{ color: "var(--text-1)" }}>
-        {value}
-      </p>
-    </div>
   );
 }

@@ -45,12 +45,19 @@ public class CuponService : ICuponService
         public decimal ValorCupon { get; set; }
     }
 
+    private sealed class CuponActualRow
+    {
+        public int PeriodoId { get; set; }
+        public string? FirmaBase64 { get; set; }
+    }
+
     private const string CuponSelect = @"
         SELECT c.registro_id, p.periodo_id, p.anio, p.mes, c.vehiculo_id,
                v.codigo AS vehiculo_codigo, v.placa AS placas, t.nombre AS tipo_unidad,
                c.fecha, c.responsable, c.kilometraje, c.galonaje, c.comision_no,
                c.gasolinera_id, g.nombre AS gasolinera_nombre, c.cupon_del, c.cupon_al,
-               c.total_cupones, c.valor_cupon, c.haber, c.firmado, c.saldo,
+               c.total_cupones, c.valor_cupon, c.haber,
+               (c.firma_base64 IS NOT NULL) AS firmado, c.firma_base64, c.saldo,
                c.observaciones
         FROM vehiculo_cupones c
         INNER JOIN vehiculo_cupones_periodos p ON p.periodo_id = c.periodo_id
@@ -184,16 +191,17 @@ public class CuponService : ICuponService
                 SELECT COALESCE(MAX(comision_no), 0) + 1
                 FROM vehiculo_cupones WHERE periodo_id = @PeriodoId",
                 new { PeriodoId = periodoId }, transaction);
+            var firmaBase64 = NormalizarFirma(dto.FirmaBase64);
 
             var id = await connection.QuerySingleAsync<int>(@"
                 INSERT INTO vehiculo_cupones
                     (periodo_id, vehiculo_id, fecha, responsable, kilometraje, galonaje,
                      comision_no, gasolinera_id, cupon_del, cupon_al, total_cupones,
-                     valor_cupon, haber, firmado, saldo, observaciones, created_at)
+                     valor_cupon, haber, firmado, firma_base64, saldo, observaciones, created_at)
                 VALUES
                     (@PeriodoId, @VehiculoId, @Fecha, @Responsable, @Kilometraje, @Galonaje,
                      @ComisionNo, @GasolineraId, @CuponDel, @CuponAl, @Total,
-                     @ValorCupon, @Haber, @Firmado, 0, @Observaciones, CURRENT_TIMESTAMP)
+                     @ValorCupon, @Haber, @Firmado, @FirmaBase64, 0, @Observaciones, CURRENT_TIMESTAMP)
                 RETURNING registro_id;",
                 new
                 {
@@ -210,7 +218,8 @@ public class CuponService : ICuponService
                     Total = total,
                     dto.ValorCupon,
                     Haber = total * dto.ValorCupon,
-                    dto.Firmado,
+                    Firmado = firmaBase64 != null,
+                    FirmaBase64 = firmaBase64,
                     Observaciones = string.IsNullOrWhiteSpace(dto.Observaciones) ? null : dto.Observaciones.Trim()
                 }, transaction);
 
@@ -243,10 +252,10 @@ public class CuponService : ICuponService
 
         try
         {
-            var periodoId = await connection.QueryFirstOrDefaultAsync<int?>(
-                "SELECT periodo_id FROM vehiculo_cupones WHERE registro_id = @Id",
+            var actual = await connection.QueryFirstOrDefaultAsync<CuponActualRow>(
+                "SELECT periodo_id, firma_base64 FROM vehiculo_cupones WHERE registro_id = @Id",
                 new { Id = id }, transaction);
-            if (!periodoId.HasValue)
+            if (actual == null)
             {
                 return ServiceResult<VehiculoCuponDto>.NotFound("Registro de cupón no encontrado.");
             }
@@ -256,13 +265,14 @@ public class CuponService : ICuponService
                     SELECT 1 FROM vehiculo_cupones
                     WHERE periodo_id = @PeriodoId AND registro_id <> @Id
                       AND cupon_del <= @Al AND cupon_al >= @Del)",
-                new { PeriodoId = periodoId.Value, Id = id, Del = dto.CuponDel, Al = dto.CuponAl }, transaction);
+                new { PeriodoId = actual.PeriodoId, Id = id, Del = dto.CuponDel, Al = dto.CuponAl }, transaction);
             if (solapado)
             {
                 return ServiceResult<VehiculoCuponDto>.Conflict("El rango de cupones se solapa con otro registro del mismo mes.");
             }
 
             var total = CalcularTotal(dto.CuponDel, dto.CuponAl);
+            var firmaBase64 = NormalizarFirma(dto.FirmaBase64) ?? actual.FirmaBase64;
 
             await connection.ExecuteAsync(@"
                 UPDATE vehiculo_cupones SET
@@ -278,6 +288,7 @@ public class CuponService : ICuponService
                     valor_cupon = @ValorCupon,
                     haber = @Haber,
                     firmado = @Firmado,
+                    firma_base64 = @FirmaBase64,
                     observaciones = @Observaciones
                 WHERE registro_id = @Id",
                 new
@@ -294,7 +305,8 @@ public class CuponService : ICuponService
                     Total = total,
                     dto.ValorCupon,
                     Haber = total * dto.ValorCupon,
-                    dto.Firmado,
+                    Firmado = firmaBase64 != null,
+                    FirmaBase64 = firmaBase64,
                     Observaciones = string.IsNullOrWhiteSpace(dto.Observaciones) ? null : dto.Observaciones.Trim()
                 }, transaction);
 
@@ -447,6 +459,13 @@ public class CuponService : ICuponService
         periodo.TotalHaber = periodo.Cupones.Sum(c => c.Haber);
 
         return ServiceResult<CuponPeriodoDto>.Success(periodo);
+    }
+
+    private static string? NormalizarFirma(string? firma)
+    {
+        if (string.IsNullOrWhiteSpace(firma)) return null;
+        var valor = firma.Trim();
+        return valor.StartsWith("data:image/png;base64,", StringComparison.OrdinalIgnoreCase) ? valor : null;
     }
 
     private static int CalcularTotal(long del, long al)

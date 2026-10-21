@@ -10,12 +10,13 @@ import type {
   TipoEmergencia,
   CatalogoItem,
   Hospital,
-  Unidad,
   RolServicio,
   TipoUnidad,
   EstadoEntrega,
+  EstadoEmergencia,
   PersonalDisponible,
 } from "@/types/emergencia";
+import type { ApiEnvelope, PaginacionVehiculos, Vehiculo } from "@/types/vehiculos";
 
 const API_BASE = "/emergencias";
 
@@ -48,8 +49,11 @@ export const emergenciaService = {
     return apiClient.get<Hospital[]>("/configuracion/catalogos/hospitales");
   },
 
-  getUnidades: async (): Promise<Unidad[]> => {
-    return apiClient.get<Unidad[]>("/configuracion/catalogos/unidades");
+  getVehiculosDisponibles: async (): Promise<Vehiculo[]> => {
+    const res = await apiClient.get<ApiEnvelope<PaginacionVehiculos>>("/vehiculos", {
+      params: { estadoOperativo: "Operativa", estado: "Activo", pagina: 1, tamanio: 500 },
+    });
+    return res.data?.items ?? [];
   },
 
   getRolesServicio: async (): Promise<RolServicio[]> => {
@@ -95,7 +99,7 @@ export const emergenciaService = {
     return apiClient.put<Emergencia>(`${API_BASE}/${id}`, data);
   },
 
-  cambiarEstado: async (id: number, estado: "Activo" | "Inactivo"): Promise<void> => {
+  cambiarEstado: async (id: number, estado: EstadoEmergencia): Promise<void> => {
     await apiClient.patch(`${API_BASE}/${id}/estado`, { estado });
   },
 

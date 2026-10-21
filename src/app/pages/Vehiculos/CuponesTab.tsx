@@ -1,18 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Check,
-  Download,
-  Pencil,
-  Plus,
-  Printer,
-  Settings2,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Download, Pencil, Plus, Printer, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Input } from "@/app/components/ui/input";
 import { Modal } from "@/app/components/ui/modal";
+import { SignatureModal } from "@/app/components/ui/SignatureModal";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
@@ -24,6 +16,7 @@ import type {
   CuponCreate,
   CuponPeriodo,
   CuponPeriodoCreate,
+  CuponUpdate,
   Vehiculo,
   VehiculoCupon,
 } from "@/types/vehiculos";
@@ -47,6 +40,22 @@ function fechaDelPeriodo(anio: number, mes: number): string {
   return `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
 
+function toCuponUpdate(cupon: VehiculoCupon, firmaBase64: string | null = cupon.firmaBase64 ?? null): CuponUpdate {
+  return {
+    vehiculoId: cupon.vehiculoId,
+    responsable: cupon.responsable,
+    fecha: cupon.fecha,
+    kilometraje: cupon.kilometraje,
+    galonaje: cupon.galonaje,
+    gasolineraId: cupon.gasolineraId,
+    cuponDel: cupon.cuponDel,
+    cuponAl: cupon.cuponAl,
+    valorCupon: cupon.valorCupon,
+    firmaBase64,
+    observaciones: cupon.observaciones,
+  };
+}
+
 export function CuponesTab() {
   const { alert, toast } = useAlert();
   const {
@@ -68,6 +77,8 @@ export function CuponesTab() {
   const [showPeriodo, setShowPeriodo] = useState(false);
   const [showCupon, setShowCupon] = useState(false);
   const [cuponEdit, setCuponEdit] = useState<VehiculoCupon | null>(null);
+  const [showFirma, setShowFirma] = useState(false);
+  const [firmaCupon, setFirmaCupon] = useState<VehiculoCupon | null>(null);
 
   useEffect(() => {
     void Promise.all([
@@ -120,7 +131,7 @@ export function CuponesTab() {
           cuponDel: data.cuponDel,
           cuponAl: data.cuponAl,
           valorCupon: data.valorCupon,
-          firmado: data.firmado,
+          firmaBase64: data.firmaBase64 ?? null,
           observaciones: data.observaciones,
         });
         toast.success("Cupón actualizado");
@@ -136,24 +147,19 @@ export function CuponesTab() {
     }
   }
 
-  async function toggleFirmado(c: VehiculoCupon) {
+  async function guardarFirma(base64: string) {
+    if (!firmaCupon) return;
     try {
-      await actualizarCupon(c.registroId, {
-        vehiculoId: c.vehiculoId,
-        responsable: c.responsable,
-        fecha: c.fecha,
-        kilometraje: c.kilometraje,
-        galonaje: c.galonaje,
-        gasolineraId: c.gasolineraId,
-        cuponDel: c.cuponDel,
-        cuponAl: c.cuponAl,
-        valorCupon: c.valorCupon,
-        firmado: !c.firmado,
-        observaciones: c.observaciones,
-      });
+      await actualizarCupon(firmaCupon.registroId, toCuponUpdate(firmaCupon, base64));
+      toast.success("Firma registrada");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo actualizar la firma");
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar la firma");
     }
+  }
+
+  function abrirFirma(c: VehiculoCupon) {
+    setFirmaCupon(c);
+    setShowFirma(true);
   }
 
   async function eliminar(c: VehiculoCupon) {
@@ -334,18 +340,30 @@ export function CuponesTab() {
                       {c.responsable}
                     </td>
                     <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
-                      <button
-                        type="button"
-                        onClick={() => toggleFirmado(c)}
-                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold"
-                        style={{
-                          background: c.firmado ? "var(--success-100)" : "var(--bg-hover)",
-                          color: c.firmado ? "var(--success-700)" : "var(--text-3)",
-                        }}
-                      >
-                        {c.firmado ? <Check size={12} /> : <X size={12} />}
-                        {c.firmado ? "Firmado" : "Pendiente"}
-                      </button>
+                      {c.firmaBase64 ? (
+                        <button
+                          type="button"
+                          onClick={() => abrirFirma(c)}
+                          className="inline-flex items-center rounded-md px-1 py-0.5"
+                          style={{ background: "#ffffff", border: "1px solid var(--border)" }}
+                          title="Ver o re-firmar"
+                        >
+                          <img
+                            src={c.firmaBase64}
+                            alt={`Firma de ${c.responsable}`}
+                            className="h-6 w-auto max-w-[90px] object-contain"
+                          />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => abrirFirma(c)}
+                          className="rounded-full px-2 py-0.5 text-xs font-semibold"
+                          style={{ background: "var(--bg-hover)", color: "var(--text-2)" }}
+                        >
+                          Firmar
+                        </button>
+                      )}
                     </td>
                     <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
                       {c.kilometraje?.toLocaleString("es-GT") ?? "—"}
@@ -457,6 +475,16 @@ export function CuponesTab() {
         gasolineras={gasolineras}
         cupon={cuponEdit}
         onSave={handleGuardarCupon}
+      />
+
+      <SignatureModal
+        open={showFirma}
+        onClose={() => {
+          setShowFirma(false);
+          setFirmaCupon(null);
+        }}
+        onSave={(base64) => void guardarFirma(base64)}
+        title={firmaCupon ? `Firma de ${firmaCupon.responsable}` : "Firma digital"}
       />
     </div>
   );
@@ -604,7 +632,6 @@ function CuponModal({
   const [del, setDel] = useState("");
   const [al, setAl] = useState("");
   const [valor, setValor] = useState("100");
-  const [firmado, setFirmado] = useState(false);
   const [observaciones, setObservaciones] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -621,7 +648,6 @@ function CuponModal({
       setDel(String(cupon.cuponDel));
       setAl(String(cupon.cuponAl));
       setValor(String(cupon.valorCupon));
-      setFirmado(cupon.firmado);
       setObservaciones(cupon.observaciones ?? "");
     } else {
       setVehiculoId("");
@@ -633,7 +659,6 @@ function CuponModal({
       setDel("");
       setAl("");
       setValor(String(periodo?.valorCuponDefault ?? 100));
-      setFirmado(false);
       setObservaciones("");
     }
     setError(null);
@@ -671,7 +696,7 @@ function CuponModal({
           cuponDel: Number(del),
           cuponAl: Number(al),
           valorCupon: Number(valor),
-          firmado,
+          firmaBase64: cupon?.firmaBase64 ?? null,
           observaciones: observaciones.trim() || null,
         },
         cupon?.registroId,
@@ -763,12 +788,14 @@ function CuponModal({
               {money(haber)}
             </p>
           </div>
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl p-3" style={{ background: "var(--bg-hover)" }}>
-            <input type="checkbox" checked={firmado} onChange={(e) => setFirmado(e.target.checked)} />
-            <span className="text-sm font-semibold" style={{ color: "var(--text-1)" }}>
-              Firmado por el responsable
-            </span>
-          </label>
+          <div className="rounded-xl p-3" style={{ background: "var(--bg-hover)" }}>
+            <p className="text-[10px] font-bold uppercase" style={{ color: "var(--text-3)" }}>
+              Firma digital
+            </p>
+            <p className="text-sm font-extrabold" style={{ color: "var(--text-1)" }}>
+              {cupon?.firmaBase64 ? "Registrada" : "Pendiente"}
+            </p>
+          </div>
         </div>
         <Campo label="Observaciones">
           <textarea

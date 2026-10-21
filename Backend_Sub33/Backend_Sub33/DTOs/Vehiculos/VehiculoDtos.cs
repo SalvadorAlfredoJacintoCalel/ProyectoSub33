@@ -106,6 +106,11 @@ public class VehiculoEstadoDto
     public string Estado { get; set; } = "Activo";
 }
 
+public class VehiculoEstadoOperativoDto
+{
+    public string EstadoOperativo { get; set; } = "";
+}
+
 // ── Mantenimientos ───────────────────────────────────────────────────────────
 public class VehiculoMantenimientoDto
 {
@@ -239,6 +244,7 @@ public class VehiculoCuponDto
     public decimal ValorCupon { get; set; }
     public decimal Haber { get; set; }
     public bool Firmado { get; set; }
+    public string? FirmaBase64 { get; set; }
     public decimal Saldo { get; set; }
     public string? Observaciones { get; set; }
 }
@@ -260,6 +266,7 @@ public class CuponCreateDto
     public long CuponAl { get; set; }
     public decimal ValorCupon { get; set; } = 100;
     public bool Firmado { get; set; }
+    public string? FirmaBase64 { get; set; }
     public string? Observaciones { get; set; }
 }
 
@@ -278,5 +285,6 @@ public class CuponUpdateDto
     public long CuponAl { get; set; }
     public decimal ValorCupon { get; set; } = 100;
     public bool Firmado { get; set; }
+    public string? FirmaBase64 { get; set; }
     public string? Observaciones { get; set; }
 }

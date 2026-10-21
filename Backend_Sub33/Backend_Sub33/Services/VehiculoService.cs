@@ -363,6 +363,51 @@ public class VehiculoService : IVehiculoService
         }
     }
 
+    public async Task<ServiceResult<VehiculoDto>> ChangeEstadoOperativoAsync(int id, string estadoOperativo)
+    {
+        var estado = estadoOperativo?.Trim() ?? "";
+        var nuevoEstado = EstadosOperativos.Contains(estado) ? Normalizar(estado) : null;
+        if (nuevoEstado == null)
+        {
+            return ServiceResult<VehiculoDto>.BadRequest("Estado operativo inválido.");
+        }
+
+        try
+        {
+            using var connection = AbrirConexion();
+
+            var existe = await connection.ExecuteScalarAsync<bool>(
+                "SELECT EXISTS(SELECT 1 FROM vehiculos WHERE vehiculo_id = @Id)",
+                new { Id = id });
+            if (!existe)
+            {
+                return ServiceResult<VehiculoDto>.NotFound("Vehículo no encontrado.");
+            }
+
+            var enProceso = await connection.ExecuteScalarAsync<bool>(@"
+                SELECT EXISTS(
+                    SELECT 1 FROM vehiculo_mantenimientos
+                    WHERE vehiculo_id = @Id AND estado = 'En proceso')",
+                new { Id = id });
+
+            if (enProceso && !string.Equals(nuevoEstado, "Mantenimiento", StringComparison.OrdinalIgnoreCase))
+            {
+                return ServiceResult<VehiculoDto>.BadRequest(
+                    "Hay un mantenimiento en proceso; finalízalo antes de cambiar el estado operativo.");
+            }
+
+            await connection.ExecuteAsync(
+                "UPDATE vehiculos SET estado_operativo = @Estado, updated_at = CURRENT_TIMESTAMP WHERE vehiculo_id = @Id",
+                new { Estado = nuevoEstado, Id = id });
+
+            return await GetByIdAsync(id);
+        }
+        catch (Exception ex)
+        {
+            return ServiceResult<VehiculoDto>.Internal($"Error al cambiar estado operativo: {ex.Message}");
+        }
+    }
+
     public Task<ServiceResult> DeleteAsync(int id) => DeleteInternalAsync(id);
 
     private async Task<ServiceResult> DeleteInternalAsync(int id)

@@ -78,6 +78,9 @@ namespace Backend_Sub33.Models.Entities
         [Column("unidad_asignada_id")]
         public int? UnidadAsignadaId { get; set; }
 
+        [Column("vehiculo_id")]
+        public int? VehiculoId { get; set; }
+
         [Column("formulado_por_id")]
         public Guid? FormuladoPorId { get; set; }
 
@@ -90,7 +93,7 @@ namespace Backend_Sub33.Models.Entities
 
         [MaxLength(10)]
         [Column("estado")]
-        public string Estado { get; set; } = "Activo";
+        public string Estado { get; set; } = "En proceso";
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }

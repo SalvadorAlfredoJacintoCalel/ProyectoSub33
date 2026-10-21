@@ -10,6 +10,7 @@ export type Unidad = CatalogoItem;
 export type RolServicio = CatalogoItem;
 export type TipoUnidad = CatalogoItem;
 export type EstadoEntrega = CatalogoItem;
+export type EstadoEmergencia = "En proceso" | "Terminado" | "Inactivo";
 
 export interface PersonalDisponible {
   personalId: string;
@@ -61,10 +62,11 @@ export interface Emergencia {
   estadoEntrega?: string | null;
   unidadAsignadaId?: number | null;
   unidadAsignadaNombre?: string | null;
+  vehiculoId?: number | null;
   formuladoPorId?: string | null;
   creadoPorNombre?: string;
   resumen?: string | null;
-  estado: string;
+  estado: EstadoEmergencia;
   fechaCreacion?: string;
   fechaModificacion?: string | null;
   tiposAsistencia: string[];
@@ -85,7 +87,8 @@ export interface EmergenciaListItem {
   ubicacion: string;
   hospitalDestinoNombre?: string | null;
   unidadAsignadaNombre?: string | null;
-  estado: string;
+  vehiculoId?: number | null;
+  estado: EstadoEmergencia;
   tiposAsistencia: string[];
 }
 
@@ -107,6 +110,7 @@ export interface EmergenciaCreate {
   hospitalDestinoId?: number;
   estadoEntrega?: string;
   unidadAsignadaId?: number;
+  vehiculoId?: number;
   formuladoPorId?: string | null;
   creadoPorNombre?: string;
   resumen?: string;
@@ -134,6 +138,7 @@ export interface EmergenciaUpdate {
   hospitalDestinoId?: number;
   estadoEntrega?: string;
   unidadAsignadaId?: number;
+  vehiculoId?: number;
   formuladoPorId?: string | null;
   creadoPorNombre?: string;
   resumen?: string;

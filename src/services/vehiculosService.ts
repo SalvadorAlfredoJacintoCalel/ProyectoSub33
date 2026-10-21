@@ -6,6 +6,7 @@ import type {
   CuponPeriodo,
   CuponPeriodoCreate,
   CuponUpdate,
+  EstadoOperativo,
   PaginacionVehiculos,
   Vehiculo,
   VehiculoCupon,
@@ -51,6 +52,13 @@ export const vehiculosService = {
 
   changeEstado: async (id: number, estado: "Activo" | "Inactivo"): Promise<Vehiculo> => {
     const res = await apiClient.patch<ApiEnvelope<Vehiculo>>(`${API_BASE}/${id}/estado`, { estado });
+    return res.data;
+  },
+
+  cambiarEstadoOperativo: async (id: number, estadoOperativo: EstadoOperativo): Promise<Vehiculo> => {
+    const res = await apiClient.patch<ApiEnvelope<Vehiculo>>(`${API_BASE}/${id}/estado-operativo`, {
+      estadoOperativo,
+    });
     return res.data;
   },
 

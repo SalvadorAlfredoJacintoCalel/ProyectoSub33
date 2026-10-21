@@ -19,7 +19,7 @@ import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table"
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
 import { inventarioService } from "@/services/inventarioService";
-import type { Emergencia, EmergenciaListItem, EmergenciaFiltros } from "@/types/emergencia";
+import type { Emergencia, EmergenciaListItem, EmergenciaFiltros, EstadoEmergencia } from "@/types/emergencia";
 import type { ServicioInsumoUtilizado } from "@/types/inventario";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ type Service = {
   camilleros: string[];
   formuladoPor: string;
   resumen?: string;
-  estado?: "Activo" | "Inactivo";
+  estado?: EstadoEmergencia;
 };
 
 const TABLE_COLS = [
@@ -156,7 +156,7 @@ function mapEmergenciaToService(em: Emergencia): Service {
     camilleros,
     formuladoPor: em.creadoPorNombre ?? "",
     resumen: em.resumen ?? "",
-    estado: em.estado === "Inactivo" ? "Inactivo" : "Activo",
+    estado: em.estado,
   };
 }
 
@@ -582,11 +582,12 @@ function StatCard({ label, value, unit }: { label: string; value: string; unit?:
 
 // ─── Service Report Modal ─────────────────────────────────────────────────────
 
-function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onDesactivar }: {
+function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onTerminar, onDesactivar }: {
   emergencia: Emergencia;
   tiposEmergencia: { id: number; nombre: string }[];
   onClose: () => void;
   onEdit?: () => void;
+  onTerminar?: () => void;
   onDesactivar?: () => void;
 }) {
   const service = useMemo(() => mapEmergenciaToService(emergencia), [emergencia]);
@@ -796,8 +797,17 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onDe
       icon={<Calendar className="size-6" />}
       statusBadge={
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={emergencia.estado === "Inactivo" ? "default" : "success"} dot>
-            {emergencia.estado === "Inactivo" ? "Inactivo" : "Activo"}
+          <Badge
+            variant={
+              emergencia.estado === "Terminado"
+                ? "warning"
+                : emergencia.estado === "Inactivo"
+                  ? "default"
+                  : "success"
+            }
+            dot
+          >
+            {emergencia.estado}
           </Badge>
           <span className="text-[12px] font-medium" style={{ color: "var(--text-2)" }}>{formatFechaTabla(emergencia.fecha)}</span>
           {tipoEmergenciaNombre && (
@@ -813,7 +823,12 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onDe
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="size-4" /> Imprimir
           </Button>
-          {emergencia.estado !== "Inactivo" && onDesactivar && (
+          {emergencia.estado === "En proceso" && onTerminar && (
+            <Button variant="brand" onClick={onTerminar}>
+              <CheckCircle2 className="size-4" /> Marcar como Terminado
+            </Button>
+          )}
+          {emergencia.estado === "Terminado" && onDesactivar && (
             <Button variant="brand-outline" onClick={onDesactivar}>
               <Power className="size-4" /> Desactivar
             </Button>
@@ -919,17 +934,39 @@ export function EmergenciasPage() {
     if (full) setSelectedEmergencia(full);
   }
 
+  function recargarLista() {
+    cargarEmergencias({ pagina: page, tamanoPagina: pageSize, busqueda: query || undefined, unidad: unidad || undefined, tipo: tipo || undefined, piloto: piloto || undefined, desde: desde || undefined, hasta: hasta || undefined });
+  }
+
+  async function handleTerminar(id: number) {
+    const ok = await alert.confirm(
+      "Confirmar Servicio Terminado",
+      "¿Marcar este servicio como Terminado? La unidad destacada volverá a estar Operativa."
+    );
+    if (!ok) return;
+    const res = await cambiarEstado(id, "Terminado");
+    if (res) {
+      toast.success("Servicio terminado. Unidad liberada.");
+      setSelectedEmergencia(null);
+      recargarLista();
+      await cargarCatalogos();
+    } else {
+      toast.error("No se pudo terminar el servicio");
+    }
+  }
+
   async function handleDesactivar(id: number) {
     const ok = await alert.confirm(
       "Confirmar Desactivación",
-      "¿Marcar este servicio como Inactivo? El estado del registro cambiará a Inactivo/Desactivado."
+      "¿Desactivar este servicio? El registro se ocultará del historial operativo."
     );
     if (!ok) return;
     const res = await cambiarEstado(id, "Inactivo");
     if (res) {
       toast.success("Servicio desactivado");
       setSelectedEmergencia(null);
-      cargarEmergencias({ pagina: page, tamanoPagina: pageSize, busqueda: query || undefined, unidad: unidad || undefined, tipo: tipo || undefined, piloto: piloto || undefined, desde: desde || undefined, hasta: hasta || undefined });
+      recargarLista();
+      await cargarCatalogos();
     } else {
       toast.error("No se pudo desactivar el servicio");
     }
@@ -1135,14 +1172,17 @@ export function EmergenciasPage() {
             <div className="flex gap-3 pt-1 border-t border-[var(--neutral-100)]" style={{ paddingTop: "12px" }}>
               <div className="grid grid-cols-3 gap-3 flex-1">
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Unidad</label>
+                  <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Unidad (es) destacada (s)</label>
                   <SelectWrapper>
                     <select value={unidad} onChange={(e) => { setUnidad(e.target.value); setPage(1); }}
                       className="w-full px-3 py-[9px] pr-8 rounded-lg border border-[var(--neutral-200)] bg-[var(--neutral-50)] text-[12px] text-[var(--neutral-700)] outline-none focus:border-[var(--red)] appearance-none cursor-pointer transition-colors">
                       <option value="">Todas las unidades</option>
-                      {catalogos.unidades.map((u) => (
-                        <option key={u.id} value={u.nombre}>{u.nombre}</option>
-                      ))}
+                      {catalogos.vehiculosDisponibles.map((v) => {
+                        const nombre = v.noUnidad || v.codigo || `${v.marca} ${v.modelo}`.trim();
+                        return (
+                          <option key={v.vehiculoId} value={nombre}>{nombre}</option>
+                        );
+                      })}
                     </select>
                   </SelectWrapper>
                 </div>
@@ -1246,6 +1286,7 @@ export function EmergenciasPage() {
           tiposEmergencia={catalogos.tiposEmergencia}
           onClose={() => setSelectedEmergencia(null)}
           onEdit={() => { setEditingId(selectedEmergencia.servicioId); setSelectedEmergencia(null); }}
+          onTerminar={() => handleTerminar(selectedEmergencia.servicioId)}
           onDesactivar={() => handleDesactivar(selectedEmergencia.servicioId)}
         />
       )}

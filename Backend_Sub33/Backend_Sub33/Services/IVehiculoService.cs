@@ -10,6 +10,7 @@ public interface IVehiculoService
     Task<ServiceResult<VehiculoDto>> CreateAsync(VehiculoCreateDto dto);
     Task<ServiceResult<VehiculoDto>> UpdateAsync(int id, VehiculoUpdateDto dto);
     Task<ServiceResult<VehiculoDto>> ChangeEstadoAsync(int id, string estado);
+    Task<ServiceResult<VehiculoDto>> ChangeEstadoOperativoAsync(int id, string estadoOperativo);
     Task<ServiceResult> DeleteAsync(int id);
     Task<ServiceResult<List<VehiculoMantenimientoDto>>> GetMantenimientosAsync(int vehiculoId);
     Task<ServiceResult<VehiculoMantenimientoDto>> CreateMantenimientoAsync(int vehiculoId, VehiculoMantenimientoCreateDto dto);

@@ -1,77 +1,123 @@
 # ProyectoSub33 — Contexto Completo para IA
 
-> Última actualización: 2026-10-19 (mejoras del módulo Inventario, Fases 0–3).
+> Última actualización: **2026-10-20** (cierre de mejoras de Vehículos + impresión + KPIs inline).
+> Este archivo es la fuente de contexto del proyecto. Mantenerlo actualizado al cerrar cada bloque de trabajo.
+
+## Resumen Ejecutivo
+
+- **Módulos conectados a backend:** Auth, Personal, Emergencias, Seguridad/Configuración, Inventario, Donaciones (incluye Libro mensual) y Vehículos (incluye Mantenimientos y Cupones).
+- **Módulos solo UI / datos mock:** Finanzas, Reportes y Perfil.
+- **Estado de compilación:** `npm run build` y `dotnet build` pasan correctamente al 2026-10-20.
+- **Backend:** debe compilarse y dejarse **detenido** al terminar. Puerto esperado: `5196`.
+- **Regla UX clave:** el detalle de un KPI de Vehículos **no abre modal ni tabla**; actualiza las tarjetas de flota en la misma vista.
+
+---
 
 ## Stack Tecnológico
-- **Frontend:** Vite + React 18 + TypeScript + Tailwind CSS 4
-- **UI:** componentes propios (`src/app/components/ui`), Radix UI, lucide-react, MUI 7, recharts
-- **Backend:** .NET 8, ASP.NET Core, **Dapper** (SQL directo) + PostgreSQL; EF Core para entidades/migraciones
-- **API:** `apiClient` centralizado (`src/services/api/client.ts`), envelope `{ success, message, data }`
-- **Auth:** JWT Bearer + Roles (admin, voluntario, secretario)
-- **Estado:** React hooks + Context API
-- **Validación:** manual por formulario (no React Hook Form en las páginas nuevas)
-- **Notificaciones:** `useAlert()` (`alert`, `confirm`, `toast`) desde `src/app/components/ui/AlertSystem.tsx`
+
+- **Frontend:** Vite + React 18 + TypeScript + Tailwind CSS 4.
+- **UI:** componentes propios (`src/app/components/ui`), Radix UI, lucide-react, MUI 7, recharts.
+- **Backend:** .NET 8, ASP.NET Core, **Dapper** (SQL directo) + PostgreSQL; EF Core para entidades/migraciones.
+- **API:** `apiClient` centralizado (`src/services/api/client.ts`), envelope `{ success, message, data }`.
+- **Auth:** JWT Bearer + Roles (`admin`, `voluntario`, `secretario`).
+- **Estado:** React hooks + Context API.
+- **Validación:** manual por formulario (no React Hook Form en las páginas nuevas).
+- **Notificaciones:** `useAlert()` (`alert`, `confirm`, `toast`) desde `src/app/components/ui/AlertSystem.tsx`.
+
+---
 
 ## Estructura de Carpetas (Monorepo)
+
 ```
 ProyectoSub33-main/
 ├── src/                        ← FRONTEND (Vite + React 18 + TypeScript)
 │   ├── app/
-│   │   ├── pages/              # 10 módulos (ver abajo)
-│   │   ├── components/         # UI components (ui/, figma/)
-│   │   ├── layout/             # MainLayout, Sidebar, Topbar
-│   │   └── App.tsx             # Router + dashboard principal
+│   │   ├── pages/
+│   │   │   ├── Auth/
+│   │   │   ├── Personal/
+│   │   │   ├── Emergencias/
+│   │   │   ├── Seguridad/
+│   │   │   ├── Inventario/
+│   │   │   ├── Donaciones/      # DonacionesPage + LibroDonacionesTab
+│   │   │   ├── Vehiculos/       # VehiculosPage + CuponesTab + components/
+│   │   │   ├── Finanzas/        # UI/mock
+│   │   │   ├── Reportes/        # UI/mock
+│   │   │   └── Perfil/          # UI
+│   │   ├── components/          # UI components (ui/, figma/)
+│   │   ├── layout/              # MainLayout, Sidebar, Topbar
+│   │   └── App.tsx              # Router + dashboard principal
 │   ├── services/
-│   │   ├── api/client.ts       # apiClient centralizado (get/post/put/delete/patch)
+│   │   ├── api/client.ts        # apiClient centralizado
+│   │   ├── authService.js
 │   │   ├── personalService.ts
 │   │   ├── configuracionService.ts
+│   │   ├── seguridadService.ts
 │   │   ├── emergenciaService.ts
 │   │   ├── inventarioService.ts
-│   │   └── donacionService.ts
-│   ├── types/                  # Tipos TypeScript compartidos (incluye inventario.ts, donacion.ts)
-│   ├── hooks/                  # useEmergencias, useInventario
-│   ├── constants/              # roles.ts, navigation.ts
-│   ├── utils/                  # format.ts, formHelpers.ts
-│   ├── context/AuthContext.tsx # useAuth() + AuthProvider
-│   └── main.tsx                # Entry point
+│   │   ├── donacionService.ts
+│   │   ├── donacionLibroService.ts
+│   │   └── vehiculosService.ts
+│   ├── hooks/
+│   │   ├── useEmergencias.ts
+│   │   ├── useInventario.ts
+│   │   ├── useDonaciones.ts
+│   │   ├── useDonacionLibro.ts
+│   │   ├── useVehiculos.ts
+│   │   └── useCupones.ts
+│   ├── types/                   # api, personal, emergencia, inventario, donacion, vehiculos
+│   ├── constants/               # roles.ts, navigation.ts
+│   ├── utils/                   # format.ts, formHelpers.ts
+│   ├── context/AuthContext.tsx  # useAuth() + AuthProvider
+│   └── main.tsx
 │
-├── Backend_Sub33/              ← BACKEND (.NET 8 + Dapper + PostgreSQL)
+├── Backend_Sub33/
 │   └── Backend_Sub33/
-│       ├── Controllers/        # Personal, Configuracion, Emergencias, Inventario, Donaciones, Auth, ...
-│       ├── DTOs/               # DTOs por módulo (Inventario/Donaciones, etc.)
-│       ├── Models/             # Entidades y catálogos
-│       ├── Services/           # Lógica de negocio (InventarioService, DonacionService, ...)
-│       ├── Data/               # AppDbContext + scripts SQL
-│       ├── Common/             # ApiResponse, ServiceResult, PaginatedResult
-│       ├── Attributes/         # HttpRequirePermissionAttribute
-│       ├── Migrations/         # EF Core migrations
-│       └── Program.cs          # Startup + DI + JWT + CORS
+│       ├── Controllers/         # Auth, Personal, Configuracion, Seguridad, Emergencias,
+│       │                        # Inventario, Donaciones, DonacionLibro, Vehiculos, Cupones
+│       ├── DTOs/                # Por módulo (Inventario, Donacion, Vehiculos, etc.)
+│       ├── Models/              # Entidades y catálogos
+│       ├── Services/            # Lógica de negocio
+│       ├── Data/                # AppDbContext + scripts SQL
+│       ├── Common/              # ApiResponse, ServiceResult, PaginatedResult
+│       ├── Attributes/          # HttpRequirePermissionAttribute
+│       ├── Migrations/          # EF Core migrations
+│       └── Program.cs           # Startup + DI + JWT + CORS
 │
-├── docs/modulos/inventario/    # Documentación y planes del módulo
-├── CONTEXTO.md                 # Este archivo
+├── docs/modulos/
+│   ├── inventario/
+│   ├── emergencias/
+│   └── vehiculos/
+│       └── migracion_vehiculos.sql
+├── CONTEXTO.md                  # Este archivo
 ├── package.json
 ├── vite.config.ts
 ├── reset_db.sql
 └── README.md
 ```
 
-## Módulos Activos (Frontend → Backend)
-| Módulo | Página Frontend | Servicio Frontend | Controller Backend | Endpoints |
-|--------|-----------------|-------------------|-------------------|-----------|
-| **Personal** | `PersonalPage.tsx` | `personalService.ts` | `PersonalController` | `/api/personal`, `/api/personal/rangos`, `/api/personal/roles` |
-| **Emergencias** | `EmergenciasPage.tsx`, `RegisterServicePage.tsx`, `EditServicePage.tsx` | `emergenciaService.ts` | `EmergenciasController` | `/api/emergencias`, `/api/emergencias/siguiente-incidente` |
-| **Seguridad/Config** | `SeguridadPage.tsx` | `configuracionService.ts` | `ConfiguracionController` | `/api/configuracion/*` |
-| **Auth** | `LoginPage.tsx` | `AuthContext` + `authService.js` | `AuthController` | `/api/auth/login` |
-| **Inventario** | `InventarioPage.tsx`, `MovimientosPage.tsx`, `EquipoUnidadesPage.tsx`, `ServicioInsumosPage.tsx` | `inventarioService.ts` / `useInventario` | `InventarioController` | `/api/inventario/*` |
-| **Donaciones** | `DonacionesPage.tsx` | `donacionService.ts` | `DonacionesController` | `/api/donaciones` |
-| **Vehículos** | `VehiculosPage.tsx` | — | — | Pendiente |
-| **Finanzas** | `FinanzasPage.tsx` | — | — | Pendiente |
-| **Reportes** | `ReportesPage.tsx` | — | — | Pendiente |
-| **Perfil** | `ProfilePage.tsx` | — | — | Solo UI |
+---
+
+## Módulos y Estado Actual
+
+| Módulo | Frontend | Servicio / Hook | Backend | Estado |
+|--------|----------|-----------------|---------|--------|
+| **Auth** | `Auth/LoginPage.tsx` | `authService.js`, `AuthContext` | `AuthController` | Conectado a `/api/auth/login` (JWT). Recuperación/OTP aún es flujo UI. |
+| **Personal** | `Personal/PersonalPage.tsx` | `personalService.ts` | `PersonalController` | Conectado. Incluye estadísticas y acceso al sistema. |
+| **Emergencias** | `Emergencias/*` | `emergenciaService.ts`, `useEmergencias` | `EmergenciasController` | Conectado. CRUD, cambio de estado y siguiente incidente. |
+| **Seguridad/Config** | `Seguridad/SeguridadPage.tsx` | `configuracionService.ts`, `seguridadService.ts` | `ConfiguracionController`, `SeguridadController`, `CatalogosController` | Conectado. Parámetros, usuarios, roles, permisos y catálogos. |
+| **Inventario** | `Inventario/*` | `inventarioService.ts`, `useInventario` | `InventarioController` | Conectado. Items, Kardex, Ubicaciones, Servicio-Insumos, KPIs y baja. |
+| **Donaciones** | `Donaciones/DonacionesPage.tsx`, `LibroDonacionesTab.tsx` | `donacionService.ts`, `donacionLibroService.ts`, `useDonaciones`, `useDonacionLibro` | `DonacionesController`, `DonacionLibroController` | Conectado. Registros Material/Monetaria + Libro mensual. |
+| **Vehículos** | `Vehiculos/VehiculosPage.tsx`, `CuponesTab.tsx` | `vehiculosService.ts`, `useVehiculos`, `useCupones` | `VehiculosController`, `CuponesController` | Conectado. Flota, KPIs inline, mantenimientos, cupones e impresión. |
+| **Finanzas** | `Finanzas/FinanzasPage.tsx` | — | — | Solo UI / datos mock. |
+| **Reportes** | `Reportes/ReportesPage.tsx` | — | — | Solo UI / datos mock. |
+| **Perfil** | `Perfil/ProfilePage.tsx` | — | — | Solo UI. |
+
+---
 
 ## Base de Datos (PostgreSQL) — Tablas Principales
 
 ### Configuración y Catálogos
+
 | Tabla | Descripción | PK |
 |-------|-------------|----|
 | `configuracion_listas_maestras` | Listas maestras genéricas | `lista_id` |
@@ -86,8 +132,13 @@ ProyectoSub33-main/
 | `cat_categorias_inventario` | Categorías de inventario | `categoria_inv_id` |
 | `cat_proveedores` | Proveedores | `proveedor_id` |
 | `cat_tipos_movimiento` | Tipos de movimiento (`ENTRADA`, `SALIDA`, `BAJA`, `AJUSTE`, `USO_SERVICIO`, `REVERSION_SERVICIO`) | `tipo_mov_id` |
+| `cat_tipos_vehiculo` | Tipos de vehículo | `tipo_vehiculo_id` |
+| `cat_talleres` | Talleres de mantenimiento | `taller_id` |
+| `cat_gasolineras` | Gasolineras para cupones | `gasolinera_id` |
+| `cat_tipos_documento` | Tipos de documento del Libro de Donaciones | `tipo_documento_id` |
 
 ### Usuarios, Personal y Seguridad
+
 | Tabla | Descripción | PK | FKs |
 |-------|-------------|----|-----|
 | `personal` | Bomberos | `personal_id` (UUID) | `rango_id → cat_rangos` |
@@ -101,96 +152,179 @@ ProyectoSub33-main/
 | `codigos_recuperacion` | OTP recuperación | `codigo_id` | `usuario_id → usuarios` |
 
 ### Emergencias y Servicios
+
 | Tabla | Descripción | PK | FKs |
 |-------|-------------|----|-----|
-| `emergencias_servicios` | Servicios de emergencia | `servicio_id` (serial) | `tipo_emergencia_id`, `hospital_destino_id`, `formulado_por_id` |
+| `emergencias_servicios` | Servicios de emergencia | `servicio_id` (serial) | `tipo_emergencia_id`, `hospital_destino_id`, `formulado_por_id`, `vehiculo_id` |
 | `servicio_tipos_asistencia` | Tipos de asistencia por servicio | `(servicio_id, tipo_asistencia)` | `servicio_id` |
 | `servicio_personal_asignado` | Personal asignado | `(servicio_id, nombre_personal)` | `servicio_id`, `personal_id` |
 | `signos_vitales_paciente` | Signos vitales | `signo_id` | `servicio_id` |
 | `revision_nuevas_opciones` | Revisiones de catálogos | `revision_id` | `servicio_id`, `atendido_por_usuario_id` |
 
 ### Inventario y Donaciones
-| Tabla | Descripción | PK | FKs |
-|-------|-------------|----|-----|
-| `inventario_items` | Insumos/equipos con stock | `item_id` | `categoria_inv_id`, `proveedor_id`, `donacion_id` |
-| `inventario_movimientos` | Kardex de movimientos (cantidad firmada para ajustes) | `movimiento_id` | `item_id`, `tipo_mov_id`, `responsable_id → personal` |
+
+| Tabla | Descripción | PK | FKs / Notas |
+|-------|-------------|----|-------------|
+| `inventario_items` | Insumos/equipos con stock | `item_id` | `categoria_inv_id`, `proveedor_id`, `donacion_id`, `vehiculo_id`; incluye `fecha_baja` |
+| `inventario_movimientos` | Kardex de movimientos | `movimiento_id` | `item_id`, `tipo_mov_id`, `responsable_id → personal`; `cantidad` int firmado para ajustes |
 | `equipo_unidades` | Equipo asignado a unidades | `(unidad_id, item_id)` | `unidad_id`, `item_id` |
 | `servicio_insumos_utilizados` | Insumos consumidos en servicios | `(servicio_id, item_id)` | `servicio_id`, `item_id` |
 | `donaciones` | Donaciones monetarias/material | `donacion_id` | — |
 | `donacion_materiales` | Detalle de materiales donados | `material_id` | `donacion_id` |
+| `donacion_libros` | Cabecera del Libro mensual de Donaciones | `libro_id` | `anio`, `mes` |
+| `donacion_movimientos` | Movimientos del Libro de Donaciones | `movimiento_id` | `libro_id`, `tipo_documento_id` |
 
-## Backend Endpoints Detallados
+### Vehículos y Combustible
 
-### Personal (`/api/personal`)
-```
-GET    /api/personal?pagina=1&tamanio=10&rangoId=&estado=    → Lista paginada con filtros
-GET    /api/personal/{id:guid}                                → Detalle por ID
-POST   /api/personal                                          → Crear
-PUT    /api/personal/{id:guid}                                → Actualizar
-PATCH  /api/personal/{id:guid}/estado                         → Cambiar estado
-DELETE /api/personal/{id:guid}                                → Desactivar (soft delete)
-```
+| Tabla | Descripción | PK | FKs / Notas |
+|-------|-------------|----|-------------|
+| `vehiculos` | Flota de vehículos | `vehiculo_id` | `tipo_id → cat_tipos_vehiculo`, `donacion_id → donaciones`; `estado`, `estado_operativo`, `fecha_baja` lógica |
+| `vehiculo_mantenimientos` | Hojas de mantenimiento | `mantenimiento_id` | `vehiculo_id → vehiculos`, `taller_id → cat_talleres` |
+| `vehiculo_cupones_periodos` | Periodos mensuales de cupones | `periodo_id` | `anio`, `mes`; saldos y valores por defecto |
+| `vehiculo_cupones` | Cupones de combustible | `registro_id` | `periodo_id`, `vehiculo_id`, `gasolinera_id`; `firma_base64` PNG Base64 |
 
-### Configuración (`/api/configuracion`)
-```
-GET    /parametros                    → Parámetros estación
-POST   /parametros                    → Guardar múltiples
-PUT    /parametros/{clave}            → Actualizar uno
-GET    /usuarios                      → Usuarios con rol
-PUT    /usuarios/{id}/estado          → Activar/desactivar
-PUT    /usuarios/{id}/rol             → Asignar rol
-GET    /roles                         → Lista roles
-POST   /roles                         → Crear rol
-GET    /roles/{rolId}/permisos        → Matriz permisos
-POST   /roles/{rolId}/permisos        → Guardar permisos
-GET    /catalogos/{tipo}              → Catálogo genérico
-POST   /catalogos/{tipo}              → Crear catálogo
-PUT    /catalogos/{tipo}/{id}         → Actualizar catálogo
-DELETE /catalogos/{tipo}/{id}         → Eliminar catálogo
-```
+> **Relación clave:** los vehículos pueden estar vinculados a un item de inventario mediante `inventario_items.vehiculo_id`. La fecha de baja del vehículo se lee de `inventario_items.fecha_baja`.
 
-### Emergencias (`/api/emergencias`)
-```
-POST   /api/emergencias                     → Registrar emergencia (con insumosUtilizados[])
-GET    /api/emergencias/siguiente-incidente → Siguiente correlativo INC-YYYY-NNN
-```
+---
 
-### Inventario (`/api/inventario`)
-```
-GET    /api/inventario/items?pagina=&tamanio=&busqueda=&categoriaInvId=&stockStatus=
-       → Lista paginada. stockStatus: "agotado" | "bajo" (filtro server-side)
-GET    /api/inventario/items/{id}                     → Detalle por ID
-POST   /api/inventario/items                          → Crear item (si stock > 0 registra ENTRADA "Stock inicial")
-PUT    /api/inventario/items/{id}                     → Actualizar item
-DELETE /api/inventario/items/{id}                     → Eliminar
-GET    /api/inventario/movimientos?itemId=&tipoMovId=&desde=&hasta=  → Kardex paginado
-POST   /api/inventario/movimientos                    → SOLO tipo AJUSTE (delta con signo, motivo y responsableId obligatorios)
-GET    /api/inventario/movimientos/tipos              → Tipos manuales (solo AJUSTE)
-GET    /api/inventario/equipo-unidades?unidadId=      → Equipo por unidad
-POST   /api/inventario/equipo-unidades                → Asignar/actualizar equipo (upsert)
-GET    /api/inventario/servicio-insumos?servicioId=   → Insumos por servicio (solo lectura)
-GET    /api/inventario/resumen                        → KPIs (total, agotados, stock bajo, movimientos)
-GET    /api/configuracion/catalogos/{tipo}            → Categorías, proveedores, tipos-movimiento, unidades
-```
-
-### Donaciones (`/api/donaciones`)
-```
-GET    /api/donaciones?tipo=&pagina=&tamanio=   → Lista paginada (Material | Monetaria)
-GET    /api/donaciones/{id}                     → Detalle
-POST   /api/donaciones                          → Crear (genera noRecibo si no se envía)
-PUT    /api/donaciones/{id}                     → Actualizar
-PATCH  /api/donaciones/{id}/estado              → Cambiar estado
-DELETE /api/donaciones/{id}                     → Eliminar
-```
+## Backend — Endpoints
 
 ### Auth (`/api/auth`)
+
 ```
 POST   /api/auth/login   → Login (username + password) → JWT
 ```
 
+### Personal (`/api/personal`)
+
+```
+GET    /api/personal?pagina=&tamanio=&rangoId=&estado=   → Lista paginada con filtros
+GET    /api/personal/estadisticas                        → KPIs de personal
+GET    /api/personal/{id:guid}                           → Detalle
+POST   /api/personal                                     → Crear
+PUT    /api/personal/{id:guid}                           → Actualizar
+PATCH  /api/personal/{id:guid}/estado                    → Cambiar estado
+PUT    /api/personal/{id:guid}/acceso-sistema            → Habilitar/deshabilitar acceso
+DELETE /api/personal/{id:guid}                           → Desactivar (soft delete)
+```
+
+### Emergencias (`/api/emergencias`)
+
+```
+GET    /api/emergencias                          → Lista
+GET    /api/emergencias/{id:int}                 → Detalle
+GET    /api/emergencias/siguiente-incidente      → Siguiente correlativo INC-YYYY-NNN
+POST   /api/emergencias                          → Registrar (con insumosUtilizados[])
+PUT    /api/emergencias/{id:int}                 → Actualizar
+PATCH  /api/emergencias/{id:int}/estado          → Cambiar estado (En proceso → Terminado → Inactivo)
+```
+
+### Configuración, Catálogos y Seguridad (`/api/configuracion`, `/api/seguridad`)
+
+```
+GET    /api/configuracion/parametros
+POST   /api/configuracion/parametros
+PUT    /api/configuracion/parametros/{clave}
+
+GET    /api/configuracion/usuarios
+PUT    /api/configuracion/usuarios/{id:guid}/estado
+PUT    /api/configuracion/usuarios/{id:guid}/rol
+
+GET    /api/configuracion/roles
+POST   /api/configuracion/roles
+GET    /api/configuracion/roles/{rolId:int}/permisos
+POST   /api/configuracion/roles/{rolId:int}/permisos
+
+GET    /api/configuracion/catalogos/{tipo}
+POST   /api/configuracion/catalogos/{tipo}
+PUT    /api/configuracion/catalogos/{tipo}/{id:int}
+DELETE /api/configuracion/catalogos/{tipo}/{id:int}
+POST   /api/configuracion/catalogos/hospitales-completo
+PUT    /api/configuracion/catalogos/hospitales-completo/{id:int}
+
+GET    /api/seguridad/permisos/mios
+GET    /api/seguridad/permisos/listar/{rolId:int}
+POST   /api/seguridad/permisos/asignar
+```
+
+### Inventario (`/api/inventario`)
+
+```
+GET    /api/inventario/items?pagina=&tamanio=&busqueda=&categoriaInvId=&stockStatus=
+       → Lista paginada. stockStatus: "agotado" | "bajo"
+GET    /api/inventario/items/{id:int}                  → Detalle
+POST   /api/inventario/items                           → Crear (stock inicial genera ENTRADA)
+PUT    /api/inventario/items/{id:int}                  → Actualizar
+POST   /api/inventario/items/{id:int}/baja             → Dar de baja con responsable
+DELETE /api/inventario/items/{id:int}                  → Eliminar
+
+GET    /api/inventario/movimientos?itemId=&tipoMovId=&desde=&hasta=  → Kardex paginado
+GET    /api/inventario/movimientos/tipos               → Tipos manuales (solo AJUSTE)
+POST   /api/inventario/movimientos                     → AJUSTE con delta firmado
+
+GET    /api/inventario/equipo-unidades?unidadId=       → Equipo por unidad
+POST   /api/inventario/equipo-unidades                 → Upsert de equipo por unidad
+
+GET    /api/inventario/servicio-insumos?servicioId=    → Insumos por servicio
+POST   /api/inventario/servicio-insumos                → Registrar uso de insumo
+
+GET    /api/inventario/resumen                         → KPIs de inventario
+```
+
+### Donaciones (`/api/donaciones`)
+
+```
+GET    /api/donaciones?tipo=&pagina=&tamanio=   → Lista paginada (Material | Monetaria)
+GET    /api/donaciones/{id:int}                 → Detalle
+POST   /api/donaciones                          → Crear (genera noRecibo si no se envía)
+PUT    /api/donaciones/{id:int}                 → Actualizar
+PATCH  /api/donaciones/{id:int}/estado          → Cambiar estado
+DELETE /api/donaciones/{id:int}                 → Eliminar
+```
+
+### Libro de Donaciones (`/api/donaciones/libro`)
+
+```
+GET    /api/donaciones/libro/{anio:int}/{mes:int}          → Libro del mes
+POST   /api/donaciones/libro/movimientos                   → Crear movimiento
+PUT    /api/donaciones/libro/movimientos/{id:int}          → Actualizar movimiento
+DELETE /api/donaciones/libro/movimientos/{id:int}          → Eliminar movimiento
+```
+
+### Vehículos (`/api/vehiculos`)
+
+```
+GET    /api/vehiculos?busqueda=&tipoId=&estadoOperativo=&origen=&estado=&pagina=&tamanio=
+       → Lista paginada. tamanio máximo: 500
+GET    /api/vehiculos/{id:int}                    → Detalle con mantenimientos y cupones
+POST   /api/vehiculos                             → Crear
+PUT    /api/vehiculos/{id:int}                    → Actualizar
+PATCH  /api/vehiculos/{id:int}/estado             → Activar/Inactivar
+PATCH  /api/vehiculos/{id:int}/estado-operativo   → Cambiar estado operativo (bloquea si hay mantenimiento en proceso)
+DELETE /api/vehiculos/{id:int}                    → Desactivar (soft delete)
+
+GET    /api/vehiculos/{id:int}/mantenimientos     → Historial de mantenimientos
+POST   /api/vehiculos/{id:int}/mantenimientos     → Registrar mantenimiento
+PUT    /api/vehiculos/mantenimientos/{id:int}     → Actualizar mantenimiento
+DELETE /api/vehiculos/mantenimientos/{id:int}     → Eliminar mantenimiento
+```
+
+### Cupones de Combustible (`/api/vehiculos/cupones`)
+
+```
+GET    /api/vehiculos/cupones/periodos/{anio:int}/{mes:int}  → Periodo + cupones
+PUT    /api/vehiculos/cupones/periodos                       → Guardar/actualizar periodo
+POST   /api/vehiculos/cupones                                → Crear cupón
+PUT    /api/vehiculos/cupones/{id:int}                       → Actualizar cupón
+DELETE /api/vehiculos/cupones/{id:int}                       → Eliminar cupón
+```
+
+---
+
 ## Patrones de Código Frontend
 
 ### API Client (`src/services/api/client.ts`)
+
 ```typescript
 const data = await apiClient.get<T>("/endpoint");
 const data = await apiClient.post<T>("/endpoint", body);
@@ -204,28 +338,69 @@ await apiClient.delete<T>("/endpoint");
 ```
 
 ### Envelope backend
+
 ```typescript
-interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
+interface ApiEnvelope<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
 ```
 
 ### Layout y estilos
+
 - Variables CSS: `var(--bg-page)`, `var(--bg-card)`, `var(--bg-input)`, `var(--bg-hover)`, `var(--text-1..3)`, `var(--border)`, `var(--brand-*)`, `var(--success-*)`, `var(--warning-*)`, `var(--info-*)`.
 - Tailwind solo para layout (grid, flex, spacing, tipografía).
 - Iconos `lucide-react` 13–20px.
 
 ### Componentes UI reutilizables
+
 - `Button` (`variant`: brand, brand-outline, outline, ghost; `loading`).
-- `Input`, `SelectField`, `FormErrorSummary`, `InfoField` (módulo Inventario).
+- `Input`, `SelectField`, `FormErrorSummary`, `InfoField`.
 - `Modal` (Radix `Dialog.Portal`, `z-[var(--z-modal)]` = 500) para formularios.
 - `Drawer` (portal, `z-[var(--z-drawer)]` = 400) para detalle con `Tabs`.
 - `DataTable` con paginación server-side, toolbar y `emptyState`.
-- `AlertSystem`: `const { alert, confirm, toast } = useAlert();`
+- `Tabs` soporta modo controlado con `value` + `onChange`.
+- `AlertSystem`: `const { alert, confirm, toast } = useAlert();`.
 - **Gotcha:** `ModuleWrap` usa `animate-page-enter`, creando stacking context permanente; los overlays `fixed` inline quedan atrapados. Usar `Modal`/`Drawer` (portal) para overlays.
 
+### Patrón de KPIs inline en Vehículos
+
+- Los KPIs **no abren modales ni data tables**.
+- Al hacer clic en un KPI:
+  1. Se activa la pestaña **Flota**.
+  2. Se aplica `kpiFiltro` (`unidades`, `operativas`, `mantenimiento`, `donados`, `bajas`, `valor`).
+  3. El grid inferior usa `vehiculosVista` y muestra las tarjetas correspondientes.
+  4. Se muestra un chip **“Viendo: …”** con botón `X` para quitar la vista.
+  5. La paginación se oculta mientras hay un KPI activo.
+- Los filtros normales y la paginación llaman a `aplicarFiltros`, que limpia `kpiFiltro`.
+- `KpiFiltro` y sus etiquetas viven en `VehiculosPage.tsx` (`KPI_LABELS`).
+- `VehiculoCard` es el componente único de tarjeta para la flota.
+
+### Impresión
+
+- La impresión de Vehículos es **solo de la hoja de mantenimiento individual**.
+- Componentes: `MantenimientoPrintSheet.tsx` y `MantenimientoPrintModal.tsx`.
+- La hoja se renderiza dentro de `.print-area` mediante portal a `document.body`.
+- CSS en `src/styles/globals.css`:
+  ```css
+  .print-area { display: none; }
+  @media print {
+    @page { size: A4 portrait; margin: 10mm; }
+    body > *:not(.print-area) { display: none !important; }
+    .print-area { display: block !important; width: 100% !important; }
+    .no-print { display: none !important; }
+  }
+  ```
+- Se usa `window.print()` únicamente como disparador; el contenido queda aislado por `.print-area`.
+
+---
+
 ## Convenciones Estrictas
+
 - **Nombres:** camelCase (vars/functions), PascalCase (componentes/types).
 - **Estilos:** variables CSS + Tailwind solo layout.
-- **API:** `apiClient` — **NO** fetch directo.
+- **API:** `apiClient` — **NO** fetch directo (excepto `authService.js`, pendiente de migrar).
 - **Auth:** `useAuth()` → `{ user, role, loggedIn, login, logout, setRole }`; `user.personalId` (UUID o null).
 - **Tipos:** **NO** duplicar; usar `src/types/*`.
 - **URLs:** **NO** hardcodear; usar `VITE_API_BASE_URL`.
@@ -233,107 +408,304 @@ interface ApiEnvelope<T> { success: boolean; message: string; data: T; }
 - **Código funcional:** **NO** eliminar; refactorizar con cuidado.
 - **Comentarios:** no agregar comentarios nuevos en el código.
 - **Datos en kardex:** `inventario_movimientos.cantidad` es `int` y admite negativos (delta de AJUSTE).
+- **KPIs de Vehículos:** no reintroducir modales/tablas para el detalle; usar tarjetas inline.
+
+---
 
 ## Autenticación y Autorización
+
 - JWT Bearer en `Authorization`.
 - Roles: `admin` | `voluntario` | `secretario`.
 - Navegación por rol: `ROLE_NAV[role]`.
 - Permisos backend: `HttpRequirePermissionAttribute`.
 - Storage: `localStorage.authToken` + `localStorage.user` + `localStorage.userRole`.
-- Login actual: token de desarrollo — **PENDIENTE** auth real.
+- Login actual: **conectado a `/api/auth/login`**; `authService.js` sigue usando URL hardcodeada.
+- Recuperación de contraseña/OTP: flujo visual, **pendiente** de backend real.
 
-## Estado Actual — Módulo Inventario (actualizado 2026-10-19)
+---
 
-### Backend
+## Estado Detallado por Módulo
+
+### Inventario (actualizado 2026-10-19)
+
+**Backend**
+
 | Archivo | Estado |
 |---------|--------|
 | `Models/Entities/InventarioItem.cs` | ✅ |
 | `Models/Entities/InventarioMovimiento.cs` | ✅ (`Cantidad` int firmado) |
 | `Models/Entities/EquipoUnidad.cs` | ✅ |
 | `Models/Entities/ServicioInsumoUtilizado.cs` | ✅ |
-| `DTOs/Inventario/InventarioDtos.cs` | ✅ (`InventarioItemFiltrosDto.StockStatus` agregado) |
+| `DTOs/Inventario/InventarioDtos.cs` | ✅ (`StockStatus`, baja) |
 | `Services/IInventarioService.cs` | ✅ |
-| `Services/InventarioService.cs` | ✅ (Ajuste delta, ENTRADA inicial, filtro stock) |
-| `Controllers/InventarioController.cs` | ✅ (`stockStatus` en `GetItems`) |
-| `Services/DonacionService.cs` | ✅ (`MapearCategoria` corregido) |
-| `Controllers/DonacionesController.cs` | ✅ |
-| `Program.cs` | ✅ Servicios registrados |
+| `Services/InventarioService.cs` | ✅ (Ajuste delta, ENTRADA inicial, filtro stock, baja) |
+| `Controllers/InventarioController.cs` | ✅ (`stockStatus`, baja, POST servicio-insumos) |
 
-### Frontend
+**Frontend**
+
 | Archivo | Estado |
 |---------|--------|
-| `src/types/inventario.ts` | ✅ (`stockStatus` en filtros) |
+| `src/types/inventario.ts` | ✅ |
 | `src/services/inventarioService.ts` | ✅ |
 | `src/hooks/useInventario.ts` | ✅ |
-| `src/app/pages/Inventario/InventarioPage.tsx` | ✅ 4 pestañas; Kardex/Ubicaciones reales; KPIs filtrables; sin print |
-| `src/app/pages/Inventario/MovimientosPage.tsx` | ✅ Solo lectura + Ajuste; `tipoMeta` exportado |
-| `src/app/pages/Inventario/EquipoUnidadesPage.tsx` | ✅ Tarjetas por unidad + Drawer + validación de stock |
-| `src/app/pages/Inventario/ServicioInsumosPage.tsx` | ✅ Tarjetas + Drawer; sin print |
-| `src/app/pages/Donaciones/DonacionesPage.tsx` | ✅ Conectado al backend; sin print |
+| `InventarioPage.tsx` | ✅ 4 pestañas; Kardex/Ubicaciones reales; KPIs filtrables; sin print |
+| `MovimientosPage.tsx` | ✅ Solo lectura + Ajuste |
+| `EquipoUnidadesPage.tsx` | ✅ Tarjetas por unidad + Drawer + validación de stock |
+| `ServicioInsumosPage.tsx` | ✅ Tarjetas + Drawer; sin print |
 
-### Mejoras aplicadas (2026-10-19)
-1. **Equipo en Unidades:** rediseñado a tarjetas por unidad con nombre, filtros (búsqueda por item y unidad), Drawer con detalle y edición de cantidades; aviso cuando la suma asignada excede el stock.
-2. **Items:** la sección Proveedor se oculta cuando `origen === "Donado"`; se eliminó el `noRecibo` aleatorio y se exigen DPI/NIT y teléfono en la donación rápida.
-3. **Movimientos:** página de solo lectura (kardex) + botón **Ajuste de Inventario**; el backend acepta únicamente AJUSTE con delta firmado, motivo y `responsableId` obligatorios; rechaza dejar stock negativo o delta cero.
-4. **Kardex:** al crear un item con stock inicial se registra automáticamente un movimiento ENTRADA con motivo "Stock inicial".
-5. **Detalle de item:** pestañas Kardex (últimos 50 movimientos) y Ubicaciones (unidades y servicios) con datos reales; se eliminó la pestaña Acciones duplicada.
-6. **KPIs:** "Agotados" y "Stock bajo" navegan a Items con filtro server-side (`stockStatus`) y chip para quitarlo.
-7. **Donaciones:** `MapearCategoria("Equipo/Herramientas")` ahora devuelve `"Equipo de Rescate"`.
-8. **Limpieza:** se eliminaron los `window.print()` del módulo (Items, Movimientos, Equipo, ServicioInsumos) y de Donaciones.
+**Mejoras aplicadas**
+
+1. Equipo en Unidades rediseñado a tarjetas por unidad con filtros y edición de cantidades.
+2. Items: se oculta Proveedor cuando `origen === "Donado"`; se eliminó `noRecibo` aleatorio y se exigen DPI/NIT y teléfono en donación rápida.
+3. Movimientos: solo lectura + botón **Ajuste de Inventario**; backend acepta únicamente AJUSTE con delta firmado, motivo y `responsableId`.
+4. Kardex: stock inicial genera ENTRADA con motivo "Stock inicial".
+5. Detalle de item: pestañas Kardex y Ubicaciones con datos reales; se eliminó pestaña Acciones duplicada.
+6. KPIs "Agotados" y "Stock bajo" navegan a Items con filtro server-side y chip para quitarlo.
+7. Donaciones: `MapearCategoria("Equipo/Herramientas")` devuelve `"Equipo de Rescate"`.
+8. Se eliminaron `window.print()` de Inventario y Donaciones.
 9. Se eliminó el caso muerto `TRANSFERENCIA` de `tipoMeta`.
 
-### Catálogos en Configuración
-- `categorias-inventario` → `cat_categorias_inventario`
-- `proveedores` → `cat_proveedores`
-- `tipos-movimiento` → `cat_tipos_movimiento`
-- `unidades` → `cat_unidades`
+### Donaciones (actualizado 2026-10-20)
 
-### Datos Semilla
-- `docs/modulos/inventario/datos_inventario.sql` → categorías, proveedores, tipos de movimiento, unidades e items.
+- `DonacionesPage.tsx` tiene dos vistas: **Registros** y **Libro mensual**.
+- Registros: Material y Monetaria, conectados a `/api/donaciones`.
+- Libro mensual: `LibroDonacionesTab.tsx` + `useDonacionLibro` + `/api/donaciones/libro`.
+- El libro maneja movimientos con tipo de documento, saldos y exportación/consulta por mes.
+- Se mantiene la integración Inventario ↔ Donaciones: al registrar material donado se crea/actualiza el item de inventario.
 
-## Documentación del Módulo
+### Vehículos (actualizado 2026-10-20)
+
+**Backend**
+
+| Archivo | Estado |
+|---------|--------|
+| `DTOs/Vehiculos/VehiculoDtos.cs` | ✅ Incluye `FechaBaja`, mantenimientos, cupones y `FirmaBase64` |
+| `Services/IVehiculoService.cs` / `VehiculoService.cs` | ✅ Flota, mantenimientos, estado operativo, vínculo con inventario/donaciones |
+| `Controllers/VehiculosController.cs` | ✅ CRUD + estado + estado operativo + mantenimientos |
+| `Services/ICuponService.cs` / `CuponService.cs` | ✅ Periodos y cupones |
+| `Controllers/CuponesController.cs` | ✅ Periodos y cupones |
+
+**Frontend**
+
+| Archivo | Estado |
+|---------|--------|
+| `src/types/vehiculos.ts` | ✅ Incluye `fechaBaja`, filtros, cupones |
+| `src/services/vehiculosService.ts` | ✅ Flota, mantenimientos, cupones y catálogos |
+| `src/hooks/useVehiculos.ts` | ✅ Lista, stats auxiliares, mantenimientos y talleres |
+| `src/hooks/useCupones.ts` | ✅ Periodos y cupones |
+| `VehiculosPage.tsx` | ✅ Flota en tarjetas; KPIs inline; una sola instancia del modal de mantenimiento |
+| `CuponesTab.tsx` | ✅ Periodos mensuales, cupones, firma digital PNG y exportación CSV |
+| `components/VehiculoCard.tsx` | ✅ Tarjeta reutilizable de flota |
+| `components/VehiculoFormModal.tsx` | ✅ Alta/edición de vehículo y datos de donación |
+| `components/VehiculoDrawer.tsx` | ✅ Drawer con pestañas Info / Mantenimientos / Cupones + cambio rápido de estado |
+| `components/MantenimientoTab.tsx` | ✅ Historial en DataTable con Imprimir / Eliminar |
+| `components/MantenimientoModal.tsx` | ✅ Ingreso/avance/finalización + taller autocompletado |
+| `components/MantenimientoPrintSheet.tsx` | ✅ Hoja imprimible |
+| `components/MantenimientoPrintModal.tsx` | ✅ Vista previa + impresión |
+| `components/vehiculoHelpers.ts` | ✅ Helpers de estados/formatos y lista de estados operativos |
+
+**Flota y KPIs**
+
+- Vista principal en **tarjetas** (`VehiculoCard`), no data table.
+- Filtros: búsqueda, tipo, estado operativo, origen y `Activos / Inactivos / Bajas`.
+- `fechaBaja` visible en tarjeta y drawer cuando el vehículo está inactivo.
+- KPIs:
+  - **Unidades:** total de vehículos.
+  - **Operativas:** activos con estado operativo `Operativa` o `En Servicio`.
+  - **En mantenimiento:** activos en `Mantenimiento`.
+  - **Donados:** activos con origen `Donado`.
+  - **Bajas:** inactivos.
+  - **Valor de la flota:** suma de `valorUnitario` de activos.
+- Al hacer clic en un KPI se actualiza el grid de tarjetas inferior (sin modal) y se activa la pestaña Flota.
+- `KpiDetalleModal` fue eliminado; no debe reintroducirse.
+- Los stats se cargan con `GET /api/vehiculos?pagina=1&tamanio=500`; el backend acepta hasta 500. **Limitación:** si la flota supera 500 unidades, los KPIs no serán exactos.
+
+**Mantenimientos**
+
+- Taller con `Input` + `datalist`; si no existe, se crea en `cat_talleres` mediante `POST /api/configuracion/catalogos/talleres`.
+- Manejo de conflicto `409` (`ApiError`) al crear un taller duplicado.
+- Se eliminó el select manual de estado.
+- Flujo de dos fases:
+  1. **Guardar ingreso** → crea mantenimiento `En proceso` y el vehículo pasa a `Mantenimiento`.
+  2. **Guardar avance** → actualiza datos sin finalizar.
+  3. **Finalizar mantenimiento** → exige fecha de retorno (si está vacía usa la fecha actual), guarda `Finalizado` y devuelve el vehículo a `Operativa`.
+- Vehículo finalizado: botón **Guardar cambios**.
+- El `VehiculoDrawer` tiene 3 pestañas: **Info**, **Mantenimientos** y **Cupones**; no usa `value`/`onChange`, por lo que vuelve a Info al abrirse.
+- La pestaña **Mantenimientos** del drawer conserva Registrar, Completar/Finalizar e Imprimir.
+- El **Historial** es un `DataTable` por vehículo con solo **Imprimir** y **Eliminar**; ya no crea, edita ni finaliza hojas.
+- Solo existe una instancia de `MantenimientoModal`, abierta desde el drawer; se eliminó la duplicada del Historial.
+- Impresión individual desde Historial, drawer y modal.
+
+**Estado operativo**
+
+- El bloque **Estado operativo** está en la pestaña **Info** del drawer.
+- Opciones: `Operativa`, `En Servicio`, `Mantenimiento`, `Fuera de Servicio`.
+- Si hay un mantenimiento `En proceso`, solo se permite mantener `Mantenimiento`; las demás opciones se deshabilitan.
+- Endpoint: `PATCH /api/vehiculos/{id}/estado-operativo` con `{ estadoOperativo }`.
+- El backend valida el estado y devuelve `400 Bad Request` con el mensaje:
+  `Hay un mantenimiento en proceso; finalízalo antes de cambiar el estado operativo.`
+- El frontend confirma con `alert.confirm`, actualiza el detalle, recarga la lista y los stats, y muestra `toast`.
+
+**Cupones**
+
+- Periodos mensuales con cupón inicial, total recibido, valor por defecto, haber y saldos.
+- Registro de cupones por vehículo, gasolinera, responsable, kilometraje, galonaje y firma.
+- Firma digital en `firma_base64` (PNG Base64); `firmado` se deriva de `firma_base64 IS NOT NULL`.
+- `SignatureModal.tsx` es genérico: canvas nativo con Pointer Events en móvil/escritorio y carga de PNG/JPG/PDF (primera página) en escritorio. Usa `pdfjs-dist` solo para rasterizar PDF.
+- La columna Firma muestra miniatura clicable si existe firma o botón **Firmar** si está pendiente; al guardar se actualiza el cupón y se muestra `toast` "Firma registrada".
+- Exportación CSV.
+- No se imprime; solo exportación.
+
+**Cambios técnicos relevantes**
+
+- `VehiculoDto.FechaBaja` agregado y `VehiculoSelect` incluye `i.fecha_baja`.
+- Límite de paginación de vehículos cambiado de `>200` a `>500`.
+- `useVehiculos.recargarTalleres()` para refrescar catálogo tras crear un taller.
+- `Tabs` extendido con `value` controlado para que el clic de KPI active Flota.
+- `VehiculoDrawer` reorganizado en 3 pestañas con `Tabs` no controlado.
+- `MantenimientoTab.tsx` extraído como `DataTable`; Historial sin crear/editar/finalizar.
+- `VehiculosPage` conserva una sola instancia de `MantenimientoModal`.
+- Cupones: `CuponCreateDto`/`CuponUpdateDto`/`VehiculoCuponDto` incluyen `FirmaBase64`; `CuponService` normaliza el PNG, persiste `firma_base64` y deriva `firmado`.
+- Cupones: columna Firma reemplaza el toggle booleano; el modal de edición ya no altera la firma directamente.
+- `SignatureModal.tsx` agregado en `src/app/components/ui` y `pdfjs-dist` como dependencia de conversión PDF → PNG.
+- Endpoint `PATCH /api/vehiculos/{id}/estado-operativo` + `cambiarEstadoOperativo()` en `vehiculosService.ts`.
+- `npm run build` correcto al cierre del 2026-10-20.
+- `dotnet build` correcto al cierre del 2026-10-20; backend dejado detenido.
+
+### Emergencias (actualizado 2026-10-20)
+
+**Backend**
+
+| Archivo | Estado |
+|---------|--------|
+| `DTOs/EmergenciaCreateDto.cs` / `EmergenciaUpdateDto.cs` | ✅ Incluyen `VehiculoId` |
+| `DTOs/EmergenciaUpdateDto.cs` | ✅ `VehiculoId` en respuesta y listado; `CambiarEstadoDto` acepta 3 estados |
+| `Services/EmergenciaService.cs` | ✅ Valida vehículo, asigna/libera unidad y controla transiciones |
+| `Controllers/EmergenciasController.cs` | ✅ `PATCH /estado` acepta `En proceso`, `Terminado`, `Inactivo` |
+| `Models/Entities/EmergenciaServicio.cs` | ✅ Propiedad `VehiculoId` |
+
+**Frontend**
+
+| Archivo | Estado |
+|---------|--------|
+| `src/types/emergencia.ts` | ✅ `EstadoEmergencia` y `vehiculoId` |
+| `src/services/emergenciaService.ts` | ✅ `getVehiculosDisponibles()` |
+| `src/hooks/useEmergencias.ts` | ✅ Catálogo `vehiculosDisponibles` |
+| `EmergenciaFormPage.tsx` | ✅ Select "Unidad (es) destacada (s)" con anexo en edición |
+| `EmergenciasPage.tsx` | ✅ Badge de 3 estados y acciones Terminar / Desactivar |
+
+**Ciclo de estados**
+
+| Estado | Retiene unidad | Visible | Acción |
+|--------|:-:|:-:|--------|
+| `En proceso` | ✅ Sí | ✅ | **Marcar como Terminado** |
+| `Terminado` | ❌ No | ✅ | **Desactivar** |
+| `Inactivo` | ❌ No | ❌ | Sin acciones |
+
+- Crear emergencia exige un vehículo `Activo` y `Operativa`, sin otra emergencia `En proceso`.
+- Al crear, el vehículo pasa a `En Servicio`; al terminar, vuelve a `Operativa` solo si sigue en `En Servicio`.
+- `En proceso → Inactivo` se rechaza con `"Primero marque el servicio como Terminado antes de desactivarlo."`.
+- `Terminado → Inactivo` no toca el vehículo.
+- Editar una emergencia permite conservar la unidad actual aunque ya no esté disponible; si cambia de unidad estando `En proceso`, libera la anterior y asigna la nueva.
+- El listado oculta `Inactivo` cuando no se envía filtro de estado.
+- El nombre denormalizado `unidad_asignada_nombre` usa `no_unidad`, luego `codigo`, luego `marca + modelo`.
+- `cat_unidades` queda solo para Inventario; Emergencias usa la flota real.
+
+**Scripts de datos**
+
+- `docs/modulos/emergencias/migracion_vehiculos_emergencias.sql` agrega `vehiculo_id`, backfill por placa, migra `Activo → En proceso` y actualiza el `CHECK` de estados.
+- `docs/modulos/emergencias/seed_vehiculos_reales.sql` desactiva datos de prueba y siembra/activa las unidades `96`, `240`, `1419` y `Acuática`.
+- Ambos scripts son idempotentes y quedan listos para ejecutarse manualmente en orden; no se ejecutaron durante esta tarea.
+
+### Finanzas y Reportes
+
+- `FinanzasPage.tsx` y `ReportesPage.tsx` siguen siendo UI con datos mock.
+- No hay servicios, hooks ni controllers backend dedicados.
+- Pendiente definir modelo de datos, endpoints y permisos antes de conectarlos.
+
+---
+
+## Documentación del Proyecto
+
 | Archivo | Propósito |
 |---------|-----------|
-| `docs/modulos/inventario/INVENTARIO.md` | Análisis completo del módulo |
-| `docs/modulos/inventario/PLAN_INVENTARIO_MEJORAS.md` | Plan de mejoras Fases 0–3 (implementado) |
+| `docs/modulos/inventario/INVENTARIO.md` | Análisis completo de Inventario |
+| `docs/modulos/inventario/PLAN_INVENTARIO_MEJORAS.md` | Plan de mejoras Fases 0–3 |
 | `docs/modulos/inventario/PLAN_INVENTARIO_DONACIONES.md` | Integración Inventario ↔ Donaciones |
 | `docs/modulos/inventario/PLAN_INSUMOS_EMERGENCIAS.md` | Insumos en Emergencias → Inventario |
 | `docs/modulos/inventario/datos_inventario.sql` | Datos semilla |
 | `docs/modulos/inventario/migracion_donaciones.sql` | Migración integración donaciones |
+| `docs/modulos/vehiculos/migracion_vehiculos.sql` | Migración del módulo Vehículos |
+| `docs/modulos/vehiculos/PLAN_MEJORAS_VEHICULOS_DRAWER.md` | Plan Drawer + Historial + Estado operativo (implementado) |
+| `docs/modulos/emergencias/migracion_vehiculos_emergencias.sql` | Vínculo Emergencias ↔ Vehículos y estados |
+| `docs/modulos/emergencias/seed_vehiculos_reales.sql` | Unidades reales 96, 240, 1419 y Acuática |
+| `docs/modulos/emergencias/PLAN_EMERGENCIAS_VEHICULOS.md` | Plan de vehículos destacados y ciclo de vida (implementado) |
+| `docs/modulos/vehiculos/PLAN_FIRMA_CUPONES.md` | Plan de firma digital PNG en Cupones (implementado) |
+| `docs/modulos/vehiculos/migracion_firma_cupones.sql` | Columna `firma_base64` en `vehiculo_cupones` |
+
+---
 
 ## Tareas Pendientes (Priorizadas)
+
 - [x] Conectar módulo Inventario a backend.
 - [x] Conectar módulo Donaciones a backend.
 - [x] Integración Inventario ↔ Donaciones (Material).
-- [x] Insumos en Servicios → Inventario (solo lectura).
+- [x] Insumos en Servicios → Inventario (lectura + registro de uso).
 - [x] Plan de mejoras de flujos y UX del Inventario.
-- [ ] Conectar módulos Vehículos, Finanzas y Reportes a backend.
-- [ ] Implementar autenticación real (reemplazar token de desarrollo).
-- [ ] Mover URLs hardcodeadas a `VITE_API_BASE_URL`.
-- [ ] Dividir componentes gigantes (`InventarioPage`, `ReportesPage`).
+- [x] Conectar módulo Vehículos a backend (flota, mantenimientos, cupones).
+- [x] KPIs de Vehículos con actualización inline de tarjetas, sin modal.
+- [x] Impresión individual de hoja de mantenimiento.
+- [x] Drawer de Vehículos con pestañas, cambio rápido de estado operativo e Historial sin duplicidad.
+- [x] Emergencias con vehículos de la flota y ciclo En proceso → Terminado → Inactivo.
+- [x] Firma digital PNG Base64 en cupones con `SignatureModal` (canvas + carga PNG/JPG/PDF).
+- [ ] Conectar módulos Finanzas y Reportes a backend.
+- [ ] Crear endpoint de resumen de Vehículos para no depender de cargar 500 registros.
+- [ ] Implementar recuperación de contraseña/OTP real.
+- [ ] Mover URL hardcodeada de `authService.js` a `VITE_API_BASE_URL`.
+- [ ] Dividir componentes gigantes (`InventarioPage`, `VehiculosPage`, `ReportesPage`).
 - [ ] Agregar tests unitarios (Vitest + React Testing Library).
 - [ ] Manejo de errores consistente en todos los módulos.
 - [ ] Paginación real en backend para Emergencias.
 - [ ] Validar DTOs backend con DataAnnotations completos.
 - [ ] Migraciones EF Core para tablas faltantes.
-- [ ] Implementar impresión por contenido (reemplazar `window.print()` global en módulos restantes).
+- [ ] Revisar endpoints placeholder de `PermissionController`.
+
+---
 
 ## Archivos Clave para Referencia Rápida
+
 | Archivo | Propósito |
 |---------|-----------|
 | `src/services/api/client.ts` | Cliente API centralizado |
 | `src/context/AuthContext.tsx` | Auth state + `useAuth()` |
 | `src/types/inventario.ts` | Tipos del módulo Inventario |
 | `src/types/donacion.ts` | Tipos del módulo Donaciones |
+| `src/types/vehiculos.ts` | Tipos del módulo Vehículos |
 | `src/constants/roles.ts` | Roles, labels, badges, navegación |
 | `src/constants/navigation.ts` | Navegación (`ALL_NAV`) |
-| `Backend_Sub33/Backend_Sub33/Services/InventarioService.cs` | Lógica de inventario (kardex, ajustes, filtros) |
+| `Backend_Sub33/Backend_Sub33/Services/InventarioService.cs` | Lógica de inventario |
 | `Backend_Sub33/Backend_Sub33/Services/DonacionService.cs` | Lógica de donaciones |
-| `Backend_Sub33/Backend_Sub33/Controllers/InventarioController.cs` | Endpoints Inventario |
-| `Backend_Sub33/Backend_Sub33/Controllers/DonacionesController.cs` | Endpoints Donaciones |
-| `Backend_Sub33/Backend_Sub33/DTOs/Inventario/InventarioDtos.cs` | DTOs de Inventario |
-| `docs/modulos/inventario/PLAN_INVENTARIO_MEJORAS.md` | Plan de mejoras implementado |
+| `Backend_Sub33/Backend_Sub33/Services/DonacionLibroService.cs` | Libro mensual de donaciones |
+| `Backend_Sub33/Backend_Sub33/Services/VehiculoService.cs` | Lógica de vehículos y mantenimientos |
+| `Backend_Sub33/Backend_Sub33/Services/CuponService.cs` | Lógica de cupones |
+| `Backend_Sub33/Backend_Sub33/Controllers/VehiculosController.cs` | Endpoints de Vehículos |
+| `Backend_Sub33/Backend_Sub33/Controllers/CuponesController.cs` | Endpoints de Cupones |
+| `Backend_Sub33/Backend_Sub33/DTOs/Vehiculos/VehiculoDtos.cs` | DTOs de Vehículos |
+| `src/app/components/ui/SignatureModal.tsx` | Firma genérica canvas/pointer + carga de imagen/PDF |
+| `src/app/pages/Vehiculos/VehiculosPage.tsx` | Página principal de Vehículos |
+| `src/app/pages/Vehiculos/components/VehiculoCard.tsx` | Tarjeta de flota |
+| `src/app/pages/Vehiculos/components/MantenimientoTab.tsx` | Historial de mantenimiento en DataTable |
+| `src/app/pages/Vehiculos/components/MantenimientoPrintSheet.tsx` | Hoja imprimible |
+| `src/types/emergencia.ts` | Tipos y estados del módulo Emergencias |
+| `src/services/emergenciaService.ts` | Servicio API de Emergencias |
+| `src/hooks/useEmergencias.ts` | Lista, catálogos y transiciones |
+| `src/app/pages/Emergencias/EmergenciaFormPage.tsx` | Alta/edición con vehículo destacado |
+| `src/app/pages/Emergencias/EmergenciasPage.tsx` | Listado, detalle y acciones de estado |
+| `Backend_Sub33/Backend_Sub33/Services/EmergenciaService.cs` | Lógica de Emergencias y vehículos |
+| `Backend_Sub33/Backend_Sub33/Controllers/EmergenciasController.cs` | Endpoints de Emergencias |
 | `reset_db.sql` | Recrear BD completa |
+
+---
 
 ## Comandos de Verificación
 
@@ -352,4 +724,25 @@ dotnet build -p:OutDir=C:\Users\PC\AppData\Local\Temp\opencode\bsout\
 dotnet ef database update
 ```
 
-> Nota: los únicos warnings actuales del backend son 2 preexistentes en `PersonalService.cs` (CS8619, líneas 777/791).
+> **Importante:** después de compilar el backend, dejarlo detenido. No iniciar el servicio si no se está probando.
+>
+> **Nota:** los únicos warnings actuales del backend son 2 preexistentes en `PersonalService.cs` (CS8619, líneas 777/791).
+
+---
+
+## Gotchas y Decisiones Recientes
+
+- **Vehículos / KPIs:** no usar modales ni tablas para el detalle. El clic debe actualizar las tarjetas de abajo.
+- **Vehículos / Stats:** los KPIs se calculan en frontend con hasta 500 registros; si crece la flota, mover a endpoint de resumen.
+- **Vehículos / Impresión:** el contenido imprimible debe montarse en `.print-area` dentro de `document.body`; no imprimir toda la página.
+- **Vehículos / Talleres:** crear taller desde el modal requiere manejar `409` y recargar el catálogo.
+- **Vehículos / Mantenimiento:** el orden de botones importa; guardar antes de finalizar para evitar que Enter finalice accidentalmente.
+- **Vehículos / Estado operativo:** si hay mantenimiento `En proceso`, el backend bloquea cualquier estado distinto de `Mantenimiento`.
+- **Vehículos / Historial:** no duplicar acciones de mantenimiento; crear/editar/finalizar solo desde el drawer.
+- **Emergencias / Vehículos:** solo se asignan vehículos `Activo` + `Operativa`; una unidad no puede estar en dos emergencias `En proceso`.
+- **Emergencias / Estados:** `Inactivo` solo se permite desde `Terminado`; no se elimina físicamente el registro.
+- **Emergencias / Unidad:** no volver a usar `cat_unidades` en el formulario; la flota real es la fuente.
+- **Tabs:** usar `value` controlado cuando la página necesite cambiar de pestaña por código (por ejemplo, desde un KPI).
+- **Inventario:** `cantidad` en kardex es firmada; no asumir valores positivos.
+- **Auth:** el login ya usa backend, pero la URL sigue hardcodeada en `authService.js`.
+- **Consola PowerShell:** los acentos pueden verse corruptos; los archivos están en UTF-8.

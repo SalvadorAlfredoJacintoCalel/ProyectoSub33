@@ -6,6 +6,7 @@ namespace Backend_Sub33.DTOs
 {
     public class EmergenciaUpdateDto
     {
+        public int? VehiculoId { get; set; }
         [Required(ErrorMessage = "El número de incidente es obligatorio")]
         public string NumeroIncidente { get; set; } = string.Empty;
 
@@ -66,10 +67,11 @@ namespace Backend_Sub33.DTOs
         public string? EstadoEntrega { get; set; }
         public int? UnidadAsignadaId { get; set; }
         public string? UnidadAsignadaNombre { get; set; }
+        public int? VehiculoId { get; set; }
         public Guid? FormuladoPorId { get; set; }
         public string? CreadoPorNombre { get; set; }
         public string? Resumen { get; set; }
-        public string Estado { get; set; } = "Activo";
+        public string Estado { get; set; } = "En proceso";
         public DateTime FechaCreacion { get; set; }
         public DateTime? FechaModificacion { get; set; }
         public List<string> TiposAsistencia { get; set; } = new();
@@ -102,7 +104,8 @@ namespace Backend_Sub33.DTOs
         public string Ubicacion { get; set; } = string.Empty;
         public string? HospitalDestinoNombre { get; set; }
         public string? UnidadAsignadaNombre { get; set; }
-        public string Estado { get; set; } = "Activo";
+        public int? VehiculoId { get; set; }
+        public string Estado { get; set; } = "En proceso";
         public string TiposAsistenciaRaw { get; set; } = string.Empty;
         public List<string> TiposAsistencia { get; set; } = new();
     }
@@ -123,7 +126,7 @@ namespace Backend_Sub33.DTOs
     public class CambiarEstadoDto
     {
         [Required(ErrorMessage = "El estado es obligatorio")]
-        [RegularExpression("^(Activo|Inactivo)$", ErrorMessage = "El estado debe ser 'Activo' o 'Inactivo'")]
+        [RegularExpression("^(En proceso|Terminado|Inactivo)$", ErrorMessage = "El estado debe ser 'En proceso', 'Terminado' o 'Inactivo'")]
         public string Estado { get; set; } = string.Empty;
     }
 }

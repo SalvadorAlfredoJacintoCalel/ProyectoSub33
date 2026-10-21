@@ -72,6 +72,12 @@ public class VehiculosController : ApiControllerBase
     public async Task<IActionResult> ChangeEstado(int id, [FromBody] VehiculoEstadoDto dto)
         => Respond(await _vehiculoService.ChangeEstadoAsync(id, dto.Estado), "Estado actualizado correctamente.");
 
+    [HttpPatch("{id:int}/estado-operativo")]
+    public async Task<IActionResult> ChangeEstadoOperativo(int id, [FromBody] VehiculoEstadoOperativoDto dto)
+        => Respond(
+            await _vehiculoService.ChangeEstadoOperativoAsync(id, dto.EstadoOperativo),
+            "Estado operativo actualizado correctamente.");
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteVehiculo(int id)
         => Respond(await _vehiculoService.DeleteAsync(id), "Vehículo desactivado correctamente.");

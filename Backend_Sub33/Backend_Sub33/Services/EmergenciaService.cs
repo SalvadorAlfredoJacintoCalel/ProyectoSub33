@@ -45,6 +45,109 @@ namespace Backend_Sub33.Services
             public string Nombre { get; set; } = string.Empty;
         }
 
+        private sealed class VehiculoEmergenciaRow
+        {
+            public int VehiculoId { get; set; }
+            public string? Codigo { get; set; }
+            public string? NoUnidad { get; set; }
+            public string? Marca { get; set; }
+            public string? Modelo { get; set; }
+            public string Estado { get; set; } = string.Empty;
+            public string EstadoOperativo { get; set; } = string.Empty;
+        }
+
+        private sealed class EmergenciaEstadoRow
+        {
+            public int ServicioId { get; set; }
+            public string Estado { get; set; } = string.Empty;
+            public int? VehiculoId { get; set; }
+        }
+
+        private static string ResolverNombreVehiculo(VehiculoEmergenciaRow vehiculo)
+        {
+            if (!string.IsNullOrWhiteSpace(vehiculo.NoUnidad)) return vehiculo.NoUnidad.Trim();
+            if (!string.IsNullOrWhiteSpace(vehiculo.Codigo)) return vehiculo.Codigo.Trim();
+            return $"{vehiculo.Marca} {vehiculo.Modelo}".Trim();
+        }
+
+        private static async Task<VehiculoEmergenciaRow> ObtenerVehiculoAsync(
+            System.Data.Common.DbConnection connection,
+            int vehiculoId,
+            System.Data.Common.DbTransaction? transaction)
+        {
+            var vehiculo = await connection.QueryFirstOrDefaultAsync<VehiculoEmergenciaRow>(
+                @"SELECT vehiculo_id, codigo, no_unidad, marca, modelo, estado, estado_operativo
+                  FROM vehiculos
+                  WHERE vehiculo_id = @Id",
+                new { Id = vehiculoId }, transaction);
+
+            if (vehiculo == null)
+            {
+                throw new InvalidOperationException("Vehículo no encontrado.");
+            }
+
+            return vehiculo;
+        }
+
+        private static async Task<VehiculoEmergenciaRow> ValidarVehiculoDisponibleAsync(
+            System.Data.Common.DbConnection connection,
+            int? vehiculoId,
+            System.Data.Common.DbTransaction? transaction,
+            int? servicioExcluir = null)
+        {
+            if (!vehiculoId.HasValue)
+            {
+                throw new InvalidOperationException("El vehículo es obligatorio.");
+            }
+
+            var vehiculo = await ObtenerVehiculoAsync(connection, vehiculoId.Value, transaction);
+
+            if (vehiculo.Estado != "Activo" || vehiculo.EstadoOperativo != "Operativa")
+            {
+                throw new InvalidOperationException("El vehículo no está disponible para destacar (debe estar Activo y Operativa).");
+            }
+
+            var sqlDuplicado = servicioExcluir.HasValue
+                ? "SELECT COUNT(*) FROM emergencias_servicios WHERE vehiculo_id = @VehiculoId AND estado = 'En proceso' AND servicio_id <> @ServicioId"
+                : "SELECT COUNT(*) FROM emergencias_servicios WHERE vehiculo_id = @VehiculoId AND estado = 'En proceso'";
+
+            var duplicado = await connection.ExecuteScalarAsync<int>(
+                sqlDuplicado,
+                new { VehiculoId = vehiculoId.Value, ServicioId = servicioExcluir ?? 0 },
+                transaction);
+
+            if (duplicado > 0)
+            {
+                throw new InvalidOperationException("El vehículo ya está asignado a otra emergencia en proceso.");
+            }
+
+            return vehiculo;
+        }
+
+        private static async Task AsignarVehiculoEnServicioAsync(
+            System.Data.Common.DbConnection connection,
+            System.Data.Common.DbTransaction transaction,
+            int vehiculoId)
+        {
+            await connection.ExecuteAsync(
+                @"UPDATE vehiculos
+                  SET estado_operativo = 'En Servicio', updated_at = CURRENT_TIMESTAMP
+                  WHERE vehiculo_id = @Id AND estado = 'Activo'",
+                new { Id = vehiculoId }, transaction);
+        }
+
+        private static async Task LiberarVehiculoAsync(
+            System.Data.Common.DbConnection connection,
+            System.Data.Common.DbTransaction transaction,
+            int vehiculoId)
+        {
+            await connection.ExecuteAsync(
+                @"UPDATE vehiculos
+                  SET estado_operativo = 'Operativa', updated_at = CURRENT_TIMESTAMP
+                  WHERE vehiculo_id = @Id AND estado_operativo = 'En Servicio'",
+                new { Id = vehiculoId }, transaction);
+        }
+
         private static string NormalizarRol(string? s)
         {
             if (string.IsNullOrWhiteSpace(s)) return string.Empty;
@@ -158,6 +261,10 @@ namespace Backend_Sub33.Services
                 whereConditions.Add("es.estado = @Estado");
                 parameters.Add("Estado", filtros.Estado);
             }
+            else
+            {
+                whereConditions.Add("es.estado <> 'Inactivo'");
+            }
 
             var whereClause = string.Join(" AND ", whereConditions);
 
@@ -179,6 +286,7 @@ namespace Backend_Sub33.Services
                     es.ubicacion,
                     es.hospital_destino_nombre,
                     es.unidad_asignada_nombre,
+                    es.vehiculo_id,
                     es.estado,
                     COALESCE(
                         (SELECT string_agg(sta.tipo_asistencia, ', ') 
@@ -245,6 +353,7 @@ namespace Backend_Sub33.Services
                     e.estado_entrega,
                     e.unidad_asignada_id,
                     e.unidad_asignada_nombre,
+                    e.vehiculo_id,
                     e.formulado_por_id,
                     COALESCE(
                         NULLIF(TRIM(CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido)), ''),
@@ -283,6 +392,9 @@ namespace Backend_Sub33.Services
 
             await ValidarPersonalAsignadoAsync(connection, dto.PersonalAsignado);
 
+            var vehiculo = await ValidarVehiculoDisponibleAsync(connection, dto.VehiculoId, null);
+            var unidadNombre = ResolverNombreVehiculo(vehiculo);
+
             using var transaction = connection.BeginTransaction();
 
             int servicioId;
@@ -316,14 +428,6 @@ namespace Backend_Sub33.Services
                         new { Id = dto.HospitalDestinoId.Value }, transaction);
                 }
 
-                var unidadNombre = dto.UnidadAsignadaNombre;
-                if (string.IsNullOrWhiteSpace(unidadNombre) && dto.UnidadAsignadaId.HasValue)
-                {
-                    unidadNombre = await connection.QueryFirstOrDefaultAsync<string?>(
-                        "SELECT codigo_unidad FROM cat_unidades WHERE unidad_id = @Id",
-                        new { Id = dto.UnidadAsignadaId.Value }, transaction);
-                }
-
                 TimeSpan? horaSalida = TimeSpan.TryParse(dto.HoraSalida, out var hs) ? hs : null;
                 TimeSpan? horaEntrada = TimeSpan.TryParse(dto.HoraEntrada, out var he) ? he : null;
 
@@ -332,15 +436,15 @@ namespace Backend_Sub33.Services
                         numero_incidente, fecha, hora_salida, hora_entrada, solicitud_tipo,
                         paciente, edad, genero, solicitante, acompanante, domicilio, fallecio,
                         ubicacion, tipo_emergencia_id, hospital_destino_id, hospital_destino_nombre,
-                        estado_entrega, unidad_asignada_id, unidad_asignada_nombre, formulado_por_id,
+                        estado_entrega, unidad_asignada_id, unidad_asignada_nombre, vehiculo_id, formulado_por_id,
                         creado_por_nombre, resumen, estado
                     ) VALUES (
                         @NumeroIncidente, COALESCE(@Fecha, CURRENT_DATE), 
                         @HoraSalida, @HoraEntrada, @SolicitudTipo,
                         @Paciente, @Edad, @Genero, @Solicitante, @Acompanante, @Domicilio, @Fallecio,
                         @Ubicacion, @TipoEmergenciaId, @HospitalDestinoId, @HospitalDestinoNombre,
-                        @EstadoEntrega, @UnidadAsignadaId, @UnidadAsignadaNombre, @FormuladoPorId,
-                        @CreadoPorNombre, @Resumen, 'Activo'
+                        @EstadoEntrega, NULL, @UnidadAsignadaNombre, @VehiculoId, @FormuladoPorId,
+                        @CreadoPorNombre, @Resumen, 'En proceso'
                     ) RETURNING servicio_id;";
 
                 servicioId = await connection.QuerySingleAsync<int>(sqlEmergencia, new
@@ -362,12 +466,14 @@ namespace Backend_Sub33.Services
                     HospitalDestinoId = dto.HospitalDestinoId,
                     HospitalDestinoNombre = hospitalNombre,
                     EstadoEntrega = dto.EstadoEntrega,
-                    UnidadAsignadaId = dto.UnidadAsignadaId,
                     UnidadAsignadaNombre = unidadNombre,
+                    VehiculoId = vehiculo.VehiculoId,
                     FormuladoPorId = dto.FormuladoPorId,
                     CreadoPorNombre = string.IsNullOrWhiteSpace(dto.CreadoPorNombre) ? "Bombero" : dto.CreadoPorNombre,
                     Resumen = dto.Resumen
                 }, transaction);
+
+                await AsignarVehiculoEnServicioAsync(connection, transaction, vehiculo.VehiculoId);
 
                 if (dto.TiposAsistencia != null && dto.TiposAsistencia.Any())
                 {
@@ -460,12 +566,24 @@ namespace Backend_Sub33.Services
         {
             using var connection = AbrirConexion();
 
-            var existe = await connection.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM emergencias_servicios WHERE servicio_id = @Id", new { Id = id });
+            var actual = await connection.QueryFirstOrDefaultAsync<EmergenciaEstadoRow>(
+                "SELECT servicio_id, estado, vehiculo_id FROM emergencias_servicios WHERE servicio_id = @Id",
+                new { Id = id });
 
-            if (existe == 0) return null;
+            if (actual == null) return null;
 
             await ValidarPersonalAsignadoAsync(connection, dto.PersonalAsignado);
+
+            if (!dto.VehiculoId.HasValue)
+            {
+                throw new InvalidOperationException("El vehículo es obligatorio.");
+            }
+
+            var vehiculo = actual.VehiculoId == dto.VehiculoId
+                ? await ObtenerVehiculoAsync(connection, dto.VehiculoId.Value, null)
+                : await ValidarVehiculoDisponibleAsync(connection, dto.VehiculoId, null, id);
+
+            var unidadNombre = ResolverNombreVehiculo(vehiculo);
 
             using var transaction = connection.BeginTransaction();
 
@@ -477,14 +595,6 @@ namespace Backend_Sub33.Services
                     hospitalNombre = await connection.QueryFirstOrDefaultAsync<string?>(
                         "SELECT nombre FROM cat_hospitales WHERE hospital_id = @Id",
                         new { Id = dto.HospitalDestinoId.Value }, transaction);
-                }
-
-                var unidadNombre = dto.UnidadAsignadaNombre;
-                if (string.IsNullOrWhiteSpace(unidadNombre) && dto.UnidadAsignadaId.HasValue)
-                {
-                    unidadNombre = await connection.QueryFirstOrDefaultAsync<string?>(
-                        "SELECT codigo_unidad FROM cat_unidades WHERE unidad_id = @Id",
-                        new { Id = dto.UnidadAsignadaId.Value }, transaction);
                 }
 
                 TimeSpan? horaSalida = TimeSpan.TryParse(dto.HoraSalida, out var hs) ? hs : null;
@@ -509,8 +619,9 @@ namespace Backend_Sub33.Services
                         hospital_destino_id = @HospitalDestinoId,
                         hospital_destino_nombre = @HospitalDestinoNombre,
                         estado_entrega = @EstadoEntrega,
-                        unidad_asignada_id = @UnidadAsignadaId,
+                        unidad_asignada_id = NULL,
                         unidad_asignada_nombre = @UnidadAsignadaNombre,
+                        vehiculo_id = @VehiculoId,
                         formulado_por_id = @FormuladoPorId,
                         creado_por_nombre = @CreadoPorNombre,
                         resumen = @Resumen,
@@ -537,12 +648,25 @@ namespace Backend_Sub33.Services
                     HospitalDestinoId = dto.HospitalDestinoId,
                     HospitalDestinoNombre = hospitalNombre,
                     EstadoEntrega = dto.EstadoEntrega,
-                    UnidadAsignadaId = dto.UnidadAsignadaId,
                     UnidadAsignadaNombre = unidadNombre,
+                    VehiculoId = vehiculo.VehiculoId,
                     FormuladoPorId = dto.FormuladoPorId,
                     CreadoPorNombre = string.IsNullOrWhiteSpace(dto.CreadoPorNombre) ? "Bombero" : dto.CreadoPorNombre,
                     Resumen = dto.Resumen
                 }, transaction);
+
+                if (actual.VehiculoId != dto.VehiculoId)
+                {
+                    if (actual.VehiculoId.HasValue)
+                    {
+                        await LiberarVehiculoAsync(connection, transaction, actual.VehiculoId.Value);
+                    }
+
+                    if (actual.Estado == "En proceso")
+                    {
+                        await AsignarVehiculoEnServicioAsync(connection, transaction, vehiculo.VehiculoId);
+                    }
+                }
 
                 await connection.ExecuteAsync(
                     "DELETE FROM servicio_tipos_asistencia WHERE servicio_id = @Id", new { Id = id }, transaction);
@@ -717,13 +841,52 @@ namespace Backend_Sub33.Services
         {
             using var connection = AbrirConexion();
 
-            var sql = @"
-                UPDATE emergencias_servicios 
-                SET estado = @Estado, updated_at = CURRENT_TIMESTAMP 
-                WHERE servicio_id = @Id";
+            var actual = await connection.QueryFirstOrDefaultAsync<EmergenciaEstadoRow>(
+                "SELECT servicio_id, estado, vehiculo_id FROM emergencias_servicios WHERE servicio_id = @Id",
+                new { Id = id });
 
-            var filasAfectadas = await connection.ExecuteAsync(sql, new { Id = id, Estado = estado });
-            return filasAfectadas > 0;
+            if (actual == null) return false;
+
+            var destino = estado?.Trim() ?? string.Empty;
+
+            if (destino == "Inactivo" && actual.Estado == "En proceso")
+            {
+                throw new InvalidOperationException("Primero marque el servicio como Terminado antes de desactivarlo.");
+            }
+
+            var transicionValida =
+                (destino == "Terminado" && actual.Estado == "En proceso") ||
+                (destino == "Inactivo" && actual.Estado == "Terminado");
+
+            if (!transicionValida)
+            {
+                throw new InvalidOperationException("Transición de estado no permitida. Use: En proceso → Terminado → Inactivo.");
+            }
+
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                await connection.ExecuteAsync(
+                    @"UPDATE emergencias_servicios
+                      SET estado = @Estado, updated_at = CURRENT_TIMESTAMP
+                      WHERE servicio_id = @Id",
+                    new { Id = id, Estado = destino }, transaction);
+
+                if (destino == "Terminado" && actual.VehiculoId.HasValue)
+                {
+                    await LiberarVehiculoAsync(connection, transaction, actual.VehiculoId.Value);
+                }
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+
+            return true;
         }
 
         public async Task<string> ObtenerSiguienteIncidenteAsync()

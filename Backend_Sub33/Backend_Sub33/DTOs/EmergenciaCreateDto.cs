@@ -24,6 +24,7 @@ public class EmergenciaCreateDto
     public string? EstadoEntrega { get; set; }
     public int? UnidadAsignadaId { get; set; }
     public string? UnidadAsignadaNombre { get; set; }
+    public int? VehiculoId { get; set; }
     public Guid? FormuladoPorId { get; set; }
     public string? CreadoPorNombre { get; set; }
     public string? Resumen { get; set; }

@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import type { BadgeVariant } from "@/app/components/ui/badge";
 
+export const ESTADOS_OPERATIVOS = ["Operativa", "En Servicio", "Mantenimiento", "Fuera de Servicio"] as const;
+
 export const CARD_STYLE: CSSProperties = {
   background: "var(--bg-card)",
   borderRadius: "1rem",

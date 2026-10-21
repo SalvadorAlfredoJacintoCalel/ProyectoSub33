@@ -11,18 +11,19 @@ import type {
   TipoEmergencia,
   CatalogoItem,
   Hospital,
-  Unidad,
   RolServicio,
   TipoUnidad,
   EstadoEntrega,
+  EstadoEmergencia,
   PersonalDisponible,
 } from "@/types/emergencia";
+import type { Vehiculo } from "@/types/vehiculos";
 
 interface Catalogos {
   tiposEmergencia: TipoEmergencia[];
   tiposAsistencia: CatalogoItem[];
   hospitales: Hospital[];
-  unidades: Unidad[];
+  vehiculosDisponibles: Vehiculo[];
   rolesServicio: RolServicio[];
   tiposUnidad: TipoUnidad[];
   estadosEntrega: EstadoEntrega[];
@@ -33,7 +34,7 @@ const CATALOGOS_INICIALES: Catalogos = {
   tiposEmergencia: [],
   tiposAsistencia: [],
   hospitales: [],
-  unidades: [],
+  vehiculosDisponibles: [],
   rolesServicio: [],
   tiposUnidad: [],
   estadosEntrega: [],
@@ -51,7 +52,7 @@ interface UseEmergenciasReturn {
   obtenerEmergencia: (id: number) => Promise<Emergencia | null>;
   crearEmergencia: (data: EmergenciaCreate) => Promise<RegistrarEmergenciaResponse | null>;
   actualizarEmergencia: (id: number, data: EmergenciaUpdate) => Promise<Emergencia | null>;
-  cambiarEstado: (id: number, estado: "Activo" | "Inactivo") => Promise<boolean>;
+  cambiarEstado: (id: number, estado: EstadoEmergencia) => Promise<boolean>;
   getSiguienteIncidente: () => Promise<string | null>;
   limpiarError: () => void;
 }
@@ -87,12 +88,12 @@ export function useEmergencias(): UseEmergenciasReturn {
   const cargarCatalogos = useCallback(async () => {
     setError(null);
     try {
-      const [tiposEmergencia, tiposAsistencia, hospitales, unidades, rolesServicio, tiposUnidad, personal] =
+      const [tiposEmergencia, tiposAsistencia, hospitales, vehiculosDisponibles, rolesServicio, tiposUnidad, personal] =
         await Promise.all([
           emergenciaService.getTiposEmergencia(),
           emergenciaService.getTiposAsistencia(),
           emergenciaService.getHospitales(),
-          emergenciaService.getUnidades(),
+          emergenciaService.getVehiculosDisponibles(),
           emergenciaService.getRolesServicio(),
           emergenciaService.getTiposUnidad(),
           emergenciaService.getPersonalDisponible(),
@@ -104,7 +105,7 @@ export function useEmergencias(): UseEmergenciasReturn {
         tiposEmergencia,
         tiposAsistencia,
         hospitales,
-        unidades,
+        vehiculosDisponibles,
         rolesServicio,
         tiposUnidad,
         estadosEntrega,
@@ -162,7 +163,7 @@ export function useEmergencias(): UseEmergenciasReturn {
   );
 
   const cambiarEstado = useCallback(
-    async (id: number, estado: "Activo" | "Inactivo"): Promise<boolean> => {
+    async (id: number, estado: EstadoEmergencia): Promise<boolean> => {
       setLoading(true);
       setError(null);
       try {
