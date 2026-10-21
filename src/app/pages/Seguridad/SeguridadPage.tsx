@@ -137,7 +137,7 @@ function Modal({ children, width = 440, onClose }: { children: ReactNode; width?
     >
       <div
         className="animate-morph-enter"
-        style={{ background: "var(--bg-card)", borderRadius: 16, padding: 24, width, maxWidth: "100%", boxShadow: "var(--elevation-brand-3)" }}
+        style={{ background: "var(--bg-card)", borderRadius: 16, padding: 24, width, maxWidth: `min(calc(100vw - 2rem), ${width}px)`, boxShadow: "var(--elevation-brand-3)" }}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -570,7 +570,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   return (
     <div style={{ background: "var(--bg-page)", minHeight: "100vh", fontFamily: "Inter, sans-serif" }}>
       {/* Header */}
-      <div style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)", padding: "20px 28px", display: "flex", alignItems: "center", gap: 14 }}>
+      <div className="flex flex-wrap items-center gap-3 sm:gap-3.5 px-4 py-5 sm:px-7" style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)" }}>
         <div style={{ width: 42, height: 42, borderRadius: 12, background: "var(--brand-100)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Shield size={22} color={RED} />
         </div>
@@ -584,7 +584,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         </div>
       </div>
 
-      <div style={{ padding: "20px 28px 40px" }}>
+      <div className="px-4 pb-10 pt-4 sm:px-7 sm:pt-5">
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
           {tabs.map((t) => (
@@ -615,7 +615,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
               <p style={{ color: "var(--text-3)", fontSize: 13 }}>Cargando...</p>
             ) : (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {PARAMETROS_PREDEFINIDOS.map((p) => (
                     <div key={p.clave}>
                       <Field label={p.label} required={p.required}>

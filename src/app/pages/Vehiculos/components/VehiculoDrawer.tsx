@@ -1,4 +1,4 @@
-import { Ban, FileText, Info, Pencil, Plus, Printer, RotateCcw, Ticket, Wrench } from "lucide-react";
+﻿import { Ban, FileText, Info, Pencil, Plus, Printer, RotateCcw, Ticket, Wrench } from "lucide-react";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Drawer } from "@/app/components/ui/drawer";
@@ -46,7 +46,7 @@ export function VehiculoDrawer({
         <h3 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
           Identificación
         </h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InfoField label="Código interno" value={v.codigo || "—"} />
           <InfoField label="No. de unidad" value={v.noUnidad || "—"} />
           <InfoField label="Tipo" value={v.tipoNombre || "—"} />
@@ -66,7 +66,7 @@ export function VehiculoDrawer({
         <h3 className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
           Valor e inventario
         </h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <InfoField label="Valor unitario" value={<strong>{formatMoneda(v.valorUnitario)}</strong>} />
           <InfoField label="Ubicación" value={v.ubicacion || "—"} />
           <InfoField label="Origen" value={v.origen} />
@@ -298,7 +298,7 @@ export function VehiculoDrawer({
         </div>
       }
     >
-      <div className="p-5">
+      <div className="lg:p-5">
         <Tabs variant="glass" tabs={detailTabs} />
       </div>
     </Drawer>

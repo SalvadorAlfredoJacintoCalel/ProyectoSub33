@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Plus, Search, Users, UserCheck, UserX, ChevronDown, Printer, Pencil, History, FileText, Info, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
@@ -52,7 +52,7 @@ function MemberInfo({ member }: { member: Miembro }) {
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+    <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "14px 24px" }}>
       {fields.map(({ label, value }) => (
         <div key={label} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)" }}>
@@ -555,8 +555,8 @@ export function PersonalPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="min-h-screen p-4 sm:p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--text-1)" }}>
             Personal — 33ª Compañía
@@ -572,7 +572,7 @@ export function PersonalPage() {
       </div>
 
       {/* ── Stat Cards ───────────────────────────────────────────────────────── */}
-      <div className="mb-6 grid grid-cols-3 gap-4">
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div
           className="flex items-center gap-4 rounded-2xl p-4"
           style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)", transition: "transform 0.15s ease, box-shadow 0.15s ease", cursor: "pointer" }}

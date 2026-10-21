@@ -141,7 +141,7 @@ function DetailModal({ donacion, onClose, onEdit }: { donacion: Donacion; onClos
       icon: <Info size={15} />,
       content: (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "14px 24px" }}>
             <DField label="No. Recibo" value={donacion.noRecibo} />
             <DField label="Fecha" value={donacion.fecha ? donacion.fecha.split("T")[0] : "—"} />
             <DField label="Donante" value={donacion.donante} />
@@ -161,7 +161,7 @@ function DetailModal({ donacion, onClose, onEdit }: { donacion: Donacion; onClos
           {donacion.tipo === "Material" && donacion.materiales && donacion.materiales.length > 0 && (
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>Artículos donados</div>
-              <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+              <div className="overflow-x-auto" style={{ border: "1px solid var(--border)", borderRadius: 10 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: "Inter, sans-serif" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-input)" }}>
@@ -736,7 +736,7 @@ export function DonacionesPage() {
   };
 
   return (
-    <div style={{ background: "var(--bg-hover)", minHeight: "100vh", padding: "28px 24px", boxSizing: "border-box" }}>
+    <div className="p-4 sm:px-6 sm:py-7" style={{ background: "var(--bg-hover)", minHeight: "100vh", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ margin: 0, fontFamily: "Manrope, sans-serif", fontSize: 24, fontWeight: 800, color: "var(--neutral-900)" }}>Donaciones</h1>

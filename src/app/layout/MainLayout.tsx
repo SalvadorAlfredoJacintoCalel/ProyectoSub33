@@ -15,6 +15,7 @@ function LayoutShell({ children }: { children: ReactNode }) {
   const { isDrawerOpen, isModalOpen } = useLayout();
   const [activeNav, setActiveNav] = useState("bienvenida");
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -32,11 +33,11 @@ function LayoutShell({ children }: { children: ReactNode }) {
   }, [role, activeNav]);
 
   useEffect(() => {
-    document.body.style.overflow = isDrawerOpen || isModalOpen ? "hidden" : "";
+    document.body.style.overflow = isDrawerOpen || isModalOpen || mobileOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isDrawerOpen, isModalOpen]);
+  }, [isDrawerOpen, isModalOpen, mobileOpen]);
 
   if (!loggedIn) {
     return <LoginPage onLogin={login} />;
@@ -48,15 +49,23 @@ function LayoutShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
+      {mobileOpen && (
+        <button type="button" aria-label="Cerrar menú" onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-[250] md:hidden" style={{ background: "rgba(0,0,0,0.5)" }} />
+      )}
+
       <Sidebar
         activeNav={activeNav}
-        onNavChange={setActiveNav}
+        onNavChange={(id) => { setActiveNav(id); setMobileOpen(false); }}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
       />
 
-      <div className="flex-1 flex flex-col min-w-0" style={{ paddingLeft: collapsed ? 72 : 256 }}>
+      <div className={`flex-1 flex flex-col min-w-0 pl-0 ${collapsed ? "md:pl-[72px]" : "md:pl-64"}`}>
         <Topbar
+          onMenuClick={() => setMobileOpen(true)}
           currentPageLabel={currentPageLabel}
           userName={userName}
           initials={initials}

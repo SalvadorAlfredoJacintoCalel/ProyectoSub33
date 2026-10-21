@@ -194,7 +194,7 @@ export function DataTable<T>({
         className="overflow-auto rounded-2xl border bg-[var(--bg-card)] shadow-[var(--shadow)]"
         style={{ borderColor: "var(--border)", maxHeight }}
       >
-        <Table>
+        <Table className="max-md:min-w-[720px]">
           <TableHeader className="[&_tr]:border-b [&_tr]:border-[var(--divider)]">
             <TableRow className="hover:bg-transparent">
               {selectable && (

@@ -10,11 +10,11 @@ type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
 type ModalVariant = "default" | "glass" | "gradient";
 
 const SIZE_CLASSES: Record<ModalSize, string> = {
-  sm: "sm:max-w-sm",
-  md: "sm:max-w-md",
-  lg: "sm:max-w-lg",
-  xl: "sm:max-w-2xl",
-  full: "sm:max-w-[90vw]",
+  sm: "sm:max-w-sm max-w-[calc(100%-2rem)]",
+  md: "sm:max-w-md max-w-[calc(100%-2rem)]",
+  lg: "sm:max-w-lg max-w-[calc(100%-2rem)]",
+  xl: "sm:max-w-2xl max-w-[calc(100%-2rem)]",
+  full: "sm:max-w-[90vw] max-w-[calc(100%-2rem)]",
 };
 
 interface ModalProps {
@@ -96,10 +96,10 @@ export function Modal({
             </div>
           )}
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto px-6 py-5">{children}</div>
 
           {footer && (
-            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--divider)] bg-[var(--bg-card)] px-6 py-4">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3 border-t border-[var(--divider)] bg-[var(--bg-card)] px-6 py-4 [&>button]:flex-1 sm:[&>button]:flex-none">
               {footer}
             </div>
           )}

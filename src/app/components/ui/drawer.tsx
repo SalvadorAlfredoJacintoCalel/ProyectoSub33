@@ -10,11 +10,11 @@ import { cn } from "./utils";
 type DrawerSize = "sm" | "md" | "lg" | "xl" | "full";
 
 const SIZE_WIDTHS: Record<DrawerSize, string> = {
-  sm: "sm:w-80",
-  md: "sm:w-96",
-  lg: "sm:w-[30rem]",
-  xl: "sm:w-[40rem]",
-  full: "sm:w-full",
+  sm: "sm:w-80 max-w-[calc(100vw-1rem)]",
+  md: "sm:w-96 max-w-[calc(100vw-1rem)]",
+  lg: "sm:w-[30rem] max-w-[calc(100vw-1rem)]",
+  xl: "sm:w-[40rem] max-w-[calc(100vw-1rem)]",
+  full: "sm:w-full max-w-[calc(100vw-1rem)]",
 };
 
 const SPRING_GENTLE: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
@@ -152,7 +152,7 @@ export function Drawer({
             transition={{ ease: SPRING_GENTLE, duration: 0.45 }}
           >
             {title && (
-              <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-[var(--divider)] px-6 py-5 bg-[var(--bg-card)] animate-slide-up-stagger stagger-1">
+              <div className="sticky top-0 z-10 flex items-center gap-4 border-b border-[var(--divider)] px-4 sm:px-6 py-5 bg-[var(--bg-card)] animate-slide-up-stagger stagger-1">
                 {icon && (
                   <motion.div
                     className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--grad-primary-soft)] text-[var(--brand-700)] shadow-[var(--elevation-brand-1)]"
@@ -179,12 +179,12 @@ export function Drawer({
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="flex-1 overflow-y-auto overflow-x-auto px-4 sm:px-6 py-5">
               {children}
             </div>
 
             {footer && (
-              <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-[var(--divider)] px-6 py-4 bg-[var(--bg-card)] animate-slide-up stagger-6">
+              <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 sm:gap-3 border-t border-[var(--divider)] px-6 py-4 bg-[var(--bg-card)] animate-slide-up stagger-6 [&>button]:flex-1 sm:[&>button]:flex-none">
                 {footer}
               </div>
             )}

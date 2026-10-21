@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode } from "react";
+﻿import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   Calendar, CheckCircle2, Plus, Search,
@@ -632,7 +632,7 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onTe
         <div className="flex flex-col gap-6">
           <div>
             <SectionHeading>Identificación del Servicio</SectionHeading>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
               <FieldRow label="N.º de Incidente" value={emergencia.numeroIncidente} />
               <FieldRow label="Fecha" value={formatFechaTabla(emergencia.fecha)} />
               <FieldRow label="Hora de Salida" value={emergencia.horaSalida ?? ""} />
@@ -668,7 +668,7 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onTe
 
           <div>
             <SectionHeading>Registro</SectionHeading>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
               <FieldRow label="Formulado Por" value={emergencia.creadoPorNombre ?? ""} />
               <FieldRow label="Estado del Registro" value={emergencia.estado} />
               <FieldRow label="Creado" value={formatFechaHora(emergencia.fechaCreacion)} />
@@ -685,7 +685,7 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onTe
       content: (
         <div className="flex flex-col gap-5">
           <SectionHeading>Datos del Paciente &amp; Solicitante</SectionHeading>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
             <FieldRow label="Nombre del Solicitante" value={emergencia.solicitante ?? ""} />
             <FieldRow label="Nombre del Paciente" value={emergencia.paciente} />
             <FieldRow label="Edad" value={emergencia.edad != null ? String(emergencia.edad) : ""} />
@@ -707,7 +707,7 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onTe
       content: sv ? (
         <div className="flex flex-col gap-5">
           <SectionHeading>Signos Vitales</SectionHeading>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <StatCard label="Presión Arterial" value={sv.presionArterial || "—"} unit="mmHg" />
             <StatCard label="Frecuencia Cardíaca" value={sv.frecuenciaCardiaca != null ? String(sv.frecuenciaCardiaca) : "—"} unit="BPM" />
             <StatCard label="Frecuencia Respiratoria" value={sv.frecuenciaRespiratoria != null ? String(sv.frecuenciaRespiratoria) : "—"} unit="resp/min" />
@@ -735,7 +735,7 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onTe
         <div className="flex flex-col gap-6">
           <div>
             <SectionHeading>Personal y Unidades</SectionHeading>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
               <FieldRow label="Unidad(es) Destacada(s)" value={emergencia.unidadAsignadaNombre ?? ""} />
               <FieldRow label="Formulado por (Responsable)" value={emergencia.creadoPorNombre ?? ""} />
             </div>
@@ -762,7 +762,7 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onTe
             ) : insumos.length === 0 ? (
               <p className="text-[13px]" style={{ color: "var(--text-2)" }}>No se registraron insumos utilizados.</p>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+              <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
                 <table className="w-full text-[13px]">
                   <thead>
                     <tr style={{ background: "var(--bg-input)" }}>
@@ -1048,9 +1048,9 @@ export function EmergenciasPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-6 px-12 py-8 flex-1 overflow-y-auto">
+      <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 sm:py-8 lg:px-12 flex-1 overflow-y-auto">
         <div className="flex flex-col gap-1">
-          <h1 className="font-['Manrope:ExtraBold',sans-serif] font-extrabold text-[36px] tracking-tight leading-tight" style={{ color: "var(--text-1)" }}>
+          <h1 className="font-['Manrope:ExtraBold',sans-serif] font-extrabold text-[28px] sm:text-[36px] tracking-tight leading-tight" style={{ color: "var(--text-1)" }}>
             Emergencias
           </h1>
           <p className="font-['Inter:Regular',sans-serif] font-normal text-[15px] leading-snug" style={{ color: "var(--text-2)" }}>
@@ -1058,9 +1058,9 @@ export function EmergenciasPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-5">
-          <div className="flex rounded-lg overflow-hidden" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
-            <div className="relative flex flex-col justify-between px-8 py-6 w-[210px]">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+          <div className="flex rounded-lg overflow-hidden w-full sm:w-auto" style={{ background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
+            <div className="relative flex flex-col justify-between px-8 py-6 w-full sm:w-[210px]">
               <div aria-hidden className="absolute bottom-0 left-0 right-0 h-[3px] pointer-events-none" style={{ background: RED }} />
               <div className="flex items-center justify-between">
                 <Calendar className="w-[18px] h-[18px] text-[var(--neutral-400)]" strokeWidth={1.8} />
@@ -1072,10 +1072,10 @@ export function EmergenciasPage() {
               </div>
             </div>
           </div>
-          <div className="flex-1" />
+          <div className="hidden sm:block flex-1" />
           <button
             onClick={() => setShowRegister(true)}
-            className="flex items-center gap-2.5 px-6 py-3 rounded-lg text-white transition-opacity hover:opacity-90 active:opacity-80"
+            className="flex items-center justify-center gap-2.5 px-6 py-3 rounded-lg text-white transition-opacity hover:opacity-90 active:opacity-80 w-full sm:w-auto"
             style={{ background: RED, boxShadow: "0 4px 14px rgba(193,29,29,.3)" }}
           >
             <span className="flex items-center justify-center w-5 h-5 rounded-full border-[1.5px] border-white">
@@ -1169,8 +1169,8 @@ export function EmergenciasPage() {
           </div>
 
           {showAdvanced && (
-            <div className="flex gap-3 pt-1 border-t border-[var(--neutral-100)]" style={{ paddingTop: "12px" }}>
-              <div className="grid grid-cols-3 gap-3 flex-1">
+            <div className="flex flex-col lg:flex-row gap-3 pt-1 border-t border-[var(--neutral-100)]" style={{ paddingTop: "12px" }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
                 <div className="flex flex-col gap-1.5">
                   <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Unidad (es) destacada (s)</label>
                   <SelectWrapper>
@@ -1212,7 +1212,7 @@ export function EmergenciasPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 shrink-0" style={{ width: "240px" }}>
+              <div className="grid grid-cols-2 gap-3 shrink-0 w-full lg:w-[240px]">
                 <div className="flex flex-col gap-1.5">
                   <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Desde</label>
                   <input type="date" value={desde} onChange={(e) => { setDesde(e.target.value); setPreset(null); setPage(1); }}

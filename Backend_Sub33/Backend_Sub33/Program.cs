@@ -56,7 +56,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(x => x.CustomSchemaIds(type => type.FullName));
 
 // 3. Política CORS (AllowAll para desarrollo)
 builder.Services.AddCors(options =>

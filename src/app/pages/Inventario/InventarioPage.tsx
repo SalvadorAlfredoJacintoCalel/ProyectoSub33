@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from "react";
+﻿import { useState, useEffect, useMemo, Fragment } from "react";
 import type { ElementType, ReactNode } from "react";
 import {
   Pencil, Trash2, Plus, Search, Package, Boxes, ArrowLeftRight, Truck, ChevronLeft, ChevronRight,
@@ -712,7 +712,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
           label: "Info",
           icon: <Info size={15} />,
           content: (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "14px 24px" }}>
               <InfoField label="Código de Barras" value={selectedItem.codigoBarras || "—"} />
               <InfoField label="Nombre" value={selectedItem.nombre} />
               <InfoField label="Categoría" value={selectedItem.categoriaNombre} />
@@ -1385,7 +1385,7 @@ export function InventarioPage() {
   }
 
   return (
-    <div className="min-h-screen p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-screen p-4 sm:p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
       <div className="mb-6 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--grad-primary)" }}>
           <Package size={20} className="text-white" />

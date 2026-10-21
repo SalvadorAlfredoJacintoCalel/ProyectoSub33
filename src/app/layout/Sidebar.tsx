@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
 import svgPaths from "@/imports/DashboardPrincipalDesktop/svg-tul6vfzka5";
 import imgCrossBadge from "@/imports/DashboardPrincipalDesktop/39b842ab5db9edc3f36b77dcb333e6063de137a7.png";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ALL_NAV, type NavIconDef } from "@/constants/navigation";
 import { ROLE_LABELS, ROLE_BADGE, ROLE_NAV } from "@/constants/roles";
@@ -29,11 +29,14 @@ interface SidebarProps {
   onNavChange: (id: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
-export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse, mobileOpen, onMobileClose }: SidebarProps) {
   const { role } = useAuth();
   const [width, setWidth] = useState(collapsed ? 72 : 256);
+  const collapsedUi = collapsed && !mobileOpen;
   const navItems = ALL_NAV.filter((n) => ROLE_NAV[role].includes(n.id));
 
   useEffect(() => {
@@ -48,22 +51,22 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
 
   return (
     <motion.aside
-      className="fixed left-0 top-0 bottom-0 z-20 flex flex-col overflow-hidden"
+      className={`fixed left-0 top-0 bottom-0 z-[300] md:z-20 flex flex-col overflow-hidden transition-transform duration-300 md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       style={{ background: "var(--navy)", borderRight: "1px solid var(--divider)" }}
-      animate={{ width }}
+      animate={{ width: mobileOpen ? 256 : width }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div
-        className={`flex items-center shrink-0 transition-all duration-200 ${collapsed ? "justify-center px-0 pt-5 pb-3" : "px-5 pt-5 pb-3 gap-3"}`}
+        className={`flex items-center shrink-0 transition-all duration-200 ${collapsedUi ? "justify-center px-0 pt-5 pb-3" : "px-5 pt-5 pb-3 gap-3"}`}
       >
         <motion.div
           className="shrink-0"
-          animate={{ scale: collapsed ? 0.82 : 1 }}
-          style={{ width: collapsed ? 38 : 46, height: collapsed ? 38 : 46 }}
+          animate={{ scale: collapsedUi ? 0.82 : 1 }}
+          style={{ width: collapsedUi ? 38 : 46, height: collapsedUi ? 38 : 46 }}
         >
           <ImageWithFallback src={imgCrossBadge} alt="Insignia 33ª" className="w-full h-full object-contain" />
         </motion.div>
-        {!collapsed && (
+        {!collapsedUi && (
           <motion.div
             className="min-w-0"
             initial={false}
@@ -78,11 +81,15 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
             </p>
           </motion.div>
         )}
+        <button type="button" onClick={onMobileClose} aria-label="Cerrar menú"
+          className="ml-auto md:hidden p-1.5 rounded-lg" style={{ color: "rgba(255,255,255,0.7)" }}>
+          <X style={{ width: 18, height: 18 }} />
+        </button>
       </div>
 
       <div style={{ height: 1, background: "rgba(255,255,255,0.07)", margin: "0 12px" }} />
 
-      {!collapsed && (
+      {!collapsedUi && (
         <div className="px-4 pt-3 pb-2">
           <div
             className="flex items-center gap-2 px-3 py-2 rounded-lg"
@@ -101,10 +108,10 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
           const active = activeNav === id;
           const button = (
             <motion.button
-              onClick={() => onNavChange(id)}
-              whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
+              onClick={() => { onNavChange(id); onMobileClose(); }}
+              whileHover={{ scale: 1.02, x: collapsedUi ? 0 : 4 }}
               whileTap={{ scale: 0.98 }}
-              className={`w-full flex items-center rounded-lg transition-colors ${active ? "animate-nav-active-pulse" : ""} ${collapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5"}`}
+              className={`w-full flex items-center rounded-lg transition-colors ${active ? "animate-nav-active-pulse" : ""} ${collapsedUi ? "justify-center py-3" : "gap-3 px-3 py-2.5"}`}
               style={active ? { background: "var(--grad-primary)" } : undefined}
               onMouseEnter={(e) => {
                 if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
@@ -114,7 +121,7 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
               }}
             >
               <NavIcon icon={icon} active={active} />
-              {!collapsed && (
+              {!collapsedUi && (
                 <span
                   className="text-[13.5px] font-semibold leading-5 truncate"
                   style={{ fontFamily: "Inter, sans-serif", color: active ? "#fff" : "#E2E8F0" }}
@@ -125,7 +132,7 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
             </motion.button>
           );
 
-          if (collapsed) {
+          if (collapsedUi) {
             return (
               <Tooltip key={id}>
                 <TooltipTrigger asChild>{button}</TooltipTrigger>
@@ -138,15 +145,15 @@ export function Sidebar({ activeNav, onNavChange, collapsed, onToggleCollapse }:
       </nav>
 
       <div style={{ height: 1, background: "rgba(255,255,255,0.07)", margin: "0 12px" }} />
-      <div className={`px-3 py-4 ${collapsed ? "flex justify-center" : ""}`}>
+      <div className={`px-3 py-4 hidden md:flex ${collapsedUi ? "justify-center" : ""}`}>
         <button
           onClick={onToggleCollapse}
           className="flex items-center gap-2.5 px-3 py-2 rounded-lg w-full transition-all"
-          style={collapsed ? { justifyContent: "center" } : undefined}
+          style={collapsedUi ? { justifyContent: "center" } : undefined}
           onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)")}
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "")}
         >
-          {collapsed ? (
+          {collapsedUi ? (
             <ChevronRight style={{ width: 15, height: 15, color: "rgba(255,255,255,0.7)" }} />
           ) : (
             <>

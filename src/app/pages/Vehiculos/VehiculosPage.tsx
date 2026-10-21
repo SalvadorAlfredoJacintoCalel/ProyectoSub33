@@ -436,7 +436,7 @@ export function VehiculosPage() {
   ];
 
   return (
-    <div style={{ background: "var(--bg-hover)", minHeight: "100vh", padding: "28px 24px", boxSizing: "border-box" }}>
+    <div className="p-4 sm:px-6 sm:py-7" style={{ background: "var(--bg-hover)", minHeight: "100vh", boxSizing: "border-box" }}>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold" style={{ color: "var(--neutral-900)" }}>

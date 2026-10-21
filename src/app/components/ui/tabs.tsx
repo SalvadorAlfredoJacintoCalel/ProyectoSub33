@@ -72,7 +72,7 @@ export function Tabs({
         aria-label="Tabs"
         onKeyDown={handleKeyDown}
         className={cn(
-          "inline-flex h-10 w-fit items-center gap-1 rounded-xl p-1",
+          "inline-flex h-10 w-fit max-w-full items-center gap-1 overflow-x-auto rounded-xl p-1",
           variant === "glass"
             ? "bg-[var(--glass-bg-subtle)] backdrop-blur"
             : "bg-[var(--bg-hover)]",

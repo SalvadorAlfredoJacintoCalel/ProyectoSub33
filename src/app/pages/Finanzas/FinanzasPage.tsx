@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from "react";
+﻿import { useState, useMemo, type ReactNode } from "react";
 import {
   Pencil,
   Trash2,
@@ -301,10 +301,10 @@ export function FinanzasPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen p-6" style={{ backgroundColor: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-screen p-4 sm:p-6" style={{ backgroundColor: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-1)]">Finanzas</h1>
           <p className="text-sm text-[var(--text-3)] mt-0.5">Gestión de ingresos, gastos y donaciones</p>
@@ -517,7 +517,7 @@ export function FinanzasPage() {
                 label: "Transacción",
                 icon: <Info size={15} />,
                 content: (
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
                     {([
                       ["Fecha", viewRow.fecha],
                       ["Tipo", viewRow.tipo],
@@ -542,7 +542,7 @@ export function FinanzasPage() {
                 label: "Comprobante",
                 icon: <FileText size={15} />,
                 content: (
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
                     {([
                       ["Comprobante", viewRow.comprobante],
                       ["No. Documento", viewRow.noDocumento || "—"],

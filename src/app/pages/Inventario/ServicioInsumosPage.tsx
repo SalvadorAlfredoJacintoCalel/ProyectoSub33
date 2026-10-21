@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { Boxes, Link2, User, Calendar, Package, Search, Info, ChevronRight } from "lucide-react";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Skeleton } from "@/app/components/ui/skeleton";
@@ -108,7 +108,7 @@ export function ServicioInsumosPage() {
               ))}
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "14px 24px" }}>
               <InfoField
                 label="Paciente"
                 value={

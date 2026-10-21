@@ -108,7 +108,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
 
   return (
     <div
-      className="pointer-events-none fixed top-4 right-4 z-[var(--z-toast)] flex w-full max-w-sm flex-col gap-2"
+      className="pointer-events-none fixed top-4 right-4 z-[var(--z-toast)] flex w-full max-w-[calc(100vw-2rem)] sm:max-w-sm flex-col gap-2"
       role="region"
       aria-live="polite"
     >

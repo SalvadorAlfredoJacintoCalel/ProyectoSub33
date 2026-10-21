@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+﻿import { useState, type ReactNode } from "react";
 import {
   BarChart,
   Bar,
@@ -333,7 +333,7 @@ function EmergenciasCharts() {
   const totalIncidentes = incidentesTipoData.reduce((s, d) => s + d.cantidad, 0);
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label="Total Incidentes (2026)"
           value={totalIncidentes}
@@ -355,7 +355,7 @@ function EmergenciasCharts() {
           color="#1d4ed8"
         />
       </div>
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card>
           <SectionTitle
             icon={<BarChart2 size={16} />}
@@ -458,7 +458,7 @@ function VehiculosCharts() {
   const totalMant = mantenimientoData.reduce((s, d) => s + d.costo, 0);
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label="Total Galones Consumidos"
           value={`${totalGalones.toLocaleString()} gal`}
@@ -480,7 +480,7 @@ function VehiculosCharts() {
           color="#1d4ed8"
         />
       </div>
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card>
           <SectionTitle
             icon={<BarChart2 size={16} />}
@@ -567,7 +567,7 @@ function VehiculosCharts() {
 
 function InventarioCharts() {
   return (
-    <div className="grid grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <Card>
         <SectionTitle
           icon={<PieChartIcon size={16} />}
@@ -656,7 +656,7 @@ function DonacionesCharts() {
   const total = donacionesData.reduce((s, d) => s + d.monto, 0);
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <StatCard
           label="Total Donaciones 2026"
           value={`Q${total.toLocaleString()}`}
@@ -724,7 +724,7 @@ function DonacionesCharts() {
 
 function TodosCharts() {
   return (
-    <div className="grid grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* Emergencias — incidentes bar */}
       <Card>
         <SectionTitle
@@ -1236,7 +1236,7 @@ function AnalyticasTab() {
       {/* ── Detail modal: Fleet Vehicle ─────────────────────────────────────── */}
       {detailVehicle && !editingFleet && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div className="w-full sm:max-w-[560px]" style={{ background: "var(--bg-card)", borderRadius: 16, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             {/* header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1246,7 +1246,7 @@ function AnalyticasTab() {
               <button onClick={() => { setDetailVehicle(null); setConfirmInactivateFleet(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
             {/* body */}
-            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 20px" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ padding: "20px 24px", gap: "12px 20px" }}>
               {[
                 ["Código", detailVehicle.code],
                 ["Tipo", detailVehicle.type],
@@ -1304,7 +1304,7 @@ function AnalyticasTab() {
       {/* ── Edit modal: Fleet Vehicle ────────────────────────────────────────── */}
       {editingFleet && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div className="w-full sm:max-w-[560px]" style={{ background: "var(--bg-card)", borderRadius: 16, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", fontFamily: "Inter, sans-serif" }}>Editar Vehículo — {editingFleet.code}</span>
               <button onClick={() => setEditingFleet(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
@@ -1348,7 +1348,7 @@ function AnalyticasTab() {
       {/* ── Detail modal: Fuel Entry ─────────────────────────────────────────── */}
       {detailFuel && !editingFuel && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div className="w-full sm:max-w-[600px]" style={{ background: "var(--bg-card)", borderRadius: 16, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px", borderBottom: `1px solid ${BORDER}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Fuel size={18} style={{ color: RED }} />
@@ -1356,7 +1356,7 @@ function AnalyticasTab() {
               </div>
               <button onClick={() => { setDetailFuel(null); setConfirmInactivateFuel(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--neutral-500)" }}><X size={18} /></button>
             </div>
-            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 20px" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ padding: "20px 24px", gap: "12px 20px" }}>
               {[
                 ["Fecha", detailFuel.fecha],
                 ["Responsable", detailFuel.responsable],
@@ -1871,7 +1871,7 @@ function UsuariosTab() {
 export function ReportesPage() {
   return (
     <div
-      className="min-h-screen px-6 py-8"
+      className="min-h-screen px-4 py-6 sm:px-6 sm:py-8"
       style={{ background: BG, fontFamily: "Inter, sans-serif" }}
     >
       {/* Page header */}

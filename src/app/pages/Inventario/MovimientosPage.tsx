@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { ArrowLeftRight, Download, X, SlidersHorizontal, AlertTriangle } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
@@ -338,7 +338,7 @@ export function MovimientosPage() {
                 El detalle por servicio está en la pestaña <strong>Insumos en Servicios</strong>.
               </div>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "14px 24px" }}>
               <InfoField label="Fecha y Hora" value={formatFecha(selectedMov.fechaHora)} />
               <InfoField label="Item" value={selectedMov.itemNombre} />
               <InfoField label="Tipo de Movimiento" value={selectedMov.tipoMovNombre} />

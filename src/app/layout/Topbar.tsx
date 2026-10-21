@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
-import { Shield, ChevronDown, Bell, Camera, UserCircle, LogOut, CheckCircle2 } from "lucide-react";
+import { Shield, ChevronDown, Bell, Camera, UserCircle, LogOut, CheckCircle2, Menu } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROLE_LABELS, ROLE_BADGE } from "@/constants/roles";
 import type { UserRole } from "@/constants/roles";
@@ -20,6 +20,7 @@ interface TopbarProps {
   onProfileOpen: () => void;
   onLogoutOpen: () => void;
   setAvatarUrl: (url: string | null) => void;
+  onMenuClick: () => void;
   isDrawerOpen?: boolean;
   isModalOpen?: boolean;
 }
@@ -34,6 +35,7 @@ export function Topbar({
   onProfileOpen,
   onLogoutOpen,
   setAvatarUrl,
+  onMenuClick,
   isDrawerOpen = false,
   isModalOpen = false,
 }: TopbarProps) {
@@ -72,22 +74,29 @@ export function Topbar({
 
   return (
     <motion.header
-      className="h-16 shrink-0 flex items-center px-8 sticky top-0 z-[var(--z-topbar)]"
+      className="h-16 shrink-0 flex items-center px-4 sm:px-6 md:px-8 sticky top-0 z-[var(--z-topbar)]"
       style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--divider)", boxShadow: "var(--shadow-sm)" }}
       animate={{ opacity: isHidden ? 0 : 1, y: isHidden ? "-100%" : 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
+      <button type="button" onClick={onMenuClick} aria-label="Abrir menú"
+        className="md:hidden mr-2 flex items-center justify-center p-2 rounded-xl transition-colors"
+        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--bg-hover)")}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "")}>
+        <Menu style={{ width: 19, height: 19, color: "var(--text-2)" }} />
+      </button>
+
       <div className="flex-1 flex items-center gap-2 min-w-0">
-        <span className="text-[12px] font-semibold truncate" style={{ fontFamily: "Inter, sans-serif", color: "var(--text-3)" }}>
+        <span className="hidden sm:inline text-[12px] font-semibold truncate" style={{ fontFamily: "Inter, sans-serif", color: "var(--text-3)" }}>
           Subestación 33ª
         </span>
-        <span style={{ color: "var(--border)" }}>/</span>
+        <span className="hidden sm:inline" style={{ color: "var(--border)" }}>/</span>
         <span className="text-[12px] font-bold truncate" style={{ fontFamily: "Inter, sans-serif", color: "var(--text-1)" }}>
           {currentPageLabel}
         </span>
       </div>
 
-      <div ref={roleDropRef} className="relative mr-3">
+      <div ref={roleDropRef} className="relative mr-3 hidden lg:block">
         <button
           onClick={() => setRoleDropOpen((o) => !o)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all"
@@ -134,7 +143,7 @@ export function Topbar({
         )}
       </div>
 
-      <div ref={notifRef} className="relative">
+      <div ref={notifRef} className="relative hidden sm:block">
         <button
           onClick={() => setNotifOpen((o) => !o)}
           className="relative flex items-center justify-center p-2 rounded-xl mr-1 transition-colors"
@@ -151,7 +160,7 @@ export function Topbar({
         </button>
         {notifOpen && (
           <div
-            className="glass-strong absolute right-0 top-full mt-2 w-80 rounded-2xl shadow-[var(--elevation-brand-3)] z-40 overflow-hidden animate-morph-enter"
+            className="glass-strong absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl shadow-[var(--elevation-brand-3)] z-40 overflow-hidden animate-morph-enter"
           >
             <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--divider)" }}>
               <span className="font-bold text-[13px]" style={{ fontFamily: "Manrope, sans-serif", color: "var(--text-1)" }}>
@@ -198,7 +207,7 @@ export function Topbar({
         <Avatar url={avatarUrl} initials={initials} size={34} onClick={() => setProfileDropOpen((o) => !o)} />
         {profileDropOpen && (
           <div
-            className="glass-strong absolute right-0 top-full mt-2 w-72 rounded-2xl shadow-[var(--elevation-brand-3)] z-40 overflow-hidden animate-morph-enter"
+            className="glass-strong absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl shadow-[var(--elevation-brand-3)] z-40 overflow-hidden animate-morph-enter"
           >
             <div className="px-5 py-5 flex items-center gap-4 border-b" style={{ borderColor: "var(--divider)" }}>
               <div className="relative group shrink-0">

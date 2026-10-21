@@ -1,4 +1,4 @@
-# ProyectoSub33 — Contexto Completo para IA
+﻿# ProyectoSub33 — Contexto Completo para IA
 
 > Última actualización: **2026-10-20** (cierre de mejoras de Vehículos + impresión + KPIs inline).
 > Este archivo es la fuente de contexto del proyecto. Mantenerlo actualizado al cerrar cada bloque de trabajo.
@@ -746,3 +746,19 @@ dotnet ef database update
 - **Inventario:** `cantidad` en kardex es firmada; no asumir valores positivos.
 - **Auth:** el login ya usa backend, pero la URL sigue hardcodeada en `authService.js`.
 - **Consola PowerShell:** los acentos pueden verse corruptos; los archivos están en UTF-8.
+
+## Responsividad (2026-10-21)
+
+- Layout activo en `src/app/App.tsx`: drawer movil con overlay, boton hamburguesa, cierre al navegar y bloqueo del scroll del body.
+- `MainLayout`, `Sidebar` y `Topbar` alineados al mismo patron responsive (no son el layout que monta la app).
+- Paddings y grids responsive en App, Emergencias, Perfil, Personal, Finanzas, Inventario, Reportes, Seguridad, Donaciones y Vehiculos; desktop >=1280 sin cambios visuales.
+- `DataTable` usa `max-md:min-w-[720px]` para asegurar scroll horizontal en movil.
+- Verificacion final: `npm run build` sin errores (solo warning de chunks >500 kB).
+
+## Responsividad v2: Login y modales (2026-10-21)
+
+- `LoginPage`: hero oculto por debajo de `lg`; header institucional, formulario en card blanca y footer de sede sobre gradiente navy-rojo; OTP y logos escalables. Desktop >=1024 identico.
+- `Toast`: ancho limitado al viewport en movil y `max-w-sm` desde `sm`.
+- Componentes base: `Drawer` y `Modal` limitan su ancho al viewport, permiten scroll horizontal y envuelven footers; `Tabs` permite scroll horizontal.
+- Modales/drawers de detalle: grids a una columna en movil, tablas con scroll horizontal y paneles de fichas dentro del viewport.
+- `npm run build` verificado sin errores.

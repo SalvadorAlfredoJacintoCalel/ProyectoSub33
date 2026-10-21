@@ -141,11 +141,11 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-8 overflow-y-auto px-12 py-10 animate-page-enter">
+    <div className="flex flex-1 flex-col gap-6 sm:gap-8 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10 animate-page-enter">
       {/* Page title */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-['Manrope:ExtraBold',sans-serif] text-[36px] font-extrabold leading-tight tracking-[-1.5px]" style={{ color: "var(--text-1)" }}>
+          <h1 className="font-['Manrope:ExtraBold',sans-serif] text-[28px] sm:text-[36px] font-extrabold leading-tight tracking-[-1.5px]" style={{ color: "var(--text-1)" }}>
             MI PERFIL DE BOMBERO
           </h1>
           <p className="mt-1 text-[16px]" style={{ color: "var(--text-2)" }}>
@@ -158,7 +158,7 @@ export function ProfilePage({ onClose, profileForm, setProfileForm }: Props) {
       </div>
 
       {/* Two-column layout */}
-      <div className="grid grid-cols-[300px_1fr] items-start gap-8 pb-12">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] items-start gap-6 lg:gap-8 pb-12">
         {/* ── LEFT — Avatar + Info Card ── */}
         <div className="overflow-hidden rounded-2xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
           <div className="flex flex-col items-center justify-center px-5 pb-6 pt-10" style={{ background: "var(--bg-hover)", borderBottom: "1px solid var(--divider)" }}>

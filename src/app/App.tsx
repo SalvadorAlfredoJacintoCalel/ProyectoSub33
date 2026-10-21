@@ -24,7 +24,7 @@ import {
   X, ChevronLeft, ChevronRight, Zap, Truck, Package,
   Bell, LogOut, Shield, ChevronDown, Home, BarChart2,
   Users, AlertTriangle, Wrench, Quote,
-  Camera, UserCircle, CheckCircle2, Moon, Sun,
+  Camera, UserCircle, CheckCircle2, Moon, Sun, Menu,
 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
@@ -159,6 +159,10 @@ function AppContent() {
   });
   const [activeNav, setActiveNav] = useState("bienvenida");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
+  );
   const [period, setPeriod] = useState<Period>("month");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -182,7 +186,18 @@ function AppContent() {
   });
 
   const sidebarW = sidebarCollapsed ? 72 : 256;
+  const effectiveCollapsed = sidebarCollapsed && !isMobile;
   const navItems = ALL_NAV.filter(n => ROLE_NAV[role].includes(n.id));
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => {
+      setIsMobile(mq.matches);
+      if (!mq.matches) setMobileSidebarOpen(false);
+    };
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -203,11 +218,11 @@ function AppContent() {
 
   // Lock body scroll when a drawer/modal is open
   useEffect(() => {
-    document.body.style.overflow = isDrawerOpen || isModalOpen ? "hidden" : "";
+    document.body.style.overflow = isDrawerOpen || isModalOpen || mobileSidebarOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isDrawerOpen, isModalOpen]);
+  }, [isDrawerOpen, isModalOpen, mobileSidebarOpen]);
 
   // Persist dark mode toggle
   useEffect(() => {
@@ -234,29 +249,38 @@ function AppContent() {
   return (
     <div className="flex min-h-screen" style={{ background: C.pageBg }}>
 
+      {mobileSidebarOpen && (
+        <button type="button" aria-label="Cerrar menú" onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 z-[250] md:hidden" style={{ background: C.overlay }} />
+      )}
+
       {/* ════ SIDEBAR ════ */}
-      <motion.aside className="fixed left-0 top-0 bottom-0 flex flex-col z-20 overflow-hidden"
+      <motion.aside className={`fixed left-0 top-0 bottom-0 flex flex-col z-[300] md:z-20 overflow-hidden transition-transform duration-300 md:translate-x-0 ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{ background: C.sidebarBg, borderRight: `1px solid ${C.topbarBorder}` }}
-        animate={{ width: sidebarW }}
+        animate={{ width: isMobile ? 256 : sidebarW }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}>
 
         {/* Logo */}
-        <div className={`flex items-center shrink-0 transition-all duration-200 ${sidebarCollapsed ? "justify-center px-0 pt-5 pb-3" : "px-5 pt-5 pb-3 gap-3"}`}>
-          <div className="shrink-0" style={{ width: sidebarCollapsed ? 38 : 46, height: sidebarCollapsed ? 38 : 46 }}>
+        <div className={`flex items-center shrink-0 transition-all duration-200 ${effectiveCollapsed ? "justify-center px-0 pt-5 pb-3" : "px-5 pt-5 pb-3 gap-3"}`}>
+          <div className="shrink-0" style={{ width: effectiveCollapsed ? 38 : 46, height: effectiveCollapsed ? 38 : 46 }}>
             <ImageWithFallback src={imgCrossBadge} alt="Insignia 33ª" className="w-full h-full object-contain" />
           </div>
-          {!sidebarCollapsed && (
+          {!effectiveCollapsed && (
             <div className="min-w-0">
               <p className="font-extrabold text-[13px] text-white leading-tight truncate" style={{ fontFamily: "Manrope, sans-serif" }}>33ª Compañía</p>
               <p className="text-[10px] text-[#B0C4DE] leading-tight" style={{ fontFamily: "Inter, sans-serif" }}>San Lucas Tolimán</p>
             </div>
           )}
+          <button type="button" onClick={() => setMobileSidebarOpen(false)} aria-label="Cerrar menú"
+            className="ml-auto md:hidden p-1.5 rounded-lg" style={{ color: "rgba(255,255,255,0.7)" }}>
+            <X style={{ width: 18, height: 18 }} />
+          </button>
         </div>
 
         <div style={{ height: 1, background: "rgba(255,255,255,0.07)", margin: "0 12px" }} />
 
         {/* Role badge */}
-        {!sidebarCollapsed && (
+        {!effectiveCollapsed && (
           <div className="px-4 pt-3 pb-2">
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: "rgba(255,255,255,0.06)" }}>
               <div className="w-2 h-2 rounded-full shrink-0" style={{ background: ROLE_BADGE[role] }} />
@@ -272,14 +296,14 @@ function AppContent() {
           {navItems.map(({ id, label, icon }) => {
             const active = activeNav === id;
             return (
-              <button key={id} onClick={() => setActiveNav(id)}
-                className={`w-full flex items-center rounded-lg transition-all duration-150 hover:scale-[1.02] ${active ? "animate-nav-active-pulse" : ""} ${sidebarCollapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5 hover:translate-x-0.5"}`}
+              <button key={id} onClick={() => { setActiveNav(id); setMobileSidebarOpen(false); }}
+                className={`w-full flex items-center rounded-lg transition-all duration-150 hover:scale-[1.02] ${active ? "animate-nav-active-pulse" : ""} ${effectiveCollapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5 hover:translate-x-0.5"}`}
                 style={active ? { background: "var(--grad-primary)" } : undefined}
                 onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}
                 onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = ""; }}
-                title={sidebarCollapsed ? label : undefined}>
+                title={effectiveCollapsed ? label : undefined}>
                 <NavIcon icon={icon} active={active} />
-                {!sidebarCollapsed && (
+                {!effectiveCollapsed && (
                   <span className="text-[13.5px] font-semibold leading-5 truncate" style={{ fontFamily: "Inter, sans-serif", color: active ? "#fff" : "#E2E8F0" }}>
                     {label}
                   </span>
@@ -290,13 +314,13 @@ function AppContent() {
         </nav>
 
         <div style={{ height: 1, background: "rgba(255,255,255,0.07)", margin: "0 12px" }} />
-        <div className={`px-3 py-4 ${sidebarCollapsed ? "flex justify-center" : ""}`}>
+        <div className={`px-3 py-4 hidden md:flex ${effectiveCollapsed ? "justify-center" : ""}`}>
           <button onClick={() => setSidebarCollapsed(c => !c)}
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg w-full transition-all"
-            style={sidebarCollapsed ? { justifyContent: "center" } : undefined}
+            style={effectiveCollapsed ? { justifyContent: "center" } : undefined}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
-            {sidebarCollapsed
+            {effectiveCollapsed
               ? <ChevronRight style={{ width: 15, height: 15, color: "rgba(255,255,255,0.4)" }} />
               : <><ChevronLeft style={{ width: 15, height: 15, color: "rgba(255,255,255,0.4)", flexShrink: 0 }} />
                   <span className="text-[11px] font-semibold text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "Inter, sans-serif" }}>Contraer</span></>}
@@ -306,19 +330,26 @@ function AppContent() {
 
       {/* ════ MAIN ════ */}
       <motion.div className="flex-1 flex flex-col min-w-0"
-        animate={{ marginLeft: sidebarW }}
+        animate={{ marginLeft: isMobile ? 0 : sidebarW }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}>
 
         {/* ── Topbar ── */}
-        <motion.header className="h-16 shrink-0 flex items-center px-8 sticky top-0 z-[var(--z-topbar)]"
+        <motion.header className="h-16 shrink-0 flex items-center px-4 sm:px-6 md:px-8 sticky top-0 z-[var(--z-topbar)]"
           style={{ background: C.topbarBg, borderBottom: `1px solid ${C.topbarBorder}`, boxShadow: "var(--shadow-sm)" }}
           animate={{ opacity: isDrawerOpen || isModalOpen ? 0 : 1, y: isDrawerOpen || isModalOpen ? "-100%" : 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}>
 
+          <button type="button" onClick={() => setMobileSidebarOpen(true)} aria-label="Abrir menú"
+            className="md:hidden mr-2 flex items-center justify-center p-2 rounded-xl transition-colors"
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
+            <Menu style={{ width: 19, height: 19, color: C.textSecond }} />
+          </button>
+
           {/* Breadcrumb */}
           <div className="flex-1 flex items-center gap-2 min-w-0">
-            <span className="text-[12px] font-semibold truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Subestación 33ª</span>
-            <span style={{ color: C.border }}>/</span>
+            <span className="hidden sm:inline text-[12px] font-semibold truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Subestación 33ª</span>
+            <span className="hidden sm:inline" style={{ color: C.border }}>/</span>
             <span className="text-[12px] font-bold truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{currentPageLabel}</span>
           </div>
 
@@ -331,7 +362,7 @@ function AppContent() {
           </button>
 
           {/* Role switcher */}
-          <div ref={roleDropRef} className="relative mr-3">
+          <div ref={roleDropRef} className="relative mr-3 hidden lg:block">
             <button onClick={() => setRoleDropOpen(o => !o)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all"
               style={{ borderColor: C.border, fontFamily: "Inter, sans-serif", color: C.textSecond, background: C.cardBg }}>
@@ -360,7 +391,7 @@ function AppContent() {
           </div>
 
           {/* Bell */}
-          <div ref={notifRef} className="relative">
+          <div ref={notifRef} className="relative hidden sm:block">
             <button onClick={() => setNotifOpen(o => !o)}
               className="relative flex items-center justify-center p-2 rounded-xl mr-1 transition-colors"
               style={{ background: notifOpen ? C.redLight : undefined }}
@@ -370,7 +401,7 @@ function AppContent() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: C.red }} />
             </button>
             {notifOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl shadow-2xl z-40 overflow-hidden animate-scale-in"
+              <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl z-40 overflow-hidden animate-scale-in"
                 style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
                 <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: C.border }}>
                   <span className="font-bold text-[13px]" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>Alertas</span>
@@ -400,7 +431,7 @@ function AppContent() {
           <div ref={profileDRef} className="relative">
             <Avatar url={avatarUrl} initials={initials} size={34} onClick={() => setProfileDropOpen(o => !o)} />
             {profileDropOpen && (
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl shadow-2xl z-40 overflow-hidden animate-scale-in"
+              <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl z-40 overflow-hidden animate-scale-in"
                 style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
                 {/* User info header */}
                 <div className="px-5 py-5 flex items-center gap-4 border-b" style={{ borderColor: C.border }}>
@@ -467,8 +498,8 @@ function AppContent() {
 
             {/* Hero */}
             <section className="relative overflow-hidden" style={{ background: "var(--bg-card)", borderBottom: `1px solid ${C.topbarBorder}` }}>
-              <div className="relative flex items-center gap-10 px-12 py-10">
-                <div className="shrink-0 w-28 h-28">
+              <div className="relative flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-10 px-4 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">
+                <div className="shrink-0 w-20 h-20 sm:w-28 sm:h-28">
                   <ImageWithFallback src={imgCvbLogo} alt="CVB" className="w-full h-full object-contain" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -485,18 +516,18 @@ function AppContent() {
                     "Disciplina, Honor y Servicio"
                   </p>
                 </div>
-                <div className="shrink-0 w-24 h-24 opacity-60">
+                <div className="hidden sm:block shrink-0 w-16 h-16 md:w-24 md:h-24 opacity-60">
                   <ImageWithFallback src={imgCrossBadge} alt="Insignia" className="w-full h-full object-contain" />
                 </div>
               </div>
             </section>
 
-            <div className="px-12 py-8 flex flex-col gap-8">
+            <div className="px-4 py-6 sm:px-8 sm:py-8 lg:px-12 flex flex-col gap-8">
 
               {/* Quick actions */}
               <div>
                 <h2 className="font-bold text-[11px] tracking-widest uppercase mb-4" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Acciones Rápidas</h2>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="animate-slide-up-stagger stagger-1"><QuickCard Icon={Zap}     label="Registrar Servicio"   sub="Nuevo reporte de emergencia"     onClick={() => setActiveNav("emergencias")} /></div>
                   <div className="animate-slide-up-stagger stagger-2"><QuickCard Icon={Package} label="Consultar Inventario"  sub="Equipos, insumos y medicamentos" onClick={() => setActiveNav("inventario")}  /></div>
                   <div className="animate-slide-up-stagger stagger-3"><QuickCard Icon={Truck}   label="Ver Vehículos"         sub="Estado de flota y combustible"   onClick={() => setActiveNav("vehiculos")}   /></div>
@@ -514,7 +545,7 @@ function AppContent() {
                         {avisos.length} avisos
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {avisos.map(b => (
                         <div key={b.id} className="flex items-start gap-4 p-5 rounded-2xl"
                           style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
@@ -552,10 +583,10 @@ function AppContent() {
         {/* ════ ANALYTICS DASHBOARD ════ */}
         {!profileOpen && activeNav === "analytics" && (
           <div className="flex-1 overflow-y-auto animate-page-enter" style={{ background: C.pageBg }}>
-            <div className="px-12 py-8 flex flex-col gap-8">
+            <div className="px-4 py-6 sm:px-8 sm:py-8 lg:px-12 flex flex-col gap-8">
 
               {/* Page header */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h1 className="font-extrabold text-[28px] tracking-tight leading-tight" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>
                     Resumen General — Subestación 33ª
@@ -571,7 +602,7 @@ function AppContent() {
               </div>
 
               {/* KPI row */}
-              <div className="grid grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                 {[
                   { label: "Emergencias / mes", value: "0",     accent: C.red,     sub: "0% vs mes anterior" },
                   { label: "Personal activo",   value: "0",     accent: "#16a34a", sub: "0 Activos · 0 Inactivos" },
@@ -588,9 +619,9 @@ function AppContent() {
               </div>
 
               {/* Charts row */}
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Incident bar chart */}
-                <div className="col-span-2 p-7 rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
+                <div className="lg:col-span-2 p-4 sm:p-7 rounded-2xl" style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h3 className="font-bold text-[16px]" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>Incidentes por Tipo</h3>
@@ -662,7 +693,7 @@ function AppContent() {
 
               {/* Weekly trend */}
               <div className="rounded-2xl overflow-hidden" style={{ background: C.heroBg }}>
-                <div className="px-7 pt-6 pb-2 flex items-start justify-between">
+                <div className="px-4 sm:px-7 pt-6 pb-2 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 className="font-bold text-[16px] text-white" style={{ fontFamily: "Manrope, sans-serif" }}>Emergencias Semanales</h3>
                     <p className="text-[12px] text-[#94A3B8] mt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>Tendencia de actividad operativa</p>
@@ -700,7 +731,7 @@ function AppContent() {
                     style={{ fontFamily: "Inter, sans-serif", color: C.red }}>Ver historial completo</button>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[720px]">
                     <thead>
                       <tr style={{ background: C.pageBg, borderBottom: `1px solid ${C.border}` }}>
                         {["#", "FECHA", "HORA", "TIPO", "PACIENTE", "UBICACIÓN", "UNIDAD"].map(h => (
@@ -760,7 +791,7 @@ function AppContent() {
               </button>
             </div>
             <div className="overflow-auto flex-1 px-8 py-5">
-              <table className="w-full border-collapse">
+              <table className="w-full min-w-[720px] border-collapse">
                 <thead>
                   <tr>
                     {["# INC.", "FECHA", "HORA", "TIPO", "PACIENTE", "UBICACIÓN", "UNIDAD"].map(h => (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { Plus, Truck, Info, Pencil, AlertTriangle, Search, ChevronRight, Package, Link2, Trash2 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { EmptyState } from "@/app/components/ui/empty-state";
@@ -237,7 +237,7 @@ export function EquipoUnidadesPage() {
           icon: <Info size={15} />,
           content: (
             <div className="flex flex-col gap-5">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "14px 24px" }}>
                 <InfoField label="Unidad" value={selected.unidadNombre} />
                 <InfoField label="Código" value={selected.unidadCodigo} />
                 <InfoField label="Items asignados" value={selected.items.length} />

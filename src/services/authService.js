@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:5196/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5196/api";
 
 export const login = async (username, password) => {
   try {

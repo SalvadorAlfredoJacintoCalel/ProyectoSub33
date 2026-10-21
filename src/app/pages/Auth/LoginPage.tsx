@@ -75,7 +75,7 @@ function RedButton({
     >
       {icon}
       <span
-        className="font-extrabold text-[14px] tracking-[2.5px] text-white uppercase"
+        className="font-extrabold text-[14px] tracking-[1.5px] sm:tracking-[2.5px] text-white uppercase"
         style={{ fontFamily: "Manrope, sans-serif" }}
       >
         {label}
@@ -102,7 +102,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
 
 function LeftHero() {
   return (
-    <div className="flex-1 relative flex flex-col overflow-hidden min-w-0">
+    <div className="hidden lg:flex flex-1 relative flex-col overflow-hidden min-w-0">
       <div className="absolute inset-0">
         <img
           src={HERO_BG}
@@ -115,14 +115,14 @@ function LeftHero() {
 
       <div className="relative z-10 flex-1 flex flex-col justify-center px-10 pt-14 pb-4">
         <div className="w-14 h-[3px] bg-[#c11d1d] rounded-full mb-5" />
-        <p className="font-['Manrope:ExtraBold',sans-serif] font-extrabold text-[clamp(20px,2.4vw,28px)] text-[#f5c500] tracking-[2px] uppercase leading-8">
+        <p className="font-['Manrope:ExtraBold',sans-serif] font-extrabold text-[clamp(20px,2.4vw,28px)] text-[#f5c500] tracking-[1px] lg:tracking-[2px] uppercase leading-8 text-balance">
           SIEMPRE AL SERVICIO<br />
           DE NUESTRA COMUNIDAD
         </p>
       </div>
 
       <div className="relative z-10">
-        <svg viewBox="0 0 600 52" preserveAspectRatio="none" className="w-full block" style={{ height: 52, marginBottom: -1 }}>
+        <svg viewBox="0 0 600 52" preserveAspectRatio="none" className="w-full block h-8 lg:h-[52px]" style={{ marginBottom: -1 }}>
           <path d="M0,52 L0,38 Q100,4 250,28 Q380,48 600,8 L600,52 Z" fill="#7a0000" />
         </svg>
         {/* Company name above seals */}
@@ -135,10 +135,10 @@ function LeftHero() {
           </p>
         </div>
         <div className="bg-[#7a0000] flex items-center justify-center gap-8 px-10 pt-2 pb-3">
-          <div className="w-24 h-24 shrink-0">
+          <div className="w-16 lg:w-24 h-16 lg:h-24 shrink-0">
             <ImageWithFallback src={imgCvbLogo} alt="Benemérito Cuerpo Voluntario de Bomberos Guatemala" className="w-full h-full object-contain drop-shadow-lg" />
           </div>
-          <div className="w-24 h-24 shrink-0">
+          <div className="w-16 lg:w-24 h-16 lg:h-24 shrink-0">
             <ImageWithFallback src={imgCrossBadge} alt="Insignia 33ª Compañía de Bomberos Voluntarios San Lucas Tolimán" className="w-full h-full object-contain drop-shadow-lg" />
           </div>
         </div>
@@ -165,11 +165,10 @@ function LeftHero() {
 function RightPanel({ children }: { children: ReactNode }) {
   return (
     <div
-      className="relative flex items-center justify-center overflow-hidden"
-      style={{ width: "clamp(380px, 42%, 520px)", background: "#f0efed" }}
+      className="relative flex items-center justify-center overflow-hidden w-full bg-[linear-gradient(160deg,var(--navy),#7a0000)] lg:bg-[#f0efed] lg:bg-none lg:w-[clamp(380px,42%,520px)]"
     >
       {/* Flag corner */}
-      <div className="absolute top-0 right-0 pointer-events-none overflow-hidden" style={{ width: 160, height: 160 }}>
+      <div className="hidden lg:block absolute top-0 right-0 pointer-events-none overflow-hidden" style={{ width: 160, height: 160 }}>
         <svg viewBox="0 0 160 160" fill="none" className="w-full h-full">
           <polygon points="160,0 160,160 0,0" fill="#1b2e4b" />
           <polygon points="160,0 160,52 68,0" fill="#e8b800" />
@@ -186,8 +185,32 @@ function RightPanel({ children }: { children: ReactNode }) {
         </svg>
       </div>
 
-      <div className="relative z-10 w-full px-10 max-w-[420px]">
-        {children}
+      <div className="relative z-10 w-full px-4 sm:px-10 max-w-[420px]">
+        <div className="lg:hidden text-center pt-8 pb-4">
+          <div className="w-12 h-12 mx-auto mb-3">
+            <ImageWithFallback
+              src={imgCrossBadge}
+              alt="Insignia 33ª Compañía de Bomberos Voluntarios San Lucas Tolimán"
+              className="w-full h-full object-contain drop-shadow-lg"
+            />
+          </div>
+          <p className="font-bold text-[13px] tracking-[1.5px] text-white uppercase" style={{ fontFamily: "Manrope, sans-serif" }}>
+            33ª COMPAÑÍA BOMBEROS VOLUNTARIOS
+          </p>
+          <p className="font-bold text-[10px] tracking-[1.4px] uppercase mt-1" style={{ fontFamily: "Inter, sans-serif", color: "#f5c500" }}>
+            SIEMPRE AL SERVICIO DE NUESTRA COMUNIDAD
+          </p>
+        </div>
+
+        <div className="w-full bg-white rounded-2xl shadow-2xl p-5 sm:p-6 mb-8 lg:bg-transparent lg:rounded-none lg:shadow-none lg:p-0 lg:mb-0">
+          {children}
+        </div>
+
+        <div className="lg:hidden text-center pb-8 pt-4">
+          <p className="font-bold text-[10px] tracking-[2px] uppercase text-white/55" style={{ fontFamily: "Inter, sans-serif" }}>
+            SAN LUCAS TOLIMÁN · SOLOLÁ
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -198,11 +221,11 @@ function RightPanel({ children }: { children: ReactNode }) {
 function StepHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="text-center mb-6">
-      <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[#fff1f0] mx-auto mb-4">
+      <div className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#fff1f0] mx-auto mb-4">
         <KeyRound size={24} color="#c11d1d" strokeWidth={2} />
       </div>
       <h2
-        className="font-extrabold text-[22px] text-[#1b2e4b] tracking-[-0.3px] leading-tight"
+        className="font-extrabold text-[22px] text-[#1b2e4b] tracking-[-0.3px] leading-tight text-balance"
         style={{ fontFamily: "Manrope, sans-serif" }}
       >
         {title}
@@ -277,7 +300,7 @@ function VerifyStep({ onVerify, onBack }: { onVerify: () => void; onBack: () => 
       />
 
       {/* OTP boxes */}
-      <div className="flex gap-2.5 justify-center" onPaste={handlePaste}>
+      <div className="flex gap-1.5 sm:gap-2.5 justify-center" onPaste={handlePaste}>
         {otp.map((val, i) => (
           <input
             key={i}
@@ -288,7 +311,7 @@ function VerifyStep({ onVerify, onBack }: { onVerify: () => void; onBack: () => 
             value={val}
             onChange={e => handleChange(i, e.target.value)}
             onKeyDown={e => handleKeyDown(i, e)}
-            className="w-12 h-14 text-center text-[20px] font-bold text-[#1b1b1c] bg-white rounded-xl outline-none transition-all"
+            className="w-10 sm:w-12 h-14 text-center text-[20px] font-bold text-[#1b1b1c] bg-white rounded-xl outline-none transition-all"
             style={{
               border: val ? "2px solid #c11d1d" : "1.5px solid #d4d4d8",
               fontFamily: "Manrope, sans-serif",
@@ -378,7 +401,7 @@ function SuccessStep({ onLogin }: { onLogin: () => void }) {
     <div className="flex flex-col items-center gap-6 text-center">
       {/* Green checkmark badge */}
       <div
-        className="flex items-center justify-center w-20 h-20 rounded-full"
+        className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full"
         style={{ background: "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)", boxShadow: "0 0 0 8px rgba(34,197,94,0.1)" }}
       >
         <svg width={40} height={40} viewBox="0 0 40 40" fill="none">
@@ -389,13 +412,13 @@ function SuccessStep({ onLogin }: { onLogin: () => void }) {
 
       <div className="flex flex-col gap-2">
         <h2
-          className="font-extrabold text-[22px] text-[#15803d] tracking-[-0.3px]"
+          className="font-extrabold text-[22px] text-[#15803d] tracking-[-0.3px] text-balance"
           style={{ fontFamily: "Manrope, sans-serif" }}
         >
           ¡CONTRASEÑA ACTUALIZADA!
         </h2>
         <p
-          className="text-[13px] text-[#71717a] leading-6 max-w-[300px]"
+          className="text-[13px] text-[#71717a] leading-6 max-w-full sm:max-w-[300px]"
           style={{ fontFamily: "Inter, sans-serif" }}
         >
           Tu contraseña ha sido actualizada exitosamente. Ya puedes iniciar sesión con tu nueva clave.
@@ -457,7 +480,7 @@ export function LoginPage({ onLogin }: Props) {
   }
 
   return (
-    <div className="min-h-screen w-full flex">
+    <div className="min-h-screen w-full flex overflow-x-hidden">
       <LeftHero />
 
       <RightPanel>
@@ -465,11 +488,11 @@ export function LoginPage({ onLogin }: Props) {
           <>
             {/* Motto header */}
             <div className="text-center mb-5">
-              <h2 className="leading-tight">
-                <span className="block font-extrabold text-[clamp(22px,2.8vw,30px)] text-[#c11d1d] tracking-[-0.5px]" style={{ fontFamily: "Manrope, sans-serif" }}>
+              <h2 className="leading-tight text-balance">
+                <span className="block font-extrabold text-[clamp(22px,2.8vw,30px)] text-[#c11d1d] tracking-[-0.2px] lg:tracking-[-0.5px]" style={{ fontFamily: "Manrope, sans-serif" }}>
                   SERVICIO,
                 </span>
-                <span className="block font-extrabold text-[clamp(22px,2.8vw,30px)] text-[#1b2e4b] tracking-[-0.5px]" style={{ fontFamily: "Manrope, sans-serif" }}>
+                <span className="block font-extrabold text-[clamp(22px,2.8vw,30px)] text-[#1b2e4b] tracking-[-0.2px] lg:tracking-[-0.5px]" style={{ fontFamily: "Manrope, sans-serif" }}>
                   HONOR Y ABNEGACIÓN
                 </span>
               </h2>
@@ -521,7 +544,7 @@ export function LoginPage({ onLogin }: Props) {
               />
 
               {/* Options */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:justify-between">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
