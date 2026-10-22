@@ -12,6 +12,7 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
 import { useDonacionLibro } from "@/hooks/useDonacionLibro";
+import { usePermisos } from "@/hooks/usePermisos";
 import { getCatalogo, type CatalogoItem } from "@/services/configuracionService";
 import type { DonacionMovimiento, DonacionMovimientoCreate, DonacionMovimientoUpdate } from "@/types/donacion";
 
@@ -28,6 +29,7 @@ function fechaHoy(anio: number, mes: number): string {
 
 export function LibroDonacionesTab() {
   const { alert, toast } = useAlert();
+  const { donaciones: permisosDonaciones } = usePermisos();
   const {
     anio,
     mes,
@@ -150,15 +152,17 @@ export function LibroDonacionesTab() {
             <Printer size={16} />
             Imprimir
           </Button>
-          <Button
-            onClick={() => {
-              setEditTarget(null);
-              setModalOpen(true);
-            }}
-          >
-            <Plus size={16} />
-            Nuevo movimiento
-          </Button>
+          {permisosDonaciones.libro && (
+            <Button
+              onClick={() => {
+                setEditTarget(null);
+                setModalOpen(true);
+              }}
+            >
+              <Plus size={16} />
+              Nuevo movimiento
+            </Button>
+          )}
         </div>
       </div>
 
@@ -203,10 +207,12 @@ export function LibroDonacionesTab() {
             title="Sin movimientos en este mes"
             description="Las donaciones registradas y los vehículos donados aparecen aquí automáticamente."
             action={
-              <Button onClick={() => setModalOpen(true)}>
-                <Plus size={16} />
-                Nuevo movimiento
-              </Button>
+              permisosDonaciones.libro ? (
+                <Button onClick={() => setModalOpen(true)}>
+                  <Plus size={16} />
+                  Nuevo movimiento
+                </Button>
+              ) : undefined
             }
           />
         ) : (
@@ -270,27 +276,31 @@ export function LibroDonacionesTab() {
                           </span>
                         ) : (
                           <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              className="rounded-lg p-1.5"
-                              style={{ color: "var(--text-2)" }}
-                              onClick={() => {
-                                setEditTarget(m);
-                                setModalOpen(true);
-                              }}
-                              title="Editar"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-lg p-1.5"
-                              style={{ color: "var(--brand-600)" }}
-                              onClick={() => eliminar(m)}
-                              title="Eliminar"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            {permisosDonaciones.libro && (
+                              <button
+                                type="button"
+                                className="rounded-lg p-1.5"
+                                style={{ color: "var(--text-2)" }}
+                                onClick={() => {
+                                  setEditTarget(m);
+                                  setModalOpen(true);
+                                }}
+                                title="Editar"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
+                            {permisosDonaciones.libro && (
+                              <button
+                                type="button"
+                                className="rounded-lg p-1.5"
+                                style={{ color: "var(--brand-600)" }}
+                                onClick={() => eliminar(m)}
+                                title="Eliminar"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>

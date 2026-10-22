@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Backend_Sub33.Attributes;
 using Backend_Sub33.DTOs.Donacion;
 using Backend_Sub33.Services;
 
@@ -19,6 +20,7 @@ public class DonacionLibroController : ApiControllerBase
     public async Task<IActionResult> GetLibro(int anio, int mes)
         => Respond(await _libroService.GetLibroAsync(anio, mes));
 
+    [HttpRequirePermission("donaciones.libro.crear")]
     [HttpPost("movimientos")]
     public async Task<IActionResult> CreateMovimiento([FromBody] DonacionMovimientoCreateDto dto)
     {
@@ -33,6 +35,7 @@ public class DonacionLibroController : ApiControllerBase
             StatusCodes.Status201Created);
     }
 
+    [HttpRequirePermission("donaciones.libro.editar")]
     [HttpPut("movimientos/{id:int}")]
     public async Task<IActionResult> UpdateMovimiento(int id, [FromBody] DonacionMovimientoUpdateDto dto)
     {
@@ -46,6 +49,7 @@ public class DonacionLibroController : ApiControllerBase
             "Movimiento actualizado correctamente.");
     }
 
+    [HttpRequirePermission("donaciones.libro.eliminar")]
     [HttpDelete("movimientos/{id:int}")]
     public async Task<IActionResult> DeleteMovimiento(int id)
         => Respond(await _libroService.DeleteMovimientoAsync(id), "Movimiento eliminado correctamente.");

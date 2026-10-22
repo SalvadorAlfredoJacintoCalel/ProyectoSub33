@@ -23,6 +23,7 @@ import { useAlert } from "@/app/components/ui/AlertSystem";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { formatMoneda } from "@/app/pages/Inventario/components/format";
 import { useVehiculos } from "@/hooks/useVehiculos";
+import { usePermisos } from "@/hooks/usePermisos";
 import { vehiculosService } from "@/services/vehiculosService";
 import type {
   EstadoOperativo,
@@ -46,6 +47,7 @@ type KpiFiltro = "unidades" | "operativas" | "mantenimiento" | "donados" | "baja
 
 export function VehiculosPage() {
   const { alert, toast } = useAlert();
+  const { vehiculos: permisosVehiculos } = usePermisos();
   const {
     vehiculos,
     paginacion,
@@ -331,15 +333,17 @@ export function VehiculosPage() {
             >
               Limpiar
             </Button>
-            <Button
-              onClick={() => {
-                setEditTarget(null);
-                setShowForm(true);
-              }}
-            >
-              <Plus size={16} />
-              Nuevo vehículo
-            </Button>
+            {permisosVehiculos.crud && (
+              <Button
+                onClick={() => {
+                  setEditTarget(null);
+                  setShowForm(true);
+                }}
+              >
+                <Plus size={16} />
+                Nuevo vehículo
+              </Button>
+            )}
           </div>
 
           {error && (

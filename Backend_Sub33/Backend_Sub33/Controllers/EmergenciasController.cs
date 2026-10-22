@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Backend_Sub33.Attributes;
 using Backend_Sub33.Data;
 using Backend_Sub33.DTOs;
 using Backend_Sub33.Services;
@@ -22,6 +23,7 @@ namespace Backend_Sub33.Controllers
             _emergenciaService = emergenciaService;
         }
 
+        [HttpRequirePermission("emergencias.crear")]
         [HttpPost]
         public async Task<IActionResult> Registrar([FromBody] EmergenciaCreateDto dto)
         {
@@ -112,6 +114,7 @@ namespace Backend_Sub33.Controllers
             }
         }
 
+        [HttpRequirePermission("emergencias.editar")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Actualizar(int id, [FromBody] EmergenciaUpdateDto dto)
         {
@@ -144,6 +147,10 @@ namespace Backend_Sub33.Controllers
             {
                 return BadRequest(new { exito = false, mensaje = ex.Message });
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { exito = false, mensaje = ex.Message });
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ERROR EMERGENCIAS PUT]: {ex.Message}");
@@ -151,6 +158,7 @@ namespace Backend_Sub33.Controllers
             }
         }
 
+        [HttpRequirePermission("emergencias.cambiar-estado")]
         [HttpPatch("{id:int}/estado")]
         public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoDto dto)
         {
@@ -178,6 +186,10 @@ namespace Backend_Sub33.Controllers
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { exito = false, mensaje = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { exito = false, mensaje = ex.Message });
             }
             catch (Exception ex)
             {

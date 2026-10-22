@@ -12,6 +12,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
+import { usePermisos } from "@/hooks/usePermisos";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { FormErrorSummary } from "@/app/pages/Inventario/components/FormErrorSummary";
@@ -43,6 +44,7 @@ export function EquipoUnidadesPage() {
   const { equipoUnidades, items, loading, catalogos, loadEquipoUnidades, loadItems, loadCatalogos, asignarEquipo } =
     useInventario();
   const { toast } = useAlert();
+  const { inventario: permisosInventario } = usePermisos();
 
   const [busqueda, setBusqueda] = useState("");
   const [unidadFilter, setUnidadFilter] = useState("");
@@ -130,6 +132,10 @@ export function EquipoUnidadesPage() {
   }, [items]);
 
   function openAssign(prefillUnidad?: string) {
+    if (!permisosInventario.asignarEquipo) {
+      toast.warning("No tienes permiso para asignar equipo a unidades.");
+      return;
+    }
     if (draft) {
       setAssignUnidadId(draft.unidadId);
       setAssignRows(draft.rows.length ? draft.rows : [newAssignRow()]);
@@ -155,6 +161,10 @@ export function EquipoUnidadesPage() {
   }
 
   function openEdit(e: EquipoUnidad) {
+    if (!permisosInventario.asignarEquipo) {
+      toast.warning("No tienes permiso para editar la asignación de equipo.");
+      return;
+    }
     setForm({ unidadId: String(e.unidadId), itemId: String(e.itemId), cantidadAsignada: String(e.cantidadAsignada) });
     setErrors({});
     setEditing(true);
@@ -295,15 +305,17 @@ export function EquipoUnidadesPage() {
                               </span>
                             ) : null}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => openEdit(e)}
-                            className="rounded-md p-1 transition-colors"
-                            style={{ color: "var(--brand-600)" }}
-                            title="Editar cantidad"
-                          >
-                            <Pencil size={14} />
-                          </button>
+                          {permisosInventario.asignarEquipo && (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(e)}
+                              className="rounded-md p-1 transition-colors"
+                              style={{ color: "var(--brand-600)" }}
+                              title="Editar cantidad"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          )}
                         </span>
                       </div>
                     );
@@ -350,9 +362,11 @@ export function EquipoUnidadesPage() {
           <option value="">Todas las unidades</option>
           {catalogos.unidades.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
         </select>
-        <Button variant="brand" onClick={() => openAssign()} className="ml-auto">
-          <Plus size={16} /> Asignar Equipo
-        </Button>
+        {permisosInventario.asignarEquipo && (
+          <Button variant="brand" onClick={() => openAssign()} className="ml-auto">
+            <Plus size={16} /> Asignar Equipo
+          </Button>
+        )}
       </div>
 
       {loading ? (

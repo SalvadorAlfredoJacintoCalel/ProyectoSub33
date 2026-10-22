@@ -8,6 +8,7 @@ import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
+import { usePermisos } from "@/hooks/usePermisos";
 import { inventarioService } from "@/services/inventarioService";
 import { vehiculosService } from "@/services/vehiculosService";
 import type { PersonalAsignado } from "@/types/emergencia";
@@ -127,6 +128,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     useEmergencias();
   const { toast } = useAlert();
   const { user } = useAuth();
+  const { emergencias: permisosEmergencias } = usePermisos();
 
   const [numeroIncidente, setNumeroIncidente] = useState("");
   const [tipoSolicitud, setTipoSolicitud] = useState<"Telefónica" | "Personal">("Telefónica");
@@ -164,6 +166,10 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
   const [submitting, setSubmitting] = useState(false);
   const [formuladoPorIdOriginal, setFormuladoPorIdOriginal] = useState<string | null>(null);
   const [creadoPorNombreOriginal, setCreadoPorNombreOriginal] = useState("");
+
+  const puedeEditar = isEdit
+    ? permisosEmergencias.editarPropia(formuladoPorIdOriginal)
+    : permisosEmergencias.crear;
 
   const { draft, savedAt, online, save, clear } = useFormDraft<EmergenciaDraft>("emergencia.create");
 
@@ -433,6 +439,10 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
   }, [catalogos.vehiculosDisponibles, vehiculoAnexo]);
 
   async function handleSubmit() {
+    if (!puedeEditar) {
+      toast.warning("Solo el creador de la emergencia o un administrador pueden modificarla.");
+      return;
+    }
     const newErrors: Record<string, boolean> = {};
     let personalErrorMsg = "";
 
@@ -1428,7 +1438,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
           <Button variant="brand-outline" onClick={onClose} disabled={submitting}>
             Cancelar
           </Button>
-          <Button variant="brand" onClick={handleSubmit} disabled={submitting}>
+          <Button variant="brand" onClick={handleSubmit} disabled={submitting || !puedeEditar}>
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} />

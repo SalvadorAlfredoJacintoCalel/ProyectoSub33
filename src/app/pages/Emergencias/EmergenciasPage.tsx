@@ -18,6 +18,7 @@ import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
+import { usePermisos } from "@/hooks/usePermisos";
 import { inventarioService } from "@/services/inventarioService";
 import type { Emergencia, EmergenciaListItem, EmergenciaFiltros, EstadoEmergencia } from "@/types/emergencia";
 import type { ServicioInsumoUtilizado } from "@/types/inventario";
@@ -867,6 +868,7 @@ function weekStartISO() {
 
 export function EmergenciasPage() {
   const { user } = useAuth();
+  const { emergencias: permisosEmergencias } = usePermisos();
   const {
     emergencias,
     paginacion,
@@ -1073,16 +1075,18 @@ export function EmergenciasPage() {
             </div>
           </div>
           <div className="hidden sm:block flex-1" />
-          <button
-            onClick={() => setShowRegister(true)}
-            className="flex items-center justify-center gap-2.5 px-6 py-3 rounded-lg text-white transition-opacity hover:opacity-90 active:opacity-80 w-full sm:w-auto"
-            style={{ background: RED, boxShadow: "0 4px 14px rgba(193,29,29,.3)" }}
-          >
-            <span className="flex items-center justify-center w-5 h-5 rounded-full border-[1.5px] border-white">
-              <Plus className="w-3 h-3" strokeWidth={2.5} />
-            </span>
-            <span className="font-['Inter:Bold',sans-serif] font-bold text-[13px] tracking-[0.5px] whitespace-nowrap">REGISTRAR SERVICIO</span>
-          </button>
+          {permisosEmergencias.crear && (
+            <button
+              onClick={() => setShowRegister(true)}
+              className="flex items-center justify-center gap-2.5 px-6 py-3 rounded-lg text-white transition-opacity hover:opacity-90 active:opacity-80 w-full sm:w-auto"
+              style={{ background: RED, boxShadow: "0 4px 14px rgba(193,29,29,.3)" }}
+            >
+              <span className="flex items-center justify-center w-5 h-5 rounded-full border-[1.5px] border-white">
+                <Plus className="w-3 h-3" strokeWidth={2.5} />
+              </span>
+              <span className="font-['Inter:Bold',sans-serif] font-bold text-[13px] tracking-[0.5px] whitespace-nowrap">REGISTRAR SERVICIO</span>
+            </button>
+          )}
         </div>
 
         {/* Filters */}
@@ -1285,9 +1289,9 @@ export function EmergenciasPage() {
           emergencia={selectedEmergencia}
           tiposEmergencia={catalogos.tiposEmergencia}
           onClose={() => setSelectedEmergencia(null)}
-          onEdit={() => { setEditingId(selectedEmergencia.servicioId); setSelectedEmergencia(null); }}
-          onTerminar={() => handleTerminar(selectedEmergencia.servicioId)}
-          onDesactivar={() => handleDesactivar(selectedEmergencia.servicioId)}
+          onEdit={permisosEmergencias.editarPropia(selectedEmergencia.formuladoPorId) ? () => { setEditingId(selectedEmergencia.servicioId); setSelectedEmergencia(null); } : undefined}
+          onTerminar={permisosEmergencias.cambiarEstadoPropia(selectedEmergencia.formuladoPorId) ? () => handleTerminar(selectedEmergencia.servicioId) : undefined}
+          onDesactivar={permisosEmergencias.cambiarEstadoPropia(selectedEmergencia.formuladoPorId) ? () => handleDesactivar(selectedEmergencia.servicioId) : undefined}
         />
       )}
 

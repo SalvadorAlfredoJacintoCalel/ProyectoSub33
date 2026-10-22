@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Backend_Sub33.Attributes;
 using Backend_Sub33.DTOs.Inventario;
 using Backend_Sub33.Services;
 
@@ -43,6 +44,7 @@ public class InventarioController : ApiControllerBase
     public async Task<IActionResult> GetItem(int id)
         => Respond(await _inventarioService.GetItemByIdAsync(id));
 
+    [HttpRequirePermission("inventario.crear")]
     [HttpPost("items")]
     public async Task<IActionResult> CreateItem([FromBody] InventarioItemCreateDto dto)
     {
@@ -57,6 +59,7 @@ public class InventarioController : ApiControllerBase
             StatusCodes.Status201Created);
     }
 
+    [HttpRequirePermission("inventario.editar")]
     [HttpPut("items/{id:int}")]
     public async Task<IActionResult> UpdateItem(int id, [FromBody] InventarioItemUpdateDto dto)
     {
@@ -70,12 +73,14 @@ public class InventarioController : ApiControllerBase
             "Item actualizado correctamente.");
     }
 
+    [HttpRequirePermission("inventario.baja")]
     [HttpPost("items/{id:int}/baja")]
     public async Task<IActionResult> DarDeBajaItem(int id, [FromBody] InventarioItemBajaDto dto)
         => Respond(
             await _inventarioService.DarDeBajaAsync(id, dto?.ResponsableId),
             "Item dado de baja correctamente.");
 
+    [HttpRequirePermission("inventario.eliminar")]
     [HttpDelete("items/{id:int}")]
     public async Task<IActionResult> DeleteItem(int id)
         => Respond(await _inventarioService.DeleteItemAsync(id), "Item eliminado correctamente.");
@@ -108,6 +113,7 @@ public class InventarioController : ApiControllerBase
     public async Task<IActionResult> GetTiposMovimiento([FromQuery] bool soloManuales = true)
         => Respond(await _inventarioService.GetTiposMovimientoAsync(soloManuales));
 
+    [HttpRequirePermission("inventario.ajuste")]
     [HttpPost("movimientos")]
     public async Task<IActionResult> CreateMovimiento([FromBody] InventarioMovimientoCreateDto dto)
     {
@@ -128,6 +134,7 @@ public class InventarioController : ApiControllerBase
     public async Task<IActionResult> GetEquipoUnidades([FromQuery] int? unidadId = null)
         => Respond(await _inventarioService.GetEquipoUnidadesAsync(unidadId));
 
+    [HttpRequirePermission("inventario.equipo-asignar")]
     [HttpPost("equipo-unidades")]
     public async Task<IActionResult> AsignarEquipo([FromBody] EquipoUnidadCreateDto dto)
     {
@@ -154,6 +161,7 @@ public class InventarioController : ApiControllerBase
     public async Task<IActionResult> GetServicioInsumos([FromQuery] int? servicioId = null)
         => Respond(await _inventarioService.GetInsumosUtilizadosAsync(servicioId));
 
+    [HttpRequirePermission("inventario.registrar-uso-servicio")]
     [HttpPost("servicio-insumos")]
     public async Task<IActionResult> RegistrarUsoInsumo([FromBody] ServicioInsumoUtilizadoCreateDto dto)
     {

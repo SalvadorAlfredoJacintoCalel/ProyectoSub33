@@ -23,10 +23,12 @@ namespace Backend_Sub33.Services
     public class EmergenciaService : IEmergenciaService
     {
         private readonly AppDbContext _context;
+        private readonly ICurrentUser _currentUser;
 
-        public EmergenciaService(AppDbContext context)
+        public EmergenciaService(AppDbContext context, ICurrentUser currentUser)
         {
             _context = context;
+            _currentUser = currentUser;
         }
 
         private System.Data.Common.DbConnection AbrirConexion()
@@ -61,6 +63,7 @@ namespace Backend_Sub33.Services
             public int ServicioId { get; set; }
             public string Estado { get; set; } = string.Empty;
             public int? VehiculoId { get; set; }
+            public Guid? FormuladoPorId { get; set; }
         }
 
         private static string ResolverNombreVehiculo(VehiculoEmergenciaRow vehiculo)
@@ -213,6 +216,23 @@ namespace Backend_Sub33.Services
             }
         }
 
+        private void ValidarPropiedadEmergencia(EmergenciaEstadoRow actual)
+        {
+            if (_currentUser.EsAdmin) return;
+
+            var personalId = _currentUser.PersonalId;
+
+            if (!personalId.HasValue)
+            {
+                throw new UnauthorizedAccessException("Solo el creador o un administrador pueden modificar esta emergencia.");
+            }
+
+            if (!actual.FormuladoPorId.HasValue || actual.FormuladoPorId.Value != personalId.Value)
+            {
+                throw new UnauthorizedAccessException("Solo el creador o un administrador pueden modificar esta emergencia.");
+            }
+        }
+
         public async Task<EmergenciaListResponseDto> ListarEmergenciasAsync(EmergenciaFiltrosDto filtros)
         {
             using var connection = AbrirConexion();
@@ -288,6 +308,7 @@ namespace Backend_Sub33.Services
                     es.unidad_asignada_nombre,
                     es.vehiculo_id,
                     es.estado,
+                    es.formulado_por_id,
                     COALESCE(
                         (SELECT string_agg(sta.tipo_asistencia, ', ') 
                          FROM servicio_tipos_asistencia sta 
@@ -567,10 +588,12 @@ namespace Backend_Sub33.Services
             using var connection = AbrirConexion();
 
             var actual = await connection.QueryFirstOrDefaultAsync<EmergenciaEstadoRow>(
-                "SELECT servicio_id, estado, vehiculo_id FROM emergencias_servicios WHERE servicio_id = @Id",
+                "SELECT servicio_id, estado, vehiculo_id, formulado_por_id FROM emergencias_servicios WHERE servicio_id = @Id",
                 new { Id = id });
 
             if (actual == null) return null;
+
+            ValidarPropiedadEmergencia(actual);
 
             await ValidarPersonalAsignadoAsync(connection, dto.PersonalAsignado);
 
@@ -842,10 +865,12 @@ namespace Backend_Sub33.Services
             using var connection = AbrirConexion();
 
             var actual = await connection.QueryFirstOrDefaultAsync<EmergenciaEstadoRow>(
-                "SELECT servicio_id, estado, vehiculo_id FROM emergencias_servicios WHERE servicio_id = @Id",
+                "SELECT servicio_id, estado, vehiculo_id, formulado_por_id FROM emergencias_servicios WHERE servicio_id = @Id",
                 new { Id = id });
 
             if (actual == null) return false;
+
+            ValidarPropiedadEmergencia(actual);
 
             var destino = estado?.Trim() ?? string.Empty;
 

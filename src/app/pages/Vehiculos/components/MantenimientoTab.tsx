@@ -5,6 +5,7 @@ import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table"
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { formatFechaCorta, formatMoneda } from "@/app/pages/Inventario/components/format";
+import { usePermisos } from "@/hooks/usePermisos";
 import type { Vehiculo, VehiculoMantenimiento } from "@/types/vehiculos";
 
 interface Props {
@@ -23,6 +24,7 @@ export function MantenimientoTab({
   onEliminar,
 }: Props) {
   const { alert, toast } = useAlert();
+  const { vehiculos: permisosVehiculos } = usePermisos();
   const [vehiculoId, setVehiculoId] = useState("");
   const [mantenimientos, setMantenimientos] = useState<VehiculoMantenimiento[]>([]);
   const [loading, setLoading] = useState(false);
@@ -122,29 +124,33 @@ export function MantenimientoTab({
       header: "Acciones",
       cell: (m) => (
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            className="rounded-lg p-1.5"
-            style={{ color: "var(--text-2)" }}
-            onClick={() => {
-              if (vehiculo) onImprimir(vehiculo, m);
-            }}
-            title="Imprimir hoja"
-            disabled={!vehiculo}
-          >
-            <Printer size={14} />
-          </button>
-          <button
-            type="button"
-            className="rounded-lg p-1.5"
-            style={{ color: "var(--brand-600)" }}
-            onClick={() => {
-              void eliminar(m);
-            }}
-            title="Eliminar"
-          >
-            <Trash2 size={14} />
-          </button>
+          {permisosVehiculos.imprimirMantenimiento && (
+            <button
+              type="button"
+              className="rounded-lg p-1.5"
+              style={{ color: "var(--text-2)" }}
+              onClick={() => {
+                if (vehiculo) onImprimir(vehiculo, m);
+              }}
+              title="Imprimir hoja"
+              disabled={!vehiculo}
+            >
+              <Printer size={14} />
+            </button>
+          )}
+          {permisosVehiculos.mantenimientos && (
+            <button
+              type="button"
+              className="rounded-lg p-1.5"
+              style={{ color: "var(--brand-600)" }}
+              onClick={() => {
+                void eliminar(m);
+              }}
+              title="Eliminar"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       ),
     },

@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<RolModulo> RolModulos { get; set; }
     public DbSet<CatModulo> CatModulos { get; set; }
     public DbSet<Permiso> Permisos { get; set; }
+    public DbSet<UsuarioPermiso> UsuarioPermisos { get; set; }
     public DbSet<ParametroSistema> ParametrosSistema { get; set; }
     public DbSet<CatRango> CatRangos { get; set; }
     public DbSet<CatTipoEmergencia> CatTiposEmergencia { get; set; }
@@ -212,6 +213,7 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.PermisoId);
             entity.Property(e => e.PermisoId).HasColumnName("permiso_id").ValueGeneratedOnAdd();
             entity.Property(e => e.Codigo).HasColumnName("codigo").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
             entity.Property(e => e.ModuloId).HasColumnName("modulo_id");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -244,6 +246,27 @@ public class AppDbContext : DbContext
                   .HasForeignKey(rp => rp.PermisoId)
                   .OnDelete(DeleteBehavior.Cascade)
                   .HasConstraintName("fk_rp_permiso");
+        });
+
+        // UsuarioPermiso (override de permisos por usuario)
+        modelBuilder.Entity<UsuarioPermiso>(entity =>
+        {
+            entity.ToTable("usuario_permisos");
+            entity.HasKey(up => new { up.UsuarioId, up.PermisoId });
+            entity.Property(up => up.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(up => up.PermisoId).HasColumnName("permiso_id");
+
+            entity.HasOne(up => up.Usuario)
+                  .WithMany()
+                  .HasForeignKey(up => up.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_up_usuario");
+
+            entity.HasOne(up => up.Permiso)
+                  .WithMany()
+                  .HasForeignKey(up => up.PermisoId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_up_permiso");
         });
 
         // RolModulo (Many-to-Many rol <-> modulo)

@@ -117,7 +117,7 @@ public class AuthController : ControllerBase
                     new { PersonalId = personalId.Value }) ?? string.Empty;
             }
 
-            var token = GenerateJwtToken((Guid)usuarioDb.usuario_id, usuarioDb.username, roles, permisos);
+            var token = GenerateJwtToken((Guid)usuarioDb.usuario_id, usuarioDb.username, roles, permisos, personalId);
 
             return Ok(new AuthResponseDto
             {
@@ -143,7 +143,7 @@ public class AuthController : ControllerBase
         }
     }
 
-    private string GenerateJwtToken(Guid usuarioId, string username, IEnumerable<string> roles, IEnumerable<string> permisos)
+    private string GenerateJwtToken(Guid usuarioId, string username, IEnumerable<string> roles, IEnumerable<string> permisos, Guid? personalId)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -154,6 +154,11 @@ public class AuthController : ControllerBase
             new(JwtRegisteredClaimNames.UniqueName, username),
             new("usuario_id", usuarioId.ToString()),
         };
+
+        if (personalId.HasValue)
+        {
+            claims.Add(new Claim("personal_id", personalId.Value.ToString()));
+        }
 
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
         claims.AddRange(permisos.Select(p => new Claim("permiso", p)));

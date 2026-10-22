@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Backend_Sub33.Attributes;
 using Backend_Sub33.DTOs.Personal;
 using Backend_Sub33.Services;
 
@@ -33,6 +34,7 @@ public class PersonalController : ApiControllerBase
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
         => Respond(await _personalService.GetByIdAsync(id, ct));
 
+    [HttpRequirePermission("personal.crear")]
     [HttpPost]
     public async Task<IActionResult> Crear([FromBody] CreatePersonalDto dto, CancellationToken ct)
     {
@@ -47,6 +49,7 @@ public class PersonalController : ApiControllerBase
             StatusCodes.Status201Created);
     }
 
+    [HttpRequirePermission("personal.editar")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Actualizar(Guid id, [FromBody] UpdatePersonalDto dto, CancellationToken ct)
     {
@@ -60,16 +63,19 @@ public class PersonalController : ApiControllerBase
             "Personal actualizado correctamente.");
     }
 
+    [HttpRequirePermission("personal.cambiar-estado")]
     [HttpPatch("{id:guid}/estado")]
     public async Task<IActionResult> CambiarEstado(Guid id, [FromBody] CambiarEstadoDto dto, CancellationToken ct)
         => Respond(
             await _personalService.ChangeEstadoAsync(id, dto.Estado, ct),
             dto.Estado ? "Personal activado correctamente." : "Personal desactivado correctamente.");
 
+    [HttpRequirePermission("personal.acceso-sistema")]
     [HttpPut("{id:guid}/acceso-sistema")]
     public async Task<IActionResult> ActualizarAcceso(Guid id, [FromBody] AccesoSistemaUpdateDto dto, CancellationToken ct)
         => Respond(await _personalService.ActualizarAccesoSistemaAsync(id, dto.Username, dto.Password, dto.RolId, ct), "Acceso al sistema actualizado correctamente.");
 
+    [HttpRequirePermission("personal.eliminar")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Eliminar(Guid id, CancellationToken ct)
         => Respond(await _personalService.DeleteAsync(id, ct), "Personal desactivado correctamente.");

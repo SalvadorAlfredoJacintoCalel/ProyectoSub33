@@ -19,6 +19,7 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
 import { useAuth } from "@/context/AuthContext";
+import { usePermisos } from "@/hooks/usePermisos";
 import { donacionService } from "@/services/donacionService";
 import { getParametros } from "@/services/configuracionService";
 import { MovimientosPage, tipoMeta } from "@/app/pages/Inventario/MovimientosPage";
@@ -329,6 +330,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
     useInventario();
   const { alert, toast } = useAlert();
   const { user } = useAuth();
+  const { inventario: permisosInventario } = usePermisos();
 
   const [search, setSearch] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("");
@@ -525,6 +527,10 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
   ];
 
   function openAdd() {
+    if (!permisosInventario.crear) {
+      toast.warning("No tienes permiso para registrar nuevos items.");
+      return;
+    }
     if (draft) {
       setForm(draft);
       toast.info("Se recuperó el borrador del item.");
@@ -536,6 +542,10 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
   }
 
   function openEdit(item: InventarioItem) {
+    if (!permisosInventario.editar) {
+      toast.warning("No tienes permiso para editar items.");
+      return;
+    }
     setForm(itemToForm(item));
     setErrors({});
     setEditModal({ mode: "edit", item });
@@ -779,9 +789,11 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         emptyTitle="No hay items registrados"
         emptyDescription="Registre un nuevo insumo o equipo para comenzar a gestionar el inventario."
         emptyAction={
-          <Button variant="brand" onClick={openAdd}>
-            <Plus className="size-4" /> Nuevo Item
-          </Button>
+          permisosInventario.crear ? (
+            <Button variant="brand" onClick={openAdd}>
+              <Plus className="size-4" /> Nuevo Item
+            </Button>
+          ) : undefined
         }
         toolbar={
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
@@ -829,9 +841,11 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
                 </span>
               )}
             </div>
-            <Button variant="brand" onClick={openAdd}>
-              <Plus className="size-4" /> Nuevo Item
-            </Button>
+            {permisosInventario.crear && (
+              <Button variant="brand" onClick={openAdd}>
+                <Plus className="size-4" /> Nuevo Item
+              </Button>
+            )}
           </div>
         }
       />
@@ -1014,14 +1028,16 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
                     onChange={(e) => setField("noRecibo", e.target.value)}
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowDonacionDrawer(true)}
-                  className="flex items-center gap-1 text-xs font-semibold transition"
-                  style={{ color: "var(--brand-600)", background: "transparent", border: "none", cursor: "pointer" }}
-                >
-                  <Plus size={13} /> Nueva donación
-                </button>
+                {permisosInventario.crear && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDonacionDrawer(true)}
+                    className="flex items-center gap-1 text-xs font-semibold transition"
+                    style={{ color: "var(--brand-600)", background: "transparent", border: "none", cursor: "pointer" }}
+                  >
+                    <Plus size={13} /> Nueva donación
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1045,21 +1061,26 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         }
         footer={
           <>
-            <Button variant="brand-outline" onClick={() => selectedItem && requestDelete(selectedItem)}>
-              <Trash2 className="size-4" /> Eliminar
-            </Button>
-            {selectedItem && (selectedItem.estado ?? "Activo") === "Baja" ? (
-              <Button variant="brand-outline" loading={submitting} onClick={() => handleReactivar(selectedItem)}>
-                <RotateCcw className="size-4" /> Reactivar
-              </Button>
-            ) : (
-              <Button variant="brand-outline" loading={submitting} onClick={() => selectedItem && handleDarDeBaja(selectedItem)}>
-                <Ban className="size-4" /> Dar de baja
+            {permisosInventario.eliminar && (
+              <Button variant="brand-outline" onClick={() => selectedItem && requestDelete(selectedItem)}>
+                <Trash2 className="size-4" /> Eliminar
               </Button>
             )}
-            <Button variant="brand" onClick={handleEditFromDetail}>
-              <Pencil className="size-4" /> Editar
-            </Button>
+            {permisosInventario.baja &&
+              (selectedItem && (selectedItem.estado ?? "Activo") === "Baja" ? (
+                <Button variant="brand-outline" loading={submitting} onClick={() => handleReactivar(selectedItem)}>
+                  <RotateCcw className="size-4" /> Reactivar
+                </Button>
+              ) : (
+                <Button variant="brand-outline" loading={submitting} onClick={() => selectedItem && handleDarDeBaja(selectedItem)}>
+                  <Ban className="size-4" /> Dar de baja
+                </Button>
+              ))}
+            {permisosInventario.editar && (
+              <Button variant="brand" onClick={handleEditFromDetail}>
+                <Pencil className="size-4" /> Editar
+              </Button>
+            )}
           </>
         }
       >

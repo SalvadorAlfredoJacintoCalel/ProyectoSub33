@@ -11,6 +11,7 @@ import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { useCupones } from "@/hooks/useCupones";
+import { usePermisos } from "@/hooks/usePermisos";
 import { vehiculosService } from "@/services/vehiculosService";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
 import type {
@@ -60,6 +61,7 @@ function toCuponUpdate(cupon: VehiculoCupon, firmaBase64: string | null = cupon.
 
 export function CuponesTab() {
   const { alert, toast } = useAlert();
+  const { vehiculos: permisosVehiculos } = usePermisos();
   const {
     anio,
     mes,
@@ -227,10 +229,12 @@ export function CuponesTab() {
             </label>
             <Input type="number" value={anio} onChange={(e) => setAnio(Number(e.target.value) || anio)} />
           </div>
-          <Button variant="outline" onClick={() => setShowPeriodo(true)}>
-            <Settings2 size={16} />
-            Configurar período
-          </Button>
+          {permisosVehiculos.periodos && (
+            <Button variant="outline" onClick={() => setShowPeriodo(true)}>
+              <Settings2 size={16} />
+              Configurar período
+            </Button>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={exportar} disabled={filas.length === 0}>
@@ -241,15 +245,17 @@ export function CuponesTab() {
             <Printer size={16} />
             Imprimir
           </Button>
-          <Button
-            onClick={() => {
-              setCuponEdit(null);
-              setShowCupon(true);
-            }}
-          >
-            <Plus size={16} />
-            Nuevo cupón
-          </Button>
+          {permisosVehiculos.cupones && (
+            <Button
+              onClick={() => {
+                setCuponEdit(null);
+                setShowCupon(true);
+              }}
+            >
+              <Plus size={16} />
+              Nuevo cupón
+            </Button>
+          )}
         </div>
       </div>
 
@@ -306,10 +312,12 @@ export function CuponesTab() {
             title="Sin cupones en este período"
             description="Configura los cupones recibidos y registra el primer consumo."
             action={
-              <Button onClick={() => setShowCupon(true)}>
-                <Plus size={16} />
-                Nuevo cupón
-              </Button>
+              permisosVehiculos.cupones ? (
+                <Button onClick={() => setShowCupon(true)}>
+                  <Plus size={16} />
+                  Nuevo cupón
+                </Button>
+              ) : undefined
             }
           />
         ) : (
@@ -405,27 +413,31 @@ export function CuponesTab() {
                     </td>
                     <td className="border-b px-2 py-2 print:hidden" style={{ borderColor: "var(--divider)" }}>
                       <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          className="rounded-lg p-1.5"
-                          style={{ color: "var(--text-2)" }}
-                          onClick={() => {
-                            setCuponEdit(c);
-                            setShowCupon(true);
-                          }}
-                          title="Editar"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-lg p-1.5"
-                          style={{ color: "var(--brand-600)" }}
-                          onClick={() => eliminar(c)}
-                          title="Eliminar"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {permisosVehiculos.editarCupon && (
+                          <button
+                            type="button"
+                            className="rounded-lg p-1.5"
+                            style={{ color: "var(--text-2)" }}
+                            onClick={() => {
+                              setCuponEdit(c);
+                              setShowCupon(true);
+                            }}
+                            title="Editar"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {permisosVehiculos.eliminarCupon && (
+                          <button
+                            type="button"
+                            className="rounded-lg p-1.5"
+                            style={{ color: "var(--brand-600)" }}
+                            onClick={() => eliminar(c)}
+                            title="Eliminar"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

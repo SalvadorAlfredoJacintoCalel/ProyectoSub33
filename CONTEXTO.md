@@ -1,6 +1,6 @@
 ﻿# ProyectoSub33 — Contexto Completo para IA
 
-> Última actualización: **2026-10-21** (permisos de módulos por usuario, navegación por permisos, se elimina "Vista de Rol" y borradores sin alerta falsa).
+> Última actualización: **2026-10-21** (matriz de permisos granular completa: backend + frontend + UI jerárquica en Seguridad, ownership en emergencias y donaciones).
 > Este archivo es la fuente de contexto del proyecto. Mantenerlo actualizado al cerrar cada bloque de trabajo.
 
 ## Resumen Ejecutivo
@@ -145,11 +145,12 @@ ProyectoSub33-main/
 | `personal` | Bomberos | `personal_id` (UUID) | `rango_id → cat_rangos` |
 | `usuarios` | Cuentas de acceso | `usuario_id` (UUID) | `personal_id → personal` |
 | `roles` | Roles del sistema | `rol_id` (int) | — |
-| `permisos` | Permisos por módulo | `permiso_id` (UUID) | `modulo_id → cat_modulos` |
+| `permisos` | Permisos granulares por módulo | `permiso_id` (int, serial) | `modulo_id → cat_modulos` |
 | `rol_permisos` | Matriz rol-permiso | `(rol_id, permiso_id)` | `rol_id`, `permiso_id` |
-| `rol_modulo` | Módulos por rol | `(rol_id, modulo_id)` | `rol_id`, `modulo_id` |
+| `rol_modulo` | Módulos por rol (visibilidad menú) | `(rol_id, modulo_id)` | `rol_id`, `modulo_id` |
 | `usuario_roles` | Roles de usuario | `(usuario_id, rol_id)` | `usuario_id`, `rol_id` |
 | `usuario_modulos` | Módulos por usuario (override del rol) | `(usuario_id, modulo_id)` | `usuario_id → usuarios`, `modulo_id → cat_modulos` |
+| `usuario_permisos` | Permisos por usuario (override del rol) | `(usuario_id, permiso_id)` | `usuario_id → usuarios`, `permiso_id → permisos` |
 | `sesiones_activas` | Tokens JWT activos | `sesion_id` (UUID) | `usuario_id → usuarios` |
 | `bitacora_accesos` | Log de ingresos | `bitacora_id` | `usuario_id → usuarios` |
 | `codigos_recuperacion` | OTP recuperación | `codigo_id` | `usuario_id → usuarios` |
@@ -244,6 +245,12 @@ PUT    /api/configuracion/catalogos/{tipo}/{id:int}
 DELETE /api/configuracion/catalogos/{tipo}/{id:int}
 POST   /api/configuracion/catalogos/hospitales-completo
 PUT    /api/configuracion/catalogos/hospitales-completo/{id:int}
+
+GET    /api/seguridad/modulos/mios
+GET    /api/seguridad/modulos/listar/{rolId:int}
+POST   /api/seguridad/modulos/asignar
+GET    /api/seguridad/modulos/usuario/{usuarioId:guid}
+POST   /api/seguridad/modulos/usuario/asignar
 
 GET    /api/seguridad/permisos/mios
 GET    /api/seguridad/permisos/listar/{rolId:int}
@@ -842,3 +849,73 @@ dotnet ef database update
 - **Causa:** `authService.js` comparaba `roles.includes("admin")`, pero el backend envía `["Administrador"]` (español capitalizado); al no coincidir caía al fallback `"voluntario"`.
 - **Solución:** `normalizeRole()` en `src/constants/roles.ts` (admin/administrador/administrator, secretario/secretary, resto voluntario; prioridad admin > secretario). Usado en login (`authService.js`) y en la restauración de sesión (`AuthContext`), que además reescribe `localStorage.userRole` para corregir sesiones previas.
 - Servicios detenidos al finalizar; no quedan procesos escuchando en `5173` ni `5196`.
+
+## Matriz de Permisos Granular Completa (2026-10-21)
+
+### Modelo en dos niveles
+1. **Módulos** (`cat_modulos` + `rol_modulo` + `usuario_modulos`) → visibilidad del menú (sidebar). Admin 9, Secretario 8 (sin `seguridad`), Voluntario 6 (sin `personal`/`donaciones`/`seguridad`).
+2. **Permisos** (`permisos` + `rol_permisos` + `usuario_permisos`) → acciones dentro de cada módulo. 45 códigos con patrón `{modulo}.{accion}`.
+
+Regla de override: si el usuario tiene filas en `usuario_permisos` (o `usuario_modulos`), mandan; si no, hereda del rol. Idéntico patrón en ambos niveles.
+
+### Base de datos
+- `docs/permisos_seed.sql` (idempotente): crea columna `permisos.nombre`, tabla `usuario_permisos`, siembra 45 permisos y asigna a roles (Admin 45 / Secretario 30 / Voluntario 8).
+- **IMPORTANTE:** no se usó `dotnet ef database update`. `__EFMigrationsHistory` está vacía y el esquema se mantiene 100% por scripts SQL; ejecutar migraciones EF intentaría recrear todas las tablas y destruir datos. Cualquier cambio de esquema futuro debe ir en SQL (como `docs/permisos_seed.sql` o `Data/SQL/*.sql`).
+
+### Backend
+- `Models/Entities/Permiso.cs`: nueva propiedad `Nombre` (columna `nombre`).
+- `Models/UsuarioPermiso.cs` (nueva entidad) + `DbSet` + config en `AppDbContext` (tabla `usuario_permisos`).
+- `Services/CurrentUser.cs` (`ICurrentUser`): lee `usuario_id`/`personal_id`/roles/permisos desde el JWT. Registrado en `Program.cs` (`AddHttpContextAccessor`).
+- `AuthController`: agrega claim `personal_id` al JWT (para validación de ownership).
+- **Fix crítico:** `Attributes/HttpRequirePermissionAttribute.cs` tenía un guard `if (context.Filters.Any(f => f is HttpRequirePermissionAttribute)) return;` que hacía que el atributo fuera un no-op (todo pasaba). Se reemplazó por la validación real: `ChallengeResult` si no autenticado, `ForbidResult` si no tiene el claim `permiso`.
+- `SeguridadController`: rutas reorganizadas:
+  - Módulos (menú): `GET/POST /api/seguridad/modulos/{mios,listar/{rolId},asignar,usuario/{id},usuario/asignar}`.
+  - Permisos (acciones): `GET/POST /api/seguridad/permisos/{mios,listar/{rolId},asignar,usuario/{id},usuario/asignar}`.
+- `[HttpRequirePermission]` agregado a: `PersonalController` (crear/editar/cambiar-estado/acceso-sistema/eliminar), `InventarioController` (crear/editar/baja/eliminar/ajuste/equipo-asignar/registrar-uso-servicio), `VehiculosController` (crear/editar/cambiar-estado/estado-operativo/eliminar/mantenimientos.*), `CuponesController` (crear/editar/eliminar/periodos), `DonacionesController` (registrar/editar/cambiar-estado/eliminar), `DonacionLibroController` (libro.*), `EmergenciasController` (crear/editar/cambiar-estado).
+- **Ownership (backend, innegociable):**
+  - `EmergenciaService`: `ActualizarEmergenciaAsync` y `CambiarEstadoAsync` validan que el `personal_id` del JWT == `formulado_por_id`, o que sea admin; si no, `UnauthorizedAccessException` → 403. Se agregó `formulado_por_id` a la consulta y al DTO `EmergenciaListItemDto`.
+  - `DonacionService`: `UpdateAsync`/`ChangeEstadoAsync`/`DeleteAsync` exigen `EsAdmin`; si no, `ServiceResult.Forbidden` (nuevo factory en `ServiceResult`).
+
+### Frontend
+- `src/hooks/usePermisos.ts` (nuevo): hook centralizado. Lee `modulos` + `permisos` desde `AuthContext` y expone helpers `personal.*`, `inventario.*`, `vehiculos.*`, `donaciones.*`, `emergencias.editarPropia(f)`, etc. Si no hay permisos cargados, usa una matriz de respaldo por rol (evita bloqueo total).
+- `AuthContext`: nuevo estado `permisos` (cargado con `getMisPermisos()` → `/seguridad/permisos/mios`, persistido en `localStorage.userPermisos`).
+- `seguridadService.ts`: funciones de módulos (`/modulos/*`) y de permisos (`/permisos/*`); tipos `PermisoGranular` y `ModuloConPermisos`.
+- Guards aplicados en: `PersonalPage`, `InventarioPage`, `MovimientosPage`, `EquipoUnidadesPage`, `VehiculosPage`, `VehiculoDrawer`, `MantenimientoTab`, `CuponesTab`, `DonacionesPage`, `LibroDonacionesTab`, `EmergenciasPage`, `EmergenciaFormPage`. (`ServicioInsumosPage` es solo lectura → sin cambios.)
+- `SeguridadPage` pestaña "Matriz de Permisos": nueva UI jerárquica (selector Rol/Usuario + acordeones por módulo + master toggle indeterminado + checkboxes por permiso + autoguardado). Reemplaza la antigua UI de módulos por usuario.
+- `EmergenciasPage`/`EmergenciaFormPage`: edición/estado condicionados por ownership (`editarPropia(formuladoPorId)`).
+
+### Verificación
+- `dotnet build` → 0 errores. `npm run build` → 0 errores.
+- Probado con JWT reales (admin/voluntario/secretario): permisos por rol/usuario, guards 403, ownership de emergencias 403, módulos por rol correctos.
+- Pendiente del usuario: reiniciar sesión (logout/login) para que el JWT nuevo incluya los claims `permiso` y `personal_id`; si no, los permisos se cargan por `/permisos/mios` (BD) sin necesidad de re-login, pero el claim `personal_id` (para ownership) sí requiere re-login.
+
+## Últimos cambios (2026-10-22)
+
+Cierre de la **Matriz de Permisos Completa** (BD + Backend + Frontend + UI). 15 tareas completadas:
+
+| # | Componente | Estado | Verificación |
+|---|------------|--------|--------------|
+| 1 | **BD: `docs/permisos_seed.sql`** | ✅ Ejecutado | 45 permisos; asignación Admin(45)/Secretario(30)/Voluntario(8) |
+| 2 | **BD: `usuario_permisos` + `rol_permisos`** | ✅ Creadas y pobladas | Tablas operativas (idempotente) |
+| 3 | **Backend: `SeguridadController` — 4 endpoints granulares** | ✅ | `GET/POST /permisos/listar\|asignar`, `GET/POST /permisos/usuario/*` |
+| 4 | **Backend: `[HttpRequirePermission]` en 31 endpoints** | ✅ | Personal, Inventario, Vehículos, Cupones, Donaciones, Libro, Emergencias |
+| 5 | **Backend: fix del atributo `HttpRequirePermission`** (era no-op) | ✅ | Ahora valida el claim `permiso` real → 403 |
+| 6 | **Backend: ownership en `EmergenciaService`** | ✅ | Solo creador o admin edita/cambia estado → 403 |
+| 7 | **Backend: ownership en `DonacionService`** | ✅ | Solo admin edita/elimina/cambia estado → 403 |
+| 8 | **Backend: claim `personal_id` en JWT + `ICurrentUser`** | ✅ | Necesario para ownership |
+| 9 | **Frontend: `src/hooks/usePermisos.ts`** | ✅ | Hook centralizado (permisos + módulos desde `AuthContext`) |
+| 10 | **Frontend: `seguridadService.ts` — 4 funciones granulares** | ✅ | `listarPermisosPorRol`, `asignarPermisosRol`, `listarPermisosPorUsuario`, `asignarPermisosUsuario` |
+| 11 | **Frontend: guards en 13 páginas/componentes** | ✅ | Personal, Inventario(4), Vehículos(4), Donaciones(2), Emergencias(2) |
+| 12 | **Frontend: `SeguridadPage` pestaña "Matriz de Permisos"** | ✅ | UI jerárquica: selector Rol/Usuario + acordeones + master toggle + autoguardado |
+| 13 | **Fix: `PersonalService.ChangeEstadoAsync` sincroniza ambas tablas** | ✅ | `personal.estado` + `usuarios.estado` quedan alineados |
+| 14 | **Usuario `sjacinto` activado en BD** | ✅ | `estado = true` en `personal` y `usuarios` |
+| 15 | **Builds verificados** | ✅ | `dotnet build` 0 errores · `npm run build` 0 errores |
+
+### Cambio menor de esta sesión
+- `src/app/pages/Seguridad/SeguridadPage.tsx`: se eliminó el badge técnico con el código del permiso (p. ej. `emergencias.ver`, `inventario.ajuste`) en los checkboxes. Ahora solo se muestra el nombre legible + descripción. El código del módulo (`moduloCodigo`) se mantiene en el encabezado del acordeón.
+- `docs/permisos_seed.sql`: se reescribieron las **descripciones de los 45 permisos** con redacción orientada al usuario final (se eliminaron referencias internas como "anti-fraude", "SOLO ADMIN", "soft delete", "upsert", "ownership", "CRUD" y "delta firmado"). Seed re-ejecutado: los permisos y su asignación a roles no cambian, solo el texto.
+
+### Notas importantes para futuros cambios
+- **No ejecutar `dotnet ef database update`.** `__EFMigrationsHistory` está vacía y el esquema se administra 100% con scripts SQL (`docs/permisos_seed.sql`, `Backend_Sub33/Backend_Sub33/Data/SQL/*.sql`). EF intentaría recrear todas las tablas y destruiría los datos.
+- El esquema y los datos de la BD `Sub_33` están en localhost:5432, base `Sub_33`, usuario `postgres`, password `12345678` (ver `appsettings.json`).
+- Para que el claim `personal_id` (ownership de emergencias) llegue al cliente hay que **cerrar y volver a iniciar sesión**.

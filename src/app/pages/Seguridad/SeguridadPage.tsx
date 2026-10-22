@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, type ReactNode } from "react";
-import { Shield, Lock, Plus, X, Pencil, Trash2, Save } from "lucide-react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import { Shield, Lock, Plus, X, Pencil, Trash2, Save, ChevronDown } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertContext";
 import { Button } from "@/app/components/ui/button";
 import { DataTable } from "@/app/components/ui/data-table";
@@ -23,7 +23,14 @@ import {
   type CatalogoTipo,
   type CatalogoItem,
 } from "../../../services/configuracionService";
-import { listarModulosUsuario, asignarModulosUsuario, type ModuloPermiso } from "@/services/seguridadService";
+import {
+  listarPermisosPorRol,
+  listarPermisosPorUsuario,
+  asignarPermisosRol,
+  asignarPermisosUsuario,
+  type PermisoGranular,
+  type ModuloConPermisos,
+} from "@/services/seguridadService";
 import { actualizarAccesoSistema } from "../../../services/personalService";
 
 const RED = "var(--red)";
@@ -62,6 +69,36 @@ const CATALOGOS_COMPLEJOS: Record<string, { fields: { name: string; label: strin
     ],
   },
 };
+
+function CheckboxIndeterminado({
+  checked,
+  indeterminate,
+  onChange,
+  className,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (v: boolean) => void;
+  className?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = indeterminate && !checked;
+    }
+  }, [indeterminate, checked]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      className={className}
+    />
+  );
+}
 
 function AccessDenied() {
   return (
@@ -233,8 +270,11 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [nuevaPassword, setNuevaPassword] = useState("");
 
   // ── Tab 4: Matriz de permisos ────────────────────────────────────────────────
-  const [modulos, setModulos] = useState<ModuloPermiso[]>([]);
-  const [selectedUsuarioId, setSelectedUsuarioId] = useState<string>("");
+  const [permisoTarget, setPermisoTarget] = useState<"rol" | "usuario">("rol");
+  const [selectedRolId, setSelectedRolId] = useState<number | null>(null);
+  const [selectedUsuarioId, setSelectedUsuarioId] = useState<string | null>(null);
+  const [permisosAgrupados, setPermisosAgrupados] = useState<ModuloConPermisos[]>([]);
+  const [modulosExpandidos, setModulosExpandidos] = useState<number[]>([]);
   const [loadingPermisos, setLoadingPermisos] = useState(false);
 
   // ── Carga de datos ───────────────────────────────────────────────────────────
@@ -276,22 +316,46 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     }
   }, []);
 
-  const cargarPermisos = useCallback(async (usuarioId: string) => {
-    if (!usuarioId) {
-      setModulos([]);
-      return;
-    }
+  const cargarPermisos = useCallback(async () => {
     try {
       setLoadingPermisos(true);
-      const data = await listarModulosUsuario(usuarioId);
-      setModulos(Array.isArray(data) ? data : []);
+
+      let data: PermisoGranular[] = [];
+
+      if (permisoTarget === "rol" && selectedRolId) {
+        data = await listarPermisosPorRol(selectedRolId);
+      } else if (permisoTarget === "usuario" && selectedUsuarioId) {
+        data = await listarPermisosPorUsuario(selectedUsuarioId);
+      } else {
+        setPermisosAgrupados([]);
+        return;
+      }
+
+      const agrupados = Object.values(
+        data.reduce(
+          (acc, p) => {
+            const actual = acc[p.moduloId] ?? {
+              moduloId: p.moduloId,
+              moduloCodigo: p.moduloCodigo,
+              moduloNombre: p.moduloNombre,
+              permisos: [] as PermisoGranular[],
+            };
+            actual.permisos.push(p);
+            acc[p.moduloId] = actual;
+            return acc;
+          },
+          {} as Record<number, ModuloConPermisos>
+        )
+      );
+
+      setPermisosAgrupados(agrupados);
     } catch (error) {
-      console.error("Error loading modulos:", error);
-      setModulos([]);
+      console.error("Error loading permisos:", error);
+      setPermisosAgrupados([]);
     } finally {
       setLoadingPermisos(false);
     }
-  }, []);
+  }, [permisoTarget, selectedRolId, selectedUsuarioId]);
 
   useEffect(() => {
     cargarParametros();
@@ -309,8 +373,14 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   }, [usuarios, selectedUsuarioId]);
 
   useEffect(() => {
-    cargarPermisos(selectedUsuarioId);
-  }, [selectedUsuarioId, cargarPermisos]);
+    if (roles.length > 0 && selectedRolId === null) {
+      setSelectedRolId(roles[0].id);
+    }
+  }, [roles, selectedRolId]);
+
+  useEffect(() => {
+    void cargarPermisos();
+  }, [cargarPermisos]);
 
   useEffect(() => {
     if (activeTab === "usuarios") {
@@ -534,20 +604,61 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   };
 
   // ── Handlers: Permisos ───────────────────────────────────────────────────────
-  const handleToggleModulo = (moduloId: number, asignado: boolean) => {
-    setModulos((prev) => prev.map((m) => (m.moduloId === moduloId ? { ...m, asignado } : m)));
+  const guardarPermisosActuales = async (permisoIds: number[]) => {
+    try {
+      if (permisoTarget === "rol" && selectedRolId) {
+        await asignarPermisosRol(selectedRolId, permisoIds);
+      } else if (permisoTarget === "usuario" && selectedUsuarioId) {
+        await asignarPermisosUsuario(selectedUsuarioId, permisoIds);
+      } else {
+        return;
+      }
+      toast.success("Permisos actualizados");
+      await cargarPermisos();
+    } catch (error) {
+      console.error("Error guardando permisos:", error);
+      toast.error("Error guardando permisos");
+      await cargarPermisos();
+    }
   };
 
-  const handleGuardarPermisos = async () => {
-    if (!selectedUsuarioId) return;
-    try {
-      const modulosAsignados = modulos.filter((m) => m.asignado).map((m) => m.moduloId);
-      await asignarModulosUsuario(selectedUsuarioId, modulosAsignados);
-      toast.success("Los cambios se han guardado correctamente.");
-      await cargarPermisos(selectedUsuarioId);
-    } catch (error) {
-      toast.error("Error al guardar los permisos.");
-    }
+  const handleTogglePermiso = async (permisoId: number, asignado: boolean) => {
+    const todos = permisosAgrupados.flatMap((m) => m.permisos);
+    const ids = todos
+      .filter((p) => (p.permisoId === permisoId ? asignado : p.asignado))
+      .map((p) => p.permisoId);
+    await guardarPermisosActuales(ids);
+  };
+
+  const handleModuloMasterToggle = async (moduloId: number, checked: boolean) => {
+    const nuevos = permisosAgrupados.map((m) =>
+      m.moduloId === moduloId ? { ...m, permisos: m.permisos.map((p) => ({ ...p, asignado: checked })) } : m
+    );
+    setPermisosAgrupados(nuevos);
+    const permisoIds = nuevos.flatMap((m) => m.permisos).filter((p) => p.asignado).map((p) => p.permisoId);
+    await guardarPermisosActuales(permisoIds);
+  };
+
+  const toggleModuloExpandido = (moduloId: number) => {
+    setModulosExpandidos((prev) =>
+      prev.includes(moduloId) ? prev.filter((id) => id !== moduloId) : [...prev, moduloId]
+    );
+  };
+
+  const getModuloDescripcion = (moduloCodigo: string): string => {
+    const descripciones: Record<string, string> = {
+      personal: "Gestión de miembros y accesos",
+      inventario: "Control de materiales y suministros",
+      vehiculos: "Administración de flota y mantenimientos",
+      donaciones: "Registro y seguimiento de donaciones",
+      emergencias: "Atención y reporte de emergencias",
+      seguridad: "Configuración del sistema",
+      catalogos: "Listas maestras y catálogos",
+      roles: "Roles y permisos del sistema",
+      usuarios: "Usuarios y accesos",
+      parametros: "Parámetros de la estación",
+    };
+    return descripciones[moduloCodigo] || "Gestión del módulo";
   };
 
   const tabs: { key: Tab; label: string }[] = [
@@ -770,40 +881,174 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
 
         {/* ── Tab 4: Matriz de Permisos ── */}
         {activeTab === "permisos" && (
-          <div style={{ maxWidth: 640, background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", padding: 24 }}>
-            <div style={{ marginBottom: 20 }}>
-              <Field label="Usuario a configurar">
-                <select value={selectedUsuarioId} onChange={(e) => setSelectedUsuarioId(e.target.value)} style={inputStyle()}>
-                  {usuarios.map((u) => (
-                    <option key={u.usuarioId} value={u.usuarioId}>
-                      {u.nombreCompleto} (@{u.username})
-                    </option>
-                  ))}
-                </select>
-              </Field>
+          <div style={{ maxWidth: 900, background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", padding: 24 }}>
+            {/* Selector Rol/Usuario */}
+            <div style={{ display: "flex", gap: 16, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>Configurar:</span>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    checked={permisoTarget === "rol"}
+                    onChange={() => {
+                      setPermisoTarget("rol");
+                      setSelectedUsuarioId(null);
+                    }}
+                  />
+                  <span style={{ fontSize: 13, color: "var(--text-1)" }}>Rol</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input
+                    type="radio"
+                    checked={permisoTarget === "usuario"}
+                    onChange={() => {
+                      setPermisoTarget("usuario");
+                      setSelectedRolId(null);
+                    }}
+                  />
+                  <span style={{ fontSize: 13, color: "var(--text-1)" }}>Usuario</span>
+                </label>
+              </div>
+
+              {permisoTarget === "rol" && (
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <Field label="Rol">
+                    <select value={selectedRolId ?? ""} onChange={(e) => setSelectedRolId(e.target.value ? Number(e.target.value) : null)} style={inputStyle()}>
+                      <option value="">Seleccionar rol</option>
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+              )}
+
+              {permisoTarget === "usuario" && (
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <Field label="Usuario">
+                    <select value={selectedUsuarioId ?? ""} onChange={(e) => setSelectedUsuarioId(e.target.value || null)} style={inputStyle()}>
+                      <option value="">Seleccionar usuario</option>
+                      {usuarios.map((u) => (
+                        <option key={u.usuarioId} value={u.usuarioId}>
+                          {u.nombreCompleto} (@{u.username})
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+              )}
             </div>
 
             {loadingPermisos ? (
-              <p style={{ color: "var(--text-3)", fontSize: 13 }}>Cargando módulos...</p>
-            ) : modulos.length === 0 ? (
-              <p style={{ color: "var(--text-3)", fontSize: 13 }}>No hay módulos configurados en el sistema.</p>
+              <p style={{ color: "var(--text-3)", fontSize: 13, textAlign: "center", padding: 40 }}>Cargando permisos...</p>
+            ) : !selectedRolId && !selectedUsuarioId ? (
+              <p style={{ color: "var(--text-3)", fontSize: 13, textAlign: "center", padding: 40 }}>
+                Seleccione un rol o usuario para gestionar sus permisos
+              </p>
+            ) : permisosAgrupados.length === 0 ? (
+              <p style={{ color: "var(--text-3)", fontSize: 13, textAlign: "center", padding: 40 }}>
+                No hay permisos definidos en el sistema
+              </p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {modulos.map((m) => (
-                  <div key={m.moduloId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 10, border: `1px solid ${m.asignado ? RED : "var(--border)"}`, background: m.asignado ? "var(--red-bg)" : "var(--bg-input)" }}>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{m.nombre}</p>
-                      {m.descripcion && <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-3)" }}>{m.descripcion}</p>}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {permisosAgrupados.map((modulo) => {
+                  const todosAsignados = modulo.permisos.length > 0 && modulo.permisos.every((p) => p.asignado);
+                  const algunoAsignado = modulo.permisos.some((p) => p.asignado);
+                  const expandido = modulosExpandidos.includes(modulo.moduloId);
+                  const asignadosCount = modulo.permisos.filter((p) => p.asignado).length;
+
+                  return (
+                    <div
+                      key={modulo.moduloId}
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        background: "var(--bg-input)",
+                      }}
+                    >
+                      {/* Header Módulo con Master Toggle */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          padding: "14px 16px",
+                          background: todosAsignados ? "var(--brand-50)" : "transparent",
+                        }}
+                      >
+                        <CheckboxIndeterminado
+                          checked={todosAsignados}
+                          indeterminate={algunoAsignado && !todosAsignados}
+                          onChange={(v) => void handleModuloMasterToggle(modulo.moduloId, v)}
+                          className="w-5 h-5"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => toggleModuloExpandido(modulo.moduloId)}
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            padding: 0,
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{modulo.moduloNombre}</p>
+                            <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-3)" }}>
+                              {getModuloDescripcion(modulo.moduloCodigo)}
+                            </p>
+                          </div>
+                          <ChevronDown
+                            size={16}
+                            style={{
+                              color: "var(--text-3)",
+                              transform: expandido ? "rotate(180deg)" : "none",
+                              transition: "transform 0.15s ease",
+                            }}
+                          />
+                        </button>
+                      </div>
+
+                      {/* Permisos del Módulo (colapsable) */}
+                      {expandido && (
+                        <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-card)" }}>
+                          {modulo.permisos.map((permiso) => (
+                            <label
+                              key={permiso.permisoId}
+                              className="flex items-center gap-3 p-3 cursor-pointer hover:bg-[var(--bg-hover)] border-b last:border-b-0"
+                              style={{ borderColor: "var(--border)" }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={permiso.asignado}
+                                onChange={(e) => void handleTogglePermiso(permiso.permisoId, e.target.checked)}
+                                className="w-4 h-4 flex-shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "var(--text-1)" }}>
+                                  {permiso.nombre}
+                                </p>
+                                {permiso.descripcion && (
+                                  <p style={{ margin: "2px 0 0", fontSize: 10, color: "var(--text-3)" }}>{permiso.descripcion}</p>
+                                )}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <Toggle checked={m.asignado} onChange={(v) => handleToggleModulo(m.moduloId, v)} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
-
-            <Button variant="brand" onClick={handleGuardarPermisos} className="mt-5 w-full">
-              <Save size={14} /> Guardar Permisos
-            </Button>
           </div>
         )}
       </div>

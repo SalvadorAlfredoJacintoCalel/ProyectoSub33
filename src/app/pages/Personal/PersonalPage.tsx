@@ -1,6 +1,5 @@
 ﻿import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Plus, Search, Users, UserCheck, UserX, ChevronDown, Printer, Pencil, History, FileText, Info, AlertTriangle } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { PersonalForm } from "@/app/pages/Personal/components/PersonalForm";
 import { Drawer } from "@/app/components/ui/drawer";
@@ -29,6 +28,7 @@ import { emptyFormState, miembroToForm, personalResponseToForm, personalResponse
 import { useAlert } from "@/app/components/ui/AlertContext";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { usePermisos } from "@/hooks/usePermisos";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const BRAND = "var(--brand-600)";
@@ -69,7 +69,7 @@ function MemberInfo({ member }: { member: Miembro }) {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export function PersonalPage() {
-  const { role } = useAuth();
+  const { personal: permisosPersonal } = usePermisos();
 
   const [members, setMembers] = useState<Miembro[]>([]);
   const [search, setSearch] = useState("");
@@ -292,7 +292,7 @@ export function PersonalPage() {
   }
 
   function handleEditFromDetail() {
-    if (role !== "admin") {
+    if (!permisosPersonal.editar) {
       toast.warning("Solo los administradores pueden editar miembros.");
       return;
     }
@@ -588,7 +588,7 @@ export function PersonalPage() {
             Bomberos Voluntarios San Lucas Tolimán
           </p>
         </div>
-        {role === "admin" && (
+        {permisosPersonal.crear && (
           <Button variant="brand" onClick={openAddModal}>
             <Plus className="size-4" />
             Nuevo Miembro
@@ -778,13 +778,13 @@ export function PersonalPage() {
         }
         footer={
           <>
-            {role === "admin" && (
+            {permisosPersonal.editar && (
               <Button variant="brand-outline" onClick={() => window.print()}>
                 <Printer className="size-4" />
                 Imprimir
               </Button>
             )}
-            {role === "admin" && (
+            {permisosPersonal.editar && (
               <Button variant="brand" onClick={handleEditFromDetail}>
                 <Pencil className="size-4" />
                 Editar

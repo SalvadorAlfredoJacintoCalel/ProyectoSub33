@@ -11,6 +11,7 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
 import { useAuth } from "@/context/AuthContext";
+import { usePermisos } from "@/hooks/usePermisos";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { FormErrorSummary } from "@/app/pages/Inventario/components/FormErrorSummary";
@@ -45,6 +46,7 @@ export function MovimientosPage() {
   } = useInventario();
   const { toast } = useAlert();
   const { user } = useAuth();
+  const { inventario: permisosInventario } = usePermisos();
 
   const [itemFilter, setItemFilter] = useState("");
   const [tipoFilter, setTipoFilter] = useState("");
@@ -139,6 +141,10 @@ export function MovimientosPage() {
   }
 
   function openAjuste() {
+    if (!permisosInventario.ajustes) {
+      toast.warning("No tienes permiso para registrar ajustes de inventario.");
+      return;
+    }
     if (draft) {
       setForm(draft);
       toast.info("Se recuperó el borrador del ajuste.");
@@ -252,9 +258,11 @@ export function MovimientosPage() {
             <Button variant="brand-outline" size="sm" onClick={exportarCsv}>
               <Download size={14} /> Exportar CSV
             </Button>
-            <Button variant="brand" onClick={openAjuste}>
-              <SlidersHorizontal size={16} /> Ajuste de Inventario
-            </Button>
+            {permisosInventario.ajustes && (
+              <Button variant="brand" onClick={openAjuste}>
+                <SlidersHorizontal size={16} /> Ajuste de Inventario
+              </Button>
+            )}
           </div>
         </div>
       }

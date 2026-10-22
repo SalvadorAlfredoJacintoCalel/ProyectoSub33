@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Backend_Sub33.Attributes;
 using Backend_Sub33.Common;
 using Backend_Sub33.DTOs.Donacion;
 using Backend_Sub33.Services;
@@ -42,6 +43,7 @@ public class DonacionesController : ApiControllerBase
     public async Task<IActionResult> GetDonacion(int id)
         => Respond(await _donacionService.GetByIdAsync(id));
 
+    [HttpRequirePermission("donaciones.registrar")]
     [HttpPost]
     public async Task<IActionResult> CreateDonacion([FromBody] DonacionCreateDto dto)
     {
@@ -56,6 +58,7 @@ public class DonacionesController : ApiControllerBase
             StatusCodes.Status201Created);
     }
 
+    [HttpRequirePermission("donaciones.editar")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateDonacion(int id, [FromBody] DonacionUpdateDto dto)
     {
@@ -69,6 +72,7 @@ public class DonacionesController : ApiControllerBase
             "Donación actualizada correctamente.");
     }
 
+    [HttpRequirePermission("donaciones.cambiar-estado")]
     [HttpPatch("{id:int}/estado")]
     public async Task<IActionResult> ChangeEstado(int id, [FromBody] DonacionCambiarEstadoDto dto)
     {
@@ -82,6 +86,7 @@ public class DonacionesController : ApiControllerBase
             "Estado actualizado correctamente.");
     }
 
+    [HttpRequirePermission("donaciones.eliminar")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteDonacion(int id)
         => Respond(await _donacionService.DeleteAsync(id), "Donación eliminada correctamente.");

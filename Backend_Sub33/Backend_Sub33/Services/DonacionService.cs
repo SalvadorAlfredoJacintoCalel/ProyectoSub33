@@ -14,10 +14,12 @@ namespace Backend_Sub33.Services
     public class DonacionService : IDonacionService
     {
         private readonly AppDbContext _context;
+        private readonly ICurrentUser _currentUser;
 
-        public DonacionService(AppDbContext context)
+        public DonacionService(AppDbContext context, ICurrentUser currentUser)
         {
             _context = context;
+            _currentUser = currentUser;
         }
 
         private System.Data.Common.DbConnection AbrirConexion()
@@ -319,6 +321,11 @@ namespace Backend_Sub33.Services
 
         public async Task<ServiceResult<DonacionDto>> UpdateAsync(int id, DonacionUpdateDto dto)
         {
+            if (!_currentUser.EsAdmin)
+            {
+                return ServiceResult<DonacionDto>.Forbidden("Solo los administradores pueden modificar donaciones registradas.");
+            }
+
             using var connection = AbrirConexion();
 
             var existe = await connection.ExecuteScalarAsync<int>(
@@ -429,6 +436,11 @@ namespace Backend_Sub33.Services
 
         public async Task<ServiceResult> ChangeEstadoAsync(int id, string estado)
         {
+            if (!_currentUser.EsAdmin)
+            {
+                return ServiceResult.Forbidden("Solo los administradores pueden cambiar el estado de una donación.");
+            }
+
             try
             {
                 using var connection = AbrirConexion();
@@ -454,6 +466,11 @@ namespace Backend_Sub33.Services
 
         public async Task<ServiceResult> DeleteAsync(int id)
         {
+            if (!_currentUser.EsAdmin)
+            {
+                return ServiceResult.Forbidden("Solo los administradores pueden eliminar donaciones.");
+            }
+
             try
             {
                 using var connection = AbrirConexion();

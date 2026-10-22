@@ -90,6 +90,7 @@ export interface EmergenciaListItem {
   vehiculoId?: number | null;
   estado: EstadoEmergencia;
   tiposAsistencia: string[];
+  formuladoPorId?: string | null;
 }
 
 export interface EmergenciaCreate {

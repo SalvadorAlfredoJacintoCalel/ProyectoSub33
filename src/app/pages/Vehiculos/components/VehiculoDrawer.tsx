@@ -5,6 +5,7 @@ import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { formatFechaCorta, formatMoneda } from "@/app/pages/Inventario/components/format";
+import { usePermisos } from "@/hooks/usePermisos";
 import type { EstadoOperativo, Vehiculo, VehiculoMantenimiento } from "@/types/vehiculos";
 import {
   ESTADOS_OPERATIVOS,
@@ -36,6 +37,7 @@ export function VehiculoDrawer({
   onEditMantenimiento,
   onPrintMantenimiento,
 }: Props) {
+  const { vehiculos: permisosVehiculos } = usePermisos();
   if (!vehiculo) return null;
   const v = vehiculo;
   const mantenimientoEnProceso = v.mantenimientos?.some((m) => m.estado === "En proceso") ?? false;
@@ -89,6 +91,7 @@ export function VehiculoDrawer({
           {ESTADOS_OPERATIVOS.map((estado) => {
             const actual = v.estadoOperativo === estado;
             const bloqueado = mantenimientoEnProceso && estado !== "Mantenimiento";
+            if (!permisosVehiculos.estadoOperativo) return null;
             return (
               <button
                 key={estado}
@@ -126,7 +129,7 @@ export function VehiculoDrawer({
         <h3 className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
           Mantenimientos ({v.mantenimientos?.length ?? 0})
         </h3>
-        {(v.mantenimientos?.length ?? 0) > 0 && (
+        {(v.mantenimientos?.length ?? 0) > 0 && permisosVehiculos.mantenimientos && (
           <Button size="sm" variant="brand-outline" onClick={() => onAddMantenimiento(v)}>
             <Plus size={14} />
             Registrar
@@ -141,10 +144,12 @@ export function VehiculoDrawer({
           <p className="text-sm" style={{ color: "var(--text-3)" }}>
             Sin mantenimientos registrados.
           </p>
-          <Button size="sm" variant="brand-outline" onClick={() => onAddMantenimiento(v)}>
-            <Plus size={14} />
-            Registrar mantenimiento
-          </Button>
+          {permisosVehiculos.mantenimientos && (
+            <Button size="sm" variant="brand-outline" onClick={() => onAddMantenimiento(v)}>
+              <Plus size={14} />
+              Registrar mantenimiento
+            </Button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -167,7 +172,7 @@ export function VehiculoDrawer({
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Badge variant={m.estado === "Finalizado" ? "success" : "warning"}>{m.estado}</Badge>
-                  {onEditMantenimiento && (
+                  {onEditMantenimiento && permisosVehiculos.mantenimientos && (
                     <button
                       type="button"
                       onClick={() => onEditMantenimiento(m)}
@@ -178,7 +183,7 @@ export function VehiculoDrawer({
                       {m.estado === "En proceso" ? <FileText size={14} /> : <Pencil size={14} />}
                     </button>
                   )}
-                  {onPrintMantenimiento && (
+                  {onPrintMantenimiento && permisosVehiculos.imprimirMantenimiento && (
                     <button
                       type="button"
                       onClick={() => onPrintMantenimiento(m)}
@@ -278,23 +283,27 @@ export function VehiculoDrawer({
       }
       footer={
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="brand-outline" onClick={() => onEdit(v)}>
-            <Pencil size={16} />
-            Editar
-          </Button>
-          <Button variant={v.estado === "Activo" ? "destructive" : "brand"} onClick={() => onToggleEstado(v)}>
-            {v.estado === "Activo" ? (
-              <>
-                <Ban size={16} />
-                Dar de baja
-              </>
-            ) : (
-              <>
-                <RotateCcw size={16} />
-                Reactivar
-              </>
-            )}
-          </Button>
+          {permisosVehiculos.crud && (
+            <Button variant="brand-outline" onClick={() => onEdit(v)}>
+              <Pencil size={16} />
+              Editar
+            </Button>
+          )}
+          {permisosVehiculos.crud && (
+            <Button variant={v.estado === "Activo" ? "destructive" : "brand"} onClick={() => onToggleEstado(v)}>
+              {v.estado === "Activo" ? (
+                <>
+                  <Ban size={16} />
+                  Dar de baja
+                </>
+              ) : (
+                <>
+                  <RotateCcw size={16} />
+                  Reactivar
+                </>
+              )}
+            </Button>
+          )}
         </div>
       }
     >

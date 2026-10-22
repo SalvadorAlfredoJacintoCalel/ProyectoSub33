@@ -648,6 +648,13 @@ public partial class PersonalService : IPersonalService
             personal.Estado = estado;
             personal.UpdatedAt = DateTime.UtcNow;
 
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == id, ct);
+            if (usuario != null)
+            {
+                usuario.Estado = estado;
+                usuario.UpdatedAt = DateTime.UtcNow;
+            }
+
             await _context.SaveChangesAsync(ct);
 
             return ServiceResult.Success();

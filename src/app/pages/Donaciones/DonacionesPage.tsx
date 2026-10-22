@@ -31,6 +31,7 @@ import { Input } from "@/app/components/ui/input";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { useDonaciones } from "@/hooks/useDonaciones";
+import { usePermisos } from "@/hooks/usePermisos";
 import { LibroDonacionesTab } from "./LibroDonacionesTab";
 import type {
   Donacion,
@@ -559,6 +560,7 @@ function DonacionModal({
 export function DonacionesPage() {
   const { donaciones, paginacion, loading, loadDonaciones, createDonacion, updateDonacion, deleteDonacion } = useDonaciones();
   const { alert, toast } = useAlert();
+  const { donaciones: permisosDonaciones } = usePermisos();
 
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("Todos");
@@ -596,6 +598,14 @@ export function DonacionesPage() {
   }
 
   async function handleSave(form: DonacionForm) {
+    if (editTarget && !permisosDonaciones.editar) {
+      toast.warning("Solo los administradores pueden modificar donaciones registradas.");
+      return;
+    }
+    if (!editTarget && !permisosDonaciones.registrar) {
+      toast.warning("No tienes permiso para registrar donaciones.");
+      return;
+    }
     const monto = form.tipo === "Monetaria" ? Number(form.monto) : form.materiales.reduce((s, m) => s + Number(m.valorEstimado), 0);
 
     setSaving(true);
@@ -664,6 +674,10 @@ export function DonacionesPage() {
 
   async function handleDeleteFromModal() {
     if (!editTarget) return;
+    if (!permisosDonaciones.eliminar) {
+      toast.warning("Solo los administradores pueden eliminar donaciones.");
+      return;
+    }
     try {
       await deleteDonacion(editTarget.donacionId);
       toast.success("Donación eliminada.");
@@ -733,22 +747,26 @@ export function DonacionesPage() {
       className: "text-center",
       cell: (d) => (
         <div className="flex justify-center gap-1">
-          <button
-            title="Editar"
-            onClick={(e) => { e.stopPropagation(); setEditTarget(d); setShowForm(true); }}
-            className="rounded-lg p-1.5"
-            style={{ background: "var(--info-50)", color: "var(--info-700)" }}
-          >
-            <Pencil size={15} />
-          </button>
-          <button
-            title="Eliminar"
-            onClick={(e) => { e.stopPropagation(); requestDelete(d); }}
-            className="rounded-lg p-1.5"
-            style={{ background: "var(--brand-50)", color: RED }}
-          >
-            <Trash2 size={15} />
-          </button>
+          {permisosDonaciones.editar && (
+            <button
+              title="Editar"
+              onClick={(e) => { e.stopPropagation(); setEditTarget(d); setShowForm(true); }}
+              className="rounded-lg p-1.5"
+              style={{ background: "var(--info-50)", color: "var(--info-700)" }}
+            >
+              <Pencil size={15} />
+            </button>
+          )}
+          {permisosDonaciones.eliminar && (
+            <button
+              title="Eliminar"
+              onClick={(e) => { e.stopPropagation(); requestDelete(d); }}
+              className="rounded-lg p-1.5"
+              style={{ background: "var(--brand-50)", color: RED }}
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
         </div>
       ),
     },
@@ -798,7 +816,7 @@ export function DonacionesPage() {
               Libro mensual
             </button>
           </div>
-          {vista === "registros" && (
+          {vista === "registros" && permisosDonaciones.registrar && (
             <Button variant="brand" onClick={() => { setEditTarget(null); setShowForm(true); }}>
               <Plus size={16} />
               Nueva Donación
@@ -867,7 +885,7 @@ export function DonacionesPage() {
           initial={editTarget ? donacionToForm(editTarget) : null}
           onSave={handleSave}
           onClose={() => { setShowForm(false); setEditTarget(null); }}
-          onDelete={editTarget ? handleDeleteFromModal : undefined}
+          onDelete={editTarget && permisosDonaciones.eliminar ? handleDeleteFromModal : undefined}
           saving={saving}
         />
       )}
@@ -875,7 +893,7 @@ export function DonacionesPage() {
         <DetailModal
           donacion={viewTarget}
           onClose={() => setViewTarget(null)}
-          onEdit={() => { setEditTarget(viewTarget); setViewTarget(null); setShowForm(true); }}
+          onEdit={permisosDonaciones.editar ? () => { setEditTarget(viewTarget); setViewTarget(null); setShowForm(true); } : undefined}
         />
       )}
         </>

@@ -21,6 +21,7 @@ public class ServiceResult
     public static ServiceResult BadRequest(string error) => Failure(error, 400);
     public static ServiceResult NotFound(string error) => Failure(error, 404);
     public static ServiceResult Conflict(string error) => Failure(error, 409);
+    public static ServiceResult Forbidden(string error) => Failure(error, 403);
     public static ServiceResult Internal(string error) => Failure(error, 500);
 }
 
@@ -42,6 +43,7 @@ public class ServiceResult<T> : ServiceResult
     public new static ServiceResult<T> BadRequest(string error) => Failure(error, 400);
     public new static ServiceResult<T> NotFound(string error) => Failure(error, 404);
     public new static ServiceResult<T> Conflict(string error) => Failure(error, 409);
+    public new static ServiceResult<T> Forbidden(string error) => Failure(error, 403);
     public new static ServiceResult<T> Internal(string error) => Failure(error, 500);
 
     public static ServiceResult<T> From(ServiceResult result)

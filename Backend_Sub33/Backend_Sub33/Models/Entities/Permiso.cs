@@ -18,6 +18,11 @@ namespace Backend_Sub33.Models.Entities
         [Column("codigo")]
         public string Codigo { get; set; } = string.Empty;
 
+        [Required]
+        [MaxLength(100)]
+        [Column("nombre")]
+        public string Nombre { get; set; } = string.Empty;
+
         [Column("modulo_id")]
         public int ModuloId { get; set; }
 

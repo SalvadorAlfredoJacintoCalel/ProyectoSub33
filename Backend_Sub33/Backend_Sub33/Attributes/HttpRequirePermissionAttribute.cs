@@ -16,21 +16,16 @@ public class HttpRequirePermissionAttribute : AuthorizeAttribute, IAuthorization
 
     public void OnAuthorization(AuthorizationFilterContext context)
     {
-        if (context.Filters.Any(f => f is HttpRequirePermissionAttribute))
-        {
-            return;
-        }
-
         var httpContext = context.HttpContext;
         var usuario = httpContext?.User;
 
-        if (usuario == null)
+        if (usuario?.Identity?.IsAuthenticated != true)
         {
             context.Result = new ChallengeResult();
             return;
         }
 
-        bool tienePermiso = usuario?.Claims?.Any(c => c.Type == "permiso" && c.Value == _permiso) ?? false;
+        bool tienePermiso = usuario.Claims.Any(c => c.Type == "permiso" && c.Value == _permiso);
 
         if (!tienePermiso)
         {

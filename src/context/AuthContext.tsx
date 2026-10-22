@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { getMisModulos } from "@/services/seguridadService";
+import { getMisModulos, getMisPermisos } from "@/services/seguridadService";
 import { normalizeRole, type UserRole } from "@/constants/roles";
 
 interface UserData {
@@ -8,6 +8,8 @@ interface UserData {
   name: string;
   email?: string;
   personalId?: string | null;
+  roles?: string[];
+  permisos?: string[];
   [key: string]: unknown;
 }
 
@@ -15,6 +17,7 @@ interface AuthContextValue {
   user: UserData | null;
   role: UserRole;
   modulos: string[];
+  permisos: string[];
   loggedIn: boolean;
   login: (token: string, userData: UserData) => void;
   logout: () => void;
@@ -27,6 +30,7 @@ const STORAGE_KEYS = {
   TOKEN: "authToken",
   ROLE: "userRole",
   MODULOS: "userModulos",
+  PERMISOS: "userPermisos",
 } as const;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -57,6 +61,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return [];
     }
   });
+  const [permisos, setPermisos] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PERMISOS);
+      return stored ? (JSON.parse(stored) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loggedIn, setLoggedIn] = useState(false);
 
   const loadModulos = useCallback(async () => {
@@ -69,6 +81,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setModulos([]);
     }
   }, []);
+
+  const loadPermisos = useCallback(async () => {
+    try {
+      const perms = await getMisPermisos();
+      const list = Array.isArray(perms) ? perms : [];
+      setPermisos(list);
+      localStorage.setItem(STORAGE_KEYS.PERMISOS, JSON.stringify(list));
+    } catch {
+      setPermisos([]);
+    }
+  }, []);
+
+  const loadPermisosYModulos = useCallback(async () => {
+    await Promise.all([loadModulos(), loadPermisos()]);
+  }, [loadModulos, loadPermisos]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
@@ -86,15 +113,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : normalizeRole(storedRole ? [storedRole] : parsed.role ? [parsed.role] : []);
         setRoleState(resolvedRole);
         localStorage.setItem(STORAGE_KEYS.ROLE, resolvedRole);
-        void loadModulos();
+        void loadPermisosYModulos();
       } catch {
         localStorage.removeItem(STORAGE_KEYS.USER);
         localStorage.removeItem(STORAGE_KEYS.TOKEN);
         localStorage.removeItem(STORAGE_KEYS.ROLE);
         localStorage.removeItem(STORAGE_KEYS.MODULOS);
+        localStorage.removeItem(STORAGE_KEYS.PERMISOS);
       }
     }
-  }, [loadModulos]);
+  }, [loadPermisosYModulos]);
 
   const login = useCallback(
     (token: string, userData: UserData) => {
@@ -107,9 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextUser);
       setRoleState(resolvedRole);
       setLoggedIn(true);
-      void loadModulos();
+      void loadPermisosYModulos();
     },
-    [loadModulos]
+    [loadPermisosYModulos]
   );
 
   const logout = useCallback(() => {
@@ -117,14 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEYS.USER);
     localStorage.removeItem(STORAGE_KEYS.ROLE);
     localStorage.removeItem(STORAGE_KEYS.MODULOS);
+    localStorage.removeItem(STORAGE_KEYS.PERMISOS);
     setUser(null);
     setLoggedIn(false);
     setRoleState("admin");
     setModulos([]);
+    setPermisos([]);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, modulos, loggedIn, login, logout }}>
+    <AuthContext.Provider value={{ user, role, modulos, permisos, loggedIn, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

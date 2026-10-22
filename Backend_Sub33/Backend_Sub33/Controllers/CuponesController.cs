@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Backend_Sub33.Attributes;
 using Backend_Sub33.DTOs.Vehiculos;
 using Backend_Sub33.Services;
 
@@ -19,6 +20,7 @@ public class CuponesController : ApiControllerBase
     public async Task<IActionResult> GetPeriodo(int anio, int mes)
         => Respond(await _cuponService.GetPeriodoAsync(anio, mes));
 
+    [HttpRequirePermission("vehiculos.cupones.periodos")]
     [HttpPut("periodos")]
     public async Task<IActionResult> SavePeriodo([FromBody] CuponPeriodoCreateDto dto)
     {
@@ -30,6 +32,7 @@ public class CuponesController : ApiControllerBase
         return Respond(await _cuponService.SavePeriodoAsync(dto), "Período actualizado correctamente.");
     }
 
+    [HttpRequirePermission("vehiculos.cupones.crear")]
     [HttpPost]
     public async Task<IActionResult> CreateCupon([FromBody] CuponCreateDto dto)
     {
@@ -44,6 +47,7 @@ public class CuponesController : ApiControllerBase
             StatusCodes.Status201Created);
     }
 
+    [HttpRequirePermission("vehiculos.cupones.editar")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateCupon(int id, [FromBody] CuponUpdateDto dto)
     {
@@ -55,6 +59,7 @@ public class CuponesController : ApiControllerBase
         return Respond(await _cuponService.UpdateAsync(id, dto), "Cupón actualizado correctamente.");
     }
 
+    [HttpRequirePermission("vehiculos.cupones.eliminar")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteCupon(int id)
         => Respond(await _cuponService.DeleteAsync(id), "Cupón eliminado correctamente.");
