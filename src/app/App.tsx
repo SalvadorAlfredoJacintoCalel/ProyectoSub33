@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type ElementType, type ReactNode } from "r
 import { motion } from "motion/react";
 import { LayoutProvider, useLayout } from "@/app/layout/LayoutContext";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
-import { ROLE_LABELS, ROLE_BADGE, ROLE_NAV } from "@/constants/roles";
+import { ROLE_LABELS, ROLE_BADGE } from "@/constants/roles";
 import svgPaths from "@/imports/DashboardPrincipalDesktop/svg-tul6vfzka5";
 import imgCrossBadge from "@/imports/DashboardPrincipalDesktop/39b842ab5db9edc3f36b77dcb333e6063de137a7.png";
 import imgCvbLogo from "@/imports/DashboardPrincipalDesktop/382ba90f17ab58630c2735b72b71bff037f7ba87.png";
@@ -22,9 +22,9 @@ import { DonacionesPage } from "@/app/pages/Donaciones/DonacionesPage";
 import { SeguridadPage } from "@/app/pages/Seguridad/SeguridadPage";
 import {
   X, ChevronLeft, ChevronRight, Zap, Truck, Package,
-  Bell, LogOut, Shield, ChevronDown, Home, BarChart2,
+  Bell, LogOut, ChevronDown, Home, BarChart2,
   Users, AlertTriangle, Wrench, Quote,
-  Camera, UserCircle, CheckCircle2, Moon, Sun, Menu,
+  Camera, UserCircle, Moon, Sun, Menu,
 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
@@ -51,10 +51,6 @@ const C = {
   inputBg:       "var(--bg-input)",
   overlay:       "rgba(0,0,0,0.5)",
 };
-
-// ─── Role-Based Access Control ────────────────────────────────────────────────
-
-type UserRole = "admin" | "voluntario" | "secretario";
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
@@ -151,7 +147,7 @@ function QuickCard({ Icon, label, sub, onClick }: { Icon: ElementType; label: st
 // ─── Inner App Content ──────────────────────────────────────────────────────────
 
 function AppContent() {
-  const { loggedIn, user, role, role: userRole, login, logout, setRole } = useAuth();
+  const { loggedIn, user, role, role: userRole, modulos, login, logout } = useAuth();
   const { isDrawerOpen, isModalOpen } = useLayout();
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof localStorage === "undefined") return false;
@@ -172,11 +168,9 @@ function AppContent() {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileDropOpen, setProfileDropOpen] = useState(false);
-  const [roleDropOpen, setRoleDropOpen] = useState(false);
 
   const notifRef    = useRef<HTMLDivElement>(null);
   const profileDRef = useRef<HTMLDivElement>(null);
-  const roleDropRef = useRef<HTMLDivElement>(null);
   const dropRef     = useRef<HTMLDivElement>(null);
   const avatarInput = useRef<HTMLInputElement>(null);
 
@@ -187,7 +181,7 @@ function AppContent() {
 
   const sidebarW = sidebarCollapsed ? 72 : 256;
   const effectiveCollapsed = sidebarCollapsed && !isMobile;
-  const navItems = ALL_NAV.filter(n => ROLE_NAV[role].includes(n.id));
+  const navItems = ALL_NAV.filter(n => n.id === "bienvenida" || modulos.includes(n.id));
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -204,17 +198,16 @@ function AppContent() {
     function h(e: MouseEvent) {
       if (notifRef.current    && !notifRef.current.contains(e.target as Node))    setNotifOpen(false);
       if (profileDRef.current && !profileDRef.current.contains(e.target as Node)) setProfileDropOpen(false);
-      if (roleDropRef.current && !roleDropRef.current.contains(e.target as Node)) setRoleDropOpen(false);
       if (dropRef.current     && !dropRef.current.contains(e.target as Node))     setDropdownOpen(false);
     }
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // Guard active nav on role change
+  // Guard active nav on modules change
   useEffect(() => {
-    if (!ROLE_NAV[role].includes(activeNav)) setActiveNav("bienvenida");
-  }, [role, activeNav]);
+    if (activeNav !== "bienvenida" && !modulos.includes(activeNav)) setActiveNav("bienvenida");
+  }, [modulos, activeNav]);
 
   // Lock body scroll when a drawer/modal is open
   useEffect(() => {
@@ -234,8 +227,13 @@ function AppContent() {
     return <LoginPage onLogin={login} />;
   }
 
-  const userName = `${profileForm.nombre} ${profileForm.apellido}`;
-  const initials = (profileForm.nombre[0] + profileForm.apellido[0]).toUpperCase();
+  const nombreCompleto = (user?.name || "").trim() || user?.username || "Usuario";
+  const nameParts = nombreCompleto.split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] ?? "Usuario";
+  const userName = nombreCompleto;
+  const initials = (nameParts.length >= 2
+    ? (nameParts[0][0] + nameParts[nameParts.length - 1][0])
+    : (nameParts[0]?.[0] ?? "U")).toUpperCase();
   const currentPageLabel = ALL_NAV.find(n => n.id === activeNav)?.label ?? "Inicio";
 
   function ModuleWrap({ children }: { children: ReactNode }) {
@@ -361,35 +359,6 @@ function AppContent() {
             {darkMode ? <Sun style={{ width: 17, height: 17, color: C.textSecond }} /> : <Moon style={{ width: 17, height: 17, color: C.textSecond }} />}
           </button>
 
-          {/* Role switcher */}
-          <div ref={roleDropRef} className="relative mr-3 hidden lg:block">
-            <button onClick={() => setRoleDropOpen(o => !o)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all"
-              style={{ borderColor: C.border, fontFamily: "Inter, sans-serif", color: C.textSecond, background: C.cardBg }}>
-              <Shield style={{ width: 11, height: 11 }} />
-              {ROLE_LABELS[role]}
-              <ChevronDown style={{ width: 11, height: 11, color: C.textMuted }} />
-            </button>
-            {roleDropOpen && (
-              <div className="absolute right-0 top-full mt-1.5 rounded-xl shadow-2xl z-50 overflow-hidden animate-scale-in" style={{ background: C.cardBg, border: `1px solid ${C.border}`, minWidth: 190 }}>
-                <div className="px-4 py-2.5 border-b" style={{ borderColor: C.border }}>
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Vista de Rol</p>
-                </div>
-                {(Object.keys(ROLE_LABELS) as UserRole[]).map(r => (
-                  <button key={r} onClick={() => { setRole(r); setRoleDropOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                    style={{ background: role === r ? C.redLight : undefined }}
-                    onMouseEnter={e => { if (role !== r) (e.currentTarget as HTMLElement).style.background = C.hoverBg; }}
-                    onMouseLeave={e => { if (role !== r) (e.currentTarget as HTMLElement).style.background = ""; }}>
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: ROLE_BADGE[r] }} />
-                    <span className="text-[12px] font-semibold" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{ROLE_LABELS[r]}</span>
-                    {role === r && <CheckCircle2 style={{ width: 12, height: 12, color: C.red, marginLeft: "auto" }} />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Bell */}
           <div ref={notifRef} className="relative hidden sm:block">
             <button onClick={() => setNotifOpen(o => !o)}
@@ -507,7 +476,7 @@ function AppContent() {
                     Sistema de Gestión — Subestación 33ª
                   </p>
                   <h1 className="font-extrabold leading-tight mb-1" style={{ fontFamily: "Manrope, sans-serif", fontSize: "clamp(22px,3vw,38px)", color: C.textPrimary }}>
-                    Bienvenido, {profileForm.nombre}
+                    Bienvenido, {firstName}
                   </h1>
                   <p className="text-[14px] mb-3" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>
                     33ª Compañía de Bomberos Voluntarios — San Lucas Tolimán, Sololá

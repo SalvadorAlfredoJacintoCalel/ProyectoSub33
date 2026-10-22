@@ -3,6 +3,7 @@ import {
   isValidElement,
   useEffect,
   useId,
+  useRef,
   useState,
   type FormEvent,
   type ReactElement,
@@ -12,6 +13,9 @@ import { Modal } from "@/app/components/ui/modal";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { ApiError, crearCatalogo, getCatalogo } from "@/services/configuracionService";
 import type {
   CatalogoItem,
@@ -125,12 +129,35 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const { toast } = useAlert();
+  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>("vehiculo.create");
+  const draftRef = useRef<FormState | null>(draft);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   useEffect(() => {
     if (!open) return;
-    setForm(vehiculo ? fromVehiculo(vehiculo) : EMPTY);
+    if (vehiculo) {
+      setForm(fromVehiculo(vehiculo));
+    } else if (draftRef.current) {
+      setForm(draftRef.current);
+      toast.info("Se recuperó el borrador del vehículo.");
+    } else {
+      setForm(EMPTY);
+    }
     setErrors({});
-  }, [open, vehiculo]);
+  }, [open, vehiculo, toast]);
+
+  useEffect(() => {
+    if (!open || vehiculo) return;
+    if (JSON.stringify(form) === JSON.stringify(EMPTY)) {
+      clear();
+      return;
+    }
+    save(form);
+  }, [form, open, vehiculo, save, clear]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -219,6 +246,7 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
       };
 
       await onSubmit(payload);
+      if (!vehiculo) clear();
       onClose();
     } finally {
       setSaving(false);
@@ -244,6 +272,7 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
       }
     >
       <form id="vehiculo-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
+        {!vehiculo && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
         <section>
           <h3 className="mb-3 text-sm font-bold" style={{ color: "var(--text-1)" }}>
             Identificación

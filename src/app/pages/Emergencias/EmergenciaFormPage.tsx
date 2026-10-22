@@ -1,9 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   X, Lock, Phone, User, MapPin, ChevronDown, Truck, Heart, Loader2, Package,
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { Button } from "@/app/components/ui/button";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
 import { inventarioService } from "@/services/inventarioService";
@@ -91,6 +93,34 @@ interface PersonalSel {
   rolServicioId: number | null;
 }
 
+interface EmergenciaDraft {
+  tipoSolicitud: "Telefónica" | "Personal";
+  tiempoSalida: string;
+  tiempoLlegada: string;
+  tipoEmergenciaId: string;
+  tiposAsistencia: string[];
+  ubicacion: string;
+  hospitalDestinoId: string;
+  nombrePaciente: string;
+  edad: string;
+  genero: string;
+  solicitante: string;
+  acompanante: string;
+  fallecido: boolean;
+  domicilio: string;
+  presionArterial: string;
+  frecuenciaCardiaca: string;
+  frecuenciaRespiratoria: string;
+  saturacion: string;
+  horaToma: string;
+  estadoEntrega: string;
+  vehiculoId: string;
+  personalSeleccionado: PersonalSel[];
+  resumen: string;
+  fecha: string;
+  insumos: { itemId: number; cantidad: number }[];
+}
+
 export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props) {
   const isEdit = mode === "edit";
   const { catalogos, cargarCatalogos, getSiguienteIncidente, obtenerEmergencia, crearEmergencia, actualizarEmergencia } =
@@ -134,6 +164,119 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
   const [submitting, setSubmitting] = useState(false);
   const [formuladoPorIdOriginal, setFormuladoPorIdOriginal] = useState<string | null>(null);
   const [creadoPorNombreOriginal, setCreadoPorNombreOriginal] = useState("");
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<EmergenciaDraft>("emergencia.create");
+
+  const draftValue = useMemo<EmergenciaDraft>(
+    () => ({
+      tipoSolicitud,
+      tiempoSalida,
+      tiempoLlegada,
+      tipoEmergenciaId,
+      tiposAsistencia,
+      ubicacion,
+      hospitalDestinoId,
+      nombrePaciente,
+      edad,
+      genero,
+      solicitante,
+      acompanante,
+      fallecido,
+      domicilio,
+      presionArterial,
+      frecuenciaCardiaca,
+      frecuenciaRespiratoria,
+      saturacion,
+      horaToma,
+      estadoEntrega,
+      vehiculoId,
+      personalSeleccionado,
+      resumen,
+      fecha,
+      insumos,
+    }),
+    [
+      tipoSolicitud,
+      tiempoSalida,
+      tiempoLlegada,
+      tipoEmergenciaId,
+      tiposAsistencia,
+      ubicacion,
+      hospitalDestinoId,
+      nombrePaciente,
+      edad,
+      genero,
+      solicitante,
+      acompanante,
+      fallecido,
+      domicilio,
+      presionArterial,
+      frecuenciaCardiaca,
+      frecuenciaRespiratoria,
+      saturacion,
+      horaToma,
+      estadoEntrega,
+      vehiculoId,
+      personalSeleccionado,
+      resumen,
+      fecha,
+      insumos,
+    ]
+  );
+
+  useEffect(() => {
+    if (isEdit || !draft) return;
+    setTipoSolicitud(draft.tipoSolicitud);
+    setTiempoSalida(draft.tiempoSalida);
+    setTiempoLlegada(draft.tiempoLlegada);
+    setTipoEmergenciaId(draft.tipoEmergenciaId);
+    setTiposAsistencia(draft.tiposAsistencia);
+    setUbicacion(draft.ubicacion);
+    setHospitalDestinoId(draft.hospitalDestinoId);
+    setNombrePaciente(draft.nombrePaciente);
+    setEdad(draft.edad);
+    setGenero(draft.genero);
+    setSolicitante(draft.solicitante);
+    setAcompanante(draft.acompanante);
+    setFallecido(draft.fallecido);
+    setDomicilio(draft.domicilio);
+    setPresionArterial(draft.presionArterial);
+    setFrecuenciaCardiaca(draft.frecuenciaCardiaca);
+    setFrecuenciaRespiratoria(draft.frecuenciaRespiratoria);
+    setSaturacion(draft.saturacion);
+    setHoraToma(draft.horaToma);
+    setEstadoEntrega(draft.estadoEntrega);
+    setVehiculoId(draft.vehiculoId);
+    setPersonalSeleccionado(draft.personalSeleccionado);
+    setResumen(draft.resumen);
+    setFecha(draft.fecha);
+    setInsumos(draft.insumos);
+    toast.info("Se recuperó el borrador del formulario.");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const draftReady = useRef(false);
+  useEffect(() => {
+    if (isEdit) return;
+    if (!draftReady.current) {
+      draftReady.current = true;
+      return;
+    }
+    const vacio =
+      !draftValue.tipoEmergenciaId &&
+      draftValue.tiposAsistencia.length === 0 &&
+      !draftValue.ubicacion.trim() &&
+      !draftValue.nombrePaciente.trim() &&
+      !draftValue.hospitalDestinoId &&
+      !draftValue.vehiculoId &&
+      draftValue.personalSeleccionado.length === 0 &&
+      !draftValue.resumen.trim();
+    if (vacio) {
+      clear();
+      return;
+    }
+    save(draftValue);
+  }, [draftValue, isEdit, save, clear]);
 
   useEffect(() => {
     let mounted = true;
@@ -236,6 +379,16 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
   }
 
+  function agregarTipoAsistencia() {
+    const valor = nuevoTipoAsistencia.trim();
+    if (!valor) return;
+    if (!tiposAsistencia.includes(valor)) {
+      setTiposAsistencia([...tiposAsistencia, valor]);
+    }
+    setNuevoTipoAsistencia("");
+    setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
+  }
+
   function togglePersonal(personalId: string, nombre: string) {
     setPersonalSeleccionado((prev) => {
       const existe = prev.find((p) => p.personalId === personalId);
@@ -335,7 +488,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      toast.warning(personalErrorMsg || "Complete los datos obligatorios (*) antes de continuar.");
+      toast.warning(personalErrorMsg || "Complete los datos obligatorios marcados en rojo.");
       return;
     }
 
@@ -397,6 +550,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
         const resultado = await crearEmergencia(dto);
         if (resultado && resultado.exito) {
           toast.success(`Incidente ${resultado.numeroIncidente} registrado exitosamente`);
+          clear();
           onClose();
         } else {
           toast.error("No se pudo registrar la emergencia. Intente nuevamente.");
@@ -489,6 +643,8 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
             gap: 20,
           }}
         >
+          {!isEdit && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
+
           {/* 1. Código de Emergencia */}
           <section>
             <p style={sectionLabel}>Código de Emergencia</p>
@@ -668,35 +824,58 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
             </div>
 
             {/* Input con autocomplete automático */}
-            <input
-              list="tiposAsistenciaList"
-              value={nuevoTipoAsistencia}
-              onChange={(e) => {
-                const valor = e.target.value;
-                setNuevoTipoAsistencia(valor);
-                const coincidencia = catalogos.tiposAsistencia.find(
-                  (t) => t.nombre.toLowerCase() === valor.toLowerCase()
-                );
-                if (coincidencia && !tiposAsistencia.includes(coincidencia.nombre)) {
-                  setTiposAsistencia([...tiposAsistencia, coincidencia.nombre]);
-                  setNuevoTipoAsistencia("");
-                  setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && nuevoTipoAsistencia.trim()) {
-                  e.preventDefault();
-                  const valor = nuevoTipoAsistencia.trim();
-                  if (!tiposAsistencia.includes(valor)) {
-                    setTiposAsistencia([...tiposAsistencia, valor]);
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              <input
+                list="tiposAsistenciaList"
+                value={nuevoTipoAsistencia}
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  setNuevoTipoAsistencia(valor);
+                  const coincidencia = catalogos.tiposAsistencia.find(
+                    (t) => t.nombre.toLowerCase() === valor.toLowerCase()
+                  );
+                  if (coincidencia && !tiposAsistencia.includes(coincidencia.nombre)) {
+                    setTiposAsistencia([...tiposAsistencia, coincidencia.nombre]);
+                    setNuevoTipoAsistencia("");
+                    setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
                   }
-                  setNuevoTipoAsistencia("");
-                  setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
-                }
-              }}
-              placeholder="Escriba o seleccione..."
-              style={{ ...inputBase, ...errorField(errors.tiposAsistencia) }}
-            />
+                }}
+                onBlur={() => {
+                  if (nuevoTipoAsistencia.trim()) agregarTipoAsistencia();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && nuevoTipoAsistencia.trim()) {
+                    e.preventDefault();
+                    agregarTipoAsistencia();
+                  }
+                }}
+                placeholder="Escriba o seleccione..."
+                style={{ ...inputBase, ...errorField(errors.tiposAsistencia) }}
+              />
+              <button
+                type="button"
+                onClick={agregarTipoAsistencia}
+                disabled={!nuevoTipoAsistencia.trim()}
+                style={{
+                  flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "0 14px",
+                  borderRadius: 8,
+                  border: "1px solid var(--brand-500)",
+                  background: "var(--brand-50)",
+                  color: "var(--brand-600)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  opacity: nuevoTipoAsistencia.trim() ? 1 : 0.5,
+                }}
+              >
+                + Agregar
+              </button>
+            </div>
             <datalist id="tiposAsistenciaList">
               {catalogos.tiposAsistencia
                 .filter((t) => !tiposAsistencia.includes(t.nombre))
@@ -1126,18 +1305,32 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
                           {p.nombreCompleto}
                         </button>
                         {selected && (
-                          <select
-                            value={personalSeleccionado.find((s) => s.personalId === p.personalId)?.rolServicioId ?? ""}
-                            onChange={(e) => setRolPersonal(p.personalId, e.target.value ? Number(e.target.value) : null)}
-                            style={{ ...selectBase, width: 160, padding: "4px 8px", fontSize: 12 }}
-                          >
-                            <option value="">Rol…</option>
-                            {catalogos.rolesServicio.map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.nombre}
-                              </option>
-                            ))}
-                          </select>
+                          <div style={{ position: "relative" }}>
+                            <select
+                              value={personalSeleccionado.find((s) => s.personalId === p.personalId)?.rolServicioId ?? ""}
+                              onChange={(e) => setRolPersonal(p.personalId, e.target.value ? Number(e.target.value) : null)}
+                              style={{ ...selectBase, width: 160, padding: "4px 28px 4px 8px", fontSize: 12 }}
+                            >
+                              <option value="">Rol…</option>
+                              {catalogos.rolesServicio.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.nombre}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown
+                              style={{
+                                position: "absolute",
+                                right: 8,
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                width: 14,
+                                height: 14,
+                                color: "var(--text-3)",
+                                pointerEvents: "none",
+                              }}
+                            />
+                          </div>
                         )}
                       </div>
                     );

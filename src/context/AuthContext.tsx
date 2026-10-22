@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { getMisModulos } from "@/services/seguridadService";
 
 type UserRole = "admin" | "voluntario" | "secretario";
 
@@ -14,10 +15,10 @@ interface UserData {
 interface AuthContextValue {
   user: UserData | null;
   role: UserRole;
+  modulos: string[];
   loggedIn: boolean;
   login: (token: string, userData: UserData) => void;
   logout: () => void;
-  setRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -26,6 +27,7 @@ const STORAGE_KEYS = {
   USER: "user",
   TOKEN: "authToken",
   ROLE: "userRole",
+  MODULOS: "userModulos",
 } as const;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -34,9 +36,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRole | null;
     return stored ?? "admin";
   });
+  const [modulos, setModulos] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.MODULOS);
+      return stored ? (JSON.parse(stored) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loggedIn, setLoggedIn] = useState(false);
 
-  // Initialize auth state from localStorage on mount
+  const loadModulos = useCallback(async () => {
+    try {
+      const mods = await getMisModulos();
+      const list = Array.isArray(mods) ? mods : [];
+      setModulos(list);
+      localStorage.setItem(STORAGE_KEYS.MODULOS, JSON.stringify(list));
+    } catch {
+      setModulos([]);
+    }
+  }, []);
+
   useEffect(() => {
     const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
     const storedToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
@@ -53,40 +73,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRoleState(parsed.role);
           localStorage.setItem(STORAGE_KEYS.ROLE, parsed.role);
         }
+        void loadModulos();
       } catch {
-        // Invalid JSON, clear storage
         localStorage.removeItem(STORAGE_KEYS.USER);
         localStorage.removeItem(STORAGE_KEYS.TOKEN);
         localStorage.removeItem(STORAGE_KEYS.ROLE);
+        localStorage.removeItem(STORAGE_KEYS.MODULOS);
       }
     }
-  }, []);
+  }, [loadModulos]);
 
-  const login = useCallback((token: string, userData: UserData) => {
-    localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
-    localStorage.setItem(STORAGE_KEYS.ROLE, userData.role);
-    setUser(userData);
-    setRoleState(userData.role);
-    setLoggedIn(true);
-  }, []);
+  const login = useCallback(
+    (token: string, userData: UserData) => {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
+      localStorage.setItem(STORAGE_KEYS.ROLE, userData.role);
+      setUser(userData);
+      setRoleState(userData.role);
+      setLoggedIn(true);
+      void loadModulos();
+    },
+    [loadModulos]
+  );
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEYS.TOKEN);
     localStorage.removeItem(STORAGE_KEYS.USER);
     localStorage.removeItem(STORAGE_KEYS.ROLE);
+    localStorage.removeItem(STORAGE_KEYS.MODULOS);
     setUser(null);
     setLoggedIn(false);
     setRoleState("admin");
-  }, []);
-
-  const setRole = useCallback((newRole: UserRole) => {
-    localStorage.setItem(STORAGE_KEYS.ROLE, newRole);
-    setRoleState(newRole);
+    setModulos([]);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, loggedIn, login, logout, setRole }}>
+    <AuthContext.Provider value={{ user, role, modulos, loggedIn, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

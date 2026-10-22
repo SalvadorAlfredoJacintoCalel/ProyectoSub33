@@ -10,8 +10,6 @@ import {
   cambiarEstadoUsuario,
   cambiarRolUsuario,
   getRoles,
-  getPermisosRol,
-  guardarPermisosRol,
   getCatalogo,
   crearCatalogo,
   actualizarCatalogo,
@@ -22,10 +20,10 @@ import {
   type ParametroSistema,
   type UsuarioConfig,
   type RolItem,
-  type PermisoItem,
   type CatalogoTipo,
   type CatalogoItem,
 } from "../../../services/configuracionService";
+import { listarModulosUsuario, asignarModulosUsuario, type ModuloPermiso } from "@/services/seguridadService";
 import { actualizarAccesoSistema } from "../../../services/personalService";
 
 const RED = "var(--red)";
@@ -235,8 +233,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [nuevaPassword, setNuevaPassword] = useState("");
 
   // ── Tab 4: Matriz de permisos ────────────────────────────────────────────────
-  const [permisos, setPermisos] = useState<PermisoItem[]>([]);
-  const [selectedRolId, setSelectedRolId] = useState<number>(0);
+  const [modulos, setModulos] = useState<ModuloPermiso[]>([]);
+  const [selectedUsuarioId, setSelectedUsuarioId] = useState<string>("");
   const [loadingPermisos, setLoadingPermisos] = useState(false);
 
   // ── Carga de datos ───────────────────────────────────────────────────────────
@@ -278,18 +276,18 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     }
   }, []);
 
-  const cargarPermisos = useCallback(async (rolId: number) => {
-    if (!rolId) {
-      setPermisos([]);
+  const cargarPermisos = useCallback(async (usuarioId: string) => {
+    if (!usuarioId) {
+      setModulos([]);
       return;
     }
     try {
       setLoadingPermisos(true);
-      const data = await getPermisosRol(rolId);
-      setPermisos(Array.isArray(data) ? data : []);
+      const data = await listarModulosUsuario(usuarioId);
+      setModulos(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error loading permisos:", error);
-      setPermisos([]);
+      console.error("Error loading modulos:", error);
+      setModulos([]);
     } finally {
       setLoadingPermisos(false);
     }
@@ -305,14 +303,14 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   }, [catalogoTipo, cargarCatalogo]);
 
   useEffect(() => {
-    if (roles.length > 0 && !selectedRolId) {
-      setSelectedRolId(roles[0].id);
+    if (usuarios.length > 0 && !selectedUsuarioId) {
+      setSelectedUsuarioId(usuarios[0].usuarioId);
     }
-  }, [roles, selectedRolId]);
+  }, [usuarios, selectedUsuarioId]);
 
   useEffect(() => {
-    cargarPermisos(selectedRolId);
-  }, [selectedRolId, cargarPermisos]);
+    cargarPermisos(selectedUsuarioId);
+  }, [selectedUsuarioId, cargarPermisos]);
 
   useEffect(() => {
     if (activeTab === "usuarios") {
@@ -536,27 +534,21 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   };
 
   // ── Handlers: Permisos ───────────────────────────────────────────────────────
-  const handleTogglePermiso = (permisoId: number, asignado: boolean) => {
-    setPermisos((prev) => prev.map((p) => (p.permisoId === permisoId ? { ...p, asignado } : p)));
+  const handleToggleModulo = (moduloId: number, asignado: boolean) => {
+    setModulos((prev) => prev.map((m) => (m.moduloId === moduloId ? { ...m, asignado } : m)));
   };
 
   const handleGuardarPermisos = async () => {
-    if (!selectedRolId) return;
+    if (!selectedUsuarioId) return;
     try {
-      const permisosAsignados = permisos.filter((p) => p.asignado).map((p) => p.permisoId);
-      await guardarPermisosRol(selectedRolId, permisosAsignados);
+      const modulosAsignados = modulos.filter((m) => m.asignado).map((m) => m.moduloId);
+      await asignarModulosUsuario(selectedUsuarioId, modulosAsignados);
       toast.success("Los cambios se han guardado correctamente.");
-      await cargarPermisos(selectedRolId);
+      await cargarPermisos(selectedUsuarioId);
     } catch (error) {
       toast.error("Error al guardar los permisos.");
     }
   };
-
-  const permisosPorModulo = permisos.reduce<Record<string, PermisoItem[]>>((acc, p) => {
-    const key = p.moduloNombre || "General";
-    (acc[key] = acc[key] ?? []).push(p);
-    return acc;
-  }, {});
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "estacion", label: "Datos de la Estación" },
@@ -780,35 +772,30 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         {activeTab === "permisos" && (
           <div style={{ maxWidth: 640, background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", padding: 24 }}>
             <div style={{ marginBottom: 20 }}>
-              <Field label="Rol a configurar">
-                <select value={selectedRolId} onChange={(e) => setSelectedRolId(Number(e.target.value))} style={inputStyle()}>
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.id}>{r.nombre}</option>
+              <Field label="Usuario a configurar">
+                <select value={selectedUsuarioId} onChange={(e) => setSelectedUsuarioId(e.target.value)} style={inputStyle()}>
+                  {usuarios.map((u) => (
+                    <option key={u.usuarioId} value={u.usuarioId}>
+                      {u.nombreCompleto} (@{u.username})
+                    </option>
                   ))}
                 </select>
               </Field>
             </div>
 
             {loadingPermisos ? (
-              <p style={{ color: "var(--text-3)", fontSize: 13 }}>Cargando permisos...</p>
-            ) : permisos.length === 0 ? (
-              <p style={{ color: "var(--text-3)", fontSize: 13 }}>No hay permisos configurados en el sistema.</p>
+              <p style={{ color: "var(--text-3)", fontSize: 13 }}>Cargando módulos...</p>
+            ) : modulos.length === 0 ? (
+              <p style={{ color: "var(--text-3)", fontSize: 13 }}>No hay módulos configurados en el sistema.</p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {Object.entries(permisosPorModulo).map(([modulo, items]) => (
-                  <div key={modulo}>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)" }}>{modulo}</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {items.map((p) => (
-                        <div key={p.permisoId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, border: `1px solid ${p.asignado ? RED : "var(--border)"}`, background: p.asignado ? "var(--red-bg)" : "var(--bg-input)" }}>
-                          <div>
-                            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{p.descripcion || p.codigo}</p>
-                            <p style={{ margin: 0, fontSize: 11, color: "var(--text-3)", fontFamily: "monospace" }}>{p.codigo}</p>
-                          </div>
-                          <Toggle checked={p.asignado} onChange={(v) => handleTogglePermiso(p.permisoId, v)} />
-                        </div>
-                      ))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {modulos.map((m) => (
+                  <div key={m.moduloId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 10, border: `1px solid ${m.asignado ? RED : "var(--border)"}`, background: m.asignado ? "var(--red-bg)" : "var(--bg-input)" }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{m.nombre}</p>
+                      {m.descripcion && <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-3)" }}>{m.descripcion}</p>}
                     </div>
+                    <Toggle checked={m.asignado} onChange={(v) => handleToggleModulo(m.moduloId, v)} />
                   </div>
                 ))}
               </div>

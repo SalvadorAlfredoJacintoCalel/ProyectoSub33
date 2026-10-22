@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, type ReactNode } from "react";
+﻿import { useState, useMemo, useEffect, type ReactNode } from "react";
 import {
   Pencil,
   Trash2,
@@ -29,6 +29,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useAlert } from "@/app/components/ui/AlertSystem";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Modal } from "@/app/components/ui/modal";
@@ -125,6 +127,17 @@ export function FinanzasPage() {
   const [form, setForm] = useState<FormState>(BLANK_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
+  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>("finanzas.create");
+
+  useEffect(() => {
+    if (!showModal) return;
+    if (JSON.stringify(form) === JSON.stringify(BLANK_FORM)) {
+      clear();
+      return;
+    }
+    save(form);
+  }, [form, showModal, save, clear]);
+
   // View dialog
   const [viewRow, setViewRow] = useState<Transaccion | null>(null);
   const [confirmDesactivarTx, setConfirmDesactivarTx] = useState(false);
@@ -164,7 +177,16 @@ export function FinanzasPage() {
   const cajachica = 0;
 
   // ── Form helpers ──────────────────────────────────────────────────────────
-  const openModal = () => { setForm(BLANK_FORM); setErrors({}); setShowModal(true); };
+  const openModal = () => {
+    if (draft) {
+      setForm(draft);
+      toast.info("Se recuperó el borrador de la transacción.");
+    } else {
+      setForm(BLANK_FORM);
+    }
+    setErrors({});
+    setShowModal(true);
+  };
   const closeModal = () => setShowModal(false);
 
   const openEditModal = (row: Transaccion) => {
@@ -266,6 +288,7 @@ export function FinanzasPage() {
     };
     setRows(r => [...r, newRow]);
     setShowModal(false);
+    clear();
     toast.success("La transacción ha sido registrada correctamente.");
   };
 
@@ -432,6 +455,7 @@ export function FinanzasPage() {
           <span className="text-xs font-bold uppercase tracking-[0.08em]" style={{ color: "var(--text-3)" }}>Datos</span>
           <div className="h-px flex-1" style={{ background: "var(--border)" }} />
         </div>
+        <div className="mb-4"><DraftBanner savedAt={savedAt} online={online} onDiscard={clear} /></div>
         <div className="mb-4 flex overflow-hidden rounded-lg" style={{ border: "1px solid var(--border)" }}>
           {(["Ingreso","Gasto","Donación"] as TipoTx[]).map(t => (
             <button key={t} type="button" onClick={() => setField("tipo", t)}

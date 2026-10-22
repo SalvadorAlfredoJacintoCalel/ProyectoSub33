@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Pencil, Plus, Printer, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
@@ -7,6 +7,8 @@ import { Modal } from "@/app/components/ui/modal";
 import { SignatureModal } from "@/app/components/ui/SignatureModal";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { useAlert } from "@/app/components/ui/AlertSystem";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { useCupones } from "@/hooks/useCupones";
 import { vehiculosService } from "@/services/vehiculosService";
@@ -602,6 +604,19 @@ function PeriodoModal({
   );
 }
 
+interface CuponDraft {
+  vehiculoId: string;
+  responsable: string;
+  fecha: string;
+  kilometraje: string;
+  galonaje: string;
+  gasolineraId: string;
+  del: string;
+  al: string;
+  valor: string;
+  observaciones: string;
+}
+
 function CuponModal({
   open,
   onClose,
@@ -635,6 +650,38 @@ function CuponModal({
   const [observaciones, setObservaciones] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const { toast } = useAlert();
+  const { draft, savedAt, online, save, clear } = useFormDraft<CuponDraft>("cupon.create");
+  const draftRef = useRef<CuponDraft | null>(draft);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  const cuponDraft = useMemo<CuponDraft>(
+    () => ({
+      vehiculoId,
+      responsable,
+      fecha,
+      kilometraje,
+      galonaje,
+      gasolineraId,
+      del,
+      al,
+      valor,
+      observaciones,
+    }),
+    [vehiculoId, responsable, fecha, kilometraje, galonaje, gasolineraId, del, al, valor, observaciones]
+  );
+
+  useEffect(() => {
+    if (!open || cupon) return;
+    if (!cuponDraft.vehiculoId && !cuponDraft.responsable && !cuponDraft.del && !cuponDraft.al) {
+      clear();
+      return;
+    }
+    save(cuponDraft);
+  }, [cuponDraft, open, cupon, save, clear]);
 
   useEffect(() => {
     if (!open) return;
@@ -649,6 +696,19 @@ function CuponModal({
       setAl(String(cupon.cuponAl));
       setValor(String(cupon.valorCupon));
       setObservaciones(cupon.observaciones ?? "");
+    } else if (draftRef.current) {
+      const d = draftRef.current;
+      setVehiculoId(d.vehiculoId);
+      setResponsable(d.responsable);
+      setFecha(d.fecha);
+      setKilometraje(d.kilometraje);
+      setGalonaje(d.galonaje);
+      setGasolineraId(d.gasolineraId);
+      setDel(d.del);
+      setAl(d.al);
+      setValor(d.valor);
+      setObservaciones(d.observaciones);
+      toast.info("Se recuperó el borrador del cupón.");
     } else {
       setVehiculoId("");
       setResponsable("");
@@ -662,7 +722,7 @@ function CuponModal({
       setObservaciones("");
     }
     setError(null);
-  }, [open, cupon, anio, mes, periodo]);
+  }, [open, cupon, anio, mes, periodo, toast]);
 
   const totalCupones = useMemo(() => {
     const d = Number(del);
@@ -701,6 +761,7 @@ function CuponModal({
         },
         cupon?.registroId,
       );
+      if (!cupon) clear();
     } catch {
       setError("No se pudo guardar el cupón.");
     } finally {
@@ -727,6 +788,7 @@ function CuponModal({
       }
     >
       <form id="cupon-form" onSubmit={submit} className="flex flex-col gap-3">
+        {!cupon && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Campo label="Vehículo">
             <SelectField

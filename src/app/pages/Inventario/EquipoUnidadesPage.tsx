@@ -1,6 +1,8 @@
 ﻿import { useState, useEffect, useMemo } from "react";
 import { Plus, Truck, Info, Pencil, AlertTriangle, Search, ChevronRight, Package, Link2, Trash2 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Drawer } from "@/app/components/ui/drawer";
@@ -56,6 +58,17 @@ export function EquipoUnidadesPage() {
   const [assignRows, setAssignRows] = useState<AssignRow[]>([newAssignRow()]);
   const [assignErrors, setAssignErrors] = useState<Record<string, string>>({});
   const [assignSubmitting, setAssignSubmitting] = useState(false);
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<{ unidadId: string; rows: AssignRow[] }>("inventario.asignar-equipo");
+
+  useEffect(() => {
+    if (!assignOpen) return;
+    if (!assignUnidadId && !assignRows.some((r) => r.itemId || r.cantidadAsignada)) {
+      clear();
+      return;
+    }
+    save({ unidadId: assignUnidadId, rows: assignRows });
+  }, [assignUnidadId, assignRows, assignOpen, save, clear]);
 
   useEffect(() => {
     loadCatalogos();
@@ -117,8 +130,14 @@ export function EquipoUnidadesPage() {
   }, [items]);
 
   function openAssign(prefillUnidad?: string) {
-    setAssignUnidadId(prefillUnidad ?? unidadFilter ?? "");
-    setAssignRows([newAssignRow()]);
+    if (draft) {
+      setAssignUnidadId(draft.unidadId);
+      setAssignRows(draft.rows.length ? draft.rows : [newAssignRow()]);
+      toast.info("Se recuperó el borrador de la asignación.");
+    } else {
+      setAssignUnidadId(prefillUnidad ?? unidadFilter ?? "");
+      setAssignRows([newAssignRow()]);
+    }
     setAssignErrors({});
     setAssignOpen(true);
   }
@@ -220,6 +239,7 @@ export function EquipoUnidadesPage() {
       setAssignOpen(false);
       setAssignRows([newAssignRow()]);
       setAssignUnidadId("");
+      clear();
       loadEquipoUnidades();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al asignar equipo";
@@ -433,6 +453,7 @@ export function EquipoUnidadesPage() {
         }
       >
         <FormErrorSummary show={Object.keys(assignErrors).length > 0} />
+        <div className="mb-4"><DraftBanner savedAt={savedAt} online={online} onDiscard={clear} /></div>
         <div className="flex flex-col gap-4">
           <SelectField
             label="Unidad"

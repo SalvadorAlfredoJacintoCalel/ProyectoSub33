@@ -6,6 +6,8 @@ import {
   Ban, Download, Printer, Wallet, RotateCcw, Landmark,
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Skeleton } from "@/app/components/ui/skeleton";
@@ -340,6 +342,17 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
   const [errors, setErrors] = useState<Partial<Record<keyof ItemFormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const { draft, savedAt, online, save, clear } = useFormDraft<ItemFormState>("inventario.item");
+
+  useEffect(() => {
+    if (editModal?.mode !== "add") return;
+    if (JSON.stringify(form) === JSON.stringify(EMPTY_FORM)) {
+      clear();
+      return;
+    }
+    save(form);
+  }, [form, editModal, save, clear]);
+
   // Donaciones (para origen "Donado")
   const [donacionesMaterial, setDonacionesMaterial] = useState<Donacion[]>([]);
   const [showDonacionDrawer, setShowDonacionDrawer] = useState(false);
@@ -512,7 +525,12 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
   ];
 
   function openAdd() {
-    setForm(EMPTY_FORM);
+    if (draft) {
+      setForm(draft);
+      toast.info("Se recuperó el borrador del item.");
+    } else {
+      setForm(EMPTY_FORM);
+    }
     setErrors({});
     setEditModal({ mode: "add" });
   }
@@ -594,6 +612,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         };
         await createItem(dto);
         toast.success("Item registrado correctamente");
+        clear();
       } else if (editModal?.mode === "edit" && editModal.item) {
         const estadoActual = editModal.item.estado ?? "Activo";
         const esBajaNueva = form.estado === "Baja" && estadoActual !== "Baja";
@@ -839,6 +858,9 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         }
       >
         <FormErrorSummary show={Object.keys(errors).length > 0} />
+        {editModal?.mode === "add" && (
+          <div className="mb-4"><DraftBanner savedAt={savedAt} online={online} onDiscard={clear} /></div>
+        )}
 
         <CollapsibleSection label="Datos" icon={User}>
           <div className="grid grid-cols-2 gap-4">

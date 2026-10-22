@@ -74,3 +74,18 @@ export const asignarModulos = async (rolId: number, moduloIds: number[]): Promis
     body: JSON.stringify({ rolId, moduloIds }),
   });
 };
+
+export const listarModulosUsuario = async (usuarioId: string): Promise<ModuloPermiso[]> => {
+  return request(`${API_BASE_URL}/seguridad/permisos/usuario/${usuarioId}`, {
+    method: "GET",
+    headers: jsonHeaders(),
+  });
+};
+
+export const asignarModulosUsuario = async (usuarioId: string, moduloIds: number[]): Promise<void> => {
+  await request(`${API_BASE_URL}/seguridad/permisos/usuario/asignar`, {
+    method: "POST",
+    headers: jsonHeaders(),
+    body: JSON.stringify({ usuarioId, moduloIds }),
+  });
+};

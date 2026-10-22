@@ -1,4 +1,4 @@
-﻿import { useState, type ReactNode } from "react";
+﻿import { useState, useEffect, type ReactNode } from "react";
 import {
   BarChart,
   Bar,
@@ -43,6 +43,9 @@ import {
 import { Modal } from "@/app/components/ui/modal";
 import { Button } from "@/app/components/ui/button";
 import { DataTable } from "@/app/components/ui/data-table";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const RED = "var(--red)";
@@ -1530,6 +1533,17 @@ function UsuariosTab() {
   const [errors, setErrors] = useState<Partial<NuevoUsuarioForm>>({});
   const [toast, setToast] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Usuario | null>(null);
+  const { toast: notify } = useAlert();
+  const { draft, savedAt, online, save, clear } = useFormDraft<NuevoUsuarioForm>("reportes.usuario");
+
+  useEffect(() => {
+    if (!showModal) return;
+    if (JSON.stringify(form) === JSON.stringify(emptyForm)) {
+      clear();
+      return;
+    }
+    save(form);
+  }, [form, showModal, save, clear]);
 
   function validate(): boolean {
     const e: Partial<NuevoUsuarioForm> = {};
@@ -1562,6 +1576,7 @@ function UsuariosTab() {
     setShowModal(false);
     setForm(emptyForm);
     setErrors({});
+    clear();
     setToast(true);
     setTimeout(() => setToast(false), 3000);
   }
@@ -1603,7 +1618,16 @@ function UsuariosTab() {
           </p>
         </div>
         <button
-          onClick={() => { setShowModal(true); setForm(emptyForm); setErrors({}); }}
+          onClick={() => {
+            if (draft) {
+              setForm(draft);
+              notify.info("Se recuperó el borrador del usuario.");
+            } else {
+              setForm(emptyForm);
+            }
+            setErrors({});
+            setShowModal(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
           style={{ background: RED }}
         >
@@ -1698,6 +1722,7 @@ function UsuariosTab() {
             </div>
 
             <div className="px-6 py-5 space-y-4">
+              <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />
               <div>
                 <label className="block text-xs font-medium text-[var(--text-2)] mb-1">
                   Nombre Completo

@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   Plus,
   Search,
@@ -20,6 +20,8 @@ import {
   List,
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Modal } from "@/app/components/ui/modal";
@@ -293,12 +295,31 @@ function DonacionModal({
   const [errors, setErrors] = useState<FormErrors>({});
   const [step, setStep] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { toast } = useAlert();
+  const { draft, savedAt, online, save, clear } = useFormDraft<DonacionForm>("donacion.create");
+  const dirtyRef = useRef(false);
+
+  useEffect(() => {
+    if (initial !== null || !draft) return;
+    setForm(draft);
+    dirtyRef.current = true;
+    toast.info("Se recuperó el borrador de la donación.");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (initial !== null) return;
+    if (!dirtyRef.current) return;
+    save(form);
+  }, [form, initial, save]);
 
   function setField<K extends keyof DonacionForm>(key: K, val: DonacionForm[K]) {
+    dirtyRef.current = true;
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
   function setMaterialField(idx: number, key: keyof MaterialDonacion, val: string | number) {
+    dirtyRef.current = true;
     setForm((prev) => {
       const updated = prev.materiales.map((m, i) => (i === idx ? { ...m, [key]: val } : m));
       return { ...prev, materiales: updated };
@@ -306,10 +327,12 @@ function DonacionModal({
   }
 
   function addMaterial() {
+    dirtyRef.current = true;
     setForm((prev) => ({ ...prev, materiales: [...prev.materiales, { descripcion: "", cantidad: 1, valorEstimado: 0 }] }));
   }
 
   function removeMaterial(idx: number) {
+    dirtyRef.current = true;
     setForm((prev) => ({ ...prev, materiales: prev.materiales.filter((_, i) => i !== idx) }));
   }
 
@@ -343,7 +366,10 @@ function DonacionModal({
   }
 
   function handleSubmit() {
-    if (validateStep(0) && validateStep(1)) onSave(form);
+    if (validateStep(0) && validateStep(1)) {
+      onSave(form);
+      if (!initial) clear();
+    }
   }
 
   const totalMaterial = form.materiales.reduce((s, m) => s + (Number(m.valorEstimado) || 0), 0);
@@ -386,6 +412,7 @@ function DonacionModal({
       }
     >
       {/* Stepper */}
+      {!initial && <div className="mb-4"><DraftBanner savedAt={savedAt} online={online} onDiscard={clear} /></div>}
       <div className="mb-6 flex items-center">
         {STEPS.map((label, i) => (
           <div key={label} className="flex items-center" style={{ flex: i === STEPS.length - 1 ? "0 0 auto" : 1 }}>

@@ -27,6 +27,8 @@ import type { Estado, Miembro, FormState, RangoItem, RolItem } from "@/types/per
 import { formatDate } from "@/utils/format";
 import { emptyFormState, miembroToForm, personalResponseToForm, personalResponseToMiembro } from "@/utils/formHelpers";
 import { useAlert } from "@/app/components/ui/AlertContext";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const BRAND = "var(--brand-600)";
@@ -87,6 +89,17 @@ export function PersonalPage() {
   const [form, setForm] = useState<FormState>(emptyFormState());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>("personal.create");
+
+  useEffect(() => {
+    if (!editModalOpen || editingId !== null) return;
+    if (JSON.stringify(form) === JSON.stringify(emptyFormState())) {
+      clear();
+      return;
+    }
+    save(form);
+  }, [form, editModalOpen, editingId, save, clear]);
 
   const [credOpen, setCredOpen] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -231,7 +244,12 @@ export function PersonalPage() {
 
   function openAddModal() {
     setEditingId(null);
-    setForm(emptyFormState());
+    if (draft) {
+      setForm(draft);
+      toast.info("Se recuperó el borrador del miembro.");
+    } else {
+      setForm(emptyFormState());
+    }
     setErrors({});
     setCredOpen(false);
     setShowPw(false);
@@ -372,6 +390,7 @@ export function PersonalPage() {
       } else {
         await registrarPersonal(payload as CrearPersonalDto);
         toast.success("Miembro registrado correctamente.");
+        clear();
       }
       setForm(emptyFormState());
       closeModal();
@@ -731,6 +750,9 @@ export function PersonalPage() {
         roles={roles}
         saving={saving}
         onSubmit={handleSubmit}
+        draftSavedAt={savedAt}
+        draftOnline={online}
+        onDraftDiscard={clear}
       />
 
       {/* ── Detail Drawer ───────────────────────────────────────────────────────── */}

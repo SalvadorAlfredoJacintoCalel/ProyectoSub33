@@ -5,6 +5,7 @@ import type { FormState, RangoItem, RolItem } from "@/types/personal";
 import { Modal } from "@/app/components/ui/modal";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
 
 interface FormProps {
   open: boolean;
@@ -23,6 +24,9 @@ interface FormProps {
   roles: RolItem[];
   saving: boolean;
   onSubmit: () => void;
+  draftSavedAt: number | null;
+  draftOnline: boolean;
+  onDraftDiscard: () => void;
 }
 
 function slugify(s: string): string {
@@ -193,6 +197,9 @@ export function PersonalForm({
   roles,
   saving,
   onSubmit,
+  draftSavedAt,
+  draftOnline,
+  onDraftDiscard,
 }: FormProps) {
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => {
@@ -254,6 +261,11 @@ export function PersonalForm({
       }
     >
       {/* Error summary */}
+      {!editingId && (
+        <div className="mb-4">
+          <DraftBanner savedAt={draftSavedAt} online={draftOnline} onDiscard={onDraftDiscard} />
+        </div>
+      )}
       {Object.keys(errors).length > 0 && (
         <div
           className="mb-5 flex items-start gap-3 rounded-xl border p-3 text-sm"

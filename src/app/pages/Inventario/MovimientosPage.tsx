@@ -1,6 +1,8 @@
 ﻿import { useState, useEffect } from "react";
 import { ArrowLeftRight, Download, X, SlidersHorizontal, AlertTriangle } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Modal } from "@/app/components/ui/modal";
@@ -56,6 +58,17 @@ export function MovimientosPage() {
   const [form, setForm] = useState({ itemId: "", cantidad: "", motivo: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<{ itemId: string; cantidad: string; motivo: string }>("inventario.ajuste");
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    if (!form.itemId && !form.cantidad && !form.motivo) {
+      clear();
+      return;
+    }
+    save(form);
+  }, [form, modalOpen, save, clear]);
 
   const tipoAjuste = tiposMovimientoManual.find((t) => (t.codigo || "").toUpperCase() === "AJUSTE") ?? null;
   const itemSeleccionado = items.find((i) => String(i.itemId) === form.itemId) ?? null;
@@ -126,7 +139,12 @@ export function MovimientosPage() {
   }
 
   function openAjuste() {
-    setForm({ itemId: "", cantidad: "", motivo: "" });
+    if (draft) {
+      setForm(draft);
+      toast.info("Se recuperó el borrador del ajuste.");
+    } else {
+      setForm({ itemId: "", cantidad: "", motivo: "" });
+    }
     setErrors({});
     setModalOpen(true);
   }
@@ -166,6 +184,7 @@ export function MovimientosPage() {
       toast.success("Ajuste registrado correctamente");
       setModalOpen(false);
       setForm({ itemId: "", cantidad: "", motivo: "" });
+      clear();
       recargar();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al registrar el ajuste";
@@ -259,6 +278,7 @@ export function MovimientosPage() {
         }
       >
         <FormErrorSummary show={Object.keys(errors).length > 0} />
+        <div className="mb-4"><DraftBanner savedAt={savedAt} online={online} onDiscard={clear} /></div>
         <div className="flex flex-col gap-4">
           <SelectField
             label="Item"

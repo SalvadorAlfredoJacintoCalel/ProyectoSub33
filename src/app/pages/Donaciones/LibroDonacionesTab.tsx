@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Download, Pencil, Plus, Printer, Trash2, X } from "lucide-react";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
@@ -7,6 +7,8 @@ import { Input } from "@/app/components/ui/input";
 import { Modal } from "@/app/components/ui/modal";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { useAlert } from "@/app/components/ui/AlertSystem";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
 import { useDonacionLibro } from "@/hooks/useDonacionLibro";
@@ -343,6 +345,16 @@ function Mini({ label, value, highlight }: { label: string; value: string; highl
   );
 }
 
+interface MovimientoDraft {
+  fecha: string;
+  descripcion: string;
+  firmado: boolean;
+  tipoDocumentoId: string;
+  noDocumento: string;
+  entrada: string;
+  salida: string;
+}
+
 function MovimientoModal({
   open,
   onClose,
@@ -369,6 +381,27 @@ function MovimientoModal({
   const [salida, setSalida] = useState("0");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const { toast } = useAlert();
+  const { draft, savedAt, online, save, clear } = useFormDraft<MovimientoDraft>("libro-donaciones.create");
+  const draftRef = useRef<MovimientoDraft | null>(draft);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  const movimientoDraft = useMemo<MovimientoDraft>(
+    () => ({ fecha, descripcion, firmado, tipoDocumentoId, noDocumento, entrada, salida }),
+    [fecha, descripcion, firmado, tipoDocumentoId, noDocumento, entrada, salida]
+  );
+
+  useEffect(() => {
+    if (!open || movimiento) return;
+    if (!movimientoDraft.descripcion && !movimientoDraft.tipoDocumentoId && !movimientoDraft.noDocumento) {
+      clear();
+      return;
+    }
+    save(movimientoDraft);
+  }, [movimientoDraft, open, movimiento, save, clear]);
 
   useEffect(() => {
     if (!open) return;
@@ -380,6 +413,16 @@ function MovimientoModal({
       setNoDocumento(movimiento.noDocumento ?? "");
       setEntrada(String(movimiento.entrada ?? 0));
       setSalida(String(movimiento.salida ?? 0));
+    } else if (draftRef.current) {
+      const d = draftRef.current;
+      setFecha(d.fecha);
+      setDescripcion(d.descripcion);
+      setFirmado(d.firmado);
+      setTipoDocumentoId(d.tipoDocumentoId);
+      setNoDocumento(d.noDocumento);
+      setEntrada(d.entrada);
+      setSalida(d.salida);
+      toast.info("Se recuperó el borrador del movimiento.");
     } else {
       setFecha(fechaHoy(anio, mes));
       setDescripcion("");
@@ -390,7 +433,7 @@ function MovimientoModal({
       setSalida("0");
     }
     setError(null);
-  }, [open, movimiento, anio, mes]);
+  }, [open, movimiento, anio, mes, toast]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -413,6 +456,7 @@ function MovimientoModal({
         },
         movimiento?.movimientoId,
       );
+      if (!movimiento) clear();
     } catch {
       setError("No se pudo guardar el movimiento.");
     } finally {
@@ -439,6 +483,7 @@ function MovimientoModal({
       }
     >
       <form id="movimiento-form" onSubmit={submit} className="flex flex-col gap-3">
+        {!movimiento && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Fecha" required>
             <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />

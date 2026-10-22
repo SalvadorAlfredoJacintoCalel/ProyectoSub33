@@ -1,6 +1,6 @@
 ﻿# ProyectoSub33 — Contexto Completo para IA
 
-> Última actualización: **2026-10-20** (cierre de mejoras de Vehículos + impresión + KPIs inline).
+> Última actualización: **2026-10-21** (permisos de módulos por usuario, navegación por permisos, se elimina "Vista de Rol" y borradores sin alerta falsa).
 > Este archivo es la fuente de contexto del proyecto. Mantenerlo actualizado al cerrar cada bloque de trabajo.
 
 ## Resumen Ejecutivo
@@ -63,7 +63,8 @@ ProyectoSub33-main/
 │   │   ├── useDonaciones.ts
 │   │   ├── useDonacionLibro.ts
 │   │   ├── useVehiculos.ts
-│   │   └── useCupones.ts
+│   │   ├── useCupones.ts
+│   │   └── useFormDraft.ts      # autoguardado de borradores a localStorage
 │   ├── types/                   # api, personal, emergencia, inventario, donacion, vehiculos
 │   ├── constants/               # roles.ts, navigation.ts
 │   ├── utils/                   # format.ts, formHelpers.ts
@@ -146,7 +147,9 @@ ProyectoSub33-main/
 | `roles` | Roles del sistema | `rol_id` (int) | — |
 | `permisos` | Permisos por módulo | `permiso_id` (UUID) | `modulo_id → cat_modulos` |
 | `rol_permisos` | Matriz rol-permiso | `(rol_id, permiso_id)` | `rol_id`, `permiso_id` |
+| `rol_modulo` | Módulos por rol | `(rol_id, modulo_id)` | `rol_id`, `modulo_id` |
 | `usuario_roles` | Roles de usuario | `(usuario_id, rol_id)` | `usuario_id`, `rol_id` |
+| `usuario_modulos` | Módulos por usuario (override del rol) | `(usuario_id, modulo_id)` | `usuario_id → usuarios`, `modulo_id → cat_modulos` |
 | `sesiones_activas` | Tokens JWT activos | `sesion_id` (UUID) | `usuario_id → usuarios` |
 | `bitacora_accesos` | Log de ingresos | `bitacora_id` | `usuario_id → usuarios` |
 | `codigos_recuperacion` | OTP recuperación | `codigo_id` | `usuario_id → usuarios` |
@@ -245,6 +248,8 @@ PUT    /api/configuracion/catalogos/hospitales-completo/{id:int}
 GET    /api/seguridad/permisos/mios
 GET    /api/seguridad/permisos/listar/{rolId:int}
 POST   /api/seguridad/permisos/asignar
+GET    /api/seguridad/permisos/usuario/{usuarioId:guid}
+POST   /api/seguridad/permisos/usuario/asignar
 ```
 
 ### Inventario (`/api/inventario`)
@@ -416,11 +421,12 @@ interface ApiEnvelope<T> {
 
 - JWT Bearer en `Authorization`.
 - Roles: `admin` | `voluntario` | `secretario`.
-- Navegación por rol: `ROLE_NAV[role]`.
-- Permisos backend: `HttpRequirePermissionAttribute`.
-- Storage: `localStorage.authToken` + `localStorage.user` + `localStorage.userRole`.
+- Navegación por **módulos del usuario** (`GET /api/seguridad/permisos/mios`), no por `ROLE_NAV[role]`. "Inicio" (`bienvenida`) siempre visible; el resto se filtra por `AuthContext.modulos`.
+- Permisos backend: `HttpRequirePermissionAttribute` (permisos finos de acción, independientes de la visibilidad de módulos).
+- Storage: `localStorage.authToken` + `localStorage.user` + `localStorage.userRole` + `localStorage.userModulos`.
 - Login actual: **conectado a `/api/auth/login`**; `authService.js` sigue usando URL hardcodeada.
 - Recuperación de contraseña/OTP: flujo visual, **pendiente** de backend real.
+- No existe conmutador "Vista de Rol": el rol viene del login y solo se usa para el badge y el gate de admin en Configuración.
 
 ---
 
@@ -762,3 +768,69 @@ dotnet ef database update
 - Componentes base: `Drawer` y `Modal` limitan su ancho al viewport, permiten scroll horizontal y envuelven footers; `Tabs` permite scroll horizontal.
 - Modales/drawers de detalle: grids a una columna en movil, tablas con scroll horizontal y paneles de fichas dentro del viewport.
 - `npm run build` verificado sin errores.
+
+## Borradores de formularios y autocompletado movil (2026-10-21)
+
+### Autocompletado "Tipos de Asistencia" (Emergencias)
+
+- `EmergenciaFormPage.tsx`: el agregar un valor nuevo ya **no depende solo de `onKeyDown` Enter** (los teclados virtuales no lo emiten).
+- Se agrego boton **"+ Agregar"** junto al input y commit en **`onBlur`**; `Enter` se conserva para desktop.
+- Los `<datalist>` de `VehiculoFormModal` (tipo) y `MantenimientoModal` (taller) guardan texto libre por `onChange`, sin bug.
+
+### Guardado automatico de borradores
+
+- Hook generico `src/hooks/useFormDraft.ts`:
+  - `useFormDraft<T>(storageKey)` → `{ draft, savedAt, online, save, clear }`.
+  - `save(value)` con debounce de 500ms a `localStorage` (prefijo `sub33.draft.`).
+  - Detecta `navigator.onLine` + eventos `online`/`offline`.
+- Componente `src/app/components/ui/DraftBanner.tsx`: chip "Guardado como borrador" (o "Sin conexion · guardado como borrador") + boton **Descartar**.
+- Flujo por formulario: autoguardar al escribir → al reabrir restaura con `toast.info("Se recupero el borrador...")` → se limpia (`clear()`) al guardar con exito.
+- Patrones de integracion:
+  - Objeto unico + constante EMPTY: `VehiculoFormModal`, `MantenimientoModal`, `FinanzasPage`, `InventarioPage` (item), `ReportesPage` (usuario), `PersonalPage`.
+  - Objeto con estado inicial generado: `DonacionesPage` usa `dirtyRef`.
+  - Multiples `useState`: `EmergenciaFormPage`, `CuponesTab` (CuponModal), `LibroDonacionesTab` (MovimientoModal) componen un objeto draft + `draftRef` para restaurar.
+  - `MovimientosPage` (ajuste) y `EquipoUnidadesPage` (asignar equipo) usan el objeto de form directamente.
+
+**Formularios de creacion cubiertos (12):** Emergencias, Vehiculo, Mantenimiento, Cupon, Donacion, Libro de Donaciones, Transaccion (Finanzas), Miembro (Personal), Item, Ajuste (Movimientos), Asignar equipo (Equipo/Unidades) y Nuevo usuario (Reportes).
+
+**No cubiertos (a proposito):** dialogos de configuracion de `SeguridadPage` (parametro, catalogo, hospital, usuario) por ser de 1-2 campos.
+
+- `npm run build` verificado sin errores.
+
+## Permisos de módulos por usuario + navegación real (2026-10-21)
+
+### Modelo de permisos (override por usuario)
+- **Módulos** (visibilidad del menú) viven en `cat_modulos` + `usuario_modulos` (nueva) + `rol_modulo` (heredado).
+- `GET /api/seguridad/permisos/mios` devuelve los códigos de módulo del usuario autenticado:
+  1. Si tiene filas en `usuario_modulos`, esas mandan (override).
+  2. Si no, hereda los módulos de sus roles (`rol_modulo`).
+- **Permisos finos** (`permisos` + `rol_permisos` + `HttpRequirePermissionAttribute`) siguen protegiendo acciones del backend; no cambian en este trabajo.
+
+### Backend
+- Nueva entidad `Models/UsuarioModulo.cs` + `DbSet<UsuarioModulo>` + config en `AppDbContext` (tabla `usuario_modulos`).
+- `SeguridadController`:
+  - `MisModulos` ahora aplica override usuario → rol.
+  - `GET /api/seguridad/permisos/usuario/{usuarioId:guid}` → módulos con flag `asignado`.
+  - `POST /api/seguridad/permisos/usuario/asignar` → body `{ usuarioId, moduloIds }`, reemplaza los módulos del usuario.
+- SQL idempotente en `Backend_Sub33/Backend_Sub33/Data/SQL/migracion_usuario_modulos.sql` (crea `usuario_modulos`, agrega módulo `seguridad` a `cat_modulos` y asegura admin con todos). **Ejecutado en la BD `Sub_33` (2026-10-21).**
+
+### Frontend
+- `AuthContext`:
+  - Se elimina `setRole` (ya no hay conmutador de rol).
+  - Nuevo estado `modulos: string[]`, persistido en `localStorage.userModulos` y cargado con `getMisModulos()` tras `login()` y al restaurar sesión.
+- `App.tsx` (layout activo):
+  - Menú: `ALL_NAV.filter(n => n.id === "bienvenida" || modulos.includes(n.id))`.
+  - Se eliminó el dropdown **"Vista de Rol"** y todo su estado.
+  - `Bienvenido, {firstName}` y `userName`/`initials` derivados de `user.name` (primer nombre), ya no "Carlos García Soc" hardcodeado.
+- `SeguridadPage` → pestaña **"Matriz de Permisos"**: dropdown de **usuarios** (de `getUsuarios()`) + checkboxes de **módulos** (`listarModulosUsuario`/`asignarModulosUsuario`). Se reemplazó la matriz de permisos finos por rol.
+- `seguridadService.ts`: `listarModulosUsuario(usuarioId)` y `asignarModulosUsuario(usuarioId, moduloIds)`.
+
+### Borradores: sin alerta falsa
+- En cada formulario con guarda de "vacío/pristino", al quedar vacío se llama `clear()` (no solo se salta el guardado), evitando borradores obsoletos y la alerta "Se recuperó el borrador" sin datos.
+- Formularios cubiertos: Emergencia (nueva detección `vacio`), Vehículo, Mantenimiento, Cupón, Libro de Donaciones, Finanzas, Personal, Item, Ajuste, Asignar equipo y Usuario (Reportes).
+
+### Verificación
+- `dotnet build` correcto (2 warnings preexistentes en `PersonalService.cs`).
+- `npm run build` correcto.
+- Verificado en runtime con JWT real: `GET /permisos/mios` devuelve por rol (Administrador 9, Secretario 7, Voluntario 5); `GET/POST /permisos/usuario/*` asigna y relee correctamente.
+- Nota: en esta BD no existe el usuario `admin`; el Administrador es `sjacinto`.

@@ -4,6 +4,9 @@ import { Modal } from "@/app/components/ui/modal";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
+import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { ApiError, crearCatalogo, getCatalogo } from "@/services/configuracionService";
 import type {
   CatalogoItem,
@@ -160,13 +163,36 @@ export function MantenimientoModal({
   const [saving, setSaving] = useState(false);
   const finalizeRef = useRef(false);
   const formId = useId();
+  const { toast } = useAlert();
+  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>("mantenimiento.create");
+  const draftRef = useRef<FormState | null>(draft);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   useEffect(() => {
     if (!open) return;
-    setForm(mantenimiento ? fromMantenimiento(mantenimiento) : EMPTY);
+    if (mantenimiento) {
+      setForm(fromMantenimiento(mantenimiento));
+    } else if (draftRef.current) {
+      setForm(draftRef.current);
+      toast.info("Se recuperó el borrador de la hoja de mantenimiento.");
+    } else {
+      setForm(EMPTY);
+    }
     setError(null);
     finalizeRef.current = false;
-  }, [open, mantenimiento]);
+  }, [open, mantenimiento, toast]);
+
+  useEffect(() => {
+    if (!open || mantenimiento) return;
+    if (JSON.stringify(form) === JSON.stringify(EMPTY)) {
+      clear();
+      return;
+    }
+    save(form);
+  }, [form, open, mantenimiento, save, clear]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -245,6 +271,7 @@ export function MantenimientoModal({
         firmaPiloto: nil(form.firmaPiloto),
         firmaJefeServicio: nil(form.firmaJefeServicio),
       });
+      if (!mantenimiento) clear();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar la hoja de mantenimiento.");
@@ -324,6 +351,7 @@ export function MantenimientoModal({
       }
     >
       <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {!mantenimiento && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
         <Section
           number="1"
           title="Datos de identificación y encabezado"
