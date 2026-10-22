@@ -56,8 +56,8 @@ public class VehiculoDto
     public DateTime? FechaBaja { get; set; }
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public List<VehiculoMantenimientoDto>? Mantenimientos { get; set; }
-    public List<VehiculoCuponDto>? Cupones { get; set; }
+    public List<VehiculoMantenimientoDto> Mantenimientos { get; set; } = new();
+    public List<VehiculoCuponDto> Cupones { get; set; } = new();
 }
 
 public class VehiculoCreateDto
@@ -208,6 +208,16 @@ public class CuponPeriodoDto
     public int TotalCuponesGastados { get; set; }
     public decimal TotalHaber { get; set; }
     public List<VehiculoCuponDto> Cupones { get; set; } = new();
+
+    // Firmas del reporte oficial (pie del formato)
+    public string? ElaboradoPor { get; set; }
+    public string? JefeAbastecimientos { get; set; }
+    public string? Jefe33Cia { get; set; }
+    public string? Director { get; set; }
+    public string? FirmaElaboradoPorBase64 { get; set; }
+    public string? FirmaJefeAbastecimientosBase64 { get; set; }
+    public string? FirmaJefe33CiaBase64 { get; set; }
+    public string? FirmaDirectorBase64 { get; set; }
 }
 
 public class CuponPeriodoCreateDto
@@ -219,6 +229,16 @@ public class CuponPeriodoCreateDto
     public int TotalRecibidos { get; set; }
     public decimal ValorCuponDefault { get; set; } = 100;
     public string? Notas { get; set; }
+
+    // Firmas del reporte oficial (pie del formato)
+    public string? ElaboradoPor { get; set; }
+    public string? JefeAbastecimientos { get; set; }
+    public string? Jefe33Cia { get; set; }
+    public string? Director { get; set; }
+    public string? FirmaElaboradoPorBase64 { get; set; }
+    public string? FirmaJefeAbastecimientosBase64 { get; set; }
+    public string? FirmaJefe33CiaBase64 { get; set; }
+    public string? FirmaDirectorBase64 { get; set; }
 }
 
 public class VehiculoCuponDto
@@ -287,4 +307,49 @@ public class CuponUpdateDto
     public bool Firmado { get; set; }
     public string? FirmaBase64 { get; set; }
     public string? Observaciones { get; set; }
+}
+
+// ── Reporte oficial de cupones (formato "Libro Mensual de Cupones") ─────────
+public class ReporteCuponesDto
+{
+    public ReporteEncabezadoDto Encabezado { get; set; } = new();
+    public List<VehiculoCuponDto> Detalle { get; set; } = new();
+    public ReporteTotalesDto Totales { get; set; } = new();
+    public ReporteFirmasDto Firmas { get; set; } = new();
+}
+
+public class ReporteEncabezadoDto
+{
+    public int Anio { get; set; }
+    public int Mes { get; set; }
+    public string MesNombre { get; set; } = "";
+    public long? CuponInicialDel { get; set; }
+    public long? CuponInicialAl { get; set; }
+    public int TotalRecibidos { get; set; }
+    public decimal ValorCuponDefault { get; set; }
+    public decimal HaberInicial { get; set; }
+}
+
+public class ReporteTotalesDto
+{
+    public int TotalGastados { get; set; }
+    public decimal ValorCupon { get; set; }
+    public decimal TotalHaber { get; set; }
+    public decimal SaldoFinal { get; set; }
+    public int CuponesRestantes { get; set; }
+    public decimal SaldoParaSiguienteMes { get; set; }
+}
+
+public class FirmaReporteDto
+{
+    public string Nombre { get; set; } = "";
+    public string? FirmaBase64 { get; set; }
+}
+
+public class ReporteFirmasDto
+{
+    public FirmaReporteDto ElaboradoPor { get; set; } = new();
+    public FirmaReporteDto JefeAbastecimientos { get; set; } = new();
+    public FirmaReporteDto Jefe33Cia { get; set; } = new();
+    public FirmaReporteDto Director { get; set; } = new();
 }

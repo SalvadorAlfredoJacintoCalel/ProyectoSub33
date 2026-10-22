@@ -36,8 +36,13 @@ public class PersonalController : ApiControllerBase
 
     [HttpRequirePermission("personal.crear")]
     [HttpPost]
-    public async Task<IActionResult> Crear([FromBody] CreatePersonalDto dto, CancellationToken ct)
+    public async Task<IActionResult> Crear([FromBody] CreatePersonalDto? dto, CancellationToken ct)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -51,8 +56,13 @@ public class PersonalController : ApiControllerBase
 
     [HttpRequirePermission("personal.editar")]
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Actualizar(Guid id, [FromBody] UpdatePersonalDto dto, CancellationToken ct)
+    public async Task<IActionResult> Actualizar(Guid id, [FromBody] UpdatePersonalDto? dto, CancellationToken ct)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -65,15 +75,19 @@ public class PersonalController : ApiControllerBase
 
     [HttpRequirePermission("personal.cambiar-estado")]
     [HttpPatch("{id:guid}/estado")]
-    public async Task<IActionResult> CambiarEstado(Guid id, [FromBody] CambiarEstadoDto dto, CancellationToken ct)
-        => Respond(
-            await _personalService.ChangeEstadoAsync(id, dto.Estado, ct),
-            dto.Estado ? "Personal activado correctamente." : "Personal desactivado correctamente.");
+    public async Task<IActionResult> CambiarEstado(Guid id, [FromBody] CambiarEstadoDto? dto, CancellationToken ct)
+        => dto is null
+            ? BadRequest("El cuerpo de la solicitud es requerido.")
+            : Respond(
+                await _personalService.ChangeEstadoAsync(id, dto.Estado, ct),
+                dto.Estado ? "Personal activado correctamente." : "Personal desactivado correctamente.");
 
     [HttpRequirePermission("personal.acceso-sistema")]
     [HttpPut("{id:guid}/acceso-sistema")]
-    public async Task<IActionResult> ActualizarAcceso(Guid id, [FromBody] AccesoSistemaUpdateDto dto, CancellationToken ct)
-        => Respond(await _personalService.ActualizarAccesoSistemaAsync(id, dto.Username, dto.Password, dto.RolId, ct), "Acceso al sistema actualizado correctamente.");
+    public async Task<IActionResult> ActualizarAcceso(Guid id, [FromBody] AccesoSistemaUpdateDto? dto, CancellationToken ct)
+        => dto is null
+            ? BadRequest("El cuerpo de la solicitud es requerido.")
+            : Respond(await _personalService.ActualizarAccesoSistemaAsync(id, dto.Username, dto.Password, dto.RolId, ct), "Acceso al sistema actualizado correctamente.");
 
     [HttpRequirePermission("personal.eliminar")]
     [HttpDelete("{id:guid}")]

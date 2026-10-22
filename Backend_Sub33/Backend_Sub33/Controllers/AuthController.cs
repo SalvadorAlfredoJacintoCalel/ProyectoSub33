@@ -26,8 +26,13 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+    public async Task<IActionResult> Login([FromBody] LoginDto? loginDto)
     {
+        if (loginDto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);

@@ -29,8 +29,13 @@ public class CatalogosController : ApiControllerBase
     }
 
     [HttpPost("rangos")]
-    public async Task<IActionResult> CrearRango([FromBody] CreateRangoDto dto, CancellationToken ct)
+    public async Task<IActionResult> CrearRango([FromBody] CreateRangoDto? dto, CancellationToken ct)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -40,8 +45,13 @@ public class CatalogosController : ApiControllerBase
     }
 
     [HttpPut("rangos/{id:int}")]
-    public async Task<IActionResult> ActualizarRango(int id, [FromBody] UpdateRangoDto dto, CancellationToken ct)
+    public async Task<IActionResult> ActualizarRango(int id, [FromBody] UpdateRangoDto? dto, CancellationToken ct)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);

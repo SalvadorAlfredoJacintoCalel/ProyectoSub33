@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Pencil, Plus, Printer, Settings2, Trash2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Download, Eye, Pencil, PenLine, Plus, Printer, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Input } from "@/app/components/ui/input";
@@ -14,12 +15,17 @@ import { useCupones } from "@/hooks/useCupones";
 import { usePermisos } from "@/hooks/usePermisos";
 import { vehiculosService } from "@/services/vehiculosService";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
+import {
+  ReporteCuponesPrintModal,
+  ReporteCuponesPrintSheet,
+} from "@/app/pages/Vehiculos/components/ReporteCuponesPrintModal";
 import type {
   CatalogoItem,
   CuponCreate,
   CuponPeriodo,
   CuponPeriodoCreate,
   CuponUpdate,
+  ReporteCupones,
   Vehiculo,
   VehiculoCupon,
 } from "@/types/vehiculos";
@@ -83,6 +89,10 @@ export function CuponesTab() {
   const [cuponEdit, setCuponEdit] = useState<VehiculoCupon | null>(null);
   const [showFirma, setShowFirma] = useState(false);
   const [firmaCupon, setFirmaCupon] = useState<VehiculoCupon | null>(null);
+  const [showReporte, setShowReporte] = useState(false);
+  const [reporte, setReporte] = useState<ReporteCupones | null>(null);
+  const [cargandoReporte, setCargandoReporte] = useState(false);
+  const [imprimirDespues, setImprimirDespues] = useState(false);
 
   useEffect(() => {
     void Promise.all([
@@ -180,6 +190,39 @@ export function CuponesTab() {
     }
   }
 
+  async function abrirReporte() {
+    try {
+      setCargandoReporte(true);
+      const data = await vehiculosService.getReporteImpresion(anio, mes);
+      setReporte(data);
+      setShowReporte(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el reporte");
+    } finally {
+      setCargandoReporte(false);
+    }
+  }
+
+  async function imprimirReporte() {
+    try {
+      setCargandoReporte(true);
+      const data = await vehiculosService.getReporteImpresion(anio, mes);
+      setReporte(data);
+      setImprimirDespues(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el reporte");
+    } finally {
+      setCargandoReporte(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!imprimirDespues || !reporte) return;
+    setImprimirDespues(false);
+    const timer = setTimeout(() => window.print(), 150);
+    return () => clearTimeout(timer);
+  }, [imprimirDespues, reporte]);
+
   function exportar() {
     const headers = [
       "Fecha", "Responsable", "Firma", "Kilometraje", "Placas", "Tipo de unidad",
@@ -241,10 +284,18 @@ export function CuponesTab() {
             <Download size={16} />
             Exportar CSV
           </Button>
-          <Button variant="outline" onClick={() => window.print()} disabled={filas.length === 0}>
-            <Printer size={16} />
-            Imprimir
-          </Button>
+          {permisosVehiculos.imprimirCupones && (
+            <Button variant="outline" onClick={abrirReporte} loading={cargandoReporte}>
+              <Eye size={16} />
+              Vista Previa Oficial
+            </Button>
+          )}
+          {permisosVehiculos.imprimirCupones && (
+            <Button variant="outline" onClick={imprimirReporte} loading={cargandoReporte} disabled={filas.length === 0}>
+              <Printer size={16} />
+              Imprimir
+            </Button>
+          )}
           {permisosVehiculos.cupones && (
             <Button
               onClick={() => {
@@ -500,6 +551,20 @@ export function CuponesTab() {
         onSave={(base64) => void guardarFirma(base64)}
         title={firmaCupon ? `Firma de ${firmaCupon.responsable}` : "Firma digital"}
       />
+
+      <ReporteCuponesPrintModal
+        open={showReporte}
+        onClose={() => setShowReporte(false)}
+        reporte={reporte}
+      />
+
+      {reporte &&
+        createPortal(
+          <div className="print-area">
+            <ReporteCuponesPrintSheet reporte={reporte} />
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -539,6 +604,18 @@ function PeriodoModal({
   const [notas, setNotas] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [elaboradoPor, setElaboradoPor] = useState("");
+  const [jefeAbastecimientos, setJefeAbastecimientos] = useState("");
+  const [jefe33Cia, setJefe33Cia] = useState("");
+  const [director, setDirector] = useState("");
+
+  const [firmaElaboradoPor, setFirmaElaboradoPor] = useState<string | null>(null);
+  const [firmaJefeAbastecimientos, setFirmaJefeAbastecimientos] = useState<string | null>(null);
+  const [firmaJefe33Cia, setFirmaJefe33Cia] = useState<string | null>(null);
+  const [firmaDirector, setFirmaDirector] = useState<string | null>(null);
+
+  const [firmaActiva, setFirmaActiva] = useState<"elaboradoPor" | "jefeAbastecimientos" | "jefe33Cia" | "director" | null>(null);
+
   useEffect(() => {
     if (!open) return;
     setDel(periodo?.cuponInicialDel ? String(periodo.cuponInicialDel) : "");
@@ -546,6 +623,14 @@ function PeriodoModal({
     setTotal(String(periodo?.totalRecibidos ?? 0));
     setValor(String(periodo?.valorCuponDefault ?? 100));
     setNotas(periodo?.notas ?? "");
+    setElaboradoPor(periodo?.elaboradoPor ?? "");
+    setJefeAbastecimientos(periodo?.jefeAbastecimientos ?? "");
+    setJefe33Cia(periodo?.jefe33Cia ?? "");
+    setDirector(periodo?.director ?? "");
+    setFirmaElaboradoPor(periodo?.firmaElaboradoPorBase64 ?? null);
+    setFirmaJefeAbastecimientos(periodo?.firmaJefeAbastecimientosBase64 ?? null);
+    setFirmaJefe33Cia(periodo?.firmaJefe33CiaBase64 ?? null);
+    setFirmaDirector(periodo?.firmaDirectorBase64 ?? null);
   }, [open, periodo]);
 
   async function submit(e: React.FormEvent) {
@@ -560,17 +645,67 @@ function PeriodoModal({
         totalRecibidos: Number(total) || 0,
         valorCuponDefault: Number(valor) || 0,
         notas: notas.trim() || null,
+        elaboradoPor: elaboradoPor.trim() || null,
+        jefeAbastecimientos: jefeAbastecimientos.trim() || null,
+        jefe33Cia: jefe33Cia.trim() || null,
+        director: director.trim() || null,
+        firmaElaboradoPorBase64: firmaElaboradoPor,
+        firmaJefeAbastecimientosBase64: firmaJefeAbastecimientos,
+        firmaJefe33CiaBase64: firmaJefe33Cia,
+        firmaDirectorBase64: firmaDirector,
       });
     } finally {
       setSaving(false);
     }
   }
 
+  const firmasPeriodo: {
+    key: "elaboradoPor" | "jefeAbastecimientos" | "jefe33Cia" | "director";
+    cargo: string;
+    nombre: string;
+    setNombre: (v: string) => void;
+    firma: string | null;
+    setFirma: (v: string | null) => void;
+  }[] = [
+    {
+      key: "elaboradoPor",
+      cargo: "Elaborado por",
+      nombre: elaboradoPor,
+      setNombre: setElaboradoPor,
+      firma: firmaElaboradoPor,
+      setFirma: setFirmaElaboradoPor,
+    },
+    {
+      key: "jefeAbastecimientos",
+      cargo: "Jefatura de Abastecimientos",
+      nombre: jefeAbastecimientos,
+      setNombre: setJefeAbastecimientos,
+      firma: firmaJefeAbastecimientos,
+      setFirma: setFirmaJefeAbastecimientos,
+    },
+    {
+      key: "jefe33Cia",
+      cargo: "Jefe 33ª Compañía",
+      nombre: jefe33Cia,
+      setNombre: setJefe33Cia,
+      firma: firmaJefe33Cia,
+      setFirma: setFirmaJefe33Cia,
+    },
+    {
+      key: "director",
+      cargo: "Director",
+      nombre: director,
+      setNombre: setDirector,
+      firma: firmaDirector,
+      setFirma: setFirmaDirector,
+    },
+  ];
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      size="md"
+      size="lg"
       title="Configurar período"
       description={`${MESES[mes - 1]} ${anio}`}
       footer={
@@ -599,6 +734,45 @@ function PeriodoModal({
             <Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
           </Campo>
         </div>
+
+        <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+            Firmas del reporte oficial
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {firmasPeriodo.map((f) => (
+              <div key={f.key} className="flex flex-col gap-1.5">
+                <Campo label={f.cargo}>
+                  <Input
+                    value={f.nombre}
+                    onChange={(e) => f.setNombre(e.target.value)}
+                    placeholder="Nombre y apellido"
+                  />
+                </Campo>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFirmaActiva(f.key)}
+                  >
+                    <PenLine size={14} />
+                    {f.firma ? "Cambiar firma" : "Firmar"}
+                  </Button>
+                  {f.firma && (
+                    <img
+                      src={f.firma}
+                      alt={`Firma de ${f.cargo}`}
+                      className="h-8 w-auto rounded border"
+                      style={{ borderColor: "var(--border)" }}
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <Campo label="Notas">
           <textarea
             value={notas}
@@ -612,6 +786,23 @@ function PeriodoModal({
           El haber inicial se calcula como total de cupones × valor de cupón. Los saldos se recalculan automáticamente.
         </p>
       </form>
+
+      <SignatureModal
+        open={firmaActiva !== null}
+        onClose={() => setFirmaActiva(null)}
+        title={
+          firmaActiva
+            ? `Firma — ${firmasPeriodo.find((f) => f.key === firmaActiva)?.cargo ?? ""}`
+            : "Firma"
+        }
+        onSave={(base64) => {
+          if (firmaActiva) {
+            const target = firmasPeriodo.find((f) => f.key === firmaActiva);
+            target?.setFirma(base64);
+          }
+          setFirmaActiva(null);
+        }}
+      />
     </Modal>
   );
 }

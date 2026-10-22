@@ -8,6 +8,7 @@ import type {
   CuponUpdate,
   EstadoOperativo,
   PaginacionVehiculos,
+  ReporteCupones,
   Vehiculo,
   VehiculoCupon,
   VehiculoCreate,
@@ -112,6 +113,13 @@ export const vehiculosService = {
     const res = await apiClient.put<ApiEnvelope<CuponPeriodo>>(
       `${API_BASE}/cupones/periodos`,
       data,
+    );
+    return res.data;
+  },
+
+  getReporteImpresion: async (anio: number, mes: number): Promise<ReporteCupones> => {
+    const res = await apiClient.get<ApiEnvelope<ReporteCupones>>(
+      `${API_BASE}/cupones/periodos/${anio}/${mes}/reporte`,
     );
     return res.data;
   },

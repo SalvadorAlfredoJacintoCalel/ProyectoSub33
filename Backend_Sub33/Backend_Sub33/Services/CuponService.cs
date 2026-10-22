@@ -133,6 +133,14 @@ public class CuponService : ICuponService
                     valor_cupon_default = @Valor,
                     haber_inicial = @HaberInicial,
                     notas = @Notas,
+                    elaborado_por = @ElaboradoPor,
+                    jefe_abastecimientos = @JefeAbastecimientos,
+                    jefe_33_cia = @Jefe33Cia,
+                    director = @Director,
+                    firma_elaborado_por_base64 = @FirmaElaboradoPor,
+                    firma_jefe_abastecimientos_base64 = @FirmaJefeAbastecimientos,
+                    firma_jefe_33_cia_base64 = @FirmaJefe33Cia,
+                    firma_director_base64 = @FirmaDirector,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE periodo_id = @Id",
                 new
@@ -143,7 +151,15 @@ public class CuponService : ICuponService
                     Total = totalRecibidos,
                     Valor = dto.ValorCuponDefault,
                     HaberInicial = totalRecibidos * dto.ValorCuponDefault,
-                    Notas = string.IsNullOrWhiteSpace(dto.Notas) ? null : dto.Notas.Trim()
+                    Notas = string.IsNullOrWhiteSpace(dto.Notas) ? null : dto.Notas.Trim(),
+                    ElaboradoPor = Limpiar(dto.ElaboradoPor),
+                    JefeAbastecimientos = Limpiar(dto.JefeAbastecimientos),
+                    Jefe33Cia = Limpiar(dto.Jefe33Cia),
+                    Director = Limpiar(dto.Director),
+                    FirmaElaboradoPor = NormalizarFirma(dto.FirmaElaboradoPorBase64),
+                    FirmaJefeAbastecimientos = NormalizarFirma(dto.FirmaJefeAbastecimientosBase64),
+                    FirmaJefe33Cia = NormalizarFirma(dto.FirmaJefe33CiaBase64),
+                    FirmaDirector = NormalizarFirma(dto.FirmaDirectorBase64)
                 }, transaction);
 
             await RecalcularTodosAsync(connection, transaction);
@@ -441,7 +457,10 @@ public class CuponService : ICuponService
         var periodo = await connection.QueryFirstOrDefaultAsync<CuponPeriodoDto>(@"
             SELECT periodo_id, anio, mes, cupon_inicial_del, cupon_inicial_al,
                    total_recibidos, valor_cupon_default, haber_inicial,
-                   saldo_inicial, saldo_final, notas
+                   saldo_inicial, saldo_final, notas,
+                   elaborado_por, jefe_abastecimientos, jefe_33_cia, director,
+                   firma_elaborado_por_base64, firma_jefe_abastecimientos_base64,
+                   firma_jefe_33_cia_base64, firma_director_base64
             FROM vehiculo_cupones_periodos WHERE periodo_id = @Id",
             new { Id = periodoId });
 
@@ -460,6 +479,117 @@ public class CuponService : ICuponService
 
         return ServiceResult<CuponPeriodoDto>.Success(periodo);
     }
+
+    // ── Reporte oficial de impresión ─────────────────────────────────────────
+    public async Task<ServiceResult<ReporteCuponesDto>> GetReporteImpresionAsync(int anio, int mes)
+    {
+        if (anio < 2000 || anio > 2100 || mes < 1 || mes > 12)
+        {
+            return ServiceResult<ReporteCuponesDto>.BadRequest("Período inválido.");
+        }
+
+        using var connection = AbrirConexion();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            var periodoId = await EnsurePeriodoAsync(connection, transaction, anio, mes);
+            await RecalcularTodosAsync(connection, transaction);
+            transaction.Commit();
+
+            var periodo = await connection.QueryFirstOrDefaultAsync<CuponPeriodoDto>(@"
+                SELECT periodo_id, anio, mes, cupon_inicial_del, cupon_inicial_al,
+                       total_recibidos, valor_cupon_default, haber_inicial,
+                       saldo_inicial, saldo_final, notas,
+                       elaborado_por, jefe_abastecimientos, jefe_33_cia, director,
+                       firma_elaborado_por_base64, firma_jefe_abastecimientos_base64,
+                       firma_jefe_33_cia_base64, firma_director_base64
+                FROM vehiculo_cupones_periodos WHERE periodo_id = @Id",
+                new { Id = periodoId });
+
+            if (periodo == null)
+            {
+                return ServiceResult<ReporteCuponesDto>.NotFound("Período no encontrado.");
+            }
+
+            var detalle = (await connection.QueryAsync<VehiculoCuponDto>(
+                $"{CuponSelect} WHERE c.periodo_id = @Id ORDER BY c.fecha, c.comision_no, c.registro_id",
+                new { Id = periodoId })).ToList();
+
+            var totalGastados = detalle.Sum(c => c.TotalCupones);
+            var totalHaber = detalle.Sum(c => c.Haber);
+            var saldoFinal = detalle.Count > 0 ? detalle[^1].Saldo : periodo.SaldoFinal;
+            var cuponesRestantes = Math.Max(0, periodo.TotalRecibidos - totalGastados);
+            var saldoParaSiguienteMes = saldoFinal;
+
+            var reporte = new ReporteCuponesDto
+            {
+                Encabezado = new ReporteEncabezadoDto
+                {
+                    Anio = periodo.Anio,
+                    Mes = periodo.Mes,
+                    MesNombre = NombreMes(periodo.Mes),
+                    CuponInicialDel = periodo.CuponInicialDel,
+                    CuponInicialAl = periodo.CuponInicialAl,
+                    TotalRecibidos = periodo.TotalRecibidos,
+                    ValorCuponDefault = periodo.ValorCuponDefault,
+                    HaberInicial = periodo.HaberInicial
+                },
+                Detalle = detalle,
+                Totales = new ReporteTotalesDto
+                {
+                    TotalGastados = totalGastados,
+                    ValorCupon = periodo.ValorCuponDefault,
+                    TotalHaber = totalHaber,
+                    SaldoFinal = saldoFinal,
+                    CuponesRestantes = cuponesRestantes,
+                    SaldoParaSiguienteMes = saldoParaSiguienteMes
+                },
+                Firmas = new ReporteFirmasDto
+                {
+                    ElaboradoPor = new FirmaReporteDto
+                    {
+                        Nombre = periodo.ElaboradoPor ?? "",
+                        FirmaBase64 = periodo.FirmaElaboradoPorBase64
+                    },
+                    JefeAbastecimientos = new FirmaReporteDto
+                    {
+                        Nombre = periodo.JefeAbastecimientos ?? "",
+                        FirmaBase64 = periodo.FirmaJefeAbastecimientosBase64
+                    },
+                    Jefe33Cia = new FirmaReporteDto
+                    {
+                        Nombre = periodo.Jefe33Cia ?? "",
+                        FirmaBase64 = periodo.FirmaJefe33CiaBase64
+                    },
+                    Director = new FirmaReporteDto
+                    {
+                        Nombre = periodo.Director ?? "",
+                        FirmaBase64 = periodo.FirmaDirectorBase64
+                    }
+                }
+            };
+
+            return ServiceResult<ReporteCuponesDto>.Success(reporte);
+        }
+        catch (Exception ex)
+        {
+            try { transaction.Rollback(); } catch { }
+            return ServiceResult<ReporteCuponesDto>.Internal($"Error al generar el reporte: {ex.Message}");
+        }
+    }
+
+    private static readonly string[] NombresMeses =
+    {
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    };
+
+    private static string NombreMes(int mes)
+        => mes >= 1 && mes <= 12 ? NombresMeses[mes - 1].ToUpperInvariant() : mes.ToString();
+
+    private static string? Limpiar(string? valor)
+        => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 
     private static string? NormalizarFirma(string? firma)
     {

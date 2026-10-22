@@ -87,7 +87,7 @@ namespace Backend_Sub33.Services
             return id ?? 0;
         }
 
-        private async Task SincronizarInventarioAsync(
+        private static async Task SincronizarInventarioAsync(
             System.Data.Common.DbConnection connection, System.Data.Common.DbTransaction transaction,
             int donacionId, string noRecibo, string donante, string? categoria, IEnumerable<MaterialDonacionCreateDto> materiales)
         {

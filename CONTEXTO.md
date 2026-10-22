@@ -324,11 +324,12 @@ DELETE /api/vehiculos/mantenimientos/{id:int}     → Eliminar mantenimiento
 ### Cupones de Combustible (`/api/vehiculos/cupones`)
 
 ```
-GET    /api/vehiculos/cupones/periodos/{anio:int}/{mes:int}  → Periodo + cupones
-PUT    /api/vehiculos/cupones/periodos                       → Guardar/actualizar periodo
-POST   /api/vehiculos/cupones                                → Crear cupón
-PUT    /api/vehiculos/cupones/{id:int}                       → Actualizar cupón
-DELETE /api/vehiculos/cupones/{id:int}                       → Eliminar cupón
+GET    /api/vehiculos/cupones/periodos/{anio:int}/{mes:int}  → Periodo + cupones   [vehiculos.cupones.ver]
+GET    /api/vehiculos/cupones/periodos/{anio:int}/{mes:int}/reporte → Reporte oficial  [vehiculos.cupones.imprimir]
+PUT    /api/vehiculos/cupones/periodos                       → Guardar/actualizar periodo  [vehiculos.cupones.periodos]
+POST   /api/vehiculos/cupones                                → Crear cupón            [vehiculos.cupones.crear]
+PUT    /api/vehiculos/cupones/{id:int}                       → Actualizar cupón        [vehiculos.cupones.editar]
+DELETE /api/vehiculos/cupones/{id:int}                       → Eliminar cupón          [vehiculos.cupones.eliminar]
 ```
 
 ---
@@ -919,3 +920,49 @@ Cierre de la **Matriz de Permisos Completa** (BD + Backend + Frontend + UI). 15 
 - **No ejecutar `dotnet ef database update`.** `__EFMigrationsHistory` está vacía y el esquema se administra 100% con scripts SQL (`docs/permisos_seed.sql`, `Backend_Sub33/Backend_Sub33/Data/SQL/*.sql`). EF intentaría recrear todas las tablas y destruiría los datos.
 - El esquema y los datos de la BD `Sub_33` están en localhost:5432, base `Sub_33`, usuario `postgres`, password `12345678` (ver `appsettings.json`).
 - Para que el claim `personal_id` (ownership de emergencias) llegue al cliente hay que **cerrar y volver a iniciar sesión**.
+
+## Libro Mensual de Cupones — Alineación con formato oficial (2026-10-22)
+
+Ejecución de `plan-cupones.md` (6 pasos). Objetivo: alinear la ventana de Cupones con el formato oficial "Libro Mensual de Cupones de Combustible".
+
+### 1. Base de datos — `docs/modulos/vehiculos/migracion_cupones_firmas.sql`
+- `vehiculo_cupones_periodos`: + `elaborado_por`, `jefe_abastecimientos`, `jefe_33_cia`, `director` (VARCHAR 150) y sus 4 firmas (`firma_*_base64` TEXT).
+- `vehiculo_cupones`: + `firma_base64` TEXT (migración que estaba **pendiente desde antes**; sin ella el módulo de cupones fallaba en runtime).
+- Índice `ix_cupones_periodo_fecha_comision` (periodo_id, fecha, comision_no, registro_id).
+
+### 2. Backend
+- `VehiculoDtos.cs`: `CuponPeriodoDto` y `CuponPeriodoCreateDto` extendidos con los 4 cargos + 4 firmas. Nuevos DTOs `ReporteCuponesDto`, `ReporteEncabezadoDto`, `ReporteTotalesDto`, `ReporteFirmasDto`, `FirmaReporteDto`.
+- `CuponService.cs`: `SavePeriodoAsync` guarda las 4 firmas (normalizadas como PNG base64); `LeerPeriodoAsync` las devuelve; nuevo `GetReporteImpresionAsync(anio, mes)` arma encabezado + detalle + totales + firmas (`ICuponService` actualizado).
+- `CuponesController.cs`: nuevo `GET /periodos/{anio}/{mes}/reporte` y permiso `vehiculos.cupones.ver` en `GET /periodos/{anio}/{mes}`.
+
+### 3. Frontend — tipos y service
+- `types/vehiculos.ts`: extendidos `CuponPeriodo` y `CuponPeriodoCreate`; nuevos `ReporteCupones`, `ReporteCuponesEncabezado`, `ReporteCuponesTotales`, `ReporteCuponesFirmas`, `ReporteCuponesFirma`.
+- `vehiculosService.ts`: nuevo `getReporteImpresion(anio, mes)`.
+- `usePermisos.ts`: `vehiculos.verCupones` y `vehiculos.imprimirCupones` (nuevos helpers).
+
+### 4-5. Frontend — UI
+- `CuponesTab.tsx`: el modal "Configurar período" ahora tiene la sección **"Firmas del reporte oficial"** (4 cargos con nombre + `SignatureModal` reutilizado). Botones **"Vista Previa Oficial"** y **"Imprimir"** (gated por `vehiculos.cupones.imprimir`).
+- **NUEVO** `src/app/pages/Vehiculos/components/ReporteCuponesPrintModal.tsx`: hoja A4 con membrete "33ª COMPAÑÍA BOMBEROS VOLUNTARIOS", las 14 columnas del formato oficial, fila de TOTALES, resumen (total gastados, valor unitario, total haber, saldo final, saldos para el mes siguiente) y las 4 firmas del pie. Se imprime vía `window.print()` con el patrón `.print-area` + `createPortal` (CSS global en `styles/globals.css`).
+- El botón "Imprimir" ya no llama `window.print()` directo (imprimía en blanco por el CSS global): ahora genera el reporte oficial y lo imprime.
+
+### 6. Permisos (47 en total)
+| Permiso | Descripción | admin | secretario | voluntario |
+|---|---|---|---|---|
+| `vehiculos.cupones.ver` | Consultar el libro de cupones y el reporte oficial | ✅ | ✅ | ✅ |
+| `vehiculos.cupones.imprimir` | Generar e imprimir el reporte oficial | ✅ | ✅ | ✅ |
+| `vehiculos.cupones.crear` | Registrar un cupón de combustible | ✅ | ✅ | ✅ |
+| `vehiculos.cupones.editar` | Actualizar un cupón | ✅ | ✅ | ❌ |
+| `vehiculos.cupones.eliminar` | Eliminar un cupón | ✅ | ✅ | ❌ |
+| `vehiculos.cupones.periodos` | Configurar los periodos mensuales | ✅ | ✅ | ❌ |
+
+Totales por rol: Admin 47 · Secretario 32 · Voluntario 11.
+
+### Verificación
+- `dotnet build` → 0 errores · `npm run build` → 0 errores.
+- Probado con JWT reales (admin/secretario/voluntario): ver y reporte 200 en los 3 roles; `PUT periodos` → **403 en voluntario**; crear cupón OK en secretario y voluntario; editar/eliminar solo admin+secretario.
+- Reporte de Mayo 2026 verificado: 20 cupones gastados (6+5+4+5), Q2,000.00 de haber, saldo final Q5,000.00, 50 cupones restantes, Q5,000.00 para el mes siguiente.
+- **Datos de prueba cargados** en Mayo 2026 (período + 4 cupones, según el plan) para validar el match visual. Para borrarlos:
+  ```sql
+  DELETE FROM vehiculo_cupones WHERE periodo_id = (SELECT periodo_id FROM vehiculo_cupones_periodos WHERE anio=2026 AND mes=5);
+  DELETE FROM vehiculo_cupones_periodos WHERE anio=2026 AND mes=5;
+  ```

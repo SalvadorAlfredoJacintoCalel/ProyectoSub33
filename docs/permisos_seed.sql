@@ -79,7 +79,9 @@ INSERT INTO permisos (modulo_id, codigo, nombre, descripcion) VALUES
 ((SELECT modulo_id FROM cat_modulos WHERE codigo='vehiculos'), 'vehiculos.cupones.crear',              'Crear cupón',               'Registrar un cupón de combustible'),
 ((SELECT modulo_id FROM cat_modulos WHERE codigo='vehiculos'), 'vehiculos.cupones.editar',             'Editar cupón',              'Actualizar un cupón de combustible'),
 ((SELECT modulo_id FROM cat_modulos WHERE codigo='vehiculos'), 'vehiculos.cupones.eliminar',           'Eliminar cupón',            'Eliminar un cupón de combustible'),
-((SELECT modulo_id FROM cat_modulos WHERE codigo='vehiculos'), 'vehiculos.cupones.periodos',           'Gestionar periodos',        'Configurar los periodos mensuales del libro de cupones')
+((SELECT modulo_id FROM cat_modulos WHERE codigo='vehiculos'), 'vehiculos.cupones.periodos',           'Gestionar periodos',        'Configurar los periodos mensuales del libro de cupones'),
+((SELECT modulo_id FROM cat_modulos WHERE codigo='vehiculos'), 'vehiculos.cupones.ver',                'Ver cupones',               'Consultar el libro de cupones y el reporte oficial'),
+((SELECT modulo_id FROM cat_modulos WHERE codigo='vehiculos'), 'vehiculos.cupones.imprimir',           'Imprimir reporte oficial',  'Generar e imprimir el reporte oficial del libro de cupones')
 ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion, modulo_id = EXCLUDED.modulo_id;
 
 -- DONACIONES
@@ -136,11 +138,12 @@ WHERE LOWER(r.nombre) = 'secretario'
     'vehiculos.cambiar-estado','vehiculos.estado-operativo',
     'vehiculos.mantenimientos.crear','vehiculos.mantenimientos.editar','vehiculos.mantenimientos.eliminar','vehiculos.mantenimientos.imprimir',
     'vehiculos.cupones.crear','vehiculos.cupones.editar','vehiculos.cupones.eliminar','vehiculos.cupones.periodos',
+    'vehiculos.cupones.ver','vehiculos.cupones.imprimir',
     'donaciones.ver','donaciones.registrar','donaciones.libro.crear','donaciones.libro.editar','donaciones.libro.eliminar',
     'emergencias.ver','emergencias.crear','emergencias.editar','emergencias.cambiar-estado'
   );
 
--- VOLUNTARIO: básicos + ownership en emergencias
+-- VOLUNTARIO: básicos + ownership en emergencias + cupones (ver, crear, imprimir)
 INSERT INTO rol_permisos (rol_id, permiso_id)
 SELECT r.rol_id, p.permiso_id
 FROM roles r, permisos p
@@ -148,6 +151,7 @@ WHERE LOWER(r.nombre) = 'voluntario'
   AND p.codigo IN (
     'inventario.ver','inventario.registrar-uso-servicio',
     'vehiculos.ver','vehiculos.registrar-cupones',
+    'vehiculos.cupones.ver','vehiculos.cupones.crear','vehiculos.cupones.imprimir',
     'emergencias.ver','emergencias.crear','emergencias.editar','emergencias.cambiar-estado'
   );
 

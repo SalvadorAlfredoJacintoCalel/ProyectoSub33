@@ -784,12 +784,12 @@ public partial class PersonalService : IPersonalService
         return await _context.Usuarios
             .AsNoTracking()
             .Where(u => u.PersonalId.HasValue && ids.Contains(u.PersonalId.Value))
-            .ToDictionaryAsync(u => u.PersonalId!.Value, u => (string?)u.Username, ct);
+            .ToDictionaryAsync(u => u.PersonalId!.Value, u => u.Username, ct);
     }
 
-    private async Task<Dictionary<Guid, string?>> ObtenerRolesPorPersonalAsync(List<Guid> ids, CancellationToken ct)
+    private async Task<Dictionary<Guid, string>> ObtenerRolesPorPersonalAsync(List<Guid> ids, CancellationToken ct)
     {
-        if (ids.Count == 0) return new Dictionary<Guid, string?>();
+        if (ids.Count == 0) return new Dictionary<Guid, string>();
         var roles = await _context.UsuarioRoles
             .AsNoTracking()
             .Where(ur => ur.Usuario.PersonalId.HasValue && ids.Contains(ur.Usuario.PersonalId.Value))

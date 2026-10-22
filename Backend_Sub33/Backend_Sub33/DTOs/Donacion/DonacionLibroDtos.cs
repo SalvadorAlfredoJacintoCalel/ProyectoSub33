@@ -20,7 +20,7 @@ public class DonacionMovimientoDto
     public int MovimientoId { get; set; }
     public int LibroId { get; set; }
     public DateTime Fecha { get; set; }
-    public string Descripcion { get; set; } = "";
+    public string Descripcion { get; set; } = string.Empty;
     public bool Firmado { get; set; }
     public int? TipoDocumentoId { get; set; }
     public string? TipoDocumentoNombre { get; set; }
@@ -39,7 +39,7 @@ public class DonacionMovimientoCreateDto
     public int Mes { get; set; }
 
     [Required]
-    public string Descripcion { get; set; } = "";
+    public string Descripcion { get; set; } = string.Empty;
 
     public DateTime Fecha { get; set; }
     public bool Firmado { get; set; }
@@ -52,7 +52,7 @@ public class DonacionMovimientoCreateDto
 public class DonacionMovimientoUpdateDto
 {
     [Required]
-    public string Descripcion { get; set; } = "";
+    public string Descripcion { get; set; } = string.Empty;
 
     public DateTime Fecha { get; set; }
     public bool Firmado { get; set; }

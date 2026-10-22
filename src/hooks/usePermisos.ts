@@ -30,6 +30,8 @@ const CODIGOS_SECRETARIO = new Set([
   "vehiculos.cupones.editar",
   "vehiculos.cupones.eliminar",
   "vehiculos.cupones.periodos",
+  "vehiculos.cupones.ver",
+  "vehiculos.cupones.imprimir",
   "donaciones.ver",
   "donaciones.registrar",
   "donaciones.libro.crear",
@@ -46,6 +48,9 @@ const CODIGOS_VOLUNTARIO = new Set([
   "inventario.registrar-uso-servicio",
   "vehiculos.ver",
   "vehiculos.registrar-cupones",
+  "vehiculos.cupones.ver",
+  "vehiculos.cupones.crear",
+  "vehiculos.cupones.imprimir",
   "emergencias.ver",
   "emergencias.crear",
   "emergencias.editar",
@@ -83,6 +88,8 @@ export interface PermisosVehiculos {
   editarCupon: boolean;
   eliminarCupon: boolean;
   periodos: boolean;
+  verCupones: boolean;
+  imprimirCupones: boolean;
 }
 
 export interface PermisosDonaciones {
@@ -161,6 +168,8 @@ export function usePermisos() {
     editarCupon: tiene("vehiculos.cupones.editar"),
     eliminarCupon: tiene("vehiculos.cupones.eliminar"),
     periodos: tiene("vehiculos.cupones.periodos"),
+    verCupones: tiene("vehiculos.cupones.ver"),
+    imprimirCupones: tiene("vehiculos.cupones.imprimir"),
   };
 
   const donaciones: PermisosDonaciones = {

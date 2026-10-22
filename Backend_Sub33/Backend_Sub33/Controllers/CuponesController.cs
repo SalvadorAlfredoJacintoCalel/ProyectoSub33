@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using Backend_Sub33.Attributes;
 using Backend_Sub33.DTOs.Vehiculos;
 using Backend_Sub33.Services;
-
 namespace Backend_Sub33.Controllers;
 
 [ApiController]
@@ -16,14 +15,25 @@ public class CuponesController : ApiControllerBase
         _cuponService = cuponService;
     }
 
+    [HttpRequirePermission("vehiculos.cupones.ver")]
     [HttpGet("periodos/{anio:int}/{mes:int}")]
     public async Task<IActionResult> GetPeriodo(int anio, int mes)
         => Respond(await _cuponService.GetPeriodoAsync(anio, mes));
 
+    [HttpRequirePermission("vehiculos.cupones.imprimir")]
+    [HttpGet("periodos/{anio:int}/{mes:int}/reporte")]
+    public async Task<IActionResult> GetReporteImpresion(int anio, int mes)
+        => Respond(await _cuponService.GetReporteImpresionAsync(anio, mes));
+
     [HttpRequirePermission("vehiculos.cupones.periodos")]
     [HttpPut("periodos")]
-    public async Task<IActionResult> SavePeriodo([FromBody] CuponPeriodoCreateDto dto)
+    public async Task<IActionResult> SavePeriodo([FromBody] CuponPeriodoCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -34,8 +44,13 @@ public class CuponesController : ApiControllerBase
 
     [HttpRequirePermission("vehiculos.cupones.crear")]
     [HttpPost]
-    public async Task<IActionResult> CreateCupon([FromBody] CuponCreateDto dto)
+    public async Task<IActionResult> CreateCupon([FromBody] CuponCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -49,8 +64,13 @@ public class CuponesController : ApiControllerBase
 
     [HttpRequirePermission("vehiculos.cupones.editar")]
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> UpdateCupon(int id, [FromBody] CuponUpdateDto dto)
+    public async Task<IActionResult> UpdateCupon(int id, [FromBody] CuponUpdateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);

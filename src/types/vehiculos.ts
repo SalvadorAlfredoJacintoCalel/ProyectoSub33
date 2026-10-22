@@ -211,6 +211,14 @@ export interface CuponPeriodo {
   totalCuponesGastados: number;
   totalHaber: number;
   cupones: VehiculoCupon[];
+  elaboradoPor?: string | null;
+  jefeAbastecimientos?: string | null;
+  jefe33Cia?: string | null;
+  director?: string | null;
+  firmaElaboradoPorBase64?: string | null;
+  firmaJefeAbastecimientosBase64?: string | null;
+  firmaJefe33CiaBase64?: string | null;
+  firmaDirectorBase64?: string | null;
 }
 
 export interface CuponPeriodoCreate {
@@ -221,6 +229,14 @@ export interface CuponPeriodoCreate {
   totalRecibidos: number;
   valorCuponDefault: number;
   notas?: string | null;
+  elaboradoPor?: string | null;
+  jefeAbastecimientos?: string | null;
+  jefe33Cia?: string | null;
+  director?: string | null;
+  firmaElaboradoPorBase64?: string | null;
+  firmaJefeAbastecimientosBase64?: string | null;
+  firmaJefe33CiaBase64?: string | null;
+  firmaDirectorBase64?: string | null;
 }
 
 export interface CuponCreate {
@@ -245,4 +261,44 @@ export interface CatalogoItem {
   id: number;
   nombre: string;
   descripcion?: string | null;
+}
+
+// ── Reporte oficial de cupones ───────────────────────────────────────────────
+export interface ReporteCuponesEncabezado {
+  anio: number;
+  mes: number;
+  mesNombre: string;
+  cuponInicialDel?: number | null;
+  cuponInicialAl?: number | null;
+  totalRecibidos: number;
+  valorCuponDefault: number;
+  haberInicial: number;
+}
+
+export interface ReporteCuponesTotales {
+  totalGastados: number;
+  valorCupon: number;
+  totalHaber: number;
+  saldoFinal: number;
+  cuponesRestantes: number;
+  saldoParaSiguienteMes: number;
+}
+
+export interface ReporteCuponesFirma {
+  nombre: string;
+  firmaBase64?: string | null;
+}
+
+export interface ReporteCuponesFirmas {
+  elaboradoPor: ReporteCuponesFirma;
+  jefeAbastecimientos: ReporteCuponesFirma;
+  jefe33Cia: ReporteCuponesFirma;
+  director: ReporteCuponesFirma;
+}
+
+export interface ReporteCupones {
+  encabezado: ReporteCuponesEncabezado;
+  detalle: VehiculoCupon[];
+  totales: ReporteCuponesTotales;
+  firmas: ReporteCuponesFirmas;
 }

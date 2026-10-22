@@ -25,9 +25,9 @@ namespace Backend_Sub33.Controllers
 
         [HttpRequirePermission("emergencias.crear")]
         [HttpPost]
-        public async Task<IActionResult> Registrar([FromBody] EmergenciaCreateDto dto)
+        public async Task<IActionResult> Registrar([FromBody] EmergenciaCreateDto? dto)
         {
-            if (dto == null)
+            if (dto is null)
             {
                 return BadRequest(new { exito = false, mensaje = "Datos de emergencia inválidos." });
             }
@@ -116,9 +116,9 @@ namespace Backend_Sub33.Controllers
 
         [HttpRequirePermission("emergencias.editar")]
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Actualizar(int id, [FromBody] EmergenciaUpdateDto dto)
+        public async Task<IActionResult> Actualizar(int id, [FromBody] EmergenciaUpdateDto? dto)
         {
-            if (dto == null)
+            if (dto is null)
             {
                 return BadRequest(new { exito = false, mensaje = "Datos de emergencia inválidos." });
             }
@@ -160,9 +160,9 @@ namespace Backend_Sub33.Controllers
 
         [HttpRequirePermission("emergencias.cambiar-estado")]
         [HttpPatch("{id:int}/estado")]
-        public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoDto dto)
+        public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoDto? dto)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.Estado))
+            if (dto is null || string.IsNullOrWhiteSpace(dto.Estado))
             {
                 return BadRequest(new { exito = false, mensaje = "El estado es obligatorio." });
             }

@@ -91,9 +91,9 @@ public class SeguridadController : ControllerBase
 
     // ── Asignar módulos a un usuario (reemplaza sus módulos explícitos) ────────
     [HttpPost("modulos/usuario/asignar")]
-    public async Task<IActionResult> AsignarModulosUsuario([FromBody] AsignarModuloUsuarioDto dto)
+    public async Task<IActionResult> AsignarModulosUsuario([FromBody] AsignarModuloUsuarioDto? dto)
     {
-        if (dto == null || dto.UsuarioId == Guid.Empty)
+        if (dto is null || dto.UsuarioId == Guid.Empty)
         {
             return BadRequest(new { mensaje = "El usuario es obligatorio" });
         }
@@ -163,9 +163,9 @@ public class SeguridadController : ControllerBase
 
     // ── Asignar módulos a un rol ────────────────────────────────────────────────
     [HttpPost("modulos/asignar")]
-    public async Task<IActionResult> AsignarModulos([FromBody] AsignarModuloDto dto)
+    public async Task<IActionResult> AsignarModulos([FromBody] AsignarModuloDto? dto)
     {
-        if (dto == null || dto.RolId <= 0)
+        if (dto is null || dto.RolId <= 0)
         {
             return BadRequest(new { mensaje = "El rol es obligatorio" });
         }
@@ -276,9 +276,9 @@ public class SeguridadController : ControllerBase
 
     // ── Asignar permisos a un rol (reemplaza los del rol) ─────────────────────
     [HttpPost("permisos/asignar")]
-    public async Task<IActionResult> AsignarPermisos([FromBody] AsignarPermisoDto dto)
+    public async Task<IActionResult> AsignarPermisos([FromBody] AsignarPermisoDto? dto)
     {
-        if (dto == null || dto.RolId <= 0)
+        if (dto is null || dto.RolId <= 0)
         {
             return BadRequest(new { mensaje = "El rol es obligatorio" });
         }
@@ -375,9 +375,9 @@ public class SeguridadController : ControllerBase
 
     // ── Asignar permisos a un usuario (override; reemplaza los heredados) ───────
     [HttpPost("permisos/usuario/asignar")]
-    public async Task<IActionResult> AsignarPermisosUsuario([FromBody] AsignarPermisoUsuarioDto dto)
+    public async Task<IActionResult> AsignarPermisosUsuario([FromBody] AsignarPermisoUsuarioDto? dto)
     {
-        if (dto == null || dto.UsuarioId == Guid.Empty)
+        if (dto is null || dto.UsuarioId == Guid.Empty)
         {
             return BadRequest(new { mensaje = "El usuario es obligatorio" });
         }

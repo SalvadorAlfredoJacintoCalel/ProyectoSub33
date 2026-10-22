@@ -46,8 +46,13 @@ public class InventarioController : ApiControllerBase
 
     [HttpRequirePermission("inventario.crear")]
     [HttpPost("items")]
-    public async Task<IActionResult> CreateItem([FromBody] InventarioItemCreateDto dto)
+    public async Task<IActionResult> CreateItem([FromBody] InventarioItemCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -61,8 +66,13 @@ public class InventarioController : ApiControllerBase
 
     [HttpRequirePermission("inventario.editar")]
     [HttpPut("items/{id:int}")]
-    public async Task<IActionResult> UpdateItem(int id, [FromBody] InventarioItemUpdateDto dto)
+    public async Task<IActionResult> UpdateItem(int id, [FromBody] InventarioItemUpdateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -115,8 +125,13 @@ public class InventarioController : ApiControllerBase
 
     [HttpRequirePermission("inventario.ajuste")]
     [HttpPost("movimientos")]
-    public async Task<IActionResult> CreateMovimiento([FromBody] InventarioMovimientoCreateDto dto)
+    public async Task<IActionResult> CreateMovimiento([FromBody] InventarioMovimientoCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -136,8 +151,13 @@ public class InventarioController : ApiControllerBase
 
     [HttpRequirePermission("inventario.equipo-asignar")]
     [HttpPost("equipo-unidades")]
-    public async Task<IActionResult> AsignarEquipo([FromBody] EquipoUnidadCreateDto dto)
+    public async Task<IActionResult> AsignarEquipo([FromBody] EquipoUnidadCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -163,8 +183,13 @@ public class InventarioController : ApiControllerBase
 
     [HttpRequirePermission("inventario.registrar-uso-servicio")]
     [HttpPost("servicio-insumos")]
-    public async Task<IActionResult> RegistrarUsoInsumo([FromBody] ServicioInsumoUtilizadoCreateDto dto)
+    public async Task<IActionResult> RegistrarUsoInsumo([FromBody] ServicioInsumoUtilizadoCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);

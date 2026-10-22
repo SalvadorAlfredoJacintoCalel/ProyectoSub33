@@ -45,8 +45,13 @@ public class DonacionesController : ApiControllerBase
 
     [HttpRequirePermission("donaciones.registrar")]
     [HttpPost]
-    public async Task<IActionResult> CreateDonacion([FromBody] DonacionCreateDto dto)
+    public async Task<IActionResult> CreateDonacion([FromBody] DonacionCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -60,8 +65,13 @@ public class DonacionesController : ApiControllerBase
 
     [HttpRequirePermission("donaciones.editar")]
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> UpdateDonacion(int id, [FromBody] DonacionUpdateDto dto)
+    public async Task<IActionResult> UpdateDonacion(int id, [FromBody] DonacionUpdateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -74,9 +84,9 @@ public class DonacionesController : ApiControllerBase
 
     [HttpRequirePermission("donaciones.cambiar-estado")]
     [HttpPatch("{id:int}/estado")]
-    public async Task<IActionResult> ChangeEstado(int id, [FromBody] DonacionCambiarEstadoDto dto)
+    public async Task<IActionResult> ChangeEstado(int id, [FromBody] DonacionCambiarEstadoDto? dto)
     {
-        if (dto == null || string.IsNullOrWhiteSpace(dto.Estado))
+        if (dto is null || string.IsNullOrWhiteSpace(dto.Estado))
         {
             return BadRequest(ApiResponse.Fail("El estado es obligatorio."));
         }

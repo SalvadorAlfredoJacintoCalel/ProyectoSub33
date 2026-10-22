@@ -46,8 +46,13 @@ public class VehiculosController : ApiControllerBase
 
     [HttpRequirePermission("vehiculos.crear")]
     [HttpPost]
-    public async Task<IActionResult> CreateVehiculo([FromBody] VehiculoCreateDto dto)
+    public async Task<IActionResult> CreateVehiculo([FromBody] VehiculoCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -61,8 +66,13 @@ public class VehiculosController : ApiControllerBase
 
     [HttpRequirePermission("vehiculos.editar")]
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> UpdateVehiculo(int id, [FromBody] VehiculoUpdateDto dto)
+    public async Task<IActionResult> UpdateVehiculo(int id, [FromBody] VehiculoUpdateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -73,15 +83,19 @@ public class VehiculosController : ApiControllerBase
 
     [HttpRequirePermission("vehiculos.cambiar-estado")]
     [HttpPatch("{id:int}/estado")]
-    public async Task<IActionResult> ChangeEstado(int id, [FromBody] VehiculoEstadoDto dto)
-        => Respond(await _vehiculoService.ChangeEstadoAsync(id, dto.Estado), "Estado actualizado correctamente.");
+    public async Task<IActionResult> ChangeEstado(int id, [FromBody] VehiculoEstadoDto? dto)
+        => dto is null
+            ? BadRequest("El cuerpo de la solicitud es requerido.")
+            : Respond(await _vehiculoService.ChangeEstadoAsync(id, dto.Estado), "Estado actualizado correctamente.");
 
     [HttpRequirePermission("vehiculos.estado-operativo")]
     [HttpPatch("{id:int}/estado-operativo")]
-    public async Task<IActionResult> ChangeEstadoOperativo(int id, [FromBody] VehiculoEstadoOperativoDto dto)
-        => Respond(
-            await _vehiculoService.ChangeEstadoOperativoAsync(id, dto.EstadoOperativo),
-            "Estado operativo actualizado correctamente.");
+    public async Task<IActionResult> ChangeEstadoOperativo(int id, [FromBody] VehiculoEstadoOperativoDto? dto)
+        => dto is null
+            ? BadRequest("El cuerpo de la solicitud es requerido.")
+            : Respond(
+                await _vehiculoService.ChangeEstadoOperativoAsync(id, dto.EstadoOperativo),
+                "Estado operativo actualizado correctamente.");
 
     [HttpRequirePermission("vehiculos.eliminar")]
     [HttpDelete("{id:int}")]
@@ -95,8 +109,13 @@ public class VehiculosController : ApiControllerBase
 
     [HttpRequirePermission("vehiculos.mantenimientos.crear")]
     [HttpPost("{id:int}/mantenimientos")]
-    public async Task<IActionResult> CreateMantenimiento(int id, [FromBody] VehiculoMantenimientoCreateDto dto)
+    public async Task<IActionResult> CreateMantenimiento(int id, [FromBody] VehiculoMantenimientoCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -110,8 +129,13 @@ public class VehiculosController : ApiControllerBase
 
     [HttpRequirePermission("vehiculos.mantenimientos.editar")]
     [HttpPut("mantenimientos/{id:int}")]
-    public async Task<IActionResult> UpdateMantenimiento(int id, [FromBody] VehiculoMantenimientoCreateDto dto)
+    public async Task<IActionResult> UpdateMantenimiento(int id, [FromBody] VehiculoMantenimientoCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);

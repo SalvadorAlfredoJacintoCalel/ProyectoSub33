@@ -22,8 +22,13 @@ public class DonacionLibroController : ApiControllerBase
 
     [HttpRequirePermission("donaciones.libro.crear")]
     [HttpPost("movimientos")]
-    public async Task<IActionResult> CreateMovimiento([FromBody] DonacionMovimientoCreateDto dto)
+    public async Task<IActionResult> CreateMovimiento([FromBody] DonacionMovimientoCreateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -37,8 +42,13 @@ public class DonacionLibroController : ApiControllerBase
 
     [HttpRequirePermission("donaciones.libro.editar")]
     [HttpPut("movimientos/{id:int}")]
-    public async Task<IActionResult> UpdateMovimiento(int id, [FromBody] DonacionMovimientoUpdateDto dto)
+    public async Task<IActionResult> UpdateMovimiento(int id, [FromBody] DonacionMovimientoUpdateDto? dto)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);

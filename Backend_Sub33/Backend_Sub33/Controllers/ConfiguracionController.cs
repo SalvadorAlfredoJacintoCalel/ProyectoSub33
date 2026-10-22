@@ -108,9 +108,9 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPost("parametros")]
-        public async Task<IActionResult> GuardarParametros([FromBody] List<ParametroSistemaDto> parametros)
+        public async Task<IActionResult> GuardarParametros([FromBody] List<ParametroSistemaDto>? parametros)
         {
-            if (parametros == null)
+            if (parametros is null)
             {
                 return BadRequest(new { mensaje = "Se esperaba una lista de parámetros." });
             }
@@ -158,7 +158,7 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPut("parametros/{clave}")]
-        public async Task<IActionResult> ActualizarParametro(string clave, [FromBody] ParametroSistemaDto dto)
+        public async Task<IActionResult> ActualizarParametro(string clave, [FromBody] ParametroSistemaDto? dto)
         {
             if (string.IsNullOrWhiteSpace(clave))
             {
@@ -233,8 +233,13 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPut("usuarios/{id:guid}/estado")]
-        public async Task<IActionResult> CambiarEstadoUsuario(Guid id, [FromBody] CambiarEstadoUsuarioDto dto)
+        public async Task<IActionResult> CambiarEstadoUsuario(Guid id, [FromBody] CambiarEstadoUsuarioDto? dto)
         {
+            if (dto is null)
+            {
+                return BadRequest(new { mensaje = "El cuerpo de la solicitud es requerido." });
+            }
+
             try
             {
                 var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id);
@@ -265,8 +270,13 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPut("usuarios/{id:guid}/rol")]
-        public async Task<IActionResult> CambiarRolUsuario(Guid id, [FromBody] CambiarRolUsuarioDto dto)
+        public async Task<IActionResult> CambiarRolUsuario(Guid id, [FromBody] CambiarRolUsuarioDto? dto)
         {
+            if (dto is null)
+            {
+                return BadRequest(new { mensaje = "El cuerpo de la solicitud es requerido." });
+            }
+
             try
             {
                 var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id);
@@ -323,8 +333,13 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPost("roles")]
-        public async Task<IActionResult> CrearRol([FromBody] CrearRolDto dto)
+        public async Task<IActionResult> CrearRol([FromBody] CrearRolDto? dto)
         {
+            if (dto is null)
+            {
+                return BadRequest(new { mensaje = "El cuerpo de la solicitud es requerido." });
+            }
+
             try
             {
                 var nombre = NormalizarTexto(dto.Nombre);
@@ -400,7 +415,7 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPost("roles/{rolId:int}/permisos")]
-        public async Task<IActionResult> GuardarPermisosRol(int rolId, [FromBody] AsignarPermisosRolDto dto)
+        public async Task<IActionResult> GuardarPermisosRol(int rolId, [FromBody] AsignarPermisosRolDto? dto)
         {
             try
             {
@@ -462,7 +477,7 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPost("catalogos/{tipo}")]
-        public async Task<IActionResult> CrearCatalogo(string tipo, [FromBody] CatalogoUpsertDto dto)
+        public async Task<IActionResult> CrearCatalogo(string tipo, [FromBody] CatalogoUpsertDto? dto)
         {
             if (!Catalogos.TryGetValue(tipo, out var def))
             {
@@ -511,7 +526,7 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPut("catalogos/{tipo}/{id:int}")]
-        public async Task<IActionResult> ActualizarCatalogo(string tipo, int id, [FromBody] CatalogoUpsertDto dto)
+        public async Task<IActionResult> ActualizarCatalogo(string tipo, int id, [FromBody] CatalogoUpsertDto? dto)
         {
             if (!Catalogos.TryGetValue(tipo, out var def))
             {
@@ -599,7 +614,7 @@ namespace Backend_Sub33.Controllers
 
         // ── CRUD personalizado: Hospitales (nombre + direccion + telefono) ──────
         [HttpPost("catalogos/hospitales-completo")]
-        public async Task<IActionResult> CrearHospitalCompleto([FromBody] HospitalCompletoDto dto)
+        public async Task<IActionResult> CrearHospitalCompleto([FromBody] HospitalCompletoDto? dto)
         {
             var nombre = NormalizarTexto(dto?.Nombre);
             if (string.IsNullOrWhiteSpace(nombre))
@@ -636,7 +651,7 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPut("catalogos/hospitales-completo/{id:int}")]
-        public async Task<IActionResult> ActualizarHospitalCompleto(int id, [FromBody] HospitalCompletoDto dto)
+        public async Task<IActionResult> ActualizarHospitalCompleto(int id, [FromBody] HospitalCompletoDto? dto)
         {
             var nombre = NormalizarTexto(dto?.Nombre);
             if (string.IsNullOrWhiteSpace(nombre))
@@ -699,7 +714,7 @@ namespace Backend_Sub33.Controllers
         }
 
         [HttpPost("rangos")]
-        public async Task<IActionResult> CrearRango([FromBody] CrearRangoDto dto)
+        public async Task<IActionResult> CrearRango([FromBody] CrearRangoDto? dto)
         {
             try
             {

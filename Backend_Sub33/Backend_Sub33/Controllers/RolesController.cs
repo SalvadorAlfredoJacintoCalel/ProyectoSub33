@@ -20,8 +20,13 @@ public class RolesController : ApiControllerBase
         => Respond(await _rolService.GetActivosAsync(ct));
 
     [HttpPost]
-    public async Task<IActionResult> CrearRol([FromBody] CreateRolDto dto, CancellationToken ct)
+    public async Task<IActionResult> CrearRol([FromBody] CreateRolDto? dto, CancellationToken ct)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
@@ -31,8 +36,13 @@ public class RolesController : ApiControllerBase
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> ActualizarRol(int id, [FromBody] UpdateRolDto dto, CancellationToken ct)
+    public async Task<IActionResult> ActualizarRol(int id, [FromBody] UpdateRolDto? dto, CancellationToken ct)
     {
+        if (dto is null)
+        {
+            return BadRequest("El cuerpo de la solicitud es requerido.");
+        }
+
         if (!ModelState.IsValid)
         {
             return InvalidModel(ModelState);
