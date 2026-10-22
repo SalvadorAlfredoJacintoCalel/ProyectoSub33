@@ -1,5 +1,18 @@
 export type UserRole = "admin" | "voluntario" | "secretario";
 
+export function normalizeRole(roles: readonly string[] | null | undefined): UserRole {
+  const normalized = new Set(
+    (roles ?? []).map((role) => String(role).trim().toLowerCase())
+  );
+  if (normalized.has("admin") || normalized.has("administrador") || normalized.has("administrator")) {
+    return "admin";
+  }
+  if (normalized.has("secretario") || normalized.has("secretary")) {
+    return "secretario";
+  }
+  return "voluntario";
+}
+
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Administrador",
   voluntario: "Voluntario",

@@ -420,13 +420,15 @@ interface ApiEnvelope<T> {
 ## Autenticación y Autorización
 
 - JWT Bearer en `Authorization`.
-- Roles: `admin` | `voluntario` | `secretario`.
+- Roles: `admin` | `voluntario` | `secretario` (valores internos del frontend).
+- El backend devuelve los roles en español (`Administrador`, `Secretario`, `Voluntario`); `normalizeRole()` en `src/constants/roles.ts` los mapea a los valores internos (case-insensitive, acepta también `admin`/`administrator`/`secretary`). Se usa en `authService.js` (login) y en `AuthContext` (restauración de sesión), por lo que corrige también `localStorage.userRole` obsoleto.
 - Navegación por **módulos del usuario** (`GET /api/seguridad/permisos/mios`), no por `ROLE_NAV[role]`. "Inicio" (`bienvenida`) siempre visible; el resto se filtra por `AuthContext.modulos`.
 - Permisos backend: `HttpRequirePermissionAttribute` (permisos finos de acción, independientes de la visibilidad de módulos).
 - Storage: `localStorage.authToken` + `localStorage.user` + `localStorage.userRole` + `localStorage.userModulos`.
-- Login actual: **conectado a `/api/auth/login`**; `authService.js` sigue usando URL hardcodeada.
+- Login: **conectado a `/api/auth/login`**; `authService.js` usa `VITE_API_BASE_URL`.
 - Recuperación de contraseña/OTP: flujo visual, **pendiente** de backend real.
-- No existe conmutador "Vista de Rol": el rol viene del login y solo se usa para el badge y el gate de admin en Configuración.
+- No existe conmutador "Vista de Rol": el rol viene del login y solo se usa para el badge y el gate de admin en Configuración (`SeguridadPage` exige `userRole === "admin"`).
+- Acceso a Configuración está limitado por rol `admin`; la visibilidad del menú está limitada por módulos. Ambos deben coincidir para que un Administrador vea y entre a Configuración.
 
 ---
 
@@ -834,3 +836,9 @@ dotnet ef database update
 - `npm run build` correcto.
 - Verificado en runtime con JWT real: `GET /permisos/mios` devuelve por rol (Administrador 9, Secretario 7, Voluntario 5); `GET/POST /permisos/usuario/*` asigna y relee correctamente.
 - Nota: en esta BD no existe el usuario `admin`; el Administrador es `sjacinto`.
+
+### Fix de rol (2026-10-21)
+- **Problema:** un usuario con rol `Administrador` en la BD aparecía como "Voluntario" en el sidebar y `SeguridadPage` le negaba el acceso ("solo el administrador puede acceder").
+- **Causa:** `authService.js` comparaba `roles.includes("admin")`, pero el backend envía `["Administrador"]` (español capitalizado); al no coincidir caía al fallback `"voluntario"`.
+- **Solución:** `normalizeRole()` en `src/constants/roles.ts` (admin/administrador/administrator, secretario/secretary, resto voluntario; prioridad admin > secretario). Usado en login (`authService.js`) y en la restauración de sesión (`AuthContext`), que además reescribe `localStorage.userRole` para corregir sesiones previas.
+- Servicios detenidos al finalizar; no quedan procesos escuchando en `5173` ni `5196`.

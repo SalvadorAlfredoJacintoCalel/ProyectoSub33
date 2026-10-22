@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { getMisModulos } from "@/services/seguridadService";
-
-type UserRole = "admin" | "voluntario" | "secretario";
+import { normalizeRole, type UserRole } from "@/constants/roles";
 
 interface UserData {
   username: string;
@@ -33,8 +32,22 @@ const STORAGE_KEYS = {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
   const [role, setRoleState] = useState<UserRole>(() => {
-    const stored = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRole | null;
-    return stored ?? "admin";
+    try {
+      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser) as { roles?: unknown; role?: unknown };
+        if (Array.isArray(parsed.roles) && parsed.roles.length > 0) {
+          return normalizeRole(parsed.roles as string[]);
+        }
+        if (typeof parsed.role === "string") {
+          return normalizeRole([parsed.role]);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    const stored = localStorage.getItem(STORAGE_KEYS.ROLE);
+    return stored ? normalizeRole([stored]) : "admin";
   });
   const [modulos, setModulos] = useState<string[]>(() => {
     try {
@@ -67,12 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(storedUser) as UserData;
         setUser(parsed);
         setLoggedIn(true);
-        if (storedRole) {
-          setRoleState(storedRole);
-        } else if (parsed.role) {
-          setRoleState(parsed.role);
-          localStorage.setItem(STORAGE_KEYS.ROLE, parsed.role);
-        }
+        const rawRoles = Array.isArray(parsed.roles) ? (parsed.roles as string[]) : [];
+        const resolvedRole = rawRoles.length
+          ? normalizeRole(rawRoles)
+          : normalizeRole(storedRole ? [storedRole] : parsed.role ? [parsed.role] : []);
+        setRoleState(resolvedRole);
+        localStorage.setItem(STORAGE_KEYS.ROLE, resolvedRole);
         void loadModulos();
       } catch {
         localStorage.removeItem(STORAGE_KEYS.USER);
@@ -85,11 +98,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     (token: string, userData: UserData) => {
+      const rawRoles = Array.isArray(userData.roles) ? (userData.roles as string[]) : [];
+      const resolvedRole = rawRoles.length ? normalizeRole(rawRoles) : normalizeRole([userData.role]);
+      const nextUser: UserData = { ...userData, role: resolvedRole };
       localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
-      localStorage.setItem(STORAGE_KEYS.ROLE, userData.role);
-      setUser(userData);
-      setRoleState(userData.role);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(nextUser));
+      localStorage.setItem(STORAGE_KEYS.ROLE, resolvedRole);
+      setUser(nextUser);
+      setRoleState(resolvedRole);
       setLoggedIn(true);
       void loadModulos();
     },

@@ -292,6 +292,10 @@ export function PersonalPage() {
   }
 
   function handleEditFromDetail() {
+    if (role !== "admin") {
+      toast.warning("Solo los administradores pueden editar miembros.");
+      return;
+    }
     if (!selectedRecord) return;
     const record = selectedRecord;
     setDetailOpen(false);
@@ -584,10 +588,12 @@ export function PersonalPage() {
             Bomberos Voluntarios San Lucas Tolimán
           </p>
         </div>
-        <Button variant="brand" onClick={openAddModal}>
-          <Plus className="size-4" />
-          Nuevo Miembro
-        </Button>
+        {role === "admin" && (
+          <Button variant="brand" onClick={openAddModal}>
+            <Plus className="size-4" />
+            Nuevo Miembro
+          </Button>
+        )}
       </div>
 
       {/* ── Stat Cards ───────────────────────────────────────────────────────── */}
@@ -772,14 +778,18 @@ export function PersonalPage() {
         }
         footer={
           <>
-            <Button variant="brand-outline" onClick={() => window.print()}>
-              <Printer className="size-4" />
-              Imprimir
-            </Button>
-            <Button variant="brand" onClick={handleEditFromDetail}>
-              <Pencil className="size-4" />
-              Editar
-            </Button>
+            {role === "admin" && (
+              <Button variant="brand-outline" onClick={() => window.print()}>
+                <Printer className="size-4" />
+                Imprimir
+              </Button>
+            )}
+            {role === "admin" && (
+              <Button variant="brand" onClick={handleEditFromDetail}>
+                <Pencil className="size-4" />
+                Editar
+              </Button>
+            )}
           </>
         }
       >

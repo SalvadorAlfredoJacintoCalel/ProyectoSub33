@@ -1,3 +1,5 @@
+import { normalizeRole } from "@/constants/roles";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5196/api";
 
 export const login = async (username, password) => {
@@ -26,11 +28,7 @@ export const login = async (username, password) => {
     if (token) {
       localStorage.setItem("authToken", token);
       const roles = Array.isArray(data?.roles) ? data.roles : [];
-      const role = roles.includes("admin")
-        ? "admin"
-        : roles.includes("secretario")
-          ? "secretario"
-          : "voluntario";
+      const role = normalizeRole(roles);
       return {
         success: true,
         token,
