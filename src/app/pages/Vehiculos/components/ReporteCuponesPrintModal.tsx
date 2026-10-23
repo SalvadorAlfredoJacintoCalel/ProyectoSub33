@@ -64,25 +64,27 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
   const mesNombre = (encabezado.mesNombre || "").toUpperCase();
   const sig = siguiente(encabezado.mes, encabezado.anio);
 
+  const nombreCompleto = firmas.elaboradoPor?.nombre?.trim() || "SIN NOMBRE";
+
   const firmasList = [
     {
-      cargo: "DIRECTOR 33 CIA",
       nombre: firmas.director?.nombre?.trim() || "OF. OSMAN CHURUNEL",
+      cargo: "DIRECTOR. 33 CIA.",
       firma: firmas.director?.firmaBase64 ?? null,
     },
     {
-      cargo: "JEFE 33 CIA",
       nombre: firmas.jefe33Cia?.nombre?.trim() || "OF. JELMER YACH QUECHE",
+      cargo: "JEFE 33 CIA.",
       firma: firmas.jefe33Cia?.firmaBase64 ?? null,
     },
     {
-      cargo: "ELABORADO POR",
-      nombre: firmas.elaboradoPor?.nombre?.trim() || "ELABORADO POR: EDGAR LEONEL TZORIN BOCEL",
+      nombre: nombreCompleto.toUpperCase(),
+      cargo: "CBV.",
       firma: firmas.elaboradoPor?.firmaBase64 ?? null,
     },
     {
-      cargo: "JEFATURA DE ABASTECIMIENTOS",
       nombre: firmas.jefeAbastecimientos?.nombre?.trim() || "OF. MAYNOR RENE DE LEON LEMUS",
+      cargo: "JEFATURA DE ABASTECIMIENTOS Y SUMINISTROS",
       firma: firmas.jefeAbastecimientos?.firmaBase64 ?? null,
     },
   ];
@@ -115,11 +117,9 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
         </colgroup>
         <thead>
           <tr>
-            <td colSpan={7} style={celda()} />
-            <td colSpan={2} style={celdaHeader()}>MES</td>
-            <td style={celdaHeader()}>{mesNombre}</td>
-            <td colSpan={2} style={celdaHeader()}>DE {encabezado.anio}</td>
-            <td colSpan={3} style={celda()} />
+            <td colSpan={15} style={celda({ background: "#fff", fontWeight: 700, fontSize: 11, textAlign: "center", letterSpacing: "2px", border: "1px solid #333" })}>
+              MES {mesNombre} DE {encabezado.anio}
+            </td>
           </tr>
           <tr>
             <th rowSpan={2} style={celdaHeader()}>FECHA</th>
@@ -145,15 +145,14 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
         </thead>
         <tbody>
           <tr>
-            <td colSpan={3} style={celda({ background: "#d9d9d9", fontWeight: 700 })}>
-              SE RESIBIERON CUPONES
+            <td colSpan={9} style={celda({ background: "#d9d9d9", fontWeight: 700, textAlign: "center" })}>
+              SE RECIBIERON CUPONES
             </td>
-            <td colSpan={6} style={celda()} />
-            <td style={celda({ background: "#d9d9d9", fontWeight: 700 })}>{encabezado.cuponInicialDel ?? ""}</td>
-            <td style={celda({ background: "#d9d9d9", fontWeight: 700 })}>{encabezado.cuponInicialAl ?? ""}</td>
-            <td style={celda({ background: "#d9d9d9", fontWeight: 700 })}>{encabezado.totalRecibidos}</td>
-            <td style={celda()} />
-            <td style={celda({ background: "#d9d9d9" })}>{money(encabezado.valorCuponDefault)}</td>
+            <td style={celda({ background: "#fff", fontWeight: 700 })}>{encabezado.cuponInicialDel ?? ""}</td>
+            <td style={celda({ background: "#fff", fontWeight: 700 })}>{encabezado.cuponInicialAl ?? ""}</td>
+            <td style={celda({ background: "#fff", fontWeight: 700 })}>{encabezado.totalRecibidos}</td>
+            <td style={celda({ background: "#fff" })} />
+            <td style={celda({ background: "#d9d9d9", textAlign: "right" })}>{money(encabezado.valorCuponDefault)}</td>
             <td style={celda({ textAlign: "right" })}>{money(encabezado.haberInicial)}</td>
           </tr>
 
@@ -186,6 +185,10 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
               <td style={celda({ textAlign: "right" })}>{money(c.saldo)}</td>
             </tr>
           ))}
+
+          <tr><td colSpan={15} style={celda({ height: 14 })} /></tr>
+          <tr><td colSpan={15} style={celda({ height: 14 })} /></tr>
+          <tr><td colSpan={15} style={celda({ height: 14 })} /></tr>
 
           <tr>
             <td colSpan={11} style={celda({ textAlign: "right", fontWeight: 700, textTransform: "uppercase" })}>
@@ -221,24 +224,13 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
         <tbody>
           <tr>
             {firmasList.map((f) => (
-              <td
-                key={f.cargo}
-                style={{ width: "25%", padding: "0 3mm", textAlign: "center", verticalAlign: "top" }}
-              >
+              <td key={f.nombre} style={{ width: "25%", padding: "0 3mm", textAlign: "center", verticalAlign: "top" }}>
                 <div style={{ height: "14mm", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-                  {f.firma ? (
-                    <img
-                      src={f.firma}
-                      alt={`Firma de ${f.cargo}`}
-                      style={{ maxHeight: "13mm", maxWidth: "40mm", objectFit: "contain" }}
-                    />
-                  ) : null}
+                  {f.firma && <img src={f.firma} alt="" style={{ maxHeight: "13mm", maxWidth: "40mm", objectFit: "contain" }} />}
                 </div>
                 <div style={{ borderTop: "1px solid #333", paddingTop: "1mm" }}>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 11 }}>{f.nombre}</p>
-                  <p style={{ margin: "0.5mm 0 0", fontSize: 9, textTransform: "uppercase", fontWeight: 600 }}>
-                    {f.cargo}
-                  </p>
+                  <p style={{ margin: "0.5mm 0 0", fontSize: 9, textTransform: "uppercase", fontWeight: 600 }}>{f.cargo}</p>
                 </div>
               </td>
             ))}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Pencil, PenLine, Plus, Printer, Settings2, Trash2 } from "lucide-react";
+import { Download, Pencil, Plus, Printer, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Input } from "@/app/components/ui/input";
@@ -593,13 +593,6 @@ function PeriodoModal({
   const [jefe33Cia, setJefe33Cia] = useState("");
   const [director, setDirector] = useState("");
 
-  const [firmaElaboradoPor, setFirmaElaboradoPor] = useState<string | null>(null);
-  const [firmaJefeAbastecimientos, setFirmaJefeAbastecimientos] = useState<string | null>(null);
-  const [firmaJefe33Cia, setFirmaJefe33Cia] = useState<string | null>(null);
-  const [firmaDirector, setFirmaDirector] = useState<string | null>(null);
-
-  const [firmaActiva, setFirmaActiva] = useState<"elaboradoPor" | "jefeAbastecimientos" | "jefe33Cia" | "director" | null>(null);
-
   useEffect(() => {
     if (!open) return;
     setDel(periodo?.cuponInicialDel ? String(periodo.cuponInicialDel) : "");
@@ -611,10 +604,6 @@ function PeriodoModal({
     setJefeAbastecimientos(periodo?.jefeAbastecimientos ?? "");
     setJefe33Cia(periodo?.jefe33Cia ?? "");
     setDirector(periodo?.director ?? "");
-    setFirmaElaboradoPor(periodo?.firmaElaboradoPorBase64 ?? null);
-    setFirmaJefeAbastecimientos(periodo?.firmaJefeAbastecimientosBase64 ?? null);
-    setFirmaJefe33Cia(periodo?.firmaJefe33CiaBase64 ?? null);
-    setFirmaDirector(periodo?.firmaDirectorBase64 ?? null);
   }, [open, periodo]);
 
   async function submit(e: React.FormEvent) {
@@ -633,57 +622,11 @@ function PeriodoModal({
         jefeAbastecimientos: jefeAbastecimientos.trim() || null,
         jefe33Cia: jefe33Cia.trim() || null,
         director: director.trim() || null,
-        firmaElaboradoPorBase64: firmaElaboradoPor,
-        firmaJefeAbastecimientosBase64: firmaJefeAbastecimientos,
-        firmaJefe33CiaBase64: firmaJefe33Cia,
-        firmaDirectorBase64: firmaDirector,
       });
     } finally {
       setSaving(false);
     }
   }
-
-  const firmasPeriodo: {
-    key: "elaboradoPor" | "jefeAbastecimientos" | "jefe33Cia" | "director";
-    cargo: string;
-    nombre: string;
-    setNombre: (v: string) => void;
-    firma: string | null;
-    setFirma: (v: string | null) => void;
-  }[] = [
-    {
-      key: "elaboradoPor",
-      cargo: "Elaborado por",
-      nombre: elaboradoPor,
-      setNombre: setElaboradoPor,
-      firma: firmaElaboradoPor,
-      setFirma: setFirmaElaboradoPor,
-    },
-    {
-      key: "jefeAbastecimientos",
-      cargo: "Jefatura de Abastecimientos",
-      nombre: jefeAbastecimientos,
-      setNombre: setJefeAbastecimientos,
-      firma: firmaJefeAbastecimientos,
-      setFirma: setFirmaJefeAbastecimientos,
-    },
-    {
-      key: "jefe33Cia",
-      cargo: "Jefe 33ª Compañía",
-      nombre: jefe33Cia,
-      setNombre: setJefe33Cia,
-      firma: firmaJefe33Cia,
-      setFirma: setFirmaJefe33Cia,
-    },
-    {
-      key: "director",
-      cargo: "Director",
-      nombre: director,
-      setNombre: setDirector,
-      firma: firmaDirector,
-      setFirma: setFirmaDirector,
-    },
-  ];
 
   return (
     <Modal
@@ -724,36 +667,18 @@ function PeriodoModal({
             Firmas del reporte oficial
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {firmasPeriodo.map((f) => (
-              <div key={f.key} className="flex flex-col gap-1.5">
-                <Campo label={f.cargo}>
-                  <Input
-                    value={f.nombre}
-                    onChange={(e) => f.setNombre(e.target.value)}
-                    placeholder="Nombre y apellido"
-                  />
-                </Campo>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setFirmaActiva(f.key)}
-                  >
-                    <PenLine size={14} />
-                    {f.firma ? "Cambiar firma" : "Firmar"}
-                  </Button>
-                  {f.firma && (
-                    <img
-                      src={f.firma}
-                      alt={`Firma de ${f.cargo}`}
-                      className="h-8 w-auto rounded border"
-                      style={{ borderColor: "var(--border)" }}
-                    />
-                  )}
-                </div>
-              </div>
-            ))}
+            <Campo label="Elaborado por">
+              <Input value={elaboradoPor} onChange={(e) => setElaboradoPor(e.target.value)} placeholder="Nombre y apellido" />
+            </Campo>
+            <Campo label="Jefatura de Abastecimientos">
+              <Input value={jefeAbastecimientos} onChange={(e) => setJefeAbastecimientos(e.target.value)} placeholder="Nombre y apellido" />
+            </Campo>
+            <Campo label="Jefe 33ª Compañía">
+              <Input value={jefe33Cia} onChange={(e) => setJefe33Cia(e.target.value)} placeholder="Nombre y apellido" />
+            </Campo>
+            <Campo label="Director">
+              <Input value={director} onChange={(e) => setDirector(e.target.value)} placeholder="Nombre y apellido" />
+            </Campo>
           </div>
         </div>
 
@@ -770,23 +695,6 @@ function PeriodoModal({
           El haber inicial se calcula como total de cupones × valor de cupón. Los saldos se recalculan automáticamente.
         </p>
       </form>
-
-      <SignatureModal
-        open={firmaActiva !== null}
-        onClose={() => setFirmaActiva(null)}
-        title={
-          firmaActiva
-            ? `Firma — ${firmasPeriodo.find((f) => f.key === firmaActiva)?.cargo ?? ""}`
-            : "Firma"
-        }
-        onSave={(base64) => {
-          if (firmaActiva) {
-            const target = firmasPeriodo.find((f) => f.key === firmaActiva);
-            target?.setFirma(base64);
-          }
-          setFirmaActiva(null);
-        }}
-      />
     </Modal>
   );
 }

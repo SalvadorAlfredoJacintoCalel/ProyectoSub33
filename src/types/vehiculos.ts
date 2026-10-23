@@ -216,10 +216,6 @@ export interface CuponPeriodo {
   jefeAbastecimientos?: string | null;
   jefe33Cia?: string | null;
   director?: string | null;
-  firmaElaboradoPorBase64?: string | null;
-  firmaJefeAbastecimientosBase64?: string | null;
-  firmaJefe33CiaBase64?: string | null;
-  firmaDirectorBase64?: string | null;
 }
 
 export interface CuponPeriodoCreate {
@@ -235,10 +231,6 @@ export interface CuponPeriodoCreate {
   jefeAbastecimientos?: string | null;
   jefe33Cia?: string | null;
   director?: string | null;
-  firmaElaboradoPorBase64?: string | null;
-  firmaJefeAbastecimientosBase64?: string | null;
-  firmaJefe33CiaBase64?: string | null;
-  firmaDirectorBase64?: string | null;
 }
 
 export interface CuponCreate {

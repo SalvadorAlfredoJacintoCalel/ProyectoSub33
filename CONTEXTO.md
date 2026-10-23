@@ -1211,3 +1211,46 @@ renderizar el formato oficial "Libro Mensual de Cupones de Combustible" conducid
 - src/app/pages/Vehiculos/CuponesTab.tsx
 - src/styles/globals.css (archivo de estilos global)
 - src/__tests__/ReporteCuponesPrintSheet.test.tsx (test de verificación)
+
+## [2026-10-22] Formato Oficial Cupones + Eliminación Firmas Base64 Período
+
+### BD: Migración `docs/modulos/vehiculos/migracion_quitar_firmas_periodo.sql`
+- Drop de las 4 columnas `firma_*_base64` en `vehiculo_cupones_periodos` (ejecutado en BD local vía psql). Se conservan los 4 nombres TEXT: `elaborado_por`, `jefe_abastecimientos`, `jefe_33_cia`, `director`.
+
+### Types: `src/types/vehiculos.ts`
+- `CuponPeriodo` y `CuponPeriodoCreate`: quitados los 4 campos `firma*Base64`.
+
+### Backend (consecuencia necesaria de la migración)
+- `DTOs/Vehiculos/VehiculoDtos.cs`: quitados `Firma*Base64` de `CuponPeriodoDto` y `CuponPeriodoCreateDto`.
+- `Services/CuponService.cs`: quitadas las referencias a `firma_*_base64` en `SavePeriodoAsync` (UPDATE), `LeerPeriodoAsync` y `GetReporteImpresionAsync` (SELECT), y las firmas del reporte ahora se emiten con `FirmaBase64 = null`.
+
+### Frontend - `CuponesTab.tsx`
+- PeriodoModal: eliminada la UI de firmas (estados `firma*Base64`, `firmaActiva`, array `firmasPeriodo`, `SignatureModal` del modal y `PenLine`); quedan solo los 4 inputs de texto (elaboradoPor, jefeAbastecimientos, jefe33Cia, director) y el submit ya no envía `firma*Base64`.
+- Impresión directa: `div.print-only` + `ReporteCuponesPrintSheet`, sin modal de vista previa.
+
+### `ReporteCuponesPrintSheet.tsx` - 5 ajustes
+1. Encabezado MES: 1 celda `colSpan=15` centrada.
+2. "SE RECIBIERON CUPONES": `colSpan=9` centrado (se eliminó una celda vacía extra del spec para mantener las 15 columnas).
+3. Firmas: orden DIRECTOR | JEFE | USUARIO | JEFATURA Y SUMINISTROS; formato NOMBRE arriba / CARGO abajo; `alt=""` en las imágenes.
+4. 3 filas vacías antes de totales.
+5. 3ra firma: solo `nombreCompleto.toUpperCase()` (sin prefijo "ELABORADO POR:"), cargo "CBV."; se quitó `useAuth` (usa `firmas.elaboradoPor.nombre` del período, fallback "SIN NOMBRE").
+
+### globals.css
+- Reglas `.print-only` / `.no-print` (screen vs print) ya presentes desde la tarea anterior.
+
+### Verificación
+- ✅ `dotnet build` 0 errores / 0 warnings.
+- ✅ `npm run build` sin errores.
+- ✅ `npm test` 42/42 (test `ReporteCuponesPrintSheet.test.tsx` actualizado: "SE RECIBIERON", firma 3ra = "SIN NOMBRE", cargo "CBV.").
+- ⚠️ `tsc --noEmit` / `npm run lint` no disponibles (sin typescript/tsconfig ni script lint); se validó con `vite build`.
+- ✅ Migración SQL ejecutada en BD local (verificación: 0 columnas `firma_%` restantes).
+- ✅ Procesos dev (backend `dotnet run` y frontend `npm run dev`) detenidos al terminar.
+
+### Archivos modificados
+- docs/modulos/vehiculos/migracion_quitar_firmas_periodo.sql (nuevo)
+- src/types/vehiculos.ts
+- src/app/pages/Vehiculos/CuponesTab.tsx
+- src/app/pages/Vehiculos/components/ReporteCuponesPrintModal.tsx
+- src/__tests__/ReporteCuponesPrintSheet.test.tsx
+- Backend_Sub33/Backend_Sub33/Services/CuponService.cs
+- Backend_Sub33/Backend_Sub33/DTOs/Vehiculos/VehiculoDtos.cs

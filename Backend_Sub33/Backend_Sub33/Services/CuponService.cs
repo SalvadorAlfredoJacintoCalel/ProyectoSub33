@@ -138,10 +138,6 @@ public class CuponService : ICuponService
                     jefe_abastecimientos = @JefeAbastecimientos,
                     jefe_33_cia = @Jefe33Cia,
                     director = @Director,
-                    firma_elaborado_por_base64 = @FirmaElaboradoPor,
-                    firma_jefe_abastecimientos_base64 = @FirmaJefeAbastecimientos,
-                    firma_jefe_33_cia_base64 = @FirmaJefe33Cia,
-                    firma_director_base64 = @FirmaDirector,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE periodo_id = @Id",
                 new
@@ -157,11 +153,7 @@ public class CuponService : ICuponService
                     ElaboradoPor = Limpiar(dto.ElaboradoPor),
                     JefeAbastecimientos = Limpiar(dto.JefeAbastecimientos),
                     Jefe33Cia = Limpiar(dto.Jefe33Cia),
-                    Director = Limpiar(dto.Director),
-                    FirmaElaboradoPor = NormalizarFirma(dto.FirmaElaboradoPorBase64),
-                    FirmaJefeAbastecimientos = NormalizarFirma(dto.FirmaJefeAbastecimientosBase64),
-                    FirmaJefe33Cia = NormalizarFirma(dto.FirmaJefe33CiaBase64),
-                    FirmaDirector = NormalizarFirma(dto.FirmaDirectorBase64)
+                    Director = Limpiar(dto.Director)
                 }, transaction);
 
             await RecalcularTodosAsync(connection, transaction);
@@ -460,9 +452,7 @@ public class CuponService : ICuponService
             SELECT periodo_id, anio, mes, cupon_inicial_del, cupon_inicial_al,
                    total_recibidos, comision_realizada, valor_cupon_default, haber_inicial,
                    saldo_inicial, saldo_final, notas,
-                   elaborado_por, jefe_abastecimientos, jefe_33_cia, director,
-                   firma_elaborado_por_base64, firma_jefe_abastecimientos_base64,
-                   firma_jefe_33_cia_base64, firma_director_base64
+                   elaborado_por, jefe_abastecimientos, jefe_33_cia, director
             FROM vehiculo_cupones_periodos WHERE periodo_id = @Id",
             new { Id = periodoId });
 
@@ -503,9 +493,7 @@ public class CuponService : ICuponService
                 SELECT periodo_id, anio, mes, cupon_inicial_del, cupon_inicial_al,
                        total_recibidos, comision_realizada, valor_cupon_default, haber_inicial,
                        saldo_inicial, saldo_final, notas,
-                       elaborado_por, jefe_abastecimientos, jefe_33_cia, director,
-                       firma_elaborado_por_base64, firma_jefe_abastecimientos_base64,
-                       firma_jefe_33_cia_base64, firma_director_base64
+                       elaborado_por, jefe_abastecimientos, jefe_33_cia, director
                 FROM vehiculo_cupones_periodos WHERE periodo_id = @Id",
                 new { Id = periodoId });
 
@@ -552,23 +540,19 @@ public class CuponService : ICuponService
                 {
                     ElaboradoPor = new FirmaReporteDto
                     {
-                        Nombre = periodo.ElaboradoPor ?? "",
-                        FirmaBase64 = periodo.FirmaElaboradoPorBase64
+                        Nombre = periodo.ElaboradoPor ?? ""
                     },
                     JefeAbastecimientos = new FirmaReporteDto
                     {
-                        Nombre = periodo.JefeAbastecimientos ?? "",
-                        FirmaBase64 = periodo.FirmaJefeAbastecimientosBase64
+                        Nombre = periodo.JefeAbastecimientos ?? ""
                     },
                     Jefe33Cia = new FirmaReporteDto
                     {
-                        Nombre = periodo.Jefe33Cia ?? "",
-                        FirmaBase64 = periodo.FirmaJefe33CiaBase64
+                        Nombre = periodo.Jefe33Cia ?? ""
                     },
                     Director = new FirmaReporteDto
                     {
-                        Nombre = periodo.Director ?? "",
-                        FirmaBase64 = periodo.FirmaDirectorBase64
+                        Nombre = periodo.Director ?? ""
                     }
                 }
             };

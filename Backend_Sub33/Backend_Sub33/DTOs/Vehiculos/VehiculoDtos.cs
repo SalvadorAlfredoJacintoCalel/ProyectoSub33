@@ -215,10 +215,6 @@ public class CuponPeriodoDto
     public string? JefeAbastecimientos { get; set; }
     public string? Jefe33Cia { get; set; }
     public string? Director { get; set; }
-    public string? FirmaElaboradoPorBase64 { get; set; }
-    public string? FirmaJefeAbastecimientosBase64 { get; set; }
-    public string? FirmaJefe33CiaBase64 { get; set; }
-    public string? FirmaDirectorBase64 { get; set; }
 }
 
 public class CuponPeriodoCreateDto
@@ -237,10 +233,6 @@ public class CuponPeriodoCreateDto
     public string? JefeAbastecimientos { get; set; }
     public string? Jefe33Cia { get; set; }
     public string? Director { get; set; }
-    public string? FirmaElaboradoPorBase64 { get; set; }
-    public string? FirmaJefeAbastecimientosBase64 { get; set; }
-    public string? FirmaJefe33CiaBase64 { get; set; }
-    public string? FirmaDirectorBase64 { get; set; }
 }
 
 public class VehiculoCuponDto
