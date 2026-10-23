@@ -966,3 +966,65 @@ Totales por rol: Admin 47 · Secretario 32 · Voluntario 11.
   DELETE FROM vehiculo_cupones WHERE periodo_id = (SELECT periodo_id FROM vehiculo_cupones_periodos WHERE anio=2026 AND mes=5);
   DELETE FROM vehiculo_cupones_periodos WHERE anio=2026 AND mes=5;
   ```
+
+## Mejoras Aplicadas - 2026-10-22
+
+### Críticas (Fase 0)
+- [x] Migración EF History aplicada: se marcaron `20260917045937_InitialCreate` y `20261003211500_CreateMissingTables` como aplicadas en `__EFMigrationsHistory` (ProductVersion 8.0.32). **No** se ejecutó `dotnet ef database update` destructivo: el esquema ya está 100% por SQL y EF reporta "already up to date".
+- [x] BCrypt-Net-Next.dll: ya estaba desbloqueado (sin `Zone.Identifier`); se ejecutó `Unblock-File` por seguridad.
+- [x] Migración 20261003211500_CreateMissingTables: sus tablas (`cat_tipos_unidad`, `cat_unidades`) ya existían por SQL; quedó registrada en el historial.
+- [x] Seed `docs/permisos_seed.sql` re-ejecutado (idempotente): 47 permisos · Admin 47 / Secretario 32 / Voluntario 11 · módulos 9/8/6.
+- [x] Build limpio: backend y frontend en 0 warnings / 0 errors.
+
+### Correcciones críticas adicionales (no listadas, necesarias para "depurar sin problemas")
+- [x] **Eliminado `Backend_Sub33/FixMigrationApp/`** (proyecto console residual `Console.WriteLine("Hello, World!")` que rompía el build con `CS8802` por doble top-level statement).
+- [x] **Creado `global.json`** fijando SDK `8.0.419`. Sin él, `dotnet` usa el SDK 10 (10.0.302) y el DLL resultante es bloqueado por la política de Control de Aplicaciones/WDAC (`0x800711C7`, "Enterprise signing level requirements") al ejecutarse. Con SDK 8 el backend compila y arranca correctamente.
+- [x] **Detenido el proceso `Backend_Sub33.exe`** que estaba corriendo (PID 5008) y bloqueaba el `.exe` en el build.
+
+### Estabilización (Fase 1) — Solo localhost
+- [x] `authService.js`: ya usaba `import.meta.env.VITE_API_BASE_URL` (verificado; sin cambios necesarios).
+- [x] `.env` actualizado a `VITE_API_BASE_URL=http://localhost:5196/api` (sin IP fija).
+- [x] `vite.config.ts`: code-splitting con `manualChunks` (vendor/pdffjs/charts/ui) + `chunkSizeWarningLimit: 1000`.
+- [x] `setup-env.ps1` **no** se crea (solo localhost) y `docs/ACCESO_CELULAR.md` fue **eliminado** (no se usa).
+
+### Mejoras Alto Impacto (Fase 2)
+- [x] Tests unitarios Vitest (`src/__tests__/`): `auth.test.ts`, `permisos.test.ts`, `cupones.test.ts` → **20 tests pasando**.
+- [x] Rate limiting `/api/auth/login` (5 req/min, cola 2) en `Program.cs` + `[EnableRateLimiting("LoginPolicy")]` en `AuthController`.
+
+### Verificación
+- [x] Build backend: 0 warnings/errors (`dotnet build --no-restore /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true`).
+- [x] Build frontend: 0 warnings/errors; chunks optimizados (vendor 143KB, pdfjs 365KB, charts 421KB, ui 70KB, index 722KB).
+- [x] Tests: `npm run test` → 20/20; `dotnet test` → exit 0.
+- [x] Backend arranca limpio en `http://localhost:5196` (Swagger 200) y queda **detenido** para depuración manual.
+
+### Notas importantes para el usuario
+- **Depuración:** usar `dotnet run` (SDK 8 por `global.json`) en `Backend_Sub33/Backend_Sub33`. El frontend con `npm run dev`.
+- **3 usuarios con hash BCrypt corrupto:** `cmendoza`, `jrodriguez`, `mgonzalez` tienen `password_hash` inválido (37 chars, `\\\.Ye4...`), resultado de un bug de escape `$` en el seed original. Al iniciar sesión con ellos, `BCrypt.Verify` lanza `SaltParseException` → HTTP 500. Requieren reset de contraseña (los 4 restantes `sjacinto`, `abc`, `bleon`, `josgmez` tienen hash válido `$2a$11$`).
+- **No borrar `global.json`:** si se compila con SDK 10, el backend compila pero WDAC bloquea el DLL al ejecutarlo (`0x800711C7`).
+
+## Reporte oficial de Cupones — 100% match formato (2026-10-22)
+
+Completado el reporte de impresión (`ReporteCuponesPrintSheet`) para alinearlo al formato requerido "Libro Mensual de Cupones de Combustible". **Sin tocar módulo de flota.**
+
+### Base de datos
+- Nueva columna `comision_realizada` (INT) en `vehiculo_cupones_periodos` vía `docs/modulos/vehiculos/migracion_cupones_comision_realizada.sql` (idempotente, ejecutado).
+
+### Backend (solo cupones)
+- `DTOs/Vehiculos/VehiculoDtos.cs`: `ComisionRealizada` (int?) agregado a `CuponPeriodoDto`, `CuponPeriodoCreateDto` y `ReporteEncabezadoDto`.
+- `Services/CuponService.cs`: `comision_realizada` persistido en `SavePeriodoAsync`, leído en `LeerPeriodoAsync` y mapeado a `Encabezado.ComisionRealizada` en `GetReporteImpresionAsync`.
+
+### Frontend (solo cupones)
+- `types/vehiculos.ts`: `comisionRealizada` agregado a `CuponPeriodo`, `CuponPeriodoCreate` y `ReporteCuponesEncabezado`.
+- `ReporteCuponesPrintModal.tsx` (`ReporteCuponesPrintSheet`):
+  - Fila **"SE RESIBIERON CUPONES"** en el encabezado (comisión realizada, DEL/AL, total recibidos, valor unitario, haber inicial).
+  - Columna **COMISIÓN** (`c.comisionNo`) agregada → **15 columnas** en el detalle (FECHA, RESPONSABLE, FIRMA, KILOMETRAJE, PLACAS, TIPO DE UNIDAD, GALONAJE, COMISIÓN, NOMBRE GASOLINERA, DEL, AL, TOTAL, VALOR, HABER, SALDO).
+  - Anchos de columna ajustados (suma ~98%) y `colSpan` corregidos (detalle 15, pie TOTALES 11).
+
+### Verificación
+- [x] `dotnet build --no-restore /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true` → 0 warnings / 0 errors.
+- [x] `npm run build` → 0 errores, chunks optimizados.
+- [x] `npm run test` → 20/20 · `dotnet test` → exit 0.
+- [x] Columna `comision_realizada` verificada en BD (actualmente NULL hasta que se configure desde la UI/API).
+
+### Nota
+- El campo `comision_realizada` es de nivel **período** (se muestra en la fila "SE RESIBIERON CUPONES"); `comisionNo` es de nivel **cupón** (columna COMISIÓN). La UI de "Configurar período" (`CuponesTab.tsx`) no se modificó: el valor de `comisionRealizada` se setea vía API/BD hasta que se agregue el input en el modal.

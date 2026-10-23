@@ -202,6 +202,7 @@ export interface CuponPeriodo {
   cuponInicialDel?: number | null;
   cuponInicialAl?: number | null;
   totalRecibidos: number;
+  comisionRealizada?: number | null;
   valorCuponDefault: number;
   haberInicial: number;
   saldoInicial: number;
@@ -227,6 +228,7 @@ export interface CuponPeriodoCreate {
   cuponInicialDel?: number | null;
   cuponInicialAl?: number | null;
   totalRecibidos: number;
+  comisionRealizada?: number | null;
   valorCuponDefault: number;
   notas?: string | null;
   elaboradoPor?: string | null;
@@ -271,6 +273,7 @@ export interface ReporteCuponesEncabezado {
   cuponInicialDel?: number | null;
   cuponInicialAl?: number | null;
   totalRecibidos: number;
+  comisionRealizada?: number | null;
   valorCuponDefault: number;
   haberInicial: number;
 }

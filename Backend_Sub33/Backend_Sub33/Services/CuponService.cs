@@ -130,6 +130,7 @@ public class CuponService : ICuponService
                     cupon_inicial_del = @Del,
                     cupon_inicial_al = @Al,
                     total_recibidos = @Total,
+                    comision_realizada = @ComisionRealizada,
                     valor_cupon_default = @Valor,
                     haber_inicial = @HaberInicial,
                     notas = @Notas,
@@ -149,6 +150,7 @@ public class CuponService : ICuponService
                     Del = dto.CuponInicialDel,
                     Al = dto.CuponInicialAl,
                     Total = totalRecibidos,
+                    ComisionRealizada = dto.ComisionRealizada,
                     Valor = dto.ValorCuponDefault,
                     HaberInicial = totalRecibidos * dto.ValorCuponDefault,
                     Notas = string.IsNullOrWhiteSpace(dto.Notas) ? null : dto.Notas.Trim(),
@@ -456,7 +458,7 @@ public class CuponService : ICuponService
     {
         var periodo = await connection.QueryFirstOrDefaultAsync<CuponPeriodoDto>(@"
             SELECT periodo_id, anio, mes, cupon_inicial_del, cupon_inicial_al,
-                   total_recibidos, valor_cupon_default, haber_inicial,
+                   total_recibidos, comision_realizada, valor_cupon_default, haber_inicial,
                    saldo_inicial, saldo_final, notas,
                    elaborado_por, jefe_abastecimientos, jefe_33_cia, director,
                    firma_elaborado_por_base64, firma_jefe_abastecimientos_base64,
@@ -499,7 +501,7 @@ public class CuponService : ICuponService
 
             var periodo = await connection.QueryFirstOrDefaultAsync<CuponPeriodoDto>(@"
                 SELECT periodo_id, anio, mes, cupon_inicial_del, cupon_inicial_al,
-                       total_recibidos, valor_cupon_default, haber_inicial,
+                       total_recibidos, comision_realizada, valor_cupon_default, haber_inicial,
                        saldo_inicial, saldo_final, notas,
                        elaborado_por, jefe_abastecimientos, jefe_33_cia, director,
                        firma_elaborado_por_base64, firma_jefe_abastecimientos_base64,
@@ -532,6 +534,7 @@ public class CuponService : ICuponService
                     CuponInicialDel = periodo.CuponInicialDel,
                     CuponInicialAl = periodo.CuponInicialAl,
                     TotalRecibidos = periodo.TotalRecibidos,
+                    ComisionRealizada = periodo.ComisionRealizada,
                     ValorCuponDefault = periodo.ValorCuponDefault,
                     HaberInicial = periodo.HaberInicial
                 },

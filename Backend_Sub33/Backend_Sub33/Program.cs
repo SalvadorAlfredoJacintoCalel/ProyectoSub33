@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Backend_Sub33.Data;
 using Backend_Sub33.Services;
 
@@ -71,6 +73,18 @@ builder.Services.AddCors(options =>
     });
 });
 
+// 4. Rate limiting (login): 5 intentos por minuto, cola de 2
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("LoginPolicy", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 2;
+    });
+});
+
 var app = builder.Build();
 
 // Configuración de zona horaria PostgreSQL para evitar choques con TIMESTAMP WITH TIME ZONE
@@ -90,6 +104,8 @@ app.UseCors("AllowAll");
 // Importante: Authentication SIEMPRE va antes de Authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseRateLimiter();
 
 app.MapControllers();
 

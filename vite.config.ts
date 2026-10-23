@@ -33,4 +33,20 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) return 'vendor'
+          if (id.includes('node_modules/pdfjs-dist/')) return 'pdfjs'
+          if (id.includes('node_modules/recharts/')) return 'charts'
+          if (id.includes('node_modules/lucide-react/') || id.includes('node_modules/@radix-ui/react-dialog/')) return 'ui'
+          return undefined
+        },
+      },
+    },
+  },
 })

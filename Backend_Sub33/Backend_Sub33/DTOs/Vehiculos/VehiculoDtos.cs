@@ -199,6 +199,7 @@ public class CuponPeriodoDto
     public long? CuponInicialDel { get; set; }
     public long? CuponInicialAl { get; set; }
     public int TotalRecibidos { get; set; }
+    public int? ComisionRealizada { get; set; }
     public decimal ValorCuponDefault { get; set; }
     public decimal HaberInicial { get; set; }
     public decimal SaldoInicial { get; set; }
@@ -227,6 +228,7 @@ public class CuponPeriodoCreateDto
     public long? CuponInicialDel { get; set; }
     public long? CuponInicialAl { get; set; }
     public int TotalRecibidos { get; set; }
+    public int? ComisionRealizada { get; set; }
     public decimal ValorCuponDefault { get; set; } = 100;
     public string? Notas { get; set; }
 
@@ -326,6 +328,7 @@ public class ReporteEncabezadoDto
     public long? CuponInicialDel { get; set; }
     public long? CuponInicialAl { get; set; }
     public int TotalRecibidos { get; set; }
+    public int? ComisionRealizada { get; set; }
     public decimal ValorCuponDefault { get; set; }
     public decimal HaberInicial { get; set; }
 }

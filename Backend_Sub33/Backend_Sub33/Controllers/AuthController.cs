@@ -9,6 +9,7 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using BCrypt.Net;
 using Dapper;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Backend_Sub33.Controllers;
 
@@ -26,6 +27,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("LoginPolicy")]
     public async Task<IActionResult> Login([FromBody] LoginDto? loginDto)
     {
         if (loginDto is null)

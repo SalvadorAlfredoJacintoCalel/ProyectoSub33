@@ -92,6 +92,33 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
         </tbody>
       </table>
 
+      {/* ── Recepción: comisión realizada ── */}
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          marginBottom: "1.5mm",
+          fontSize: 7,
+        }}
+      >
+        <tbody>
+          <tr>
+            <td style={celdaEncabezado}>SE RESIBIERON CUPONES</td>
+            <td style={celdaValor}>{encabezado.comisionRealizada ?? "—"}</td>
+            <td style={celdaEncabezado}>DEL No.</td>
+            <td style={celdaValor}>{encabezado.cuponInicialDel ?? "—"}</td>
+            <td style={celdaEncabezado}>AL No.</td>
+            <td style={celdaValor}>{encabezado.cuponInicialAl ?? "—"}</td>
+            <td style={celdaEncabezado}>Total recibidos</td>
+            <td style={celdaValor}>{encabezado.totalRecibidos}</td>
+            <td style={celdaEncabezado}>Valor unitario</td>
+            <td style={celdaValor}>{money(encabezado.valorCuponDefault)}</td>
+            <td style={celdaEncabezado}>Haber inicial</td>
+            <td style={celdaValor}>{money(encabezado.haberInicial)}</td>
+          </tr>
+        </tbody>
+      </table>
+
       {/* ── Detalle ── */}
       <table
         style={{
@@ -105,19 +132,20 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
           <tr>
             {[
               { t: "FECHA", w: "5.5%" },
-              { t: "NOMBRE DEL RESPONSABLE", w: "13%" },
-              { t: "FIRMA", w: "8%" },
-              { t: "KILOMETRAJE", w: "6%" },
-              { t: "PLACAS", w: "6%" },
-              { t: "TIPO DE UNIDAD", w: "8%" },
-              { t: "GALONAJE", w: "6%" },
-              { t: "NOMBRE GASOLINERA", w: "11%" },
-              { t: "DEL No.", w: "6%" },
-              { t: "AL No.", w: "6%" },
-              { t: "TOTAL CUPONES", w: "6%" },
-              { t: "VALOR DE CUPÓN", w: "6.5%" },
-              { t: "HABER", w: "6.5%" },
-              { t: "SALDO", w: "6.5%" },
+              { t: "NOMBRE DEL RESPONSABLE", w: "12%" },
+              { t: "FIRMA", w: "7%" },
+              { t: "KILOMETRAJE", w: "5.5%" },
+              { t: "PLACAS", w: "5.5%" },
+              { t: "TIPO DE UNIDAD", w: "7%" },
+              { t: "GALONAJE", w: "5.5%" },
+              { t: "COMISIÓN", w: "5.5%" },
+              { t: "NOMBRE GASOLINERA", w: "10%" },
+              { t: "DEL No.", w: "5.5%" },
+              { t: "AL No.", w: "5.5%" },
+              { t: "TOTAL CUPONES", w: "5.5%" },
+              { t: "VALOR DE CUPÓN", w: "6%" },
+              { t: "HABER", w: "6%" },
+              { t: "SALDO", w: "6%" },
             ].map((c) => (
               <th
                 key={c.t}
@@ -140,7 +168,7 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
         <tbody>
           {detalle.length === 0 && (
             <tr>
-              <td colSpan={14} style={{ ...celdaCuerpo, textAlign: "center", fontStyle: "italic" }}>
+              <td colSpan={15} style={{ ...celdaCuerpo, textAlign: "center", fontStyle: "italic" }}>
                 Sin movimientos registrados en el período.
               </td>
             </tr>
@@ -164,6 +192,7 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
               <td style={{ ...celdaCuerpo, textAlign: "center" }}>{c.placas ?? ""}</td>
               <td style={celdaCuerpo}>{c.tipoUnidad ?? ""}</td>
               <td style={{ ...celdaCuerpo, textAlign: "right" }}>{c.galonaje ?? ""}</td>
+              <td style={{ ...celdaCuerpo, textAlign: "center" }}>{c.comisionNo ?? ""}</td>
               <td style={celdaCuerpo}>{c.gasolineraNombre ?? ""}</td>
               <td style={{ ...celdaCuerpo, textAlign: "right" }}>{c.cuponDel}</td>
               <td style={{ ...celdaCuerpo, textAlign: "right" }}>{c.cuponAl}</td>
@@ -177,7 +206,7 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
         <tfoot>
           <tr>
             <td
-              colSpan={10}
+              colSpan={11}
               style={{
                 border: "1px solid #000",
                 padding: "1mm 0.6mm",
