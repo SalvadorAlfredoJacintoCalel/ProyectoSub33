@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Download, Eye, Pencil, PenLine, Plus, Printer, Settings2, Trash2 } from "lucide-react";
+import { Download, Pencil, PenLine, Plus, Printer, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Input } from "@/app/components/ui/input";
@@ -15,10 +14,7 @@ import { useCupones } from "@/hooks/useCupones";
 import { usePermisos } from "@/hooks/usePermisos";
 import { vehiculosService } from "@/services/vehiculosService";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
-import {
-  ReporteCuponesPrintModal,
-  ReporteCuponesPrintSheet,
-} from "@/app/pages/Vehiculos/components/ReporteCuponesPrintModal";
+import { ReporteCuponesPrintSheet } from "@/app/pages/Vehiculos/components/ReporteCuponesPrintModal";
 import type {
   CatalogoItem,
   CuponCreate,
@@ -218,8 +214,10 @@ export function CuponesTab() {
 
   useEffect(() => {
     if (!imprimirDespues || !reporte) return;
-    setImprimirDespues(false);
-    const timer = setTimeout(() => window.print(), 150);
+    const timer = setTimeout(() => {
+      window.print();
+      setImprimirDespues(false);
+    }, 150);
     return () => clearTimeout(timer);
   }, [imprimirDespues, reporte]);
 
@@ -284,12 +282,6 @@ export function CuponesTab() {
             <Download size={16} />
             Exportar CSV
           </Button>
-          {permisosVehiculos.imprimirCupones && (
-            <Button variant="outline" onClick={abrirReporte} loading={cargandoReporte}>
-              <Eye size={16} />
-              Vista Previa Oficial
-            </Button>
-          )}
           {permisosVehiculos.imprimirCupones && (
             <Button variant="outline" onClick={imprimirReporte} loading={cargandoReporte} disabled={filas.length === 0}>
               <Printer size={16} />
@@ -552,19 +544,11 @@ export function CuponesTab() {
         title={firmaCupon ? `Firma de ${firmaCupon.responsable}` : "Firma digital"}
       />
 
-      <ReporteCuponesPrintModal
-        open={showReporte}
-        onClose={() => setShowReporte(false)}
-        reporte={reporte}
-      />
-
-      {reporte &&
-        createPortal(
-          <div className="print-area">
-            <ReporteCuponesPrintSheet reporte={reporte} />
-          </div>,
-          document.body,
-        )}
+      {reporte && (
+        <div className="print-only" style={{ position: 'absolute', left: '-9999px', top: 0, width: '100%' }}>
+          <ReporteCuponesPrintSheet reporte={reporte} />
+        </div>
+      )}
     </div>
   );
 }

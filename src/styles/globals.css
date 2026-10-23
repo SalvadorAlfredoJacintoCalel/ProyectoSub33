@@ -49,6 +49,20 @@ textarea:disabled { opacity: 0.7; }
   .no-print { display: none !important; }
 }
 
+/* ── Print (cupones, impresión directa) ── */
+@media screen {
+  .print-only { display: none !important; }
+}
+@media print {
+  .print-only {
+    display: block !important;
+    position: static !important;
+    left: auto !important;
+    width: 100% !important;
+  }
+  .no-print { display: none !important; }
+}
+
 /* ── Utility Classes for Layout ── */
 .flex-center { display: flex; align-items: center; justify-content: center; }
 .grid-center { display: grid; place-items: center; }

@@ -1,0 +1,159 @@
+{
+  "form": {
+    "name": "registro-combustible",
+    "title": "LIBRO MENSUAL DE CUPONES DE COMBUSTIBLE",
+    "subtitle": "33ª COMPAÑÍA DE BOMBEROS VOLUNTARIOS",
+    "institutionLine": "SAN LUCAS TOLIMÁN · DEPARTAMENTO DE GUATEMALA",
+    "defaultMonth": "MAYO",
+    "defaultYear": 2026,
+    "pageSetup": {
+      "paperSize": "letter",
+      "orientation": "landscape",
+      "marginTopIn": 0.394,
+      "marginRightIn": 0.984,
+      "marginBottomIn": 0.394,
+      "marginLeftIn": 0.984,
+      "scale": 90,
+      "centerHorizontally": true,
+      "centerVertically": true,
+      "printArea": "A2:O21"
+    },
+    "columns": [
+      { "id": "A", "letter": "A", "width": 50 },
+      { "id": "B", "letter": "B", "width": 110 },
+      { "id": "C", "letter": "C", "width": 60 },
+      { "id": "D", "letter": "D", "width": 55 },
+      { "id": "E", "letter": "E", "width": 55 },
+      { "id": "F", "letter": "F", "width": 70 },
+      { "id": "G", "letter": "G", "width": 55 },
+      { "id": "H", "letter": "H", "width": 50 },
+      { "id": "I", "letter": "I", "width": 100 },
+      { "id": "J", "letter": "J", "width": 55 },
+      { "id": "K", "letter": "K", "width": 55 },
+      { "id": "L", "letter": "L", "width": 60 },
+      { "id": "M", "letter": "M", "width": 60 },
+      { "id": "N", "letter": "N", "width": 60 },
+      { "id": "O", "letter": "O", "width": 60 }
+    ],
+    "rows": 21,
+    "zones": [
+      { "id": "spacer", "range": "A1:O1", "type": "static", "style": "blank" },
+
+      { "id": "membrete1", "range": "A2:O2", "type": "static", "label": "33ª COMPAÑÍA DE BOMBEROS VOLUNTARIOS", "style": "membrete" },
+      { "id": "membrete2", "range": "A3:O3", "type": "static", "label": "SAN LUCAS TOLIMÁN · DEPARTAMENTO DE GUATEMALA", "style": "membreteSub" },
+      { "id": "title", "range": "A4:O4", "type": "static", "label": "LIBRO MENSUAL DE CUPONES DE COMBUSTIBLE", "style": "title" },
+
+      { "id": "seResibieronLabel", "range": "A5:B5", "type": "static", "label": "SE RESIBIERON CUPONES", "style": "label" },
+      { "id": "seResibieronComision", "range": "C5", "type": "field", "label": "Comisión realizada", "fieldType": "number", "style": "data" },
+      { "id": "seResibieronDelLabel", "range": "D5", "type": "static", "label": "DEL No.", "style": "label" },
+      { "id": "seResibieronDel", "range": "E5", "type": "field", "label": "DEL No.", "fieldType": "number", "style": "data" },
+      { "id": "seResibieronAlLabel", "range": "F5", "type": "static", "label": "AL No.", "style": "label" },
+      { "id": "seResibieronAl", "range": "G5", "type": "field", "label": "AL No.", "fieldType": "number", "style": "data" },
+      { "id": "seResibieronTotalLabel", "range": "H5:I5", "type": "static", "label": "Total recibidos", "style": "label" },
+      { "id": "seResibieronTotal", "range": "J5", "type": "field", "label": "Total recibidos", "fieldType": "number", "style": "data" },
+      { "id": "seResibieronValorLabel", "range": "K5:L5", "type": "static", "label": "Valor unitario", "style": "label" },
+      { "id": "seResibieronValor", "range": "M5", "type": "field", "label": "Valor unitario", "fieldType": "currency", "style": "data" },
+      { "id": "seResibieronHaberLabel", "range": "N5", "type": "static", "label": "Haber inicial", "style": "label" },
+      { "id": "seResibieronHaber", "range": "O5", "type": "field", "label": "Haber inicial", "fieldType": "currency", "style": "data" },
+
+      {
+        "id": "tableHeaders",
+        "range": "A6:O6",
+        "type": "row",
+        "style": "tableHeader",
+        "cells": [
+          { "key": "fecha", "label": "FECHA", "fieldType": "date" },
+          { "key": "responsable", "label": "NOMBRE DEL RESPONSABLE", "fieldType": "text" },
+          { "key": "firma", "label": "FIRMA", "fieldType": "signature" },
+          { "key": "kilometraje", "label": "KILOMETRAJE", "fieldType": "text" },
+          { "key": "placas", "label": "PLACAS", "fieldType": "text" },
+          { "key": "tipoUnidad", "label": "TIPO DE UNIDAD", "fieldType": "text" },
+          { "key": "galonaje", "label": "GALONAJE", "fieldType": "decimal" },
+          { "key": "comisionNo", "label": "COMISIÓN", "fieldType": "number" },
+          { "key": "gasolinera", "label": "NOMBRE GASOLINERA", "fieldType": "text" },
+          { "key": "cuponDel", "label": "DEL No.", "fieldType": "number" },
+          { "key": "cuponAl", "label": "AL No.", "fieldType": "number" },
+          { "key": "totalCupones", "label": "TOTAL CUPONES", "fieldType": "number" },
+          { "key": "valorCupon", "label": "VALOR DE CUPÓN", "fieldType": "currency" },
+          { "key": "haber", "label": "HABER", "fieldType": "currency" },
+          { "key": "saldo", "label": "SALDO", "fieldType": "currency", "computed": true }
+        ]
+      },
+
+      {
+        "id": "tableBody",
+        "range": "A7:O17",
+        "type": "repeatableRows",
+        "style": "body",
+        "count": 11,
+        "rowTemplate": [
+          { "key": "fecha", "fieldType": "date" },
+          { "key": "responsable", "fieldType": "text" },
+          { "key": "firma", "fieldType": "signature" },
+          { "key": "kilometraje", "fieldType": "text" },
+          { "key": "placas", "fieldType": "text" },
+          { "key": "tipoUnidad", "fieldType": "text" },
+          { "key": "galonaje", "fieldType": "decimal" },
+          { "key": "comisionNo", "fieldType": "number" },
+          { "key": "gasolinera", "fieldType": "text" },
+          { "key": "cuponDel", "fieldType": "number" },
+          { "key": "cuponAl", "fieldType": "number" },
+          { "key": "totalCupones", "fieldType": "number" },
+          { "key": "valorCupon", "fieldType": "currency" },
+          { "key": "haber", "fieldType": "currency" },
+          { "key": "saldo", "fieldType": "currency", "computed": true }
+        ]
+      },
+
+      { "id": "totalesLabel", "range": "A18:H18", "type": "static", "label": "TOTALES", "style": "summaryLabel" },
+      { "id": "totalesCupones", "range": "I18", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "totalesValor", "range": "J18:K18", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "totalesHaber", "range": "L18:M18", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "totalesSaldo", "range": "N18:O18", "type": "static", "label": "", "style": "summaryValue" },
+
+      { "id": "summary1Label", "range": "A19:H19", "type": "static", "label": "TOTAL GASTADOS EN EL MES", "style": "summaryLabel" },
+      { "id": "summary1Cupones", "range": "I19", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "summary1Valor", "range": "J19:K19", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "summary1Haber", "range": "L19:M19", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "summary1Saldo", "range": "N19:O19", "type": "static", "label": "", "style": "summaryValue" },
+
+      { "id": "summary2Label", "range": "A20:H20", "type": "static", "label": "TOTAL EN SALDOS PARA MES SIGUIENTE", "style": "summaryLabel" },
+      { "id": "summary2Cupones", "range": "I20", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "summary2Valor", "range": "J20:K20", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "summary2Haber", "range": "L20:M20", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "summary2Saldo", "range": "N20:O20", "type": "static", "label": "", "style": "summaryValue" },
+
+      { "id": "summary3Label", "range": "A21:H21", "type": "static", "label": "VAN PARA EL MES SIGUIENTE", "style": "summaryLabel" },
+      { "id": "summary3Cupones", "range": "I21", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "summary3Valor", "range": "J21:K21", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "summary3Haber", "range": "L21:M21", "type": "static", "label": "", "style": "summaryValue" },
+      { "id": "summary3Saldo", "range": "N21:O21", "type": "static", "label": "", "style": "summaryValue" }
+    ],
+    "styles": {
+      "blank": { "border": "none" },
+      "membrete": { "fontFamily": "inherit", "fontSize": 11, "bold": true, "align": "center", "valign": "middle" },
+      "membreteSub": { "fontFamily": "inherit", "fontSize": 8, "bold": true, "align": "center", "valign": "middle" },
+      "title": { "fontFamily": "inherit", "fontSize": 10, "bold": true, "align": "center", "valign": "middle" },
+      "label": { "fontSize": 7, "bold": true, "align": "right", "valign": "middle", "border": "1px solid #000", "fill": "#f2f2f2" },
+      "data": { "fontSize": 7, "bold": false, "align": "left", "valign": "middle", "border": "1px solid #000" },
+      "tableHeader": { "fontSize": 6, "bold": true, "align": "center", "valign": "middle", "border": "1px solid #000", "fill": "#f2f2f2" },
+      "body": { "fontSize": 6.5, "bold": false, "align": "left", "valign": "middle", "border": "1px solid #000" },
+      "summaryLabel": { "fontSize": 7, "bold": true, "align": "right", "valign": "middle", "border": "1px solid #000", "fill": "#f2f2f2" },
+      "summaryValue": { "fontSize": 7, "bold": true, "align": "right", "valign": "middle", "border": "1px solid #000" }
+    },
+    "calculations": {
+      "runningTotal": "totalAnterior - haber (inicia en haberInicial)",
+      "sumHaber": "SUM(tableBody[].haber)",
+      "sumSaldo": "haberInicial - sumHaber",
+      "sumTotalCupones": "SUM(tableBody[].totalCupones)",
+      "monthlyBalance": "haberInicial - sumHaber"
+    },
+    "validation": {
+      "fecha": { "pattern": "DD/MM/YYYY", "required": false },
+      "anio": { "min": 2020, "max": 2030, "required": true },
+      "mes": { "required": true },
+      "currency": { "decimals": 2, "min": 0 },
+      "decimal": { "decimals": 2, "min": 0 }
+    }
+  }
+}

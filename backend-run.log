@@ -1,0 +1,79 @@
+Compilando...
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://0.0.0.0:5196
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\ProyectoSub33-main\ProyectoSub33-main\Backend_Sub33\Backend_Sub33
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (49ms) [Parameters=[@__usuarioId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT c.codigo
+      FROM usuario_modulos AS u
+      INNER JOIN cat_modulos AS c ON u.modulo_id = c.modulo_id
+      WHERE u.usuario_id = @__usuarioId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (49ms) [Parameters=[@__usuarioId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT p.codigo
+      FROM usuario_permisos AS u
+      INNER JOIN permisos AS p ON u.permiso_id = p.permiso_id
+      WHERE u.usuario_id = @__usuarioId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (6ms) [Parameters=[@__usuarioId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT t.codigo
+      FROM usuario_roles AS u
+      INNER JOIN roles AS r ON u.rol_id = r.rol_id
+      INNER JOIN (
+          SELECT c.codigo, r0.rol_id
+          FROM rol_modulo AS r0
+          INNER JOIN cat_modulos AS c ON r0.modulo_id = c.modulo_id
+      ) AS t ON r.rol_id = t.rol_id
+      WHERE u.usuario_id = @__usuarioId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (7ms) [Parameters=[@__usuarioId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT t.codigo
+      FROM usuario_roles AS u
+      INNER JOIN roles AS r ON u.rol_id = r.rol_id
+      INNER JOIN (
+          SELECT p.codigo, r0.rol_id
+          FROM rol_permisos AS r0
+          INNER JOIN permisos AS p ON r0.permiso_id = p.permiso_id
+      ) AS t ON r.rol_id = t.rol_id
+      WHERE u.usuario_id = @__usuarioId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__usuarioId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT p.codigo
+      FROM usuario_permisos AS u
+      INNER JOIN permisos AS p ON u.permiso_id = p.permiso_id
+      WHERE u.usuario_id = @__usuarioId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@__usuarioId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT c.codigo
+      FROM usuario_modulos AS u
+      INNER JOIN cat_modulos AS c ON u.modulo_id = c.modulo_id
+      WHERE u.usuario_id = @__usuarioId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[@__usuarioId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT t.codigo
+      FROM usuario_roles AS u
+      INNER JOIN roles AS r ON u.rol_id = r.rol_id
+      INNER JOIN (
+          SELECT c.codigo, r0.rol_id
+          FROM rol_modulo AS r0
+          INNER JOIN cat_modulos AS c ON r0.modulo_id = c.modulo_id
+      ) AS t ON r.rol_id = t.rol_id
+      WHERE u.usuario_id = @__usuarioId_0
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[@__usuarioId_0='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT DISTINCT t.codigo
+      FROM usuario_roles AS u
+      INNER JOIN roles AS r ON u.rol_id = r.rol_id
+      INNER JOIN (
+          SELECT p.codigo, r0.rol_id
+          FROM rol_permisos AS r0
+          INNER JOIN permisos AS p ON r0.permiso_id = p.permiso_id
+      ) AS t ON r.rol_id = t.rol_id
+      WHERE u.usuario_id = @__usuarioId_0

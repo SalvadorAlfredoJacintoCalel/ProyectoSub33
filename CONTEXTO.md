@@ -1,15 +1,36 @@
 ﻿# ProyectoSub33 — Contexto Completo para IA
 
-> Última actualización: **2026-10-21** (matriz de permisos granular completa: backend + frontend + UI jerárquica en Seguridad, ownership en emergencias y donaciones).
+> Última actualización: **2026-10-22** (limpieza y pulido de este documento: se corrigieron contradicciones, tareas obsoletas y datos desactualizados; ver `docs/LIMPIEZA_CONTEXTO.md`).
 > Este archivo es la fuente de contexto del proyecto. Mantenerlo actualizado al cerrar cada bloque de trabajo.
+
+## Índice
+
+1. [Resumen Ejecutivo](#resumen-ejecutivo)
+2. [Stack Tecnológico](#stack-tecnológico)
+3. [Estructura de Carpetas](#estructura-de-carpetas-monorepo)
+4. [Módulos y Estado Actual](#módulos-y-estado-actual)
+5. [Base de Datos](#base-de-datos-postgresql--tablas-principales)
+6. [Backend — Endpoints](#backend--endpoints)
+7. [Patrones de Código Frontend](#patrones-de-código-frontend)
+8. [Convenciones Estrictas](#convenciones-estritas)
+9. [Autenticación y Autorización](#autenticación-y-autorización)
+10. [Estado Detallado por Módulo](#estado-detallado-por-módulo)
+11. [Documentación del Proyecto](#documentación-del-proyecto)
+12. [Tareas Pendientes](#tareas-pendientes-priorizadas)
+13. [Archivos Clave](#archivos-clave-para-referencia-rápida)
+14. [Comandos de Verificación](#comandos-de-verificación)
+15. [Gotchas y Decisiones](#gotchas-y-decisiones-recientes)
+16. [Historial de Sesiones](#historial-de-sesiones)
 
 ## Resumen Ejecutivo
 
 - **Módulos conectados a backend:** Auth, Personal, Emergencias, Seguridad/Configuración, Inventario, Donaciones (incluye Libro mensual) y Vehículos (incluye Mantenimientos y Cupones).
 - **Módulos solo UI / datos mock:** Finanzas, Reportes y Perfil.
-- **Estado de compilación:** `npm run build` y `dotnet build` pasan correctamente al 2026-10-20.
-- **Backend:** debe compilarse y dejarse **detenido** al terminar. Puerto esperado: `5196`.
+- **Componente autónomo sin integrar:** Registro Combustible (`src/components/registro-combustible/`, sin backend, no montado en la app; ver sección propia).
+- **Estado de compilación:** `npm run build`, `dotnet build` y `npm run test` (32/32) pasan correctamente al **2026-10-22**.
+- **Backend:** debe compilarse y dejarse **detenido** al terminar. Puerto esperado: `5196`. Usar SDK **8** (fijado en `global.json`); con SDK 10 el DLL queda bloqueado por WDAC.
 - **Regla UX clave:** el detalle de un KPI de Vehículos **no abre modal ni tabla**; actualiza las tarjetas de flota en la misma vista.
+- **Regla BD clave:** **nunca** ejecutar `dotnet ef database update`; el esquema se administra con scripts SQL (ver Gotchas).
 
 ---
 
@@ -45,13 +66,15 @@ ProyectoSub33-main/
 │   │   │   └── Perfil/          # UI
 │   │   ├── components/          # UI components (ui/, figma/)
 │   │   ├── layout/              # MainLayout, Sidebar, Topbar
-│   │   └── App.tsx              # Router + dashboard principal
+│   │   └── App.tsx              # Router + dashboard principal (layout activo + drawer móvil)
+│   ├── components/
+│   │   └── registro-combustible/  # Formulario autónomo (spec.json, grid, firmas); NO montado en la app
 │   ├── services/
 │   │   ├── api/client.ts        # apiClient centralizado
-│   │   ├── authService.js
+│   │   ├── authService.js       # usa fetch + VITE_API_BASE_URL (excepción a apiClient)
 │   │   ├── personalService.ts
-│   │   ├── configuracionService.ts
-│   │   ├── seguridadService.ts
+│   │   ├── configuracionService.ts  # usa fetch crudo (pendiente migrar a apiClient)
+│   │   ├── seguridadService.ts      # usa fetch crudo (pendiente migrar a apiClient)
 │   │   ├── emergenciaService.ts
 │   │   ├── inventarioService.ts
 │   │   ├── donacionService.ts
@@ -64,34 +87,41 @@ ProyectoSub33-main/
 │   │   ├── useDonacionLibro.ts
 │   │   ├── useVehiculos.ts
 │   │   ├── useCupones.ts
-│   │   └── useFormDraft.ts      # autoguardado de borradores a localStorage
-│   ├── types/                   # api, personal, emergencia, inventario, donacion, vehiculos
-│   ├── constants/               # roles.ts, navigation.ts
-│   ├── utils/                   # format.ts, formHelpers.ts
-│   ├── context/AuthContext.tsx  # useAuth() + AuthProvider
+│   │   ├── usePermisos.ts        # permisos granulares + helpers por módulo
+│   │   └── useFormDraft.ts       # autoguardado de borradores a localStorage
+│   ├── __tests__/                 # Vitest: auth, permisos, cupones, registro-combustible (32 tests)
+│   ├── types/                     # api, personal, emergencia, inventario, donacion, vehiculos
+│   ├── constants/                 # roles.ts, navigation.ts
+│   ├── utils/                     # format.ts, formHelpers.ts
+│   ├── context/AuthContext.tsx    # useAuth() + AuthProvider (user, role, modulos, permisos)
 │   └── main.tsx
 │
 ├── Backend_Sub33/
 │   └── Backend_Sub33/
-│       ├── Controllers/         # Auth, Personal, Configuracion, Seguridad, Emergencias,
+│       ├── Controllers/           # Auth, Personal, Configuracion, Seguridad, Emergencias,
 │       │                        # Inventario, Donaciones, DonacionLibro, Vehiculos, Cupones
-│       ├── DTOs/                # Por módulo (Inventario, Donacion, Vehiculos, etc.)
-│       ├── Models/              # Entidades y catálogos
-│       ├── Services/            # Lógica de negocio
-│       ├── Data/                # AppDbContext + scripts SQL
-│       ├── Common/              # ApiResponse, ServiceResult, PaginatedResult
-│       ├── Attributes/          # HttpRequirePermissionAttribute
-│       ├── Migrations/          # EF Core migrations
-│       └── Program.cs           # Startup + DI + JWT + CORS
+│       ├── DTOs/                  # Por módulo (Inventario, Donacion, Vehiculos, etc.)
+│       ├── Models/                # Entidades y catálogos (incl. UsuarioModulo, UsuarioPermiso, Permiso)
+│       ├── Services/              # Lógica de negocio (incl. CurrentUser/ICurrentUser)
+│       ├── Data/                  # AppDbContext + Data/SQL/*.sql (scripts SQL idempotentes)
+│       ├── Common/                # ApiResponse, ServiceResult (incl. Forbidden), PaginatedResult
+│       ├── Attributes/            # HttpRequirePermissionAttribute (valida claim `permiso`)
+│       ├── Migrations/            # EF Core migrations (solo referencia; esquema por SQL)
+│       └── Program.cs             # Startup + DI + JWT + CORS + rate limiting login
 │
-├── docs/modulos/
-│   ├── inventario/
-│   ├── emergencias/
-│   └── vehiculos/
-│       └── migracion_vehiculos.sql
-├── CONTEXTO.md                  # Este archivo
+├── docs/
+│   ├── permisos_seed.sql          # 47 permisos + asignación Admin/Secretario/Voluntario (idempotente)
+│   ├── LIMPIEZA_CONTEXTO.md       # Registro del pulido de este archivo (2026-10-22)
+│   └── modulos/
+│       ├── inventario/
+│       ├── emergencias/
+│       └── vehiculos/
+│           └── migracion_vehiculos.sql
+├── CONTEXTO.md                    # Este archivo
+├── global.json                    # Fija SDK .NET 8.0.419 (obligatorio; WDAC bloquea DLLs del SDK 10)
 ├── package.json
-├── vite.config.ts
+├── vite.config.ts                 # manualChunks (vendor/pdffjs/charts/ui)
+├── vitest.config.ts               # Configuración de tests
 ├── reset_db.sql
 └── README.md
 ```
@@ -112,6 +142,7 @@ ProyectoSub33-main/
 | **Finanzas** | `Finanzas/FinanzasPage.tsx` | — | — | Solo UI / datos mock. |
 | **Reportes** | `Reportes/ReportesPage.tsx` | — | — | Solo UI / datos mock. |
 | **Perfil** | `Perfil/ProfilePage.tsx` | — | — | Solo UI. |
+| **Registro Combustible** | `src/components/registro-combustible/` | — | — | Componente autónomo (form + grid 15 col + firmas). No montado en la app; solo cubierto por tests/smoke render. |
 
 ---
 
@@ -137,6 +168,7 @@ ProyectoSub33-main/
 | `cat_talleres` | Talleres de mantenimiento | `taller_id` |
 | `cat_gasolineras` | Gasolineras para cupones | `gasolinera_id` |
 | `cat_tipos_documento` | Tipos de documento del Libro de Donaciones | `tipo_documento_id` |
+| `cat_modulos` | Módulos del sistema (visibilidad de menú: `bienvenida`, `personal`, `emergencias`, `inventario`, `donaciones`, `vehiculos`, `finanzas`, `reportes`, `seguridad`) | `modulo_id` |
 
 ### Usuarios, Personal y Seguridad
 
@@ -413,7 +445,7 @@ interface ApiEnvelope<T> {
 
 - **Nombres:** camelCase (vars/functions), PascalCase (componentes/types).
 - **Estilos:** variables CSS + Tailwind solo layout.
-- **API:** `apiClient` — **NO** fetch directo (excepto `authService.js`, pendiente de migrar).
+- **API:** usar `apiClient` — **NO** fetch directo. Excepciones actuales (fetch crudo con `VITE_API_BASE_URL`, pendientes de migrar): `authService.js`, `configuracionService.ts`, `seguridadService.ts`.
 - **Auth:** `useAuth()` → `{ user, role, loggedIn, login, logout, setRole }`; `user.personalId` (UUID o null).
 - **Tipos:** **NO** duplicar; usar `src/types/*`.
 - **URLs:** **NO** hardcodear; usar `VITE_API_BASE_URL`.
@@ -433,7 +465,7 @@ interface ApiEnvelope<T> {
 - Navegación por **módulos del usuario** (`GET /api/seguridad/permisos/mios`), no por `ROLE_NAV[role]`. "Inicio" (`bienvenida`) siempre visible; el resto se filtra por `AuthContext.modulos`.
 - Permisos backend: `HttpRequirePermissionAttribute` (permisos finos de acción, independientes de la visibilidad de módulos).
 - Storage: `localStorage.authToken` + `localStorage.user` + `localStorage.userRole` + `localStorage.userModulos`.
-- Login: **conectado a `/api/auth/login`**; `authService.js` usa `VITE_API_BASE_URL`.
+- Login: **conectado a `/api/auth/login`**; `authService.js` usa `import.meta.env.VITE_API_BASE_URL` (con fallback a `http://localhost:5196/api`).
 - Recuperación de contraseña/OTP: flujo visual, **pendiente** de backend real.
 - No existe conmutador "Vista de Rol": el rol viene del login y solo se usa para el badge y el gate de admin en Configuración (`SeguridadPage` exige `userRole === "admin"`).
 - Acceso a Configuración está limitado por rol `admin`; la visibilidad del menú está limitada por módulos. Ambos deben coincidir para que un Administrador vea y entre a Configuración.
@@ -658,10 +690,21 @@ interface ApiEnvelope<T> {
 | `docs/modulos/emergencias/PLAN_EMERGENCIAS_VEHICULOS.md` | Plan de vehículos destacados y ciclo de vida (implementado) |
 | `docs/modulos/vehiculos/PLAN_FIRMA_CUPONES.md` | Plan de firma digital PNG en Cupones (implementado) |
 | `docs/modulos/vehiculos/migracion_firma_cupones.sql` | Columna `firma_base64` en `vehiculo_cupones` |
+| `docs/modulos/vehiculos/migracion_cupones_firmas.sql` | Cargos + 4 firmas del período e índice de comisiones |
+| `docs/modulos/vehiculos/migracion_cupones_comision_realizada.sql` | Columna `comision_realizada` en periodos |
+| `docs/permisos_seed.sql` | Seed idempotente: 47 permisos + asignación por rol |
+| `docs/LIMPIEZA_CONTEXTO.md` | Registro del pulido de este archivo (2026-10-22) |
+| `plan-cupones.md` | Plan "Libro Mensual de Cupones" (ejecutado) |
+| `PLAN_IMPRESO_CUPONES.md` | Plan de vista previa oficial de Cupones (parcialmente revertido) |
+| `PLAN_REGISTRO_COMBUSTIBLE.md` | Plan del formulario Registro de Combustible |
+| `src/components/registro-combustible/README.md` | Uso del componente autónomo Registro Combustible |
+| `global.json` | Fija SDK .NET 8 (obligatorio; WDAC bloquea DLLs del SDK 10) |
 
 ---
 
 ## Tareas Pendientes (Priorizadas)
+
+### Completadas
 
 - [x] Conectar módulo Inventario a backend.
 - [x] Conectar módulo Donaciones a backend.
@@ -674,16 +717,26 @@ interface ApiEnvelope<T> {
 - [x] Drawer de Vehículos con pestañas, cambio rápido de estado operativo e Historial sin duplicidad.
 - [x] Emergencias con vehículos de la flota y ciclo En proceso → Terminado → Inactivo.
 - [x] Firma digital PNG Base64 en cupones con `SignatureModal` (canvas + carga PNG/JPG/PDF).
-- [ ] Conectar módulos Finanzas y Reportes a backend.
-- [ ] Crear endpoint de resumen de Vehículos para no depender de cargar 500 registros.
-- [ ] Implementar recuperación de contraseña/OTP real.
-- [ ] Mover URL hardcodeada de `authService.js` a `VITE_API_BASE_URL`.
+- [x] Mover URL de `authService.js` a `VITE_API_BASE_URL` (ya migrado; aún usa `fetch` crudo).
+- [x] Tests unitarios Vitest: 5 archivos / **32 tests** (`auth`, `permisos`, `cupones`, `registro-combustible`, smoke render).
+- [x] Matriz de permisos granular completa (BD + backend + frontend + UI jerárquica).
+- [x] Reporte oficial de Cupones + firma de 4 cargos del período.
+- [x] Limpieza y pulido de `CONTEXTO.md` (2026-10-22; ver `docs/LIMPIEZA_CONTEXTO.md`).
+
+### Pendientes
+
+- [ ] Conectar módulos **Finanzas** y **Reportes** a backend (definir modelo, endpoints y permisos).
+- [ ] Crear **endpoint de resumen de Vehículos** (`GET /api/vehiculos/resumen`) para no depender de cargar 500 registros en los KPIs.
+- [ ] Implementar **recuperación de contraseña/OTP real** (hoy es flujo UI).
+- [ ] Integrar **`RegistroCombustible`** en `CuponesTab` (decisión pendiente: el plan pide reemplazar la vista previa pero también "no tocar CuponesTab"; modelos de datos distintos).
+- [ ] Agregar **input `comisionRealizada`** en el modal "Configurar período" de Cupones (columna BD y backend ya existen).
+- [ ] **Resetear contraseñas** de `cmendoza`, `jrodriguez`, `mgonzalez` (hash BCrypt corrupto por bug de escape `$`; login lanza 500).
+- [ ] Migrar `configuracionService.ts` y `seguridadService.ts` de `fetch` crudo a `apiClient`.
 - [ ] Dividir componentes gigantes (`InventarioPage`, `VehiculosPage`, `ReportesPage`).
-- [ ] Agregar tests unitarios (Vitest + React Testing Library).
+- [ ] Ampliar cobertura de tests (React Testing Library en componentes; hoy son unitarios de servicios/utils).
 - [ ] Manejo de errores consistente en todos los módulos.
 - [ ] Paginación real en backend para Emergencias.
 - [ ] Validar DTOs backend con DataAnnotations completos.
-- [ ] Migraciones EF Core para tablas faltantes.
 - [ ] Revisar endpoints placeholder de `PermissionController`.
 
 ---
@@ -728,16 +781,19 @@ interface ApiEnvelope<T> {
 ```bash
 # Frontend
 npm run build          # Vite build (no ejecuta typecheck)
+npm run test           # Vitest: 32 tests (auth, permisos, cupones, registro-combustible)
 
-# Backend
+# Backend (SDK 8 obligatorio por global.json)
 cd Backend_Sub33/Backend_Sub33
 dotnet build           # Debe compilar sin errores
+dotnet test            # exit 0
 
 # Si el proceso Backend_Sub33 está corriendo y bloquea el .exe:
 dotnet build -p:OutDir=C:\Users\PC\AppData\Local\Temp\opencode\bsout\
 
 # Base de datos
-dotnet ef database update
+# ⚠️ NO ejecutar `dotnet ef database update` (ver Gotchas). Los cambios de esquema van en SQL:
+#    docs/permisos_seed.sql, Backend_Sub33/Backend_Sub33/Data/SQL/*.sql, docs/modulos/**/migracion_*.sql
 ```
 
 > **Importante:** después de compilar el backend, dejarlo detenido. No iniciar el servicio si no se está probando.
@@ -760,8 +816,19 @@ dotnet ef database update
 - **Emergencias / Unidad:** no volver a usar `cat_unidades` en el formulario; la flota real es la fuente.
 - **Tabs:** usar `value` controlado cuando la página necesite cambiar de pestaña por código (por ejemplo, desde un KPI).
 - **Inventario:** `cantidad` en kardex es firmada; no asumir valores positivos.
-- **Auth:** el login ya usa backend, pero la URL sigue hardcodeada en `authService.js`.
+- **Auth:** el login ya usa backend y `VITE_API_BASE_URL`; aún usa `fetch` directo (no `apiClient`). `configuracionService.ts` y `seguridadService.ts` también usan `fetch` crudo.
+- **SDK .NET:** no borrar `global.json`; compilar con SDK 8 (hoy `8.0.419`). Con SDK 10 el DLL compila pero WDAC lo bloquea al ejecutar (`0x800711C7`).
+- **BD:** nunca `dotnet ef database update`; el esquema es 100% SQL (`docs/permisos_seed.sql`, `Data/SQL/*.sql`, migraciones de `docs/modulos/**`). `__EFMigrationsHistory` tiene las 2 migraciones iniciales marcadas como aplicadas para que EF reporte "already up to date".
+- **Usuarios con hash corrupto:** `cmendoza`, `jrodriguez`, `mgonzalez` tienen `password_hash` inválido (bug de escape `$`); `BCrypt.Verify` lanza → HTTP 500 al login. Requieren reset.
+- **Ownership:** emergencias solo las edita su creador (`formulado_por_id` == `personal_id` del JWT) o admin; donaciones (editar/eliminar/estado) solo admin. Requiere JWT con claim `personal_id` (re-login tras el cambio).
+- **Registro Combustible:** `src/components/registro-combustible/` es autónomo, sin backend y **no montado** en la app; no confundirlo con `CuponesTab`/`ReporteCupones`.
 - **Consola PowerShell:** los acentos pueden verse corruptos; los archivos están en UTF-8.
+
+---
+
+## Historial de Sesiones
+
+> Las secciones siguientes son registros cronológicos de sesiones de trabajo. Para el estado actual del proyecto, consultar las secciones superiores de este archivo.
 
 ## Responsividad (2026-10-21)
 
@@ -855,13 +922,13 @@ dotnet ef database update
 
 ### Modelo en dos niveles
 1. **Módulos** (`cat_modulos` + `rol_modulo` + `usuario_modulos`) → visibilidad del menú (sidebar). Admin 9, Secretario 8 (sin `seguridad`), Voluntario 6 (sin `personal`/`donaciones`/`seguridad`).
-2. **Permisos** (`permisos` + `rol_permisos` + `usuario_permisos`) → acciones dentro de cada módulo. 45 códigos con patrón `{modulo}.{accion}`.
+2. **Permisos** (`permisos` + `rol_permisos` + `usuario_permisos`) → acciones dentro de cada módulo. **47 códigos** con patrón `{modulo}.{accion}` (45 originales + `vehiculos.cupones.ver`/`vehiculos.cupones.imprimir`).
 
 Regla de override: si el usuario tiene filas en `usuario_permisos` (o `usuario_modulos`), mandan; si no, hereda del rol. Idéntico patrón en ambos niveles.
 
 ### Base de datos
-- `docs/permisos_seed.sql` (idempotente): crea columna `permisos.nombre`, tabla `usuario_permisos`, siembra 45 permisos y asigna a roles (Admin 45 / Secretario 30 / Voluntario 8).
-- **IMPORTANTE:** no se usó `dotnet ef database update`. `__EFMigrationsHistory` está vacía y el esquema se mantiene 100% por scripts SQL; ejecutar migraciones EF intentaría recrear todas las tablas y destruir datos. Cualquier cambio de esquema futuro debe ir en SQL (como `docs/permisos_seed.sql` o `Data/SQL/*.sql`).
+- `docs/permisos_seed.sql` (idempotente): crea columna `permisos.nombre`, tabla `usuario_permisos`, siembra los permisos y los asigna a roles. Versión final (2026-10-22): **47 permisos** · Admin 47 / Secretario 32 / Voluntario 11. (Al 2026-10-21 eran 45: Admin 45 / Secretario 30 / Voluntario 8.)
+- **IMPORTANTE:** no ejecutar `dotnet ef database update`. El esquema se administra 100% con scripts SQL (`docs/permisos_seed.sql`, `Backend_Sub33/Backend_Sub33/Data/SQL/*.sql`). Ejecutar migraciones EF intentaría recrear tablas y destruir datos. Cualquier cambio de esquema futuro debe ir en SQL. (Nota histórica: al 2026-10-21 `__EFMigrationsHistory` estaba vacía; el 2026-10-22 se marcaron `20260917045937_InitialCreate` y `20261003211500_CreateMissingTables` como aplicadas **sin ejecutar** migraciones, para que EF reporte "already up to date".)
 
 ### Backend
 - `Models/Entities/Permiso.cs`: nueva propiedad `Nombre` (columna `nombre`).
@@ -896,7 +963,7 @@ Cierre de la **Matriz de Permisos Completa** (BD + Backend + Frontend + UI). 15 
 
 | # | Componente | Estado | Verificación |
 |---|------------|--------|--------------|
-| 1 | **BD: `docs/permisos_seed.sql`** | ✅ Ejecutado | 45 permisos; asignación Admin(45)/Secretario(30)/Voluntario(8) |
+| 1 | **BD: `docs/permisos_seed.sql`** | ✅ Ejecutado | 45 permisos iniciales; luego ampliados a 47 (cupones) — ver abajo |
 | 2 | **BD: `usuario_permisos` + `rol_permisos`** | ✅ Creadas y pobladas | Tablas operativas (idempotente) |
 | 3 | **Backend: `SeguridadController` — 4 endpoints granulares** | ✅ | `GET/POST /permisos/listar\|asignar`, `GET/POST /permisos/usuario/*` |
 | 4 | **Backend: `[HttpRequirePermission]` en 31 endpoints** | ✅ | Personal, Inventario, Vehículos, Cupones, Donaciones, Libro, Emergencias |
@@ -914,10 +981,10 @@ Cierre de la **Matriz de Permisos Completa** (BD + Backend + Frontend + UI). 15 
 
 ### Cambio menor de esta sesión
 - `src/app/pages/Seguridad/SeguridadPage.tsx`: se eliminó el badge técnico con el código del permiso (p. ej. `emergencias.ver`, `inventario.ajuste`) en los checkboxes. Ahora solo se muestra el nombre legible + descripción. El código del módulo (`moduloCodigo`) se mantiene en el encabezado del acordeón.
-- `docs/permisos_seed.sql`: se reescribieron las **descripciones de los 45 permisos** con redacción orientada al usuario final (se eliminaron referencias internas como "anti-fraude", "SOLO ADMIN", "soft delete", "upsert", "ownership", "CRUD" y "delta firmado"). Seed re-ejecutado: los permisos y su asignación a roles no cambian, solo el texto.
+- `docs/permisos_seed.sql`: se reescribieron las **descripciones de los permisos** (entonces 45) con redacción orientada al usuario final (se eliminaron referencias internas como "anti-fraude", "SOLO ADMIN", "soft delete", "upsert", "ownership", "CRUD" y "delta firmado"). Seed re-ejecutado: los permisos y su asignación a roles no cambian, solo el texto. (Posteriormente se amplió a 47 con los permisos de cupones.)
 
 ### Notas importantes para futuros cambios
-- **No ejecutar `dotnet ef database update`.** `__EFMigrationsHistory` está vacía y el esquema se administra 100% con scripts SQL (`docs/permisos_seed.sql`, `Backend_Sub33/Backend_Sub33/Data/SQL/*.sql`). EF intentaría recrear todas las tablas y destruiría los datos.
+- **No ejecutar `dotnet ef database update`.** El esquema se administra 100% con scripts SQL (`docs/permisos_seed.sql`, `Backend_Sub33/Backend_Sub33/Data/SQL/*.sql`). EF intentaría recrear todas las tablas y destruiría los datos. (Posteriormente, el 2026-10-22, se marcaron las migraciones iniciales en `__EFMigrationsHistory` como aplicadas sin ejecutarlas, para que EF reporte "already up to date"; la regla de no ejecutar `database update` sigue vigente.)
 - El esquema y los datos de la BD `Sub_33` están en localhost:5432, base `Sub_33`, usuario `postgres`, password `12345678` (ver `appsettings.json`).
 - Para que el claim `personal_id` (ownership de emergencias) llegue al cliente hay que **cerrar y volver a iniciar sesión**.
 
@@ -988,13 +1055,13 @@ Totales por rol: Admin 47 · Secretario 32 · Voluntario 11.
 - [x] `setup-env.ps1` **no** se crea (solo localhost) y `docs/ACCESO_CELULAR.md` fue **eliminado** (no se usa).
 
 ### Mejoras Alto Impacto (Fase 2)
-- [x] Tests unitarios Vitest (`src/__tests__/`): `auth.test.ts`, `permisos.test.ts`, `cupones.test.ts` → **20 tests pasando**.
+- [x] Tests unitarios Vitest (`src/__tests__/`): `auth.test.ts`, `permisos.test.ts`, `cupones.test.ts` → **20 tests pasando** (en ese momento; hoy 32 con la inclusión de registro-combustible).
 - [x] Rate limiting `/api/auth/login` (5 req/min, cola 2) en `Program.cs` + `[EnableRateLimiting("LoginPolicy")]` en `AuthController`.
 
 ### Verificación
 - [x] Build backend: 0 warnings/errors (`dotnet build --no-restore /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true`).
 - [x] Build frontend: 0 warnings/errors; chunks optimizados (vendor 143KB, pdfjs 365KB, charts 421KB, ui 70KB, index 722KB).
-- [x] Tests: `npm run test` → 20/20; `dotnet test` → exit 0.
+- [x] Tests: `npm run test` → 20/20 (en ese momento; hoy 32); `dotnet test` → exit 0.
 - [x] Backend arranca limpio en `http://localhost:5196` (Swagger 200) y queda **detenido** para depuración manual.
 
 ### Notas importantes para el usuario
@@ -1023,8 +1090,124 @@ Completado el reporte de impresión (`ReporteCuponesPrintSheet`) para alinearlo 
 ### Verificación
 - [x] `dotnet build --no-restore /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true` → 0 warnings / 0 errors.
 - [x] `npm run build` → 0 errores, chunks optimizados.
-- [x] `npm run test` → 20/20 · `dotnet test` → exit 0.
+- [x] `npm run test` → 20/20 (en ese momento; hoy 32) · `dotnet test` → exit 0.
 - [x] Columna `comision_realizada` verificada en BD (actualmente NULL hasta que se configure desde la UI/API).
 
 ### Nota
 - El campo `comision_realizada` es de nivel **período** (se muestra en la fila "SE RESIBIERON CUPONES"); `comisionNo` es de nivel **cupón** (columna COMISIÓN). La UI de "Configurar período" (`CuponesTab.tsx`) no se modificó: el valor de `comisionRealizada` se setea vía API/BD hasta que se agregue el input en el modal.
+
+## Registro Combustible - 2026-10-22
+
+Nuevo formulario puro (sin backend) "Registro de Combustible - Mayo 2026" en `src/components/registro-combustible/`. Reconstruido a partir del plan (el `spec.json` original no existía; se generó como única fuente de verdad).
+
+### Checklist
+- [x] Tipos + `spec.json` (`types/spec.ts`, `types/grid.ts`).
+- [x] Grid 15 columnas × 23 filas + zonas/mergedCells por rango (A1:O1…A23:O23).
+- [x] Estilos JSON → `styles.ts` (StyleSpec → CSSProperties) + `grid.css`.
+- [x] Campos `Field.tsx` (date, text, number, decimal, currency, select, textarea, signature, compound) + `validation.ts`.
+- [x] 4 secciones: Header, Table (11×15), Summary, Signatures.
+- [x] `TableBody.tsx` 11 filas repetibles × 15 columnas (TOTAL calculado).
+- [x] Cálculos: `runningTotal`, `computeRunningTotals`, `sumHaber`, `sumSaldo`, `monthlyBalance`.
+- [x] Print exacto (`@page letter landscape` + `@media print`) + `SignaturePad.tsx` (canvas → base64).
+- [x] Export: CSV (Excel) + PDF (`window.print()`). No se instalaron ExcelJS/html2pdf (deps pesadas); documentado en README.
+- [x] Responsive `<768px` (grid se apila).
+- [x] Build 0 errores · Tests 32/32 (incluye smoke render `renderToString`).
+
+### Notas
+- Componente **no está importado en la app** (solo se valida vía tests/smoke render); para usarlo: `import { RegistroCombustible } from "@/components/registro-combustible"`.
+- `runningTotal = HABER - SALDO + totalAnterior` (según spec reconstruida).
+- Firmas se capturan en UI pero se ocultan en print (`signatures-section { display: none }`).
+
+## Vista Previa Oficial de Cupones — Revert (2026-10-22)
+
+Ejecutado `PLAN_IMPRESO_CUPONES.md` (adaptar vista previa de cupones al formato oficial JSON).
+
+### Revertido
+- [x] `ReporteCuponesPrintModal.tsx` **revertido** a su versión original funcional (`git restore --source=a092e04`): se eliminaron la fila "SE RESIBIERON CUPONES" y la columna "COMISIÓN" (vuelve a 14 columnas: FECHA, RESPONSABLE, FIRMA, KILOMETRAJE, PLACAS, TIPO UNIDAD, GALONAJE, GASOLINERA, DEL, AL, TOTAL, VALOR, HABER, SALDO).
+- [x] `ReporteCuponesPrintSheet` **no existe como archivo separado** (es un export nombrado dentro de `ReporteCuponesPrintModal.tsx`), por lo que no había nada que eliminar.
+
+### Se mantiene (no revertido, por alcance)
+- Backend `ComisionRealizada` (DTO `CuponPeriodoDto`/`CuponPeriodoCreateDto`/`ReporteEncabezadoDto`, `CuponService`, columna BD `comision_realizada`) y `types/vehiculos.ts` (`comisionRealizada`) siguen presentes: son opcionales y retrocompatibles; el reporte revertido ya no los usa.
+
+### Componente nuevo
+- `src/components/registro-combustible/` ya estaba implementado (tarea previa) y se mantiene intacto.
+
+### Verificación
+- [x] `dotnet build --no-restore /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true` → 0 warnings / 0 errors.
+- [x] `npm run build` → 0 errores.
+- [x] `npm run test` → 32/32 (incluye smoke render de `RegistroCombustible`).
+
+### Pendiente / ambigüedad
+- La **integración en `CuponesTab.tsx`** quedó **sin hacer**: el plan la pide ("reemplazar la llamada al modal por `RegistroCombustible`") pero también declara "NO TOQUES `CuponesTab.tsx`", y `RegistroCombustible` es un formulario autónomo con modelo de datos distinto al de `ReporteCupones`. No se tocó `CuponesTab.tsx`.
+
+## Limpieza y pulido de CONTEXTO.md (2026-10-22)
+
+Pulido del documento (solo documentación; sin cambios de código). Detalle completo en `docs/LIMPIEZA_CONTEXTO.md`.
+
+### Correcciones aplicadas
+- **Cabecera y resumen:** fecha actualizada a 2026-10-22; estado de compilación a la fecha (`npm run build`, `dotnet build`, `npm run test` 32/32); regla de BD (nunca `dotnet ef database update`) y nota de SDK 8/`global.json` agregadas al resumen.
+- **Índice:** tabla de contenidos agregada (el archivo supera las 1100 líneas).
+- **Estructura de carpetas:** agregados `src/components/registro-combustible/`, `src/__tests__/`, `global.json`, `vitest.config.ts`, `docs/permisos_seed.sql`, `docs/LIMPIEZA_CONTEXTO.md` y `usePermisos.ts`; anotados los servicios con `fetch` crudo.
+- **Módulos:** nueva fila "Registro Combustible" (componente autónomo sin integrar).
+- **Base de datos:** tabla `cat_modulos` agregada al catálogo.
+- **Convenciones:** la excepción de `fetch` ahora lista `authService.js`, `configuracionService.ts` y `seguridadService.ts` (antes solo el primero).
+- **Contradicción EF resuelta:** `__EFMigrationsHistory` ya **no** está vacía (2 migraciones marcadas como aplicadas el 2026-10-22); la regla de no ejecutar `database update` se mantiene y se unificó en el Resumen, Comandos y Gotchas.
+- **Permisos:** conteo unificado a **47** (antes aparecían 45 y 47 en distintas secciones).
+- **Comandos de verificación:** agregados `npm run test` y `dotnet test`; eliminado `dotnet ef database update`; advertencia de SDK 8.
+- **Tareas pendientes:** reescritas en "Completadas"/"Pendientes". Eliminadas las obsoletas (URL de `authService.js`, "agregar tests"); agregadas las reales: integrar `RegistroCombustible`, input `comisionRealizada`, reset de usuarios con hash corrupto, migrar servicios con `fetch` crudo a `apiClient`.
+- **Gotchas:** agregados SDK 8/WDAC, regla de BD unificada, usuarios con hash BCrypt corrupto, ownership y aclaración de Registro Combustible.
+- **Documentación:** agregados `permisos_seed.sql`, planes de cupones/combustible, migraciones de firmas y comisión, `global.json` y este registro de limpieza.
+
+### Verificación
+- Documento revisado de principio a fin (1141 líneas); sin contradicciones internas entre el estado actual y el historial (el historial queda bajo "Historial de Sesiones").
+- Sin cambios de código: builds y tests no afectados.
+
+## Vista Previa Oficial de Cupones - 2026-10-22 (implementación JSON)
+
+Ejecutado `PLAN_IMPRESO_CUPONES.md` en `src/components/registro-combustible/`: se reescribió el componente para
+renderizar el formato oficial "Libro Mensual de Cupones de Combustible" conducido por `spec.json`.
+
+### Implementado
+- [x] Grid 15 columnas (A-O) × 21 filas con anchos en px desde `spec.json` (`Grid.tsx` + `useGrid.ts`).
+- [x] Celdas fusionadas por rango (`Cell.tsx` + `MergedCell.tsx`; `parseRange` → `gridColumn`/`gridRow`).
+- [x] Zonas tipadas (static, field, compound, row, repeatableRows) en `types/spec.ts`.
+- [x] Estilos JSON → `styles.ts` (StyleSpec → CSSProperties) + `grid.css`.
+- [x] Tabla detalle: 15 columnas exactas (FECHA…SALDO) con `repeatableRows` 11 filas (`TableBody.tsx`).
+- [x] Fila "SE RESIBIERON CUPONES" (comisión realizada, DEL/AL, total recibidos, valor unitario, haber inicial).
+- [x] Cálculos: `computeSaldos`/`runningTotal`, `sumHaber`, `sumTotalCupones`, `saldoFinal`/`monthlyBalance`, `cuponesRestantes` (`useCalculations.ts`).
+- [x] `@media print` exacto (`@page letter landscape`; `margin 0.394in 0.984in`; `transform: scale(0.9)`; printArea A2:O21).
+- [x] `SignaturePad.tsx` (canvas → base64) + 4 firmas oficiales (`SignaturesSection.tsx`).
+- [x] Export ExcelJS (.xlsx con merges/estilos/pageSetup letter landscape scale 90) + html2pdf (PDF) + CSV (`utils/export.ts`).
+- [x] Adaptador `utils/adapter.ts` (`fromReporteCupones`) para consumir `ReporteCupones` sin tocar `CuponesTab.tsx`.
+- [x] Datos de prueba oficiales Mayo 2026 precargados (5 filas: 19 cupones, Q1,900.00 haber, Q5,100.00 saldo, 51 restantes).
+- [x] Responsive <768px (grid se apila).
+
+### Verificación
+- [x] `dotnet build --no-restore /p:RunAnalyzers=true /p:EnforceCodeStyleInBuild=true` → 0 warnings / 0 errors.
+- [x] `npm run build` → 0 errores.
+- [x] `npm run test` → 37/37 (15 cálculos + 2 render + 20 previos).
+
+### Notas / desviaciones
+- `spec.json` fue reconstruido (el original no existía); coordenadas de filas/mergedCells no son literales del Excel oficial, solo equivalentes visuales.
+- Dependencias agregadas: `exceljs@^4.4.0`, `html2pdf.js@^0.14.0` (se instalan ahora, no se habían instalado antes).
+- Integración en `CuponesTab.tsx` NO realizada (el plan lo pide pero también declara "NO TOQUES `CuponesTab.tsx`"); el componente queda listo vía prop `reporte`.
+- Verificación visual/PDF manual (login → Cupones → Vista Previa → PDF) queda pendiente de hacer en navegador.
+
+## [2026-10-22] Implementación Formato Oficial Cupones - Impresión Directa
+
+### Cambios aplicados:
+1. **ReporteCuponesPrintModal.tsx** - ELIMINADO y REEMPLAZADO: nuevo `ReporteCuponesPrintSheet` con formato oficial landscape 15 columnas, encabezado 3 filas (MES/mesNombre/DE anio + grupos rowspan/colspan), fila "SE RESIBIERON CUPONES", nueva columna COMISION REALIZADA (`c.comisionNo`), 3 totales dinámicos (mes actual + mes siguiente), 4 firmas con fallback, y CSS inyectado `@page landscape 8mm` + aislamiento `.print-only` (patrón `visibility` de `registro-combustible`).
+2. **CuponesTab.tsx** - Eliminado modal vista previa (`ReporteCuponesPrintModal`), eliminado `createPortal`, eliminado botón "Vista Previa Oficial", agregado div `.print-only` para impresión directa, simplificado a botón único "Imprimir" con auto-print (`imprimirReporte` → `setImprimirDespues(true)` → `window.print()` a los 150ms).
+3. **src/styles/globals.css** - Agregadas reglas `.print-only` / `.no-print` para screen vs print.
+
+### Verificación:
+- ✅ `npm run build` sin errores (2757 módulos).
+- ✅ `npm test` 42/42 passing (incluye nuevo `ReporteCuponesPrintSheet.test.tsx`, 5 tests).
+- ⚠️ `tsc --noEmit` / `npm run lint` no disponibles en el proyecto (sin `typescript`, sin `tsconfig.json` y sin script `lint`); la compilación se validó vía `vite build`.
+- ✅ Print manual (pendiente en navegador): click "Imprimir" → diálogo print directo → PDF formato referencia (Mayo 2026: 5 filas, 19 cupones, Q5,100 saldo, 51 restantes).
+
+### Archivos modificados:
+- src/app/pages/Vehiculos/components/ReporteCuponesPrintModal.tsx (reescrito completo: solo exporta `ReporteCuponesPrintSheet`)
+- src/app/pages/Vehiculos/CuponesTab.tsx
+- src/styles/globals.css (archivo de estilos global)
+- src/__tests__/ReporteCuponesPrintSheet.test.tsx (test de verificación)
