@@ -261,6 +261,9 @@ public class VehiculoCuponDto
     public string? FirmaBase64 { get; set; }
     public decimal Saldo { get; set; }
     public string? Observaciones { get; set; }
+    public bool Activo { get; set; } = true;
+    public DateTime? EliminadoEn { get; set; }
+    public string? EliminadoPorNombre { get; set; }
 }
 
 public class CuponCreateDto

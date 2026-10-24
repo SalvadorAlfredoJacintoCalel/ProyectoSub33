@@ -10,11 +10,11 @@ type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
 type ModalVariant = "default" | "glass" | "gradient";
 
 const SIZE_CLASSES: Record<ModalSize, string> = {
-  sm: "sm:max-w-sm max-w-[calc(100%-2rem)]",
-  md: "sm:max-w-md max-w-[calc(100%-2rem)]",
-  lg: "sm:max-w-lg max-w-[calc(100%-2rem)]",
-  xl: "sm:max-w-2xl max-w-[calc(100%-2rem)]",
-  full: "sm:max-w-[90vw] max-w-[calc(100%-2rem)]",
+  sm: "sm:max-w-sm max-w-[95vw]",
+  md: "sm:max-w-md max-w-[95vw]",
+  lg: "sm:max-w-lg max-w-[95vw]",
+  xl: "sm:max-w-2xl max-w-[95vw]",
+  full: "sm:max-w-[90vw] max-w-[95vw]",
 };
 
 interface ModalProps {

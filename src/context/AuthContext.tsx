@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { getMisModulos, getMisPermisos } from "@/services/seguridadService";
+import { getMisModulos, getMisPermisos, ApiError } from "@/services/seguridadService";
+import { refresh as authRefresh, logout as authLogout } from "@/services/authService";
+import { tokenStore } from "@/services/auth/tokenStore";
 import { normalizeRole, type UserRole } from "@/constants/roles";
 
 interface UserData {
@@ -8,6 +10,8 @@ interface UserData {
   name: string;
   email?: string;
   personalId?: string | null;
+  fotoBase64?: string | null;
+  debeCambiarContrasena?: boolean;
   roles?: string[];
   permisos?: string[];
   [key: string]: unknown;
@@ -27,7 +31,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const STORAGE_KEYS = {
   USER: "user",
-  TOKEN: "authToken",
   ROLE: "userRole",
   MODULOS: "userModulos",
   PERMISOS: "userPermisos",
@@ -51,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // ignore
     }
     const stored = localStorage.getItem(STORAGE_KEYS.ROLE);
-    return stored ? normalizeRole([stored]) : "admin";
+    return stored ? normalizeRole([stored]) : "voluntario";
   });
   const [modulos, setModulos] = useState<string[]>(() => {
     try {
@@ -71,16 +74,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [loggedIn, setLoggedIn] = useState(false);
 
+  const logout = useCallback(() => {
+    void authLogout();
+    tokenStore.clear();
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    localStorage.removeItem(STORAGE_KEYS.ROLE);
+    localStorage.removeItem(STORAGE_KEYS.MODULOS);
+    localStorage.removeItem(STORAGE_KEYS.PERMISOS);
+    setUser(null);
+    setLoggedIn(false);
+    setRoleState("voluntario");
+    setModulos([]);
+    setPermisos([]);
+  }, []);
+
+  const isUnauthorized = useCallback((err: unknown) => {
+    return err instanceof ApiError && err.status === 401;
+  }, []);
+
   const loadModulos = useCallback(async () => {
     try {
       const mods = await getMisModulos();
       const list = Array.isArray(mods) ? mods : [];
       setModulos(list);
       localStorage.setItem(STORAGE_KEYS.MODULOS, JSON.stringify(list));
-    } catch {
+    } catch (err) {
+      if (isUnauthorized(err)) {
+        logout();
+        return;
+      }
       setModulos([]);
     }
-  }, []);
+  }, [isUnauthorized, logout]);
 
   const loadPermisos = useCallback(async () => {
     try {
@@ -88,48 +113,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const list = Array.isArray(perms) ? perms : [];
       setPermisos(list);
       localStorage.setItem(STORAGE_KEYS.PERMISOS, JSON.stringify(list));
-    } catch {
+    } catch (err) {
+      if (isUnauthorized(err)) {
+        logout();
+        return;
+      }
       setPermisos([]);
     }
-  }, []);
+  }, [isUnauthorized, logout]);
 
   const loadPermisosYModulos = useCallback(async () => {
     await Promise.all([loadModulos(), loadPermisos()]);
   }, [loadModulos, loadPermisos]);
 
+  // Restaurar sesión al recargar usando el refresh token (cookie httpOnly).
   useEffect(() => {
-    const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-    const storedToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
-    const storedRole = localStorage.getItem(STORAGE_KEYS.ROLE) as UserRole | null;
+    let cancelled = false;
 
-    if (storedUser && storedToken) {
-      try {
-        const parsed = JSON.parse(storedUser) as UserData;
-        setUser(parsed);
+    (async () => {
+      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+      if (!storedUser) return;
+
+      const result = await authRefresh();
+      if (cancelled) return;
+
+      if (result.success) {
+        setUser(result.user as UserData);
         setLoggedIn(true);
-        const rawRoles = Array.isArray(parsed.roles) ? (parsed.roles as string[]) : [];
-        const resolvedRole = rawRoles.length
-          ? normalizeRole(rawRoles)
-          : normalizeRole(storedRole ? [storedRole] : parsed.role ? [parsed.role] : []);
+        const resolvedRole = (result.user as UserData).role;
         setRoleState(resolvedRole);
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(result.user));
         localStorage.setItem(STORAGE_KEYS.ROLE, resolvedRole);
         void loadPermisosYModulos();
-      } catch {
+      } else {
         localStorage.removeItem(STORAGE_KEYS.USER);
-        localStorage.removeItem(STORAGE_KEYS.TOKEN);
         localStorage.removeItem(STORAGE_KEYS.ROLE);
         localStorage.removeItem(STORAGE_KEYS.MODULOS);
         localStorage.removeItem(STORAGE_KEYS.PERMISOS);
       }
-    }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadPermisosYModulos]);
+
+  // Cierre de sesión global cuando el apiClient detecta 401 sin poder renovar.
+  useEffect(() => {
+    const handler = () => logout();
+    window.addEventListener("auth:unauthorized", handler);
+    return () => window.removeEventListener("auth:unauthorized", handler);
+  }, [logout]);
 
   const login = useCallback(
     (token: string, userData: UserData) => {
+      tokenStore.set(token);
       const rawRoles = Array.isArray(userData.roles) ? (userData.roles as string[]) : [];
       const resolvedRole = rawRoles.length ? normalizeRole(rawRoles) : normalizeRole([userData.role]);
       const nextUser: UserData = { ...userData, role: resolvedRole };
-      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(nextUser));
       localStorage.setItem(STORAGE_KEYS.ROLE, resolvedRole);
       setUser(nextUser);
@@ -139,19 +180,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [loadPermisosYModulos]
   );
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEYS.TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.USER);
-    localStorage.removeItem(STORAGE_KEYS.ROLE);
-    localStorage.removeItem(STORAGE_KEYS.MODULOS);
-    localStorage.removeItem(STORAGE_KEYS.PERMISOS);
-    setUser(null);
-    setLoggedIn(false);
-    setRoleState("admin");
-    setModulos([]);
-    setPermisos([]);
-  }, []);
 
   return (
     <AuthContext.Provider value={{ user, role, modulos, permisos, loggedIn, login, logout }}>

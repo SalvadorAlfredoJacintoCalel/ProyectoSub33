@@ -176,7 +176,7 @@ export function LibroDonacionesTab() {
               {MESES[mes - 1]} {anio}
             </h2>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <Mini label="Saldo mes anterior" value={formatMoneda(resumen.saldoInicial)} />
             <Mini label="Entradas" value={formatMoneda(resumen.entradas)} />
             <Mini label="Salidas" value={formatMoneda(resumen.salidas)} />
@@ -216,7 +216,8 @@ export function LibroDonacionesTab() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[900px] border-collapse text-sm">
               <thead>
                 <tr style={{ color: "var(--text-3)" }}>
@@ -323,6 +324,38 @@ export function LibroDonacionesTab() {
               </tfoot>
             </table>
           </div>
+
+          <div className="md:hidden space-y-3">
+            {movimientos.map((m) => (
+              <div key={m.movimientoId} className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: "var(--text-1)" }}>{m.descripcion}</p>
+                    <p className="text-xs" style={{ color: "var(--text-3)" }}>{formatFechaCorta(m.fecha)}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-extrabold" style={{ color: "var(--brand-600)" }}>{formatMoneda(m.saldo)}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: "var(--text-2)" }}>
+                  {m.entrada > 0 && <span>Entrada: {formatMoneda(m.entrada)}</span>}
+                  {m.salida > 0 && <span>Salida: {formatMoneda(m.salida)}</span>}
+                  <span className={m.firmado ? "" : ""} style={{ color: m.firmado ? "var(--success-700)" : "var(--text-3)" }}>
+                    {m.firmado ? "Firmado" : "Pendiente"}
+                  </span>
+                </div>
+                {!m.donacionId && !m.vehiculoId && permisosDonaciones.libro && (
+                  <div className="mt-2 flex items-center justify-end gap-1">
+                    <button type="button" className="rounded-lg p-1.5" style={{ color: "var(--text-2)" }} onClick={() => { setEditTarget(m); setModalOpen(true); }} title="Editar">
+                      <Pencil size={14} />
+                    </button>
+                    <button type="button" className="rounded-lg p-1.5" style={{ color: "var(--brand-600)" }} onClick={() => eliminar(m)} title="Eliminar">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 
@@ -493,7 +526,7 @@ function MovimientoModal({
       }
     >
       <form id="movimiento-form" onSubmit={submit} className="flex flex-col gap-3">
-        {!movimiento && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
+        {!movimiento && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Fecha" required>
             <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />

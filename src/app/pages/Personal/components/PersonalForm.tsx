@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { Dispatch, SetStateAction, ElementType } from "react";
-import { Eye, EyeOff, RefreshCw, KeyRound, Shield, ChevronDown, User, Award, Phone, AlertTriangle } from "lucide-react";
+import { RefreshCw, KeyRound, Shield, ChevronDown, User, Award, Phone, AlertTriangle } from "lucide-react";
 import type { FormState, RangoItem, RolItem } from "@/types/personal";
 import { Modal } from "@/app/components/ui/modal";
 import { Input } from "@/app/components/ui/input";
+import { PasswordField } from "@/app/components/ui/PasswordField";
 import { Button } from "@/app/components/ui/button";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 
@@ -26,6 +27,7 @@ interface FormProps {
   onSubmit: () => void;
   draftSavedAt: number | null;
   draftOnline: boolean;
+  draft: FormState | null;
   onDraftDiscard: () => void;
 }
 
@@ -155,28 +157,17 @@ function PasswordInput({
   placeholder?: string;
 }) {
   return (
-    <div className="relative">
-      <Input
-        id={id}
-        type={show ? "text" : "password"}
-        label={label}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        error={error}
-        className="pr-11 font-mono"
-      />
-      <button
-        type="button"
-        onClick={onToggle}
-        tabIndex={-1}
-        title={show ? "Ocultar contraseña" : "Mostrar contraseña"}
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 transition-colors"
-        style={{ color: "var(--text-3)", background: "transparent", border: "none", cursor: "pointer" }}
-      >
-        {show ? <EyeOff size={16} /> : <Eye size={16} />}
-      </button>
-    </div>
+    <PasswordField
+      id={id}
+      label={label}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      error={error}
+      show={show}
+      onToggle={onToggle}
+      className="font-mono"
+    />
   );
 }
 
@@ -199,6 +190,7 @@ export function PersonalForm({
   onSubmit,
   draftSavedAt,
   draftOnline,
+  draft,
   onDraftDiscard,
 }: FormProps) {
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
@@ -263,7 +255,7 @@ export function PersonalForm({
       {/* Error summary */}
       {!editingId && (
         <div className="mb-4">
-          <DraftBanner savedAt={draftSavedAt} online={draftOnline} onDiscard={onDraftDiscard} />
+          <DraftBanner draft={draft} online={draftOnline} onDiscard={onDraftDiscard} />
         </div>
       )}
       {Object.keys(errors).length > 0 && (
@@ -441,6 +433,15 @@ export function PersonalForm({
                 placeholder="Seleccionar rol..."
               />
             </div>
+
+            <Input
+              type="email"
+              label="Correo electrónico *"
+              placeholder="correo@ejemplo.com"
+              value={form.correo}
+              onChange={(e) => setField("correo", e.target.value.trim())}
+              error={errors.correo}
+            />
 
             <div className="flex items-end gap-2">
               <div className="flex-1">

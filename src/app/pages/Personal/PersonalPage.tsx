@@ -333,6 +333,8 @@ export function PersonalPage() {
     let passwordsMismatch = false;
     if (credOpen) {
       if (!form.usuario.trim()) errs.usuario = "Usuario requerido";
+      if (!form.correo.trim()) errs.correo = "Correo requerido";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) errs.correo = "Correo inválido";
       if (!form.rolId) errs.rolId = "Rol del sistema requerido";
       const passwordRequired = !editingId || !editingHasAccess;
       if (passwordRequired && form.contrasena.length < 8) errs.contrasena = "Mínimo 8 caracteres";
@@ -382,6 +384,7 @@ export function PersonalPage() {
       payload.accesoSistema = {
         username: form.usuario,
         password: form.contrasena,
+        email: form.correo,
         rolId: form.rolId,
       };
     }
@@ -405,8 +408,9 @@ export function PersonalPage() {
       const msg = error instanceof Error ? error.message : "Error desconocido";
       const isDuplicateError =
         msg.includes("duplicate") || msg.includes("duplicado") || msg.includes("DPI") ||
-        msg.includes("username") || msg.includes("usuario");
-      toast.error(isDuplicateError ? "El DPI o nombre de usuario ya se encuentra registrado." : msg);
+        msg.includes("username") || msg.includes("usuario") || msg.includes("correo") ||
+        msg.includes("email") || msg.includes("registrado");
+      toast.error(isDuplicateError ? "El DPI, nombre de usuario o correo ya se encuentra registrado." : msg);
     } finally {
       setSaving(false);
     }
@@ -758,6 +762,7 @@ export function PersonalPage() {
         onSubmit={handleSubmit}
         draftSavedAt={savedAt}
         draftOnline={online}
+        draft={draft}
         onDraftDiscard={clear}
       />
 

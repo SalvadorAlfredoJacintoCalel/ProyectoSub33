@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { normalizeRole } from '@/constants/roles'
 import { login } from '@/services/authService'
+import { tokenStore } from '@/services/auth/tokenStore'
 
 describe('normalizeRole', () => {
   it('mapea Administrador (español) a admin', () => {
@@ -35,6 +36,7 @@ describe('normalizeRole', () => {
 
 describe('login (authService)', () => {
   beforeEach(() => {
+    tokenStore.clear()
     const store = new Map<string, string>()
     vi.stubGlobal('localStorage', {
       getItem: (key: string) => store.get(key) ?? null,
@@ -70,7 +72,7 @@ describe('login (authService)', () => {
     expect(result.success).toBe(true)
     expect(result.token).toBe('jwt-token')
     expect(result.user.role).toBe('admin')
-    expect(localStorage.getItem('authToken')).toBe('jwt-token')
+    expect(tokenStore.get()).toBe('jwt-token')
   })
 
   it('devuelve error cuando las credenciales son incorrectas', async () => {

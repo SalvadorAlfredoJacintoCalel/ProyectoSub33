@@ -9,7 +9,7 @@ type BadgeSize = "sm" | "md" | "lg";
 
 const VARIANT_CLASSES: Record<BadgeVariant, string> = {
   default: "bg-[var(--neutral-100)] text-[var(--neutral-700)]",
-  brand: "bg-[var(--grad-primary)] text-white",
+  brand: "bg-[var(--brand-600)] text-white",
   success: "bg-[var(--success-100)] text-[var(--success-700)]",
   warning: "bg-[var(--warning-100)] text-[var(--warning-700)]",
   error: "bg-[var(--brand-100)] text-[var(--brand-700)]",

@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
     public DbSet<ServicioInsumoUtilizado> ServicioInsumosUtilizados { get; set; }
     public DbSet<Donacion> Donaciones { get; set; }
     public DbSet<MaterialDonacion> MaterialesDonacion { get; set; }
+    public DbSet<FinanzaTransaccion> FinanzasTransacciones { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -158,7 +159,12 @@ public class AppDbContext : DbContext
             entity.Property(e => e.PersonalId).HasColumnName("personal_id").HasColumnType("uuid");
             entity.Property(e => e.Username).HasColumnName("username").IsRequired().HasMaxLength(100);
             entity.Property(e => e.PasswordHash).HasColumnName("password_hash").IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(255);
+            entity.Property(e => e.FotoBase64).HasColumnName("foto_base64");
             entity.Property(e => e.Estado).HasColumnName("estado").HasDefaultValue(true);
+            entity.Property(e => e.IntentosFallidos).HasColumnName("intentos_fallidos").HasDefaultValue(0);
+            entity.Property(e => e.Bloqueada).HasColumnName("bloqueada").HasDefaultValue(false);
+            entity.Property(e => e.DebeCambiarContrasena).HasColumnName("debe_cambiar_contrasena").HasDefaultValue(false);
             entity.Property(e => e.UltimoLogin).HasColumnName("ultimo_login").HasColumnType("timestamp with time zone");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -400,6 +406,25 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Cantidad).HasColumnName("cantidad").IsRequired();
             entity.Property(e => e.ValorEstimado).HasColumnName("valor_estimado").HasColumnType("numeric(12,2)");
             entity.Property(e => e.Categoria).HasColumnName("categoria").HasMaxLength(50);
+        });
+
+        // FinanzaTransaccion
+        modelBuilder.Entity<FinanzaTransaccion>(entity =>
+        {
+            entity.ToTable("finanzas_transacciones");
+            entity.HasKey(e => e.TransaccionId);
+            entity.Property(e => e.TransaccionId).HasColumnName("transaccion_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Tipo).HasColumnName("tipo").IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion").IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Monto).HasColumnName("monto").HasColumnType("numeric(14,2)").IsRequired();
+            entity.Property(e => e.Fecha).HasColumnName("fecha").IsRequired();
+            entity.Property(e => e.Referencia).HasColumnName("referencia").HasMaxLength(100);
+            entity.Property(e => e.ResponsableId).HasColumnName("responsable_id").IsRequired();
+            entity.Property(e => e.ResponsableNombre).HasColumnName("responsable_nombre").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ModuloOrigen).HasColumnName("modulo_origen").HasMaxLength(50);
+            entity.Property(e => e.ReferenciaOrigen).HasColumnName("referencia_origen").HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
         });
     }
 }

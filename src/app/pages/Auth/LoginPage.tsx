@@ -8,7 +8,12 @@ import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
 import imgCrossBadge from "@/imports/DashboardPrincipalDesktop/39b842ab5db9edc3f36b77dcb333e6063de137a7.png";
 import imgCvbLogo from "@/imports/DashboardPrincipalDesktop/382ba90f17ab58630c2735b72b71bff037f7ba87.png";
 import { useAlert } from "@/app/components/ui/AlertSystem";
-import { login as authLogin } from "@/services/authService";
+import {
+  login as authLogin,
+  solicitarRecuperacion,
+  verificarOtp,
+  restablecerContrasena,
+} from "@/services/authService";
 import type { UserRole } from "@/constants/roles";
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -238,30 +243,51 @@ function StepHeader({ title, subtitle }: { title: string; subtitle: string }) {
 }
 
 // Step 1 — Request code
-function ForgotStep({ onSend, onBack }: { onSend: () => void; onBack: () => void }) {
-  const [contact, setContact] = useState("");
-
+function ForgotStep({
+  username,
+  email,
+  onUsernameChange,
+  onEmailChange,
+  onSend,
+  onBack,
+  sending,
+}: {
+  username: string;
+  email: string;
+  onUsernameChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
+  onSend: () => void;
+  onBack: () => void;
+  sending: boolean;
+}) {
   return (
     <form onSubmit={e => { e.preventDefault(); onSend(); }} className="flex flex-col gap-4">
       <StepHeader
         title="RECUPERAR CONTRASEÑA"
-        subtitle="Ingresa tu información para recibir un código de verificación."
+        subtitle="Ingresa tu usuario y correo para recibir un código de verificación."
+      />
+      <IconInput
+        icon={<User size={18} color="#71717a" />}
+        type="text"
+        placeholder="Usuario"
+        value={username}
+        onChange={e => onUsernameChange(e.target.value)}
       />
       <IconInput
         icon={<Mail size={18} color="#71717a" />}
-        type="text"
-        placeholder="Correo institucional o teléfono"
-        value={contact}
-        onChange={e => setContact(e.target.value)}
+        type="email"
+        placeholder="Correo electrónico"
+        value={email}
+        onChange={e => onEmailChange(e.target.value)}
       />
-      <RedButton icon={<Mail size={18} color="white" strokeWidth={2.5} />} label="ENVIAR CÓDIGO" />
+      <RedButton icon={<Mail size={18} color="white" strokeWidth={2.5} />} label={sending ? "ENVIANDO..." : "ENVIAR CÓDIGO"} disabled={sending} />
       <BackLink onClick={onBack} />
     </form>
   );
 }
 
 // Step 2 — OTP verify
-function VerifyStep({ onVerify, onBack }: { onVerify: () => void; onBack: () => void }) {
+function VerifyStep({ onVerify, onBack, onResend, verifying, resending }: { onVerify: (codigo: string) => void; onBack: () => void; onResend: () => void; verifying: boolean; resending: boolean }) {
   const [otp, setOtp] = useState(Array<string>(6).fill(""));
   const refs = useRef<Array<HTMLInputElement | null>>(Array(6).fill(null));
 
@@ -293,10 +319,10 @@ function VerifyStep({ onVerify, onBack }: { onVerify: () => void; onBack: () => 
   }
 
   return (
-    <form onSubmit={e => { e.preventDefault(); onVerify(); }} className="flex flex-col gap-5">
+    <form onSubmit={e => { e.preventDefault(); onVerify(otp.join("")); }} className="flex flex-col gap-5">
       <StepHeader
         title="VERIFICAR CÓDIGO"
-        subtitle="Ingresa el código de 6 dígitos enviado a tu correo o teléfono."
+        subtitle="Ingresa el código de 6 dígitos enviado a tu correo."
       />
 
       {/* OTP boxes */}
@@ -321,7 +347,7 @@ function VerifyStep({ onVerify, onBack }: { onVerify: () => void; onBack: () => 
         ))}
       </div>
 
-      <RedButton icon={<KeyRound size={18} color="white" strokeWidth={2.5} />} label="VERIFICAR CÓDIGO" />
+      <RedButton icon={<KeyRound size={18} color="white" strokeWidth={2.5} />} label={verifying ? "VERIFICANDO..." : "VERIFICAR CÓDIGO"} disabled={verifying} />
 
       {/* Resend */}
       <div className="text-center">
@@ -330,12 +356,13 @@ function VerifyStep({ onVerify, onBack }: { onVerify: () => void; onBack: () => 
         </span>
         <button
           type="button"
-          onClick={() => setOtp(Array<string>(6).fill(""))}
-          className="font-bold text-[13px] text-[#c11d1d] hover:text-[#a61818] inline-flex items-center gap-1 transition-colors"
+          onClick={onResend}
+          disabled={resending}
+          className="font-bold text-[13px] text-[#c11d1d] hover:text-[#a61818] inline-flex items-center gap-1 transition-colors disabled:opacity-60"
           style={{ fontFamily: "Inter, sans-serif" }}
         >
           <RotateCcw size={12} />
-          Reenviar
+          {resending ? "Reenviando..." : "Reenviar"}
         </button>
       </div>
 
@@ -345,7 +372,7 @@ function VerifyStep({ onVerify, onBack }: { onVerify: () => void; onBack: () => 
 }
 
 // Step 3 — New password
-function ResetStep({ onReset, onBack }: { onReset: () => void; onBack: () => void }) {
+function ResetStep({ onReset, onBack, resetting }: { onReset: (nueva: string) => void; onBack: () => void; resetting: boolean }) {
   const [newPwd, setNewPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -364,8 +391,10 @@ function ResetStep({ onReset, onBack }: { onReset: () => void; onBack: () => voi
     );
   }
 
+  const mismatch = newPwd !== confirmPwd;
+
   return (
-    <form onSubmit={e => { e.preventDefault(); onReset(); }} className="flex flex-col gap-4">
+    <form onSubmit={e => { e.preventDefault(); if (!mismatch && newPwd) onReset(newPwd); }} className="flex flex-col gap-4">
       <StepHeader
         title="NUEVA CONTRASEÑA"
         subtitle="Crea una nueva contraseña para tu cuenta."
@@ -389,7 +418,13 @@ function ResetStep({ onReset, onBack }: { onReset: () => void; onBack: () => voi
         rightSlot={<EyeBtn show={showConfirm} toggle={() => setShowConfirm(v => !v)} />}
       />
 
-      <RedButton icon={<KeyRound size={18} color="white" strokeWidth={2.5} />} label="CAMBIAR CONTRASEÑA" />
+      {mismatch && (
+        <p className="text-[12px] text-[#c11d1d]" style={{ fontFamily: "Inter, sans-serif" }}>
+          Las contraseñas no coinciden.
+        </p>
+      )}
+
+      <RedButton icon={<KeyRound size={18} color="white" strokeWidth={2.5} />} label={resetting ? "CAMBIANDO..." : "CAMBIAR CONTRASEÑA"} disabled={resetting || mismatch || !newPwd} />
       <BackLink onClick={onBack} />
     </form>
   );
@@ -458,24 +493,75 @@ export function LoginPage({ onLogin }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [recovUser, setRecovUser] = useState("");
+  const [recovEmail, setRecovEmail] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resending, setResending] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    const result = await authLogin(username, password);
+    const result = await authLogin(username, password, rememberMe);
     setSubmitting(false);
 
     if (result.success) {
       onLogin(result.token, result.user);
     } else {
-      const msg = (result.error || "").toLowerCase();
-      if (msg.includes("desactivada") || msg.includes("no cuenta")) {
-        toast.error("Este usuario no cuenta con usuario para ingresar al sistema");
-      } else if (msg.includes("incorrectas")) {
-        toast.error("Credenciales incorrectas, verifique su información");
-      } else {
-        toast.error(result.error || "Error de conexión");
-      }
+      toast.error("Credenciales incorrectas, por favor verifique su información");
+    }
+  }
+
+  async function handleForgot() {
+    if (!recovUser.trim() || !recovEmail.trim()) {
+      toast.error("Ingresa tu usuario y correo electrónico.");
+      return;
+    }
+    setSending(true);
+    const result = await solicitarRecuperacion(recovUser.trim(), recovEmail.trim());
+    setSending(false);
+    if (result.success) {
+      toast.success("Código enviado correctamente, verifique su correo.");
+      setStep("verify");
+    } else {
+      toast.error("Información incorrecta, verifique sus datos.");
+    }
+  }
+
+  async function handleResend() {
+    setResending(true);
+    const result = await solicitarRecuperacion(recovUser.trim(), recovEmail.trim());
+    setResending(false);
+    if (result.success) {
+      toast.success("Código enviado correctamente, verifique su correo.");
+    } else {
+      toast.error("Información incorrecta, verifique sus datos.");
+    }
+  }
+
+  async function handleVerify(codigo: string) {
+    setVerifying(true);
+    const result = await verificarOtp(recovUser.trim(), recovEmail.trim(), codigo);
+    setVerifying(false);
+    if (result.success && result.resetToken) {
+      setResetToken(result.resetToken);
+      setStep("reset");
+    } else {
+      toast.error(result.error || "Código inválido o expirado.");
+    }
+  }
+
+  async function handleReset(nueva: string) {
+    setResetting(true);
+    const result = await restablecerContrasena(resetToken, nueva);
+    setResetting(false);
+    if (result.success) {
+      toast.success("Contraseña actualizada correctamente.");
+      setStep("success");
+    } else {
+      toast.error(result.error || "No se pudo restablecer la contraseña.");
     }
   }
 
@@ -574,21 +660,30 @@ export function LoginPage({ onLogin }: Props) {
 
         {step === "forgot" && (
           <ForgotStep
-            onSend={() => setStep("verify")}
+            username={recovUser}
+            email={recovEmail}
+            onUsernameChange={setRecovUser}
+            onEmailChange={setRecovEmail}
+            sending={sending}
+            onSend={handleForgot}
             onBack={() => setStep("login")}
           />
         )}
 
         {step === "verify" && (
           <VerifyStep
-            onVerify={() => setStep("reset")}
+            verifying={verifying}
+            resending={resending}
+            onVerify={handleVerify}
+            onResend={handleResend}
             onBack={() => setStep("forgot")}
           />
         )}
 
         {step === "reset" && (
           <ResetStep
-            onReset={() => setStep("success")}
+            resetting={resetting}
+            onReset={handleReset}
             onBack={() => setStep("verify")}
           />
         )}

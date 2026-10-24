@@ -13,6 +13,7 @@ import {
 import { EmergenciasPage } from "@/app/pages/Emergencias/EmergenciasPage";
 import { ProfilePage } from "@/app/pages/Perfil/ProfilePage";
 import { LoginPage } from "@/app/pages/Auth/LoginPage";
+import { ForzarCambioContrasena } from "@/app/pages/Auth/ForzarCambioContrasena";
 import { InventarioPage } from "@/app/pages/Inventario/InventarioPage";
 import { VehiculosPage } from "@/app/pages/Vehiculos/VehiculosPage";
 import { FinanzasPage } from "@/app/pages/Finanzas/FinanzasPage";
@@ -28,6 +29,7 @@ import {
 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
+import { subirFoto } from "@/services/authService";
 
 // ─── Theme colors (light mode only) ──────────────────────────────────────────
 
@@ -174,11 +176,6 @@ function AppContent() {
   const dropRef     = useRef<HTMLDivElement>(null);
   const avatarInput = useRef<HTMLInputElement>(null);
 
-  const [profileForm, setProfileForm] = useState({
-    nombre: "Carlos", apellido: "García Soc",
-    email: "c.garcia@bomberos33.gt", password: "", confirmPassword: "",
-  });
-
   const sidebarW = sidebarCollapsed ? 72 : 256;
   const effectiveCollapsed = sidebarCollapsed && !isMobile;
   const navItems = ALL_NAV.filter(n => n.id === "bienvenida" || modulos.includes(n.id));
@@ -223,8 +220,29 @@ function AppContent() {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
+  // Cargar la foto de perfil del usuario autenticado
+  useEffect(() => {
+    setAvatarUrl(user?.fotoBase64 ?? null);
+  }, [user]);
+
+  function handleAvatarBase64(base64: string) {
+    setAvatarUrl(base64);
+    void subirFoto(base64);
+  }
+
+  function handleAvatarSelected(file: File) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => handleAvatarBase64(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
   if (!loggedIn) {
     return <LoginPage onLogin={login} />;
+  }
+
+  if (user?.debeCambiarContrasena) {
+    return <ForzarCambioContrasena onCompletado={logout} />;
   }
 
   const nombreCompleto = (user?.name || "").trim() || user?.username || "Usuario";
@@ -294,7 +312,7 @@ function AppContent() {
           {navItems.map(({ id, label, icon }) => {
             const active = activeNav === id;
             return (
-              <button key={id} onClick={() => { setActiveNav(id); setMobileSidebarOpen(false); }}
+              <button key={id} onClick={() => { setActiveNav(id); setMobileSidebarOpen(false); setProfileOpen(false); }}
                 className={`w-full flex items-center rounded-lg transition-all duration-150 hover:scale-[1.02] ${active ? "animate-nav-active-pulse" : ""} ${effectiveCollapsed ? "justify-center py-3" : "gap-3 px-3 py-2.5 hover:translate-x-0.5"}`}
                 style={active ? { background: "var(--grad-primary)" } : undefined}
                 onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}
@@ -412,12 +430,11 @@ function AppContent() {
                       <Camera style={{ width: 14, height: 14, color: "#fff" }} />
                     </button>
                     <input ref={avatarInput} type="file" accept="image/*" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) setAvatarUrl(URL.createObjectURL(f)); }} />
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleAvatarSelected(f); }} />
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-[14px] leading-tight truncate" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>{userName}</p>
                     <p className="text-[11px] mt-0.5 font-semibold" style={{ fontFamily: "Inter, sans-serif", color: C.red }}>{ROLE_LABELS[role]}</p>
-                    <p className="text-[10px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{profileForm.email}</p>
                   </div>
                 </div>
 
@@ -448,7 +465,13 @@ function AppContent() {
 
         {/* ── Profile page overlay ── */}
         {profileOpen && (
-          <ProfilePage onClose={() => setProfileOpen(false)} profileForm={profileForm} setProfileForm={setProfileForm} />
+          <ProfilePage
+            onClose={() => setProfileOpen(false)}
+            userName={userName}
+            avatarUrl={avatarUrl}
+            onAvatarSave={handleAvatarBase64}
+            personalId={user?.personalId ?? null}
+          />
         )}
 
         {/* ── Module pages ── */}

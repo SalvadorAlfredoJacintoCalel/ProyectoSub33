@@ -97,6 +97,7 @@ public class DonacionesController : ApiControllerBase
     }
 
     [HttpRequirePermission("donaciones.eliminar")]
+    [HttpRequireRole("Administrador")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteDonacion(int id)
         => Respond(await _donacionService.DeleteAsync(id), "Donación eliminada correctamente.");

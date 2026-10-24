@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Net.Mail;
 using Backend_Sub33.Common;
 using Backend_Sub33.Data;
 using Backend_Sub33.DTOs.Personal;
@@ -206,6 +207,7 @@ public partial class PersonalService : IPersonalService
 
             string? username = null;
             string? passwordHash = null;
+            string? email = null;
             int rolId = 0;
 
             if (dto.AccesoSistema is not null)
@@ -221,6 +223,17 @@ public partial class PersonalService : IPersonalService
                     return ServiceResult<PersonalResponseDto>.BadRequest("La contraseña debe tener al menos 8 caracteres.");
                 }
 
+                email = dto.AccesoSistema.Email.Trim().ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    return ServiceResult<PersonalResponseDto>.BadRequest("El correo electrónico es requerido.");
+                }
+
+                if (!EsEmailValido(email))
+                {
+                    return ServiceResult<PersonalResponseDto>.BadRequest("El correo electrónico no es válido.");
+                }
+
                 if (dto.AccesoSistema.RolId <= 0)
                 {
                     return ServiceResult<PersonalResponseDto>.BadRequest("El rol del sistema es requerido.");
@@ -230,6 +243,12 @@ public partial class PersonalService : IPersonalService
                 if (usuarioExiste)
                 {
                     return ServiceResult<PersonalResponseDto>.Conflict("El nombre de usuario ya existe.");
+                }
+
+                var emailExiste = await _context.Usuarios.AnyAsync(u => u.Email != null && u.Email.ToLower() == email, ct);
+                if (emailExiste)
+                {
+                    return ServiceResult<PersonalResponseDto>.Conflict("El correo electrónico ya está registrado.");
                 }
 
                 var rolExiste = await _context.Roles.AnyAsync(r => r.RolId == dto.AccesoSistema.RolId, ct);
@@ -288,6 +307,8 @@ public partial class PersonalService : IPersonalService
                         PersonalId = personal.PersonalId,
                         Username = username.ToLower(),
                         PasswordHash = passwordHash!,
+                        Email = email,
+                        DebeCambiarContrasena = true,
                         Estado = dto.Estado,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
@@ -493,6 +514,7 @@ public partial class PersonalService : IPersonalService
 
             string? accessUsername = null;
             string? accessPasswordHash = null;
+            string? accessEmail = null;
             var accessRolId = 0;
 
             if (dto.AccesoSistema is not null)
@@ -501,6 +523,17 @@ public partial class PersonalService : IPersonalService
                 if (string.IsNullOrWhiteSpace(accessUsername))
                 {
                     return ServiceResult<PersonalResponseDto>.BadRequest("El nombre de usuario es requerido.");
+                }
+
+                accessEmail = dto.AccesoSistema.Email.Trim().ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(accessEmail))
+                {
+                    return ServiceResult<PersonalResponseDto>.BadRequest("El correo electrónico es requerido.");
+                }
+
+                if (!EsEmailValido(accessEmail))
+                {
+                    return ServiceResult<PersonalResponseDto>.BadRequest("El correo electrónico no es válido.");
                 }
 
                 accessRolId = dto.AccesoSistema.RolId;
@@ -520,6 +553,13 @@ public partial class PersonalService : IPersonalService
                 if (usernameOcupado)
                 {
                     return ServiceResult<PersonalResponseDto>.Conflict("El nombre de usuario ya existe.");
+                }
+
+                var emailOcupado = await _context.Usuarios.AnyAsync(
+                    u => u.Email != null && u.Email.ToLower() == accessEmail && u.PersonalId != id, ct);
+                if (emailOcupado)
+                {
+                    return ServiceResult<PersonalResponseDto>.Conflict("El correo electrónico ya está registrado.");
                 }
 
                 var usuarioActual = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == id, ct);
@@ -565,6 +605,8 @@ public partial class PersonalService : IPersonalService
                             PersonalId = id,
                             Username = accessUsername.ToLower(),
                             PasswordHash = accessPasswordHash!,
+                            Email = accessEmail,
+                            DebeCambiarContrasena = true,
                             Estado = personal.Estado,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
@@ -583,6 +625,7 @@ public partial class PersonalService : IPersonalService
                     else
                     {
                         usuario.Username = accessUsername.ToLower();
+                        usuario.Email = accessEmail;
                         if (accessPasswordHash is not null)
                         {
                             usuario.PasswordHash = accessPasswordHash;
@@ -666,7 +709,7 @@ public partial class PersonalService : IPersonalService
         }
     }
 
-    public async Task<ServiceResult> ActualizarAccesoSistemaAsync(Guid personalId, string username, string password, int rolId, CancellationToken ct = default)
+    public async Task<ServiceResult> ActualizarAccesoSistemaAsync(Guid personalId, string username, string password, string? email, int rolId, CancellationToken ct = default)
     {
         try
         {
@@ -687,6 +730,24 @@ public partial class PersonalService : IPersonalService
                 usuario.Username = username.ToLower();
             }
 
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                if (!EsEmailValido(email))
+                {
+                    return ServiceResult.BadRequest("El correo electrónico no es válido.");
+                }
+
+                var emailNormalizado = email.Trim().ToLowerInvariant();
+                var emailExiste = await _context.Usuarios.AnyAsync(
+                    u => u.Email != null && u.Email.ToLower() == emailNormalizado && u.UsuarioId != usuario.UsuarioId, ct);
+                if (emailExiste)
+                {
+                    return ServiceResult.Conflict("El correo electrónico ya está registrado.");
+                }
+
+                usuario.Email = emailNormalizado;
+            }
+
             if (!string.IsNullOrWhiteSpace(password))
             {
                 if (password.Length < 8)
@@ -695,6 +756,7 @@ public partial class PersonalService : IPersonalService
                 }
 
                 usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+                usuario.DebeCambiarContrasena = true;
             }
 
             usuario.UpdatedAt = DateTime.UtcNow;
@@ -840,6 +902,7 @@ public partial class PersonalService : IPersonalService
                 {
                     UsuarioId = usuario.UsuarioId,
                     Username = usuario.Username,
+                    Email = usuario.Email,
                     Estado = usuario.Estado,
                     RolId = rolPrincipal?.RolId,
                     Rol = rolPrincipal?.Rol?.Nombre
@@ -849,4 +912,7 @@ public partial class PersonalService : IPersonalService
 
     [GeneratedRegex(DpiPattern)]
     private static partial Regex DpiRegex();
+
+    private static bool EsEmailValido(string email) =>
+        MailAddress.TryCreate(email, out _);
 }

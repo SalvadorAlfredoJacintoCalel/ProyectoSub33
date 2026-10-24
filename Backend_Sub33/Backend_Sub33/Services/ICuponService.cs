@@ -11,4 +11,7 @@ public interface ICuponService
     Task<ServiceResult<VehiculoCuponDto>> CreateAsync(CuponCreateDto dto);
     Task<ServiceResult<VehiculoCuponDto>> UpdateAsync(int id, CuponUpdateDto dto);
     Task<ServiceResult> DeleteAsync(int id);
+    Task<ServiceResult> DesactivarAsync(int id, string usuarioNombre);
+    Task<ServiceResult> ReactivarAsync(int id, string usuarioNombre);
+    Task<ServiceResult> HardDeleteAsync(int id, string usuarioNombre);
 }

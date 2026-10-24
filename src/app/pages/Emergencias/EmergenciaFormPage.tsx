@@ -653,7 +653,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
             gap: 20,
           }}
         >
-          {!isEdit && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
+          {!isEdit && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
 
           {/* 1. Código de Emergencia */}
           <section>

@@ -11,4 +11,6 @@ public class AuthResponseDto
     public string Mensaje { get; set; } = string.Empty;
     public Guid UsuarioId { get; set; }
     public Guid? PersonalId { get; set; }
+    public string? FotoBase64 { get; set; }
+    public bool DebeCambiarContrasena { get; set; }
 }

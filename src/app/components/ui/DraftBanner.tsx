@@ -3,13 +3,13 @@
 import { Trash2, CloudOff, Check } from "lucide-react";
 
 interface DraftBannerProps {
-  savedAt: number | null;
+  draft: unknown | null;
   online: boolean;
   onDiscard: () => void;
 }
 
-export function DraftBanner({ savedAt, online, onDiscard }: DraftBannerProps) {
-  if (savedAt === null && online) return null;
+export function DraftBanner({ draft, online, onDiscard }: DraftBannerProps) {
+  if (online && draft === null) return null;
 
   return (
     <div

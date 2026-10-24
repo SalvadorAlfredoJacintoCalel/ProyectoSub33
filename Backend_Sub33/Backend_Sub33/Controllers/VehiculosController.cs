@@ -147,6 +147,7 @@ public class VehiculosController : ApiControllerBase
     }
 
     [HttpRequirePermission("vehiculos.mantenimientos.eliminar")]
+    [HttpRequireRole("Administrador")]
     [HttpDelete("mantenimientos/{id:int}")]
     public async Task<IActionResult> DeleteMantenimiento(int id)
         => Respond(await _vehiculoService.DeleteMantenimientoAsync(id), "Mantenimiento eliminado correctamente.");

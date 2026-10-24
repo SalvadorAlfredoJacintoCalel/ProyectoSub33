@@ -9,4 +9,6 @@ public class LoginDto
 
     [Required(ErrorMessage = "La contraseña es requerida")]
     public string Password { get; set; } = string.Empty;
+
+    public bool Recordar { get; set; }
 }

@@ -27,6 +27,8 @@ builder.Services.AddScoped<IDonacionService, DonacionService>();
 builder.Services.AddScoped<IVehiculoService, VehiculoService>();
 builder.Services.AddScoped<ICuponService, CuponService>();
 builder.Services.AddScoped<IDonacionLibroService, DonacionLibroService>();
+builder.Services.AddScoped<IFinanzasService, FinanzasService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Dapper: mapear columnas snake_case (servicio_id) a propiedades PascalCase (ServicioId)
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -39,7 +41,8 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 // 2. Configurar Autenticación JWT
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "ClaveSecretaSuperSeguraDe32Caracteres!";
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Falta Jwt:Key en la configuración.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -47,8 +50,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = false,
-            ValidateAudience = false
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
 
@@ -62,18 +69,21 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(x => x.CustomSchemaIds(type => type.FullName));
 
-// 3. Política CORS (AllowAll para desarrollo)
+// 3. Política CORS (orígenes del frontend, con credenciales para cookies)
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:5173", "http://127.0.0.1:5173" };
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowApp", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
-// 4. Rate limiting (login): 5 intentos por minuto, cola de 2
+// 4. Rate limiting: login (5/min) y recuperación de contraseña (5 por 5 min)
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("LoginPolicy", opt =>
@@ -82,6 +92,14 @@ builder.Services.AddRateLimiter(options =>
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 2;
+    });
+
+    options.AddFixedWindowLimiter("RecuperacionPolicy", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(5);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 1;
     });
 });
 
@@ -99,7 +117,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+app.UseCors("AllowApp");
 
 // Importante: Authentication SIEMPRE va antes de Authorization
 app.UseAuthentication();

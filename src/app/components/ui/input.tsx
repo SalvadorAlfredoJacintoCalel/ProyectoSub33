@@ -17,6 +17,8 @@ interface InputProps extends React.ComponentProps<"input"> {
   endIcon?: React.ReactNode;
   containerClassName?: string;
   variant?: "default" | "glass";
+  validate?: (value: string) => string | null;
+  validateNumeric?: boolean;
 }
 
 function Input({
@@ -32,14 +34,32 @@ function Input({
   placeholder,
   containerClassName,
   variant = "default",
+  validate,
+  validateNumeric,
+  onChange,
+  value,
   ...props
 }: InputProps) {
   const reactId = React.useId();
   const resolvedId = id ?? reactId;
   const hintId = hint ? `${resolvedId}-hint` : undefined;
-  const errorId = error ? `${resolvedId}-error` : undefined;
+  const resolvedError = error ?? (validate && value !== undefined ? validate(String(value)) : undefined);
+  const errorId = resolvedError ? `${resolvedId}-error` : undefined;
 
-  const borderState = error
+  const handleChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!validateNumeric) {
+        onChange?.(e);
+        return;
+      }
+      const cleaned = e.target.value.replace(/\D/g, "");
+      const next = { ...e, target: { ...e.target, value: cleaned } };
+      onChange?.(next as React.ChangeEvent<HTMLInputElement>);
+    },
+    [validateNumeric, onChange]
+  );
+
+  const borderState = resolvedError
     ? "border-[var(--brand-500)] focus:border-[var(--brand-500)]"
     : success
       ? "border-[var(--success-500)] focus:border-[var(--success-500)]"
@@ -54,7 +74,7 @@ function Input({
     <div className={cn("w-full", containerClassName)}>
       <motion.div
         className="relative"
-        animate={error ? { x: SHAKE_KEYFRAMES } : { x: 0 }}
+        animate={resolvedError ? { x: SHAKE_KEYFRAMES } : { x: 0 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
       >
         {startIcon && (
@@ -66,8 +86,10 @@ function Input({
           type={type}
           id={resolvedId}
           data-slot="input"
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : hintId}
+          aria-invalid={resolvedError ? true : undefined}
+          aria-describedby={resolvedError ? errorId : hintId}
+          value={value}
+          onChange={handleChange}
           className={cn(
             "peer block h-11 w-full rounded-lg border text-sm text-[var(--text-1)] outline-none",
             backgroundState,
@@ -76,7 +98,7 @@ function Input({
             label ? "px-3.5 pb-1 pt-4" : "px-3.5 py-2",
             startIcon && "pl-10",
             endIcon && "pr-10",
-            success && !error && !endIcon && "pr-10",
+            success && !resolvedError && !endIcon && "pr-10",
             "placeholder:text-[var(--text-3)]",
             "disabled:cursor-not-allowed disabled:opacity-70 disabled:bg-[var(--bg-hover)]",
             className,
@@ -93,7 +115,7 @@ function Input({
               "peer-focus:-translate-y-6 peer-focus:scale-75 peer-focus:text-[var(--brand-600)]",
               "peer-[:not(:placeholder-shown)]:-translate-y-6 peer-[:not(:placeholder-shown)]:scale-75 peer-[:not(:placeholder-shown)]:text-[var(--text-2)]",
               startIcon && "left-10",
-              error &&
+              resolvedError &&
                 "peer-focus:text-[var(--brand-500)] peer-[:not(:placeholder-shown)]:text-[var(--brand-500)]",
               success &&
                 "peer-focus:text-[var(--success-500)] peer-[:not(:placeholder-shown)]:text-[var(--success-500)]",
@@ -102,7 +124,7 @@ function Input({
             {label}
           </label>
         )}
-        {success && !error && !endIcon && (
+        {success && !resolvedError && !endIcon && (
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--success-500)] animate-scale-in">
             <CheckCircle2 className="size-4" />
           </span>
@@ -113,12 +135,12 @@ function Input({
           </span>
         )}
       </motion.div>
-      {error ? (
+      {resolvedError ? (
         <p
           id={errorId}
           className="mt-1.5 flex items-center gap-1 text-xs font-medium text-[var(--brand-600)] animate-slide-up"
         >
-          {error}
+          {resolvedError}
         </p>
       ) : hint ? (
         <p

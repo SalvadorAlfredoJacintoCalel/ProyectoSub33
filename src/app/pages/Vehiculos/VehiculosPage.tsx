@@ -452,7 +452,7 @@ export function VehiculosPage() {
         </div>
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-3">
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Unidades"
           value={String(resumen.total)}
@@ -584,7 +584,7 @@ function KpiCard({
     <button
       type="button"
       onClick={onClick}
-      className="flex min-w-[160px] flex-1 items-center gap-3 rounded-2xl px-4 py-3 text-left transition-transform hover:-translate-y-0.5"
+      className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-transform hover:-translate-y-0.5"
       style={{
         ...CARD_STYLE,
         cursor: "pointer",

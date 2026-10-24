@@ -191,7 +191,7 @@ export function DataTable<T>({
       {toolbar && <div className="flex flex-wrap items-center gap-3">{toolbar}</div>}
 
       <div
-        className="overflow-auto rounded-2xl border bg-[var(--bg-card)] shadow-[var(--shadow)]"
+        className="hidden md:block overflow-auto rounded-2xl border bg-[var(--bg-card)] shadow-[var(--shadow)]"
         style={{ borderColor: "var(--border)", maxHeight }}
       >
         <Table className="max-md:min-w-[720px]">
@@ -300,9 +300,48 @@ export function DataTable<T>({
         </Table>
       </div>
 
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={`mobile-skeleton-${i}`} className="h-24 w-full rounded-2xl" />
+          ))
+        ) : rows.length === 0 ? (
+          <EmptyState icon={emptyIcon} title={emptyTitle} description={emptyDescription} action={emptyAction} />
+        ) : (
+          rows.map((row) => (
+            <div
+              key={getRowKey(row)}
+              className="rounded-xl border p-3"
+              style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
+              onClick={() => onRowClick?.(row)}
+            >
+              {columns.map((col) => (
+                <div key={col.key} className="flex items-start justify-between gap-3 py-1 text-sm">
+                  <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+                    {col.header}
+                  </span>
+                  <span className="text-right" style={{ color: "var(--text-1)" }}>
+                    {col.cell(row)}
+                  </span>
+                </div>
+              ))}
+              {selectable && (
+                <div className="pt-2" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedKeys?.has(getRowKey(row)) ?? false}
+                    onChange={() => toggleRow(getRowKey(row))}
+                    className="h-4 w-4 cursor-pointer accent-[var(--brand-600)]"
+                  />
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
       {!loading && totalItems > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-sm" style={{ color: "var(--text-2)" }}>
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-sm" style={{ color: "var(--text-2)" }}>          <div className="flex items-center gap-3">
             <span className="text-xs">
               Mostrando {start}–{end} de {totalItems} registro{totalItems !== 1 ? "s" : ""}
             </span>

@@ -5,3 +5,7 @@ bin/
 obj/
 
 .env
+
+# Secretos locales (correo/contraseña SMTP) — NO subir a git
+Backend_Sub33/Backend_Sub33/appsettings.Development.json
+

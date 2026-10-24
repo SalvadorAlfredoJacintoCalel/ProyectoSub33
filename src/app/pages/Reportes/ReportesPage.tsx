@@ -1722,7 +1722,7 @@ function UsuariosTab() {
             </div>
 
             <div className="px-6 py-5 space-y-4">
-              <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />
+              <DraftBanner draft={draft} online={online} onDiscard={clear} />
               <div>
                 <label className="block text-xs font-medium text-[var(--text-2)] mb-1">
                   Nombre Completo

@@ -73,7 +73,7 @@ export function personalResponseToForm(p: PersonalResponse): FormState {
     contactoEmergencia: p.contactoEmergenciaNombre ?? "",
     telEmergencia: p.contactoEmergenciaTelefono ?? "",
     usuario: p.usuario?.username ?? "",
-    correo: "",
+    correo: p.usuario?.email ?? "",
     contrasena: "",
     confirmarContrasena: "",
     rolId: p.usuario?.rolId ?? 0,

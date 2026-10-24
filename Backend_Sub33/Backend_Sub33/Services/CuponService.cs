@@ -57,9 +57,9 @@ public class CuponService : ICuponService
                c.fecha, c.responsable, c.kilometraje, c.galonaje, c.comision_no,
                c.gasolinera_id, g.nombre AS gasolinera_nombre, c.cupon_del, c.cupon_al,
                c.total_cupones, c.valor_cupon, c.haber,
-               (c.firma_base64 IS NOT NULL) AS firmado, c.firma_base64, c.saldo,
-               c.observaciones
-        FROM vehiculo_cupones c
+                (c.firma_base64 IS NOT NULL) AS firmado, c.firma_base64, c.saldo,
+                c.observaciones, c.activo, c.eliminado_en, c.eliminado_por_nombre
+         FROM vehiculo_cupones c
         INNER JOIN vehiculo_cupones_periodos p ON p.periodo_id = c.periodo_id
         LEFT JOIN vehiculos v ON v.vehiculo_id = c.vehiculo_id
         LEFT JOIN cat_tipos_vehiculo t ON t.tipo_vehiculo_id = v.tipo_id
@@ -336,6 +336,9 @@ public class CuponService : ICuponService
     }
 
     public async Task<ServiceResult> DeleteAsync(int id)
+        => await DesactivarAsync(id, "Sistema");
+
+    public async Task<ServiceResult> DesactivarAsync(int id, string usuarioNombre)
     {
         using var connection = AbrirConexion();
         using var transaction = connection.BeginTransaction();
@@ -343,11 +346,15 @@ public class CuponService : ICuponService
         try
         {
             var afectados = await connection.ExecuteAsync(
-                "DELETE FROM vehiculo_cupones WHERE registro_id = @Id",
-                new { Id = id }, transaction);
+                @"UPDATE vehiculo_cupones 
+                  SET activo = FALSE, 
+                      eliminado_en = NOW(), 
+                      eliminado_por_nombre = @UsuarioNombre
+                  WHERE registro_id = @Id AND activo = TRUE",
+                new { Id = id, UsuarioNombre = usuarioNombre }, transaction);
             if (afectados == 0)
             {
-                return ServiceResult.NotFound("Registro de cupón no encontrado.");
+                return ServiceResult.NotFound("Registro de cupón no encontrado o ya está inactivo.");
             }
 
             await RecalcularTodosAsync(connection, transaction);
@@ -357,7 +364,63 @@ public class CuponService : ICuponService
         catch (Exception ex)
         {
             try { transaction.Rollback(); } catch { }
-            return ServiceResult.Internal($"Error al eliminar el cupón: {ex.Message}");
+            return ServiceResult.Internal($"Error al desactivar el cupón: {ex.Message}");
+        }
+    }
+
+    public async Task<ServiceResult> ReactivarAsync(int id, string usuarioNombre)
+    {
+        using var connection = AbrirConexion();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            var afectados = await connection.ExecuteAsync(
+                @"UPDATE vehiculo_cupones 
+                  SET activo = TRUE, 
+                      eliminado_en = NULL, 
+                      eliminado_por_nombre = NULL
+                  WHERE registro_id = @Id AND activo = FALSE",
+                new { Id = id }, transaction);
+            if (afectados == 0)
+            {
+                return ServiceResult.NotFound("Registro de cupón no encontrado o ya está activo.");
+            }
+
+            await RecalcularTodosAsync(connection, transaction);
+            transaction.Commit();
+            return ServiceResult.Success();
+        }
+        catch (Exception ex)
+        {
+            try { transaction.Rollback(); } catch { }
+            return ServiceResult.Internal($"Error al reactivar el cupón: {ex.Message}");
+        }
+    }
+
+    public async Task<ServiceResult> HardDeleteAsync(int id, string usuarioNombre)
+    {
+        using var connection = AbrirConexion();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            var afectados = await connection.ExecuteAsync(
+                "DELETE FROM vehiculo_cupones WHERE registro_id = @Id AND activo = FALSE",
+                new { Id = id }, transaction);
+            if (afectados == 0)
+            {
+                return ServiceResult.NotFound("Registro no encontrado o debe estar inactivo primero.");
+            }
+
+            await RecalcularTodosAsync(connection, transaction);
+            transaction.Commit();
+            return ServiceResult.Success();
+        }
+        catch (Exception ex)
+        {
+            try { transaction.Rollback(); } catch { }
+            return ServiceResult.Internal($"Error al eliminar permanentemente: {ex.Message}");
         }
     }
 

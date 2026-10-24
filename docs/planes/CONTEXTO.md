@@ -1,6 +1,6 @@
-﻿# ProyectoSub33 — Contexto Completo para IA
+# ProyectoSub33 — Contexto Completo para IA
 
-> Última actualización: **2026-10-22** (limpieza y pulido de este documento: se corrigieron contradicciones, tareas obsoletas y datos desactualizados; ver `docs/LIMPIEZA_CONTEXTO.md`).
+> Última actualización: **2026-10-23** (módulo Finanzas conectado; ver "Historial de Sesiones").
 > Este archivo es la fuente de contexto del proyecto. Mantenerlo actualizado al cerrar cada bloque de trabajo.
 
 ## Índice
@@ -24,10 +24,10 @@
 
 ## Resumen Ejecutivo
 
-- **Módulos conectados a backend:** Auth, Personal, Emergencias, Seguridad/Configuración, Inventario, Donaciones (incluye Libro mensual) y Vehículos (incluye Mantenimientos y Cupones).
-- **Módulos solo UI / datos mock:** Finanzas, Reportes y Perfil.
+- **Módulos conectados a backend:** Auth, Personal, Emergencias, Seguridad/Configuración, Inventario, Donaciones (incluye Libro mensual), Vehículos (incluye Mantenimientos y Cupones) y Finanzas (transacciones + auto-registro Mantenimiento→Gasto y Donaciones→Ingreso).
+- **Módulos solo UI / datos mock:** Reportes y Perfil.
 - **Componente autónomo sin integrar:** Registro Combustible (`src/components/registro-combustible/`, sin backend, no montado en la app; ver sección propia).
-- **Estado de compilación:** `npm run build`, `dotnet build` y `npm run test` (32/32) pasan correctamente al **2026-10-22**.
+- **Estado de compilación:** `npm run build`, `dotnet build` y `npm run test` (61/61) pasan correctamente al **2026-10-23**.
 - **Backend:** debe compilarse y dejarse **detenido** al terminar. Puerto esperado: `5196`. Usar SDK **8** (fijado en `global.json`); con SDK 10 el DLL queda bloqueado por WDAC.
 - **Regla UX clave:** el detalle de un KPI de Vehículos **no abre modal ni tabla**; actualiza las tarjetas de flota en la misma vista.
 - **Regla BD clave:** **nunca** ejecutar `dotnet ef database update`; el esquema se administra con scripts SQL (ver Gotchas).
@@ -89,7 +89,7 @@ ProyectoSub33-main/
 │   │   ├── useCupones.ts
 │   │   ├── usePermisos.ts        # permisos granulares + helpers por módulo
 │   │   └── useFormDraft.ts       # autoguardado de borradores a localStorage
-│   ├── __tests__/                 # Vitest: auth, permisos, cupones, registro-combustible (32 tests)
+│   ├── __tests__/                 # Vitest: auth, permisos, cupones, finanzas, registro-combustible, seguridad-formato (61 tests)
 │   ├── types/                     # api, personal, emergencia, inventario, donacion, vehiculos
 │   ├── constants/                 # roles.ts, navigation.ts
 │   ├── utils/                     # format.ts, formHelpers.ts
@@ -111,19 +111,21 @@ ProyectoSub33-main/
 │
 ├── docs/
 │   ├── permisos_seed.sql          # 47 permisos + asignación Admin/Secretario/Voluntario (idempotente)
-│   ├── LIMPIEZA_CONTEXTO.md       # Registro del pulido de este archivo (2026-10-22)
-│   └── modulos/
-│       ├── inventario/
-│       ├── emergencias/
-│       └── vehiculos/
-│           └── migracion_vehiculos.sql
-├── CONTEXTO.md                    # Este archivo
+│   ├── modulos/
+│   │   ├── inventario/
+│   │   ├── emergencias/
+│   │   └── vehiculos/
+│   │       └── migracion_vehiculos.sql
+│   └── planes/                    # Planes, prompts y docs de proyecto (reorganizados aquí 2026-10-23)
+│       ├── CONTEXTO.md            # Este archivo
+│       ├── README.md
+│       ├── LIMPIEZA_CONTEXTO.md
+│       └── PLAN_*.md / PROMPT_*.md
 ├── global.json                    # Fija SDK .NET 8.0.419 (obligatorio; WDAC bloquea DLLs del SDK 10)
 ├── package.json
 ├── vite.config.ts                 # manualChunks (vendor/pdffjs/charts/ui)
 ├── vitest.config.ts               # Configuración de tests
-├── reset_db.sql
-└── README.md
+└── reset_db.sql
 ```
 
 ---
@@ -139,7 +141,7 @@ ProyectoSub33-main/
 | **Inventario** | `Inventario/*` | `inventarioService.ts`, `useInventario` | `InventarioController` | Conectado. Items, Kardex, Ubicaciones, Servicio-Insumos, KPIs y baja. |
 | **Donaciones** | `Donaciones/DonacionesPage.tsx`, `LibroDonacionesTab.tsx` | `donacionService.ts`, `donacionLibroService.ts`, `useDonaciones`, `useDonacionLibro` | `DonacionesController`, `DonacionLibroController` | Conectado. Registros Material/Monetaria + Libro mensual. |
 | **Vehículos** | `Vehiculos/VehiculosPage.tsx`, `CuponesTab.tsx` | `vehiculosService.ts`, `useVehiculos`, `useCupones` | `VehiculosController`, `CuponesController` | Conectado. Flota, KPIs inline, mantenimientos, cupones e impresión. |
-| **Finanzas** | `Finanzas/FinanzasPage.tsx` | — | — | Solo UI / datos mock. |
+| **Finanzas** | `Finanzas/FinanzasPage.tsx` | `finanzasService.ts`, `useFinanzas` | `FinanzasController` | Conectado. Transacciones (INGRESO/GASTO/DONACION), KPIs, filtros, modal y auto-registro. |
 | **Reportes** | `Reportes/ReportesPage.tsx` | — | — | Solo UI / datos mock. |
 | **Perfil** | `Perfil/ProfilePage.tsx` | — | — | Solo UI. |
 | **Registro Combustible** | `src/components/registro-combustible/` | — | — | Componente autónomo (form + grid 15 col + firmas). No montado en la app; solo cubierto por tests/smoke render. |
@@ -218,6 +220,12 @@ ProyectoSub33-main/
 | `vehiculo_mantenimientos` | Hojas de mantenimiento | `mantenimiento_id` | `vehiculo_id → vehiculos`, `taller_id → cat_talleres` |
 | `vehiculo_cupones_periodos` | Periodos mensuales de cupones | `periodo_id` | `anio`, `mes`; saldos y valores por defecto |
 | `vehiculo_cupones` | Cupones de combustible | `registro_id` | `periodo_id`, `vehiculo_id`, `gasolinera_id`; `firma_base64` PNG Base64 |
+
+### Finanzas
+
+| Tabla | Descripción | PK | FKs / Notas |
+|-------|-------------|----|-------------|
+| `finanzas_transacciones` | Transacciones financieras (INGRESO / GASTO / DONACION) | `transaccion_id` (BIGSERIAL) | `responsable_id → usuarios`; `modulo_origen` (`MANUAL`, `MANTENIMIENTO`, `DONACIONES`) + `referencia_origen`; índice único que evita auto-registros duplicados |
 
 > **Relación clave:** los vehículos pueden estar vinculados a un item de inventario mediante `inventario_items.vehiculo_id`. La fecha de baja del vehículo se lee de `inventario_items.fecha_baja`.
 
@@ -334,6 +342,21 @@ POST   /api/donaciones/libro/movimientos                   → Crear movimiento
 PUT    /api/donaciones/libro/movimientos/{id:int}          → Actualizar movimiento
 DELETE /api/donaciones/libro/movimientos/{id:int}          → Eliminar movimiento
 ```
+
+### Finanzas (`/api/finanzas`) — `[Authorize]`
+
+```
+GET    /api/finanzas?tipo=&fechaDesde=&fechaHasta=&busqueda=&pagina=&tamanio=  → Lista paginada
+GET    /api/finanzas/resumen?desde=&hasta=                 → KPIs (ingresos/gastos/donaciones/balance)
+GET    /api/finanzas/{id:long}                             → Detalle
+POST   /api/finanzas                                       → Crear transacción manual
+PUT    /api/finanzas/{id:long}                             → Actualizar transacción
+DELETE /api/finanzas/{id:long}                             → Eliminar transacción
+POST   /api/finanzas/auto/gasto-mantenimiento              → Auto-registro GASTO desde Mantenimiento
+POST   /api/finanzas/auto/ingreso-donacion                 → Auto-registro DONACION desde Donaciones
+```
+
+> **Auto-registro:** `responsable_id` se resuelve del JWT (`usuario_id`); `responsable_nombre` del `personal` vinculado (fallback username). Índice único `(modulo_origen, referencia_origen, tipo)` evita duplicados.
 
 ### Vehículos (`/api/vehiculos`)
 
@@ -667,9 +690,11 @@ interface ApiEnvelope<T> {
 
 ### Finanzas y Reportes
 
-- `FinanzasPage.tsx` y `ReportesPage.tsx` siguen siendo UI con datos mock.
-- No hay servicios, hooks ni controllers backend dedicados.
-- Pendiente definir modelo de datos, endpoints y permisos antes de conectarlos.
+- `FinanzasPage.tsx` está **conectado** a `/api/finanzas` (ver sección de endpoints): DataTable server-side, KPIs (Ingresos/Gastos/Donaciones/Balance), filtros (tipo/fecha/búsqueda) y modal de transacción.
+- Auto-registro integrado: `MantenimientoModal` (al finalizar) → `crearGastoDesdeMantenimiento()` (GASTO) y `DonacionesPage` (al registrar donación monetaria) → `crearIngresoDesdeDonacion()` (DONACION). Ambos son best-effort (no bloquean la acción principal si Finanzas falla).
+- Componentes: `FinanzasPage.tsx` + `components/{TransaccionModal, FinanzasKpiBar, FinanzasFilters}.tsx`; hook `useFinanzas`, service `finanzasService.ts`, tipos `types/finanzas.ts`.
+- `ReportesPage.tsx` sigue siendo UI con datos mock.
+- Permisos: Finanzas usa `[Authorize]` (sin permisos finos `finanzas.*` todavía); el responsable se deriva del JWT.
 
 ---
 
@@ -692,6 +717,7 @@ interface ApiEnvelope<T> {
 | `docs/modulos/vehiculos/migracion_firma_cupones.sql` | Columna `firma_base64` en `vehiculo_cupones` |
 | `docs/modulos/vehiculos/migracion_cupones_firmas.sql` | Cargos + 4 firmas del período e índice de comisiones |
 | `docs/modulos/vehiculos/migracion_cupones_comision_realizada.sql` | Columna `comision_realizada` en periodos |
+| `Backend_Sub33/Backend_Sub33/Data/SQL/migracion_finanzas.sql` | Tabla `finanzas_transacciones` + índices (idempotente) |
 | `docs/permisos_seed.sql` | Seed idempotente: 47 permisos + asignación por rol |
 | `docs/LIMPIEZA_CONTEXTO.md` | Registro del pulido de este archivo (2026-10-22) |
 | `plan-cupones.md` | Plan "Libro Mensual de Cupones" (ejecutado) |
@@ -704,7 +730,7 @@ interface ApiEnvelope<T> {
 
 ## Tareas Pendientes (Priorizadas)
 
-### Completadas
+### Completadas (2026-10-23)
 
 - [x] Conectar módulo Inventario a backend.
 - [x] Conectar módulo Donaciones a backend.
@@ -718,26 +744,60 @@ interface ApiEnvelope<T> {
 - [x] Emergencias con vehículos de la flota y ciclo En proceso → Terminado → Inactivo.
 - [x] Firma digital PNG Base64 en cupones con `SignatureModal` (canvas + carga PNG/JPG/PDF).
 - [x] Mover URL de `authService.js` a `VITE_API_BASE_URL` (ya migrado; aún usa `fetch` crudo).
-- [x] Tests unitarios Vitest: 5 archivos / **32 tests** (`auth`, `permisos`, `cupones`, `registro-combustible`, smoke render).
+- [x] Tests unitarios Vitest: 10 archivos / **61 tests** (`auth`, `permisos`, `cupones`, `finanzas`, `finanzas.integration`, `useFormValidation`, `registro-combustible`, smoke render, `ReporteCuponesPrintSheet`, `seguridad-formato`).
 - [x] Matriz de permisos granular completa (BD + backend + frontend + UI jerárquica).
 - [x] Reporte oficial de Cupones + firma de 4 cargos del período.
 - [x] Limpieza y pulido de `CONTEXTO.md` (2026-10-22; ver `docs/LIMPIEZA_CONTEXTO.md`).
+- [x] **AuthContext 401 handling** — logout automático en 401, evita bucles infinitos (`src/context/AuthContext.tsx`).
+- [x] **Soft delete Cupones** — Desactivar/Reactivar/HardDelete en backend + endpoints (`PATCH /cupones/{id}/desactivar`, `PATCH /cupones/{id}/reactivar`, `DELETE /cupones/{id}/purge`).
+- [x] **GasolineraAutocomplete** — componente nuevo con creación inline (`src/app/pages/Vehiculos/components/GasolineraAutocomplete.tsx`).
+- [x] **DetalleCuponModal** — modal de detalle con acciones Editar/Desactivar/Reactivar/Eliminar (`src/app/pages/Vehiculos/components/DetalleCuponModal.tsx`).
+- [x] **Auto-detect "Próximo cupón Nº:"** en CuponModal (`CuponesTab.tsx`).
+- [x] **Persistir período** en localStorage (`useCupones.ts`).
+- [x] **DraftBanner condicional** en PeriodoModal y CuponModal.
+- [x] **Labels claras** "Cupon inicial: DE" / "HASTA cupón Nº:".
+- [x] **totalRecibidos auto** (Al - Del + 1) + grid 3 cols en PeriodoModal.
+- [x] **Eliminación firmas base64** del período (migración ejecutada).
+- [x] **GasolineraAutocomplete** con creación inline.
+- [x] **Módulo Finanzas completo** — entidad + DTOs + `FinanzasService` + `FinanzasController` + migración BD + auto-registro (Mantenimiento→Gasto, Donaciones→Ingreso) + `FinanzasPage` (KPIs/DataTable/filtros/modal) + `useFinanzas` + tests.
+- [x] **Migración `migracion_soft_delete_auditoria.sql` aplicada** — columnas `activo`, `eliminado_en`, `eliminado_por_nombre` en `vehiculo_cupones` (la tabla `auditoria_eventos` se retiró por no estar referenciada).
+- [x] **Soft delete expuesto en `useCupones.ts`** — `desactivarCupon`, `reactivarCupon`, `purgeCupon` agregados al hook y conectados a `DetalleCuponModal`.
+- [x] **Mejoras Seguridad y Formato (PLAN_MEJORAS_SEGURIDAD_FORMATO.md, entregables 1-7)** — `HttpRequireRoleAttribute` (solo-admin en Cupones/Vehiculos/Donaciones), `DetalleRegistroModal`, `FiltroEliminados`, prop `validateNumeric` en `input.tsx`, filtro de eliminados lógicos y etiqueta "Eliminado por X" en `CuponesTab.tsx`.
 
-### Pendientes
+### Pendientes (Priorizadas por impacto × esfuerzo)
 
-- [ ] Conectar módulos **Finanzas** y **Reportes** a backend (definir modelo, endpoints y permisos).
-- [ ] Crear **endpoint de resumen de Vehículos** (`GET /api/vehiculos/resumen`) para no depender de cargar 500 registros en los KPIs.
-- [ ] Implementar **recuperación de contraseña/OTP real** (hoy es flujo UI).
-- [ ] Integrar **`RegistroCombustible`** en `CuponesTab` (decisión pendiente: el plan pide reemplazar la vista previa pero también "no tocar CuponesTab"; modelos de datos distintos).
-- [ ] Agregar **input `comisionRealizada`** en el modal "Configurar período" de Cupones (columna BD y backend ya existen).
-- [ ] **Resetear contraseñas** de `cmendoza`, `jrodriguez`, `mgonzalez` (hash BCrypt corrupto por bug de escape `$`; login lanza 500).
-- [ ] Migrar `configuracionService.ts` y `seguridadService.ts` de `fetch` crudo a `apiClient`.
-- [ ] Dividir componentes gigantes (`InventarioPage`, `VehiculosPage`, `ReportesPage`).
-- [ ] Ampliar cobertura de tests (React Testing Library en componentes; hoy son unitarios de servicios/utils).
-- [ ] Manejo de errores consistente en todos los módulos.
-- [ ] Paginación real en backend para Emergencias.
-- [ ] Validar DTOs backend con DataAnnotations completos.
-- [ ] Revisar endpoints placeholder de `PermissionController`.
+#### 🔴 CRÍTICO (Bloquea usuarios / estabilidad) — **Inmediato**
+
+- [ ] **Filtrar por `activo` en backend de cupones** — `GetPeriodoAsync` aceptar parámetro `estado`/`activo` (true/false/null) para filtrar en BD; el frontend ya filtra client-side con `FiltroEliminados`.
+- [ ] **Agregar `comisionRealizada` en PeriodoModal** — input en modal "Configurar período"; conectar a `CuponPeriodoCreateDto.ComisionRealizada` (ya existe en DTO/BD).
+- [ ] **Implementar auditoría en `CuponService`** — poblar `auditoria_eventos` (tabla retirada de la migración; requiere restablecerla) en Desactivar/Reactivar/HardDelete (usuario_id, usuario_nombre, usuario_rol, antes, despues, campos_cambiados).
+- [ ] **Resetear hashes corruptos** (`cmendoza`, `jrodriguez`, `mgonzalez`) — hash BCrypt corrupto por bug escape `$`; login lanza 500.
+
+#### 🟠 ALTO (Escalabilidad / Deuda técnica) — **Esta semana**
+
+- [ ] **Endpoint `GET /api/vehiculos/resumen`** — DTO `VehiculoResumenDto` con totales en BD; frontend usa en KPIs (evita cargar 500 registros).
+- [ ] **Firmar ensamblado (.snk) + regla Publisher AppLocker** — genera `.snk`, configura csproj, regla Publisher → soluciona Smart App Control permanentemente.
+- [ ] **Migrar `fetch` crudo → `apiClient`** (3 services): `authService.js`, `configuracionService.ts`, `seguridadService.ts`.
+- [ ] **Recuperación contraseña/OTP real** — backend: token + expiración + email; frontend: `ForgotPasswordPage` + `ResetPasswordPage`.
+- [ ] **Input `comisionRealizada` en PeriodoModal** — UI en modal "Configurar período"; conectar a `CuponPeriodoCreateDto.ComisionRealizada`.
+
+#### 🟡 MEDIO (Features completas / UX) — **Próximas 2 semanas**
+
+- [ ] **Tests de integración** (Testcontainers PostgreSQL) — 1 test por módulo crítico (Vehiculos, Cupones, Emergencias).
+- [ ] **Dividir componentes gigantes** — `VehiculosPage.tsx`, `InventarioPage.tsx`, `ReportesPage.tsx` en componentes reutilizables.
+- [ ] **Finanzas & Reportes** — definir modelo BD, DTOs, endpoints, permisos y conectar frontend (requiere definición de alcance con stakeholder).
+- [ ] **Integrar `RegistroCombustible` en `CuponesTab`** — decisión pendiente: reemplazar vista previa o nuevo tab (modelos de datos distintos).
+- [ ] **Paginación real backend Emergencias** — backend paginación server-side + frontend `useEmergencias`.
+- [ ] **Migrar `authService.js` a `apiClient`** (usa fetch crudo + `VITE_API_BASE_URL`).
+- [ ] **Input `comisionRealizada` en PeriodoModal** — UI en modal "Configurar período".
+
+#### 🟢 BAJO (Pulido / Calidad) — **Continuo**
+
+- [ ] **Dividir `VehiculosPage.tsx`** en componentes (`KpiBar`, `FlotaGrid`, `VehiculoTabs`, `KpiChips`).
+- [ ] **Tests E2E** (Playwright) flujos críticos: login → vehiculo → cupon → print.
+- [ ] **Observabilidad** — logs estructurados (Serilog), métricas (Prometheus), health checks.
+- [ ] **CI/CD** — GitHub Actions: build + test + docker publish.
+- [ ] **Documentación viva** — actualizar `CONTEXTO.md` automáticamente en PR.
 
 ---
 
@@ -781,7 +841,7 @@ interface ApiEnvelope<T> {
 ```bash
 # Frontend
 npm run build          # Vite build (no ejecuta typecheck)
-npm run test           # Vitest: 32 tests (auth, permisos, cupones, registro-combustible)
+npm run test           # Vitest: 56 tests (auth, permisos, cupones, registro-combustible, finanzas, validación)
 
 # Backend (SDK 8 obligatorio por global.json)
 cd Backend_Sub33/Backend_Sub33
@@ -1254,3 +1314,422 @@ renderizar el formato oficial "Libro Mensual de Cupones de Combustible" conducid
 - src/__tests__/ReporteCuponesPrintSheet.test.tsx
 - Backend_Sub33/Backend_Sub33/Services/CuponService.cs
 - Backend_Sub33/Backend_Sub33/DTOs/Vehiculos/VehiculoDtos.cs
+
+## [2026-10-22] Mejoras PeriodoModal Cupones
+
+Ejecutado `PLAN_MEJORAS_PERIODO_CUPONES.md` en `src/app/pages/Vehiculos/CuponesTab.tsx` (PeriodoModal). 4 cambios quirúrgicos:
+
+1. **elaboradoPor — auto-fill + control por rol**: importado `useAuth` (`const { user } = useAuth()`); al abrir el modal, si el período no tiene `elaboradoPor`, se autocompleta con `user.name`. El input queda `readOnly={!isAdmin}` y `onChange` solo para admin (Secretario ve el nombre en solo lectura).
+2. **Título de sección**: `"Firmas del reporte oficial"` → `"Reporte Oficial"`.
+3. **totalRecibidos — cálculo automático**: eliminado el estado `total`; `totalCalculado = useMemo(Al - Del + 1)`; el submit envía `totalRecibidos: totalCalculado`; el input manual se reemplazó por un display readonly "{totalCalculado} cupones"; grid ahora 3 columnas (Del, Al, Valor).
+4. **Firmas base64**: ya eliminadas en la tarea anterior (SignatureModal del modal, estados `firma*`/`firmaActiva`, UI de firmas); quedan los 4 inputs de texto (elaboradoPor + jefeAbastecimientos + jefe33Cia + director).
+
+### Verificación
+- ✅ `npm run build` sin errores.
+- ✅ `npm test` 42/42.
+- ⚠️ `tsc --noEmit` / `npm run lint` no disponibles (sin typescript/tsconfig ni script lint); se validó con `vite build`.
+- ✅ Procesos dev (backend `dotnet run` y frontend `npm run dev`) detenidos al terminar; puertos 5196/5173 libres.
+
+### Archivos modificados
+- src/app/pages/Vehiculos/CuponesTab.tsx
+- src/app/pages/Vehiculos/components/GasolineraAutocomplete.tsx (NUEVO)
+- src/app/pages/Vehiculos/components/DetalleCuponModal.tsx (NUEVO)
+- src/types/vehiculos.ts (Activo, EliminadoEn, EliminadoPorNombre)
+- src/services/vehiculosService.ts (desactivar, reactivar, purge)
+- src/hooks/useCupones.ts (persistir período localStorage)
+- Backend: CuponService.cs (soft delete + reactivate + hard delete), CuponesController.cs (endpoints), VehiculoDtos.cs (Activo)
+- docs/modulos/vehiculos/migracion_soft_delete_auditoria.sql (NUEVO)
+
+## [2026-10-23] Mejoras CuponModal + DraftBanner Condicional + Soft Delete + Validaciones + Autocomplete + Detalle Modal
+
+Ejecutado `PLAN_MEJORAS_PERIODO_CUPONES.md` (actualización final) en `src/app/pages/Vehiculos/CuponesTab.tsx`.
+
+### CuponModal
+1. **Auto-detect "Próximo cupón Nº:"** (Del): si primer registro → `periodo.cuponInicialDel`; si hay cupones → `max(cuponAl) + 1`. Auto-fill al abrir nuevo cupón.
+2. **Label**: "Cupón Del" → "Próximo cupón Nº:".
+3. **Responsable auto-fill + rol**: `user.name` al abrir; Admin editable, Secretario readOnly.
+4. **Quitar tarjeta "Firma digital"**: resumen queda con 2 tarjetas (Total de cupones + Haber); grid `sm:grid-cols-2`.
+5. **DraftBanner condicional**: solo muestra si `!cupon` (nuevo) Y `savedAt !== null`.
+
+### PeriodoModal
+1. **Labels**: "Cupón inicial Del" → "Cupon inicial: DE" / "Cupón inicial Al" → "HASTA cupón Nº:".
+2. **DraftBanner condicional**: solo muestra si `!periodo` (nuevo) Y `savedAt !== null`.
+
+### Verificación
+- ✅ `npm run build` sin errores.
+- ✅ `npm test` 42/42.
+- ✅ Procesos dev detenidos al terminar; puertos 5196/5173 libres.
+
+### Archivos modificados
+- src/app/pages/Vehiculos/CuponesTab.tsx
+
+## [2026-10-22] Mejoras PeriodoModal + CuponModal Cupones
+
+Ejecutado `PLAN_MEJORAS_PERIODO_CUPONES.md` en `src/app/pages/Vehiculos/CuponesTab.tsx` (2 modales). Cambios quirúrgicos:
+
+### PeriodoModal
+1. **Draft `useFormDraft("periodo.create")`** (del, al, valor, notas, elaboradoPor, jefeAbastecimientos, jefe33Cia, director): guardado debounced en localStorage; se restaura al abrir si el período no está configurado (sin `cuponInicialDel/Al`); `clear()` tras guardar; `DraftBanner` en el form.
+2. **elaboradoPor auto-fill + rol** (ya aplicado antes): `user.name` al abrir; Admin editable, Secretario readOnly.
+3. **Título** `"Reporte Oficial"` (ya aplicado).
+4. **Labels**: `"Cupon inicial: DE"` / `"HASTA cupón Nº:"`.
+5. **totalRecibidos auto** `useMemo(Al - Del + 1)` + grid 3 cols (ya aplicado).
+6. **Firmas base64** eliminadas (ya aplicado).
+
+### CuponModal
+1. **Quitar tarjeta "Firma digital"**: la fila de resumen queda con 2 tarjetas (Total de cupones + Haber); grid `sm:grid-cols-2`.
+2. **Responsable auto-fill + rol**: al crear cupón nuevo, `responsable` se autocompleta con `user.name`; input `readOnly={!isAdmin}` (Admin editable, Secretario readOnly).
+3. **Draft `useFormDraft("cupon.create")`**: verificado que ya funcionaba (sin cambios).
+
+### Verificación
+- ✅ `npm run build` sin errores.
+- ✅ `npm test` 42/42.
+- ⚠️ `tsc --noEmit` / `npm run lint` no disponibles (sin typescript/tsconfig ni script lint); se validó con `vite build`.
+- ✅ Procesos dev (backend + frontend) detenidos al terminar; puertos 5196/5173 libres.
+
+### Archivos modificados
+- src/app/pages/Vehiculos/CuponesTab.tsx
+
+## [2026-10-23] AuthContext 401 Handling + Plan 10/10
+
+### AuthContext 401 Handling (resuelto por IA de pago)
+- **Problema:** Token inválido/expirado → 401 en `loadModulos`/`loadPermisos` → app se quedaba trabada sin redirigir al login.
+- **Solución:** `src/context/AuthContext.tsx`
+  - Importado `ApiError` desde `seguridadService`.
+  - `isUnauthorized()` detecta `status === 401`.
+  - `loadModulos` y `loadPermisos` llaman a `logout()` al recibir 401 (limpia localStorage y redirige a login).
+- **Resultado:** Token expirado/inválido → logout automático → redirige a login limpio. Sin bucles 401, UX limpia.
+
+### Plan Maestro 10/10 (Post AuthContext Fix)
+
+#### FASE 1: GAPS CRÍTICOS (1-2 días)
+
+1. **Exponer soft delete en `useCupones.ts`** — `desactivarCupon`, `reactivarCupon`, `purgeCupon` + conectar `DetalleCuponModal`.
+2. **Conectar `filtroEstado`** — hook: parámetro `estado` en `cargar()`; backend: `GetPeriodoAsync` filtrar por `activo`.
+3. **`comisionRealizada` en PeriodoModal** — input en modal "Configurar período" → `CuponPeriodoCreateDto.ComisionRealizada`.
+4. **Ejecutar migración `migracion_soft_delete_auditoria.sql`** — columnas `activo`, `eliminado_en`, `eliminado_por_nombre` + tabla `auditoria_eventos`.
+5. **Auditoría en `CuponService`** — poblar `auditoria_eventos` en Desactivar/Reactivar/HardDelete (usuario_id, nombre, rol, antes, despues, campos_cambiados).
+
+#### FASE 2: ENDPOINTS CRÍTICOS (1-2 días)
+6. **Endpoint `GET /api/vehiculos/resumen`** — DTO `VehiculoResumenDto` con totales en BD; frontend KPIs usan endpoint (0 carga 500 registros).
+7. **Resetear hashes corruptos** (`cmendoza`, `jrodriguez`, `mgonzalez`) — hash BCrypt corrupto por escape `$`.
+8. **Firmar ensamblado (.snk) + regla Publisher AppLocker** — genera `.snk`, config csproj, regla Publisher → soluciona Smart App Control.
+
+#### FASE 3: DEUDA TÉCNICA (3-5 días)
+9. **Migrar fetch → apiClient** (3 services): `authService.js`, `configuracionService.ts`, `seguridadService.ts`.
+10. **Recuperación contraseña/OTP real** — backend token + expiración + email; frontend `ForgotPasswordPage` + `ResetPasswordPage`.
+11. **Tests de integración** (Testcontainers) — 1 test por módulo crítico.
+
+#### FASE 4: FEATURES (1-2 semanas)
+12. **Finanzas & Reportes** — definir alcance con stakeholder.
+13. **Paginación real Emergencias** — backend paginación server-side + frontend `useEmergencias`.
+
+---
+
+### Verificación obligatoria post-impl
+
+```bash
+npm run build && npm test && dotnet build && dotnet test
+# 0 errors, 42+ tests passing
+psql -f docs/modulos/vehiculos/migracion_soft_delete_auditoria.sql
+# Verificar: SELECT * FROM vehiculo_cupones WHERE activo = FALSE;
+# Verificar: SELECT * FROM auditoria_eventos LIMIT 5;
+```
+
+---
+
+### Archivos clave a modificar (FASE 1)
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/hooks/useCupones.ts` | Exponer `desactivarCupon`/`reactivarCupon`/`purgeCupon` + `filtroEstado` en `cargar()` |
+| `src/app/pages/Vehiculos/CuponesTab.tsx` | `comisionRealizada` input + `filtroEstado` UI |
+| `Backend/Services/CuponService.cs` | Auditoría en Desactivar/Reactivar/HardDelete |
+| `Backend/Services/VehiculoService.cs` | `GetResumenAsync` |
+| `Backend/Controllers/VehiculosController.cs` | `GET /resumen` |
+| `docs/modulos/vehiculos/migracion_soft_delete_auditoria.sql` | Ejecutar en BD |
+| `Backend_Sub33.csproj` | Firmar ensamblado (.snk) |
+| `src/services/configuracionService.ts` | Migrar a `apiClient` |
+| `src/services/seguridadService.ts` | Migrar a `apiClient` |
+
+---
+
+### Verificación post-impl
+
+```bash
+npm run build && npm test && dotnet build && dotnet test
+# 0 errors, 42+ tests passing
+psql -f docs/modulos/vehiculos/migracion_soft_delete_auditoria.sql
+# Verificar: SELECT * FROM vehiculo_cupones WHERE activo = FALSE;
+# Verificar: SELECT * FROM auditoria_eventos LIMIT 5;
+```
+
+### Prompt para otra IA
+
+```markdown
+Implementa FASE 1 del plan 10/10 en `src/hooks/useCupones.ts` + `src/app/pages/Vehiculos/CuponesTab.tsx` + Backend `CuponService.cs` + `VehiculoService.cs` + `VehiculosController.cs`. Migración `migracion_soft_delete_auditoria.sql` en BD. Auditoría en `CuponService`. Verifica: `npm run build && npm test && dotnet build && dotnet test`. No dejes servers. Actualiza CONTEXTO.md.
+```
+
+## Módulo Finanzas completo (2026-10-23)
+
+Ejecutado `PLAN_FINANZAS_MODULO.md`. Módulo Finanzas conectado a backend con auto-registro.
+
+### Backend
+- **Entidad** `Models/Entities/FinanzaTransaccion.cs` (tabla `finanzas_transacciones`, PK `transaccion_id` BIGSERIAL) + `DbSet` + config en `AppDbContext`.
+- **DTOs** `DTOs/Finanzas/FinanzasDtos.cs`: `TransaccionDto`, `TransaccionCreateDto`, `TransaccionUpdateDto`, `TransaccionFiltrosDto`, `ResumenFinancieroDto`, `TransaccionListResponseDto`, `AutoGastoMantenimientoDto`, `AutoIngresoDonacionDto`.
+- **Service** `Services/IFinanzasService.cs` + `FinanzasService.cs` (Dapper): listar paginado con filtros (tipo/fecha/búsqueda), resumen (ingresos/gastos/donaciones/balance), CRUD manual, y métodos `CrearGastoDesdeMantenimientoAsync` / `CrearIngresoDesdeDonacionAsync` (idempotentes: pre-check por `modulo_origen`+`referencia_origen`+`tipo`). Responsable: `responsable_id` = `usuario_id` del JWT, `responsable_nombre` resuelto de `personal` (fallback username).
+- **Controller** `Controllers/FinanzasController.cs` (`[Authorize]`): `GET/POST/PUT/DELETE /api/finanzas*` + `GET /resumen` + `POST /auto/gasto-mantenimiento` + `POST /auto/ingreso-donacion`.
+- **DI** registrado en `Program.cs` (`IFinanzasService`).
+- **Migración** `Data/SQL/migracion_finanzas.sql` (idempotente): tabla + 3 índices + índice único `(modulo_origen, referencia_origen, tipo)`. **Ejecutada en BD `Sub_33`.**
+
+### Frontend
+- `types/finanzas.ts`, `services/finanzasService.ts` (usa `apiClient`), `hooks/useFinanzas.ts`.
+- `FinanzasPage.tsx` refactorizado: `FinanzasKpiBar` + `FinanzasFilters` + `DataTable` server-side + `TransaccionModal` (components nuevos en `pages/Finanzas/components/`).
+- **Auto-registro:** `MantenimientoModal.tsx` (al finalizar con costo>0) → `crearGastoDesdeMantenimiento()`; `DonacionesPage.tsx` (donación monetaria) → `crearIngresoDesdeDonacion()`. Ambos best-effort (try/catch + `toast.warning`), no bloquean la acción principal.
+
+### Decisión de diseño (desviación del plan)
+- El plan proponía auto-registro **tanto en backend** (`DonacionService`/`VehiculoService` → `IFinanzasService`) **como en frontend**. Para evitar **doble registro**, se implementó solo el **auto-registro frontend-driven** vía endpoints dedicados (`/auto/*`). El responsable se resuelve **server-side** desde el JWT (no se confía en `personal_id` del cliente, que además no coincide con `responsable_id → usuarios(usuario_id)`).
+- No se creó `src/hooks/useFormValidation.ts` (el plan lo listaba bajo "consistencia global"); las validaciones siguen el patrón manual del resto de módulos.
+
+### Tests
+- `src/__tests__/finanzas.test.ts` (6 tests: service/URL/CRUD/resumen).
+- `src/__tests__/finanzas.integration.test.ts` (2 tests: contrato auto-registro Mantenimiento→Gasto y Donaciones→Ingreso).
+
+### Verificación
+- `dotnet build` → 0 warnings / 0 errors.
+- `dotnet test` → exit 0.
+- `npm run build` → sin errores.
+- `npm test` → 56/56 passing.
+- `psql -f Backend_Sub33/Backend_Sub33/Data/SQL/migracion_finanzas.sql` → ejecutada (CREATE TABLE + 4 índices).
+- Sin servidores corriendo (puerto 5196 libre).
+
+## Validación + Alertas + Draft unificados (2026-10-23)
+
+Ejecutado `PLAN_VALIDACION_ALERTAS_DRAFT.md`. Patrón de validación/alertas unificado + componentes reutilizables.
+
+### NUEVOS
+- `src/hooks/useFormValidation.ts` — validadores puros (`validateRequired`, `validateNumber`, `validateMin`, `validateMax`, `validateAsync`, `sanitizeNumber`) + hook `useFormValidation()` (`errors` object, `setError`, `clearErrors`, `hasErrors`).
+- `src/app/components/ui/NumberInput.tsx` — input numérico estricto: filtra letras/símbolos en `onChange`, `toast.error` (throttle 800ms) y admite `allowDecimal`.
+
+### MODIFICADOS
+- `src/hooks/useFormDraft.ts` — `save()` ahora actualiza `draft` (fuente de verdad del banner); nuevo `reset()` (alias de `clear`) que limpia `draft` + `savedAt` + localStorage + timer pendiente.
+- `src/app/components/ui/DraftBanner.tsx` — ahora recibe `draft` y solo renderiza si `draft !== null` (online) o si está offline.
+- `src/app/components/ui/input.tsx` — nueva prop opcional `validate?: (value) => string | null`.
+- `src/app/pages/Vehiculos/CuponesTab.tsx` — `PeriodoModal` y `CuponModal` migrados a patrón `errors` object + `toast.error` (antes `error` string, con `setError` sin definir en PeriodoModal). Campos numéricos con `NumberInput` (del/al/valor/kilometraje/galonaje). `DraftBanner` ahora usa `draft`.
+- Los 11 restantes usos de `DraftBanner` actualizados a `draft={draft}` (Personal/PersonalForm agrega prop `draft`).
+- `NumberInput` aplicado a monto de Finanzas (TransaccionModal) y a monto/cantidad/valorEstimado de Donaciones.
+
+### Fix draft (bug raíz)
+- El auto-save se disparaba al abrir un modal nuevo porque `responsable`/fecha/valor venían pre-llenados. Se agregó guard `dirtyRef` en PeriodoModal/CuponModal: solo guarda borrador tras edición real del usuario (no en apertura). Tras guardar + abrir nuevo modal, el banner ya no aparece.
+
+### Verificación
+- `npm run build` → sin errores.
+- `npm test` → 56/56 (nuevo `useFormValidation.test.ts`, 6 tests).
+- `dotnet build` → 0 warnings / 0 errors. `dotnet test` → exit 0.
+- Servidores dev detenidos (puertos 5196/5173 libres).
+
+## Responsividad Profesional - Todos los Módulos (2026-10-23)
+
+Ejecutado `PLAN_RESPONSIVE_PROFESIONAL.md`. Sistema híbrido desktop/mobile en todos los módulos.
+
+### NUEVOS
+- `src/app/components/ui/ResponsiveTable.tsx` - tabla híbrida: desktop (`hidden md:block`) + cards mobile (`md:hidden`). Props: `columns`, `data`, `keyField`, `renderCard` opcional.
+
+### MODIFICADOS
+- `src/app/components/ui/data-table.tsx` - ahora renderiza cards mobile (`md:hidden`) generadas desde las columnas + tabla desktop (`hidden md:block`). Esto hace responsivas TODAS las páginas que usan `DataTable` (Inventario, Donaciones, Emergencias, Finanzas, Reportes, Personal, Seguridad).
+- `src/app/components/ui/modal.tsx` - `max-w-[95vw]` mobile + `max-h-[90vh]` + footer sticky (ya presentes).
+- `src/app/pages/Vehiculos/CuponesTab.tsx` - tabla 15 cols envuelta en `hidden md:block` + card view mobile `md:hidden` (responsable, fecha, saldo, firma, acciones). KPIs `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`. PeriodoModal `grid-cols-1 sm:grid-cols-2`.
+- `src/app/pages/Donaciones/LibroDonacionesTab.tsx` - tabla 14 cols → híbrida + cards mobile. KPIs `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`.
+- `src/app/pages/Vehiculos/VehiculosPage.tsx` - KPIs `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4` (KpiCard `w-full`).
+- `src/app/pages/Vehiculos/components/DetalleCuponModal.tsx` - grid `grid-cols-1 sm:grid-cols-2`.
+- `src/app/pages/Vehiculos/components/MantenimientoModal.tsx` - grids ya responsivos (`sm:grid-cols-2 lg:grid-cols-3/4`).
+
+### Verificación
+- `npm run build` → sin errores.
+- `npm test` → 56/56 passing.
+- `dotnet build` → 0 warnings / 0 errors.
+- `dotnet test` → exit 0.
+- Sin servidores corriendo.
+
+## Fix: Guardado de período + borrador (2026-10-23)
+
+Corrección del módulo Vehículos (cupones), sin tocar otros módulos.
+
+### Backend / BD
+- La BD `vehiculo_cupones` no tenía las columnas de soft-delete (`activo`, `eliminado_en`, `eliminado_por_nombre`) que `CuponService.CuponSelect` y los métodos de soft-delete ya usaban → 500 `42703: no existe la columna c.activo`.
+- Se corrigió `docs/modulos/vehiculos/migracion_soft_delete_auditoria.sql` (tipos `INT`→`UUID` para `*_por_id`; se retiró la tabla `auditoria_eventos` no referenciada) y se aplicó a `Sub_33` con `psql`. Verificado `SELECT c.activo ... FROM vehiculo_cupones` OK.
+
+### Frontend
+- `CuponesTab.tsx`:
+  - `PeriodoModal`: eliminado el `clear()` que borraba el borrador al abrir (autoguardado ahora solo hace `save` cuando `dirtyRef` es true) → el borrador sobrevive a cerrar/refrescar/cambiar de módulo.
+  - `handleGuardarPeriodo`: ya no traga el error ni duplica toast; ahora relanza y deja el manejo de éxito/error al modal (único toast, borrador solo se limpia al guardar real).
+  - `CuponModal`: mismo fix del autoguardado (`clear()` condicional eliminado).
+
+### Verificación
+- `npm run build` → sin errores.
+- `npm test` → 56/56 passing.
+- `dotnet build` → 0 warnings / 0 errors. `dotnet test` → exit 0.
+
+## Mejoras Seguridad y Formato (2026-10-23)
+
+Ejecutado `PLAN_MEJORAS_SEGURIDAD_FORMATO.md` (entregables 1-7).
+
+### Backend
+- Nuevo atributo `Attributes/HttpRequireRoleAttribute.cs`: restringe acción a un rol (p. ej. `Administrador`), cortocircuita con 403 si no cumple.
+- Aplicado "solo admin" a: `CuponesController` (`reactivar`, `purge`), `VehiculosController.DeleteMantenimiento`, `DonacionesController.DeleteDonacion`.
+
+### Frontend (NUEVOS componentes)
+- `src/app/components/ui/DetalleRegistroModal.tsx` - modal genérico de detalle (campos, estado activo/inactivo, acciones editar/desactivar/reactivar/eliminar según permisos).
+- `src/app/components/ui/FiltroEliminados.tsx` - toggle "Mostrar eliminados lógicamente" (solo visible para admin).
+
+### Frontend (modificados)
+- `input.tsx` - nueva prop `validateNumeric`: filtra solo dígitos en `onChange`.
+- `CuponesTab.tsx`:
+  - Filtro de eliminados lógicos integrado (`FiltroEliminados`), visible solo admin; filtra `activo !== false` por defecto.
+  - Tabla (desktop) y cards (mobile) muestran "Eliminado por {nombre}" en registros inactivos.
+  - `DetalleCuponModal` conectado a `desactivarCupon`/`reactivarCupon`/`purgeCupon` con `isAdmin` real y `activo` del registro.
+- `useCupones.ts` - expone `desactivarCupon`, `reactivarCupon` y `purgeCupon` en el hook.
+
+### Ya existente (verificado)
+- `NumberInput` (validación numérica estricta + toast.error), `useFormValidation` (validadores), soft-delete de cupones (`activo`, `eliminado_en`, `eliminado_por_nombre`), `DetalleCuponModal`, módulo Finanzas, `usePermisos` con `isAdmin`/roles.
+
+### Tests
+- `src/__tests__/seguridad-formato.test.tsx` (5 tests: `FiltroEliminados` render, `DetalleRegistroModal` export, `sanitizeNumber`).
+
+### Verificación
+- `npm run build` → sin errores.
+- `npm test` → 61/61 passing (10 archivos).
+- `dotnet build` → 0 warnings / 0 errors.
+- `dotnet test` → exit 0.
+- Servidores detenidos (puertos 5196 y 5173 libres).
+
+## Seguridad de Autenticación + Recuperación de Contraseña (2026-10-23)
+
+### Backend
+- `Data/SQL/migracion_seguridad_auth.sql` — `usuarios.email`, `usuarios.intentos_fallidos`, `usuarios.bloqueado_hasta`, `codigos_recuperacion.email_destino` + `codigo_otp_hash` (idempotente; aplicar con psql, NO `dotnet ef database update`).
+- `Services/EmailService.cs` + `IEmailService.cs` — envío SMTP vía MailKit (587/STARTTLS); plantilla HTML 33ª CVB.
+- `Services/JwtFactory.cs` — tokens con `Issuer`/`Audience`, access token 15 min, reset token (claim `purpose=reset`, 10 min).
+- `Controllers/AuthController.cs` — login con bloqueo (3 intentos → 15 min), anti-enumeración (mensaje único + verificación BCrypt dummy), refresh token con rotación (cookie httpOnly `refresh_token`, `SameSite=Strict`, `Path=/api/auth`), logout que revoca sesión, bitácora `bitacora_accesos` (LOGIN_EXITOSO/FALLIDO/BLOQUEADO con IP). El claim `permiso` ahora incluye `usuario_permisos` (UNION con `rol_permisos`).
+- `Controllers/RecuperacionController.cs` — `solicitar-recuperacion` (OTP 6 dígitos, HMAC-SHA256, 10 min), `verificar-otp`, `restablecer-contrasena`, `cambiar-contrasena` `[Authorize]`.
+- `Program.cs` — JWT con Issuer/Audience, CORS con `AllowCredentials` + orígenes específicos, rate-limit `RecuperacionPolicy`.
+- `PersonalService` + DTOs — `email` obligatorio al otorgar acceso al sistema (unicidad + validación).
+
+### Frontend
+- `services/auth/tokenStore.ts` — access token en memoria (no en localStorage).
+- `services/authService.js` — `login(recordar)`, `refresh`, `logout`, `solicitarRecuperacion`, `verificarOtp`, `restablecerContrasena`, `cambiarContrasena` con `credentials:"include"`.
+- `services/api/client.ts` — 401 → intenta `refresh` y reintenta; si falla emite `auth:unauthorized`.
+- `context/AuthContext.tsx` — restauración de sesión por refresh token al recargar; logout global ante `auth:unauthorized`; fallback de rol `voluntario` (antes `admin`).
+- `LoginPage.tsx` — recuperación cableada a endpoints reales; "recordar" controla la cookie; mensajes de error unificados.
+- `PersonalForm.tsx` / `PersonalPage.tsx` — campo "Correo electrónico *" en Acceso al Sistema.
+
+### Configuración SMTP (secretos)
+- Valores reales en `Backend_Sub33/Backend_Sub33/appsettings.Development.json` (sección `Smtp`), **ignorado en git** (`.gitignore` + `git rm --cached`). `appsettings.json` mantiene `Smtp.User`/`Smtp.Password` vacíos.
+
+## Bloqueo permanente + desbloqueo por admin (2026-10-23)
+
+- `Data/SQL/migracion_bloqueo_manual.sql` — `usuarios.bloqueada BOOLEAN DEFAULT FALSE`; elimina `usuarios.bloqueado_hasta` (temporal) y `codigos_recuperacion.codigo_otp` (obsoleto; lo reemplaza `codigo_otp_hash`). **Fix del error 23502** (not-null en `codigo_otp` al solicitar recuperación).
+- `reset_db.sql` alineado: `usuarios` con `email`/`intentos_fallidos`/`bloqueada`; `codigos_recuperacion` con `codigo_otp_hash`/`email_destino`/`telefono_destino` nullable.
+- **Bloqueo silencioso**: login responde siempre `"Las credenciales ingresadas son incorrectas."` (también cuando la cuenta está bloqueada) — no da pistas a atacantes.
+- Umbrales: `Seguridad:MaxIntentos = 5` (usuarios normales) y `Seguridad:MaxIntentosAdmin = 10` (admin). Al alcanzarlo → `bloqueada = true` (permanente).
+- **Desbloqueo manual**: `POST /configuracion/usuarios/{id}/desbloquear` + columna "Bloqueo" (badge + botón "Desbloquear") en `SeguridadPage` → Usuarios.
+- `RecuperacionController.restablecer-contrasena` ya **no** desbloquea (solo cambia la clave).
+- `EsAdminAsync` en `AuthController` detecta rol Administrador para aplicar el umbral de 10 intentos.
+- **Ojo de contraseña único**: nuevo `ui/PasswordField.tsx` (input + toggle), usado en `ProfilePage` y `PersonalForm` (elimina el `PasswordInput` local y los ojos ad-hoc).
+
+### Verificación
+- `dotnet build` → 0 warnings / 0 errors.
+- `npm run build` → éxito.
+- `npm test` → 61/61 passing.
+- Migración `migracion_bloqueo_manual.sql` aplicada a `Sub_33` (psql) y verificada.
+
+## Perfil de Bombero + Seguridad UI (2026-10-23)
+
+### Bugs corregidos
+- **Ojo duplicado** en login y registro de miembro: se ocultó el ícono nativo del navegador (`input[type=password]::-ms-reveal / ::-ms-clear / ::-webkit-credentials-auto-fill-button` en `globals.css`).
+- **Badge "Rango" en blanco (light)**: `ui/badge.tsx` variant `brand` pasó de `bg-[var(--grad-primary)]` (que Tailwind compila como `background-color` sobre un gradiente → inválido) a `bg-[var(--brand-600)] text-white`.
+
+### Email de verificación (Gmail)
+- `EmailService.cs`: asunto y plantilla → **"Subestación 33"** con logo institucional embebido (`wwwroot/images/logo_institucional.png`, vía `LinkedResource` con `cid:logo`; se copió desde `src/imports/image-1.png`). Se inyectó `IWebHostEnvironment`.
+
+### Foto de perfil (base64)
+- `Data/SQL/migracion_perfil_foto.sql`: `usuarios.foto_base64 TEXT` (aplicada y verificada).
+- `Usuario.cs` + `AppDbContext.cs` + `AuthResponseDto.FotoBase64` + `AuthController` (login/refresh incluyen `fotoBase64`).
+- `POST /api/auth/foto` `[Authorize]` → guarda la foto (payload `{ fotoBase64 }`, límite ~2 MB).
+- Frontend: `subirFoto()` en `authService.js`; `App.tsx` carga el avatar desde `user.fotoBase64` y persiste al subir; `ProfilePage` permite "Subir Nueva Foto".
+
+### Verificación en 2 pasos (cambio de contraseña)
+- `POST /api/auth/enviar-codigo-2fa` `[Authorize]` → envía OTP al correo registrado (`usuarios.email`).
+- `cambiar-contrasena` ahora exige `{ contrasenaActual, nuevaContrasena, codigo }` (valida OTP hasheado antes de cambiar).
+- Frontend: `enviarCodigo2fa()` + `cambiarContrasena(actual, nueva, codigo)` en `authService.js`; `ProfilePage` → pestaña **Seguridad** con contraseña actual + nueva + confirmar + código 2FA.
+
+### Mi Perfil de Bombero (rediseño `ProfilePage.tsx`)
+- Solo tabs **Perfil** y **Seguridad** (se eliminaron Notificaciones y Preferencias).
+- **Perfil**: nombre real (`AuthContext.user.name`), **Rango** real (`GET /personal/{personalId}` → `rangoNombre`), foto de perfil; **sin** campo "Correo Electrónico".
+- `App.tsx`: se eliminó el `profileForm` hardcodeado ("Carlos García Soc"); el dropdown ya no muestra el correo hardcodeado.
+
+### Verificación
+- `dotnet build` → 0 warnings / 0 errors.
+- `npm run build` → éxito.
+- `npm test` → 61/61 passing.
+- Migración `migracion_perfil_foto.sql` aplicada a `Sub_33` (psql) y verificada.
+- Servidores back/front **detenidos** (sin procesos corriendo).
+
+## Ajustes Perfil + Correo + Primera sesión (2026-10-23)
+
+### Bug del ojo (causa raíz)
+- La regla `::-ms-reveal / ::-ms-clear / ::-webkit-credentials-auto-fill-button` estaba en `globals.css`, que **no está importado** (`index.css` solo importa fonts/tailwind/theme/animations). Se movió a `theme.css` (que sí se carga). Ahora el navegador no muestra su ojo nativo en campos de contraseña.
+
+### Correo (sin adjunto + 3 min)
+- `EmailService.cs`: el logo ya no se envía como `LinkedResource` (adjunto). Ahora se incrusta como **data URI base64** (`<img src="data:image/png;base64,...">`), leído de `wwwroot/images/logo_institucional.png`.
+- OTP expira en **3 minutos** (`Seguridad:OtpMinutos = 3`).
+- `LoginPage`: el botón **"Reenviar"** ahora vuelve a llamar `solicitarRecuperacion` (antes solo limpiaba las cajas).
+
+### Cambio de contraseña (sin contraseña actual + reveal progresivo)
+- `cambiar-contrasena` ya **no** pide `ContrasenaActual` (solo `nuevaContrasena` + `codigo`). DTO y controlador actualizados.
+- `ProfilePage` pestaña Seguridad: se quitó el bloque "Verificación en 2 pasos"; queda [Nueva][Confirmar][Enviar código] → al enviar, se despliegan [Código de verificación][Cambiar contraseña].
+
+### Primera sesión: cambio obligatorio de contraseña
+- `Data/SQL/migracion_debe_cambiar_contrasena.sql`: `usuarios.debe_cambiar_contrasena BOOLEAN DEFAULT FALSE` (aplicada y verificada).
+- `PersonalService`: al **crear/otorgar acceso** (y al resetear contraseña desde `ActualizarAccesoSistemaAsync`) se marca `DebeCambiarContrasena = true`.
+- `AuthResponseDto` + `AuthController` (login/refresh): incluyen `debeCambiarContrasena`.
+- Frontend: `ForzarCambioContrasena.tsx` bloquea la app cuando `user.debeCambiarContrasena` es `true`; al cambiar, se cierra sesión y se re-ingresa con la nueva clave. `cambiar-contrasena` pone el flag en `false`.
+
+### Mi Perfil de Bombero (sin datos repetidos + foto recortada + cierre al navegar)
+- `ProfilePage` reestructurado:
+  - **Tarjeta izquierda (resumen):** avatar + "Subir Nueva Foto" + Nombre Completo + Rango + Compañía.
+  - **Pestaña Perfil:** datos detallados (Nombre completo, Rango, Rol del Sistema, Teléfono, Código de Bombero, Usuario del Sistema) vía `GET /personal/{personalId}`.
+  - **Foto con recorte:** se agregó `react-easy-crop` (dependencia) con modal de recorte (cuadrado + zoom) antes de guardar.
+- `App.tsx`: al seleccionar un módulo en el menú lateral se ejecuta `setProfileOpen(false)` (el perfil ya no queda superpuesto).
+
+### Verificación
+- `dotnet build` → 0 warnings / 0 errors.
+- `npm run build` → éxito.
+- `npm test` → 61/61 passing.
+- Migración `migracion_debe_cambiar_contrasena.sql` aplicada a `Sub_33` (psql) y verificada.
+- Servidores back/front **detenidos**.
+
+## Correo: logo inline + identificación de usuario (2026-10-23)
+
+- **Causa del diseño roto:** Gmail **no renderiza** imágenes `data:` URI (las elimina), por lo que el logo incrustado como base64 en el `src` se veía roto. Se volvió al método `LinkedResource` (MIME `multipart/related`, `cid:logo`) con `ContentDisposition.Inline` explícito → el logo se ve inline y **sin adjunto**.
+- `EmailService.EnviarCodigoOtpAsync(correoDestino, nombreUsuario, codigoOtp)`: el correo ahora saluda al usuario (`Hola, {username}`) para identificar quién está iniciando sesión.
+
+### Recuperación por usuario + correo (coincidencia obligatoria)
+- `solicitar-recuperacion` ahora recibe `{ username, email }` y **solo** envía el código si ambos coinciden con la cuenta. Mensajes:
+  - Éxito: `"Código enviado correctamente, verifique su correo."`
+  - Error: `"Información incorrecta, verifique sus datos."`
+- `verificar-otp` también recibe `{ username, email, codigo }`.
+- `enviar-codigo-2fa` (logueado) usa el mismo mensaje de éxito y envía el correo con el nombre de usuario.
+- Frontend `LoginPage`: `ForgotStep` ahora pide **Usuario** + **Correo electrónico** (dos campos); `authService.solicitarRecuperacion(username, email)` y `verificarOtp(username, email, codigo)`.
+- OTP expira en **3 minutos** (`Seguridad:OtpMinutos = 3`).
+
+### Verificación
+- `dotnet build` → 0 warnings / 0 errors.
+- `npm run build` → éxito.
+- `npm test` → 61/61 passing.
+- Servidores back/front **detenidos**.
+
+
+## Correo sin imagen (2026-10-23)
+
+- Se **quitaron la imagen/logo** del correo de verificación por completo (ya no se envía LinkedResource ni data URI). La plantilla queda limpia: encabezado "SUBESTACIÓN 33" + saludo al usuario + código + pie, sin adjuntos ni imágenes.
+- EmailService ya no inyecta IWebHostEnvironment (dependencia removida).
+- Verificado: dotnet build 0 warnings / 0 errors.

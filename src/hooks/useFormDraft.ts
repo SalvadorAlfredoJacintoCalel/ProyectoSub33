@@ -8,6 +8,7 @@ export interface FormDraftState<T> {
   online: boolean;
   save: (value: T) => void;
   clear: () => void;
+  reset: () => void;
 }
 
 function readDraft<T>(storageKey: string): T | null {
@@ -83,6 +84,7 @@ export function useFormDraft<T>(storageKey: string): FormDraftState<T> {
 
   const save = useCallback(
     (value: T) => {
+      setDraft(value);
       lastValueRef.current = value;
       if (timerRef.current) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => {
@@ -95,7 +97,7 @@ export function useFormDraft<T>(storageKey: string): FormDraftState<T> {
     [writeNow]
   );
 
-  const clear = useCallback(() => {
+  const reset = useCallback(() => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = null;
     lastValueRef.current = null;
@@ -108,11 +110,13 @@ export function useFormDraft<T>(storageKey: string): FormDraftState<T> {
     setSavedAt(null);
   }, [storageKey]);
 
+  const clear = reset;
+
   useEffect(() => {
     return () => {
       flush();
     };
   }, [flush]);
 
-  return { draft, savedAt, online, save, clear };
+  return { draft, savedAt, online, save, clear, reset };
 }

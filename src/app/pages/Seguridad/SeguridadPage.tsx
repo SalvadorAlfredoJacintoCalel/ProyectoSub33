@@ -9,6 +9,7 @@ import {
   getUsuarios,
   cambiarEstadoUsuario,
   cambiarRolUsuario,
+  desbloquearUsuario,
   getRoles,
   getCatalogo,
   crearCatalogo,
@@ -555,6 +556,18 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     }
   };
 
+  const handleDesbloquear = async (u: UsuarioConfig) => {
+    try {
+      await desbloquearUsuario(u.usuarioId);
+      setUsuarios((prev) =>
+        prev.map((x) => (x.usuarioId === u.usuarioId ? { ...x, bloqueada: false, intentosFallidos: 0 } : x))
+      );
+      toast.success("Usuario desbloqueado correctamente.");
+    } catch (error) {
+      toast.error("Error al desbloquear el usuario.");
+    }
+  };
+
   const handleCambiarUsername = async () => {
     if (!modalUsername) return;
     const username = nuevoUsername.trim();
@@ -869,6 +882,21 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                 </button>
               ) },
               { key: "estado", header: "Estado", cell: (u) => <Toggle checked={u.estado} onChange={(v) => handleEstado(u, v)} /> },
+              { key: "bloqueo", header: "Bloqueo", cell: (u) =>
+                u.bloqueada ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ background: "#fee2e2", color: "#b91c1c", borderRadius: 999, padding: "2px 10px", fontSize: 12, fontWeight: 700 }}>Bloqueado</span>
+                    <button
+                      onClick={() => handleDesbloquear(u)}
+                      style={{ background: "transparent", border: "1px solid var(--border)", borderRadius: 8, padding: "5px 10px", fontSize: 12, fontWeight: 600, color: "var(--text-2)", cursor: "pointer" }}
+                    >
+                      Desbloquear
+                    </button>
+                  </div>
+                ) : (
+                  <span style={{ color: "var(--text-3)" }}>—</span>
+                )
+              },
             ]}
             data={usuarios}
             getRowKey={(u) => u.usuarioId}

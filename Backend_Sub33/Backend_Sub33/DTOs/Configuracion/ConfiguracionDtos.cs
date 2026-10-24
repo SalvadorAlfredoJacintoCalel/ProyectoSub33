@@ -33,6 +33,10 @@ namespace Backend_Sub33.DTOs.Configuracion
 
         public bool Estado { get; set; }
 
+        public bool Bloqueada { get; set; }
+
+        public int IntentosFallidos { get; set; }
+
         public DateTime CreatedAt { get; set; }
     }
 

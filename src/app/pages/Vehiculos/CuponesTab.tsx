@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Pencil, Plus, Printer, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
+import { FiltroEliminados } from "@/app/components/ui/FiltroEliminados";
 import { Input } from "@/app/components/ui/input";
+import { NumberInput } from "@/app/components/ui/NumberInput";
 import { Modal } from "@/app/components/ui/modal";
 import { SignatureModal } from "@/app/components/ui/SignatureModal";
 import { Skeleton } from "@/app/components/ui/skeleton";
@@ -12,7 +14,11 @@ import { useFormDraft } from "@/hooks/useFormDraft";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { useCupones } from "@/hooks/useCupones";
 import { usePermisos } from "@/hooks/usePermisos";
+import { useAuth } from "@/context/AuthContext";
 import { vehiculosService } from "@/services/vehiculosService";
+import { crearCatalogo } from "@/services/configuracionService";
+import { GasolineraAutocomplete } from "@/app/pages/Vehiculos/components/GasolineraAutocomplete";
+import { DetalleCuponModal } from "@/app/pages/Vehiculos/components/DetalleCuponModal";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
 import { ReporteCuponesPrintSheet } from "@/app/pages/Vehiculos/components/ReporteCuponesPrintModal";
 import type {
@@ -76,6 +82,7 @@ export function CuponesTab() {
     crearCupon,
     actualizarCupon,
     eliminarCupon,
+    recargar,
   } = useCupones();
 
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
@@ -89,6 +96,9 @@ export function CuponesTab() {
   const [reporte, setReporte] = useState<ReporteCupones | null>(null);
   const [cargandoReporte, setCargandoReporte] = useState(false);
   const [imprimirDespues, setImprimirDespues] = useState(false);
+  const [detalleCupon, setDetalleCupon] = useState<VehiculoCupon | null>(null);
+  const [mostrarEliminados, setMostrarEliminados] = useState(false);
+  const { isAdmin } = usePermisos();
 
   useEffect(() => {
     void Promise.all([
@@ -102,7 +112,11 @@ export function CuponesTab() {
       .catch(() => undefined);
   }, []);
 
-  const filas = periodo?.cupones ?? [];
+  const filas = useMemo(() => {
+    const todos = periodo?.cupones ?? [];
+    if (mostrarEliminados) return todos;
+    return todos.filter((c) => c.activo !== false);
+  }, [periodo, mostrarEliminados]);
   const totalRecibidos = periodo?.totalRecibidos ?? 0;
   const valorDefault = periodo?.valorCuponDefault ?? 100;
 
@@ -119,13 +133,8 @@ export function CuponesTab() {
   );
 
   async function handleGuardarPeriodo(data: CuponPeriodoCreate) {
-    try {
-      await guardarPeriodo(data);
-      toast.success("Período actualizado");
-      setShowPeriodo(false);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo guardar el período");
-    }
+    await guardarPeriodo(data);
+    setShowPeriodo(false);
   }
 
   async function handleGuardarCupon(data: CuponCreate, id?: number) {
@@ -312,12 +321,16 @@ export function CuponesTab() {
               {MESES[mes - 1]} {anio}
             </h2>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Kpi label="Cupones recibidos" value={resumen.recibidos.toLocaleString("es-GT")} />
             <Kpi label="Haber recibido" value={money(resumen.haberInicial)} />
             <Kpi label="Cupones gastados" value={resumen.gastados.toLocaleString("es-GT")} />
             <Kpi label="Saldo final" value={money(resumen.saldoFinal)} highlight />
           </div>
+        </div>
+
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <FiltroEliminados visible={isAdmin} checked={mostrarEliminados} onChange={setMostrarEliminados} />
         </div>
 
         <div
@@ -364,7 +377,8 @@ export function CuponesTab() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[1100px] border-collapse text-sm">
               <thead>
                 <tr style={{ color: "var(--text-3)" }}>
@@ -389,8 +403,15 @@ export function CuponesTab() {
                     <td className="border-b px-2 py-2 whitespace-nowrap" style={{ borderColor: "var(--divider)" }}>
                       {formatFechaCorta(c.fecha)}
                     </td>
-                    <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
-                      {c.responsable}
+                    <td className="border-b px-2 py-2 cursor-pointer text-brand-600 hover:underline" style={{ borderColor: "var(--divider)" }} onClick={() => setDetalleCupon(c)}>
+                      <div className="flex flex-col">
+                        <span>{c.responsable}</span>
+                        {c.activo === false && (
+                          <span className="text-[10px] font-semibold uppercase" style={{ color: "var(--text-3)" }}>
+                            Eliminado por {c.eliminadoPorNombre || "—"}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="border-b px-2 py-2" style={{ borderColor: "var(--divider)" }}>
                       {c.firmaBase64 ? (
@@ -507,6 +528,58 @@ export function CuponesTab() {
               </tfoot>
             </table>
           </div>
+
+          <div className="md:hidden space-y-3">
+            {filas.map((c) => (
+              <div key={c.registroId} className="rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}>
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDetalleCupon(c)}
+                    className="text-left"
+                  >
+                    <p className="text-sm font-bold" style={{ color: "var(--text-1)" }}>{c.responsable}</p>
+                    <p className="text-xs" style={{ color: "var(--text-3)" }}>{formatFechaCorta(c.fecha)}{c.placas ? ` · ${c.placas}` : ""}</p>
+                    {c.activo === false && (
+                      <p className="text-[10px] font-semibold uppercase" style={{ color: "var(--text-3)" }}>
+                        Eliminado por {c.eliminadoPorNombre || "—"}
+                      </p>
+                    )}
+                  </button>
+                  <span className="shrink-0 text-sm font-extrabold" style={{ color: "var(--brand-600)" }}>{money(c.saldo)}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: "var(--text-2)" }}>
+                  <span>Del {c.cuponDel} al {c.cuponAl}</span>
+                  <span>Total: {c.totalCupones}</span>
+                  <span>Haber: {money(c.haber)}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  {c.firmaBase64 ? (
+                    <button type="button" onClick={() => abrirFirma(c)} title="Ver o re-firmar">
+                      <img src={c.firmaBase64} alt={`Firma de ${c.responsable}`} className="h-6 w-auto max-w-[90px] object-contain" />
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => abrirFirma(c)} className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "var(--bg-hover)", color: "var(--text-2)" }}>
+                      Firmar
+                    </button>
+                  )}
+                  <div className="flex items-center gap-1">
+                    {permisosVehiculos.editarCupon && (
+                      <button type="button" className="rounded-lg p-1.5" style={{ color: "var(--text-2)" }} onClick={() => { setCuponEdit(c); setShowCupon(true); }} title="Editar">
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                    {permisosVehiculos.eliminarCupon && (
+                      <button type="button" className="rounded-lg p-1.5" style={{ color: "var(--brand-600)" }} onClick={() => eliminar(c)} title="Eliminar">
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 
@@ -549,6 +622,18 @@ export function CuponesTab() {
           <ReporteCuponesPrintSheet reporte={reporte} />
         </div>
       )}
+
+      <DetalleCuponModal
+        open={detalleCupon !== null}
+        onClose={() => setDetalleCupon(null)}
+        cupon={detalleCupon}
+        activo={detalleCupon?.activo !== false}
+        onEditar={(c) => { setCuponEdit(c); setShowCupon(true); setDetalleCupon(null); }}
+        onDesactivar={async (id) => { await vehiculosService.desactivarCupon(id); recargar(); }}
+        onReactivar={async (id) => { await vehiculosService.reactivarCupon(id); recargar(); }}
+        onEliminarPermanente={async (id) => { await vehiculosService.purgeCupon(id); recargar(); }}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
@@ -566,6 +651,17 @@ function Kpi({ label, value, highlight }: { label: string; value: string; highli
   );
 }
 
+interface PeriodoDraft {
+  del: string;
+  al: string;
+  valor: string;
+  notas: string;
+  elaboradoPor: string;
+  jefeAbastecimientos: string;
+  jefe33Cia: string;
+  director: string;
+}
+
 function PeriodoModal({
   open,
   onClose,
@@ -581,9 +677,12 @@ function PeriodoModal({
   periodo: CuponPeriodo | null;
   onSave: (data: CuponPeriodoCreate) => Promise<void>;
 }) {
+  const { user } = useAuth();
+  const { isAdmin } = usePermisos();
+  const { toast } = useAlert();
+
   const [del, setDel] = useState("");
   const [al, setAl] = useState("");
-  const [total, setTotal] = useState("0");
   const [valor, setValor] = useState("100");
   const [notas, setNotas] = useState("");
   const [saving, setSaving] = useState(false);
@@ -593,21 +692,88 @@ function PeriodoModal({
   const [jefe33Cia, setJefe33Cia] = useState("");
   const [director, setDirector] = useState("");
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<PeriodoDraft>("periodo.create");
+  const draftRef = useRef<PeriodoDraft | null>(draft);
+  const dirtyRef = useRef(false);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  const totalCalculado = useMemo(() => {
+    const d = Number(del);
+    const a = Number(al);
+    return d && a && a >= d ? a - d + 1 : 0;
+  }, [del, al]);
+
+  const periodoDraft = useMemo<PeriodoDraft>(
+    () => ({ del, al, valor, notas, elaboradoPor, jefeAbastecimientos, jefe33Cia, director }),
+    [del, al, valor, notas, elaboradoPor, jefeAbastecimientos, jefe33Cia, director]
+  );
+
   useEffect(() => {
     if (!open) return;
-    setDel(periodo?.cuponInicialDel ? String(periodo.cuponInicialDel) : "");
-    setAl(periodo?.cuponInicialAl ? String(periodo.cuponInicialAl) : "");
-    setTotal(String(periodo?.totalRecibidos ?? 0));
-    setValor(String(periodo?.valorCuponDefault ?? 100));
-    setNotas(periodo?.notas ?? "");
-    setElaboradoPor(periodo?.elaboradoPor ?? "");
-    setJefeAbastecimientos(periodo?.jefeAbastecimientos ?? "");
-    setJefe33Cia(periodo?.jefe33Cia ?? "");
-    setDirector(periodo?.director ?? "");
+    if (dirtyRef.current) {
+      save(periodoDraft);
+    }
+  }, [periodoDraft, open, save]);
+
+  useEffect(() => {
+    if (!open) return;
+    dirtyRef.current = false;
+    const d = draftRef.current;
+    if (!periodo?.cuponInicialDel && !periodo?.cuponInicialAl && d) {
+      setDel(d.del);
+      setAl(d.al);
+      setValor(d.valor);
+      setNotas(d.notas);
+      setElaboradoPor(d.elaboradoPor);
+      setJefeAbastecimientos(d.jefeAbastecimientos);
+      setJefe33Cia(d.jefe33Cia);
+      setDirector(d.director);
+    } else {
+      setDel(periodo?.cuponInicialDel ? String(periodo.cuponInicialDel) : "");
+      setAl(periodo?.cuponInicialAl ? String(periodo.cuponInicialAl) : "");
+      setValor(String(periodo?.valorCuponDefault ?? 100));
+      setNotas(periodo?.notas ?? "");
+      setElaboradoPor(periodo?.elaboradoPor ?? "");
+      if (!periodo?.elaboradoPor && user?.name) setElaboradoPor(user.name);
+      setJefeAbastecimientos(periodo?.jefeAbastecimientos ?? "");
+      setJefe33Cia(periodo?.jefe33Cia ?? "");
+      setDirector(periodo?.director ?? "");
+    }
+    setErrors({});
   }, [open, periodo]);
+
+  function handleChange(setter: (v: string) => void, key: string, value: string) {
+    dirtyRef.current = true;
+    setter(value);
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const errs: Record<string, string> = {};
+    if (!del) errs.del = "Cupón inicial DE es obligatorio";
+    if (!al) errs.al = "HASTA cupón Nº es obligatorio";
+    if (del && al && Number(al) < Number(del)) errs.al = "HASTA debe ser ≥ DE";
+    if (!valor || Number(valor) <= 0) errs.valor = "Valor de cupón debe ser > 0";
+    if (!elaboradoPor.trim()) errs.elaboradoPor = "Elaborado por es obligatorio";
+    if (!jefeAbastecimientos.trim()) errs.jefeAbastecimientos = "Jefatura de Abastecimientos obligatoria";
+    if (!jefe33Cia.trim()) errs.jefe33Cia = "Jefe 33ª Compañía obligatorio";
+    if (!director.trim()) errs.director = "Director obligatorio";
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      toast.error("Complete los campos obligatorios");
+      return;
+    }
+    setErrors({});
     setSaving(true);
     try {
       await onSave({
@@ -615,7 +781,7 @@ function PeriodoModal({
         mes,
         cuponInicialDel: del ? Number(del) : null,
         cuponInicialAl: al ? Number(al) : null,
-        totalRecibidos: Number(total) || 0,
+        totalRecibidos: totalCalculado,
         valorCuponDefault: Number(valor) || 0,
         notas: notas.trim() || null,
         elaboradoPor: elaboradoPor.trim() || null,
@@ -623,6 +789,10 @@ function PeriodoModal({
         jefe33Cia: jefe33Cia.trim() || null,
         director: director.trim() || null,
       });
+      clear();
+      toast.success("Período guardado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar el período");
     } finally {
       setSaving(false);
     }
@@ -647,37 +817,44 @@ function PeriodoModal({
       }
     >
       <form id="periodo-form" onSubmit={submit} className="flex flex-col gap-3">
+        {!periodo && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Campo label="Cupón inicial Del">
-            <Input type="number" value={del} onChange={(e) => setDel(e.target.value)} placeholder="37086149" />
+          <Campo label="Cupon inicial: DE">
+            <NumberInput value={del} onChange={(v) => handleChange(setDel, "del", v)} placeholder="37086149" error={errors.del} />
           </Campo>
-          <Campo label="Cupón inicial Al">
-            <Input type="number" value={al} onChange={(e) => setAl(e.target.value)} placeholder="37086218" />
-          </Campo>
-          <Campo label="Total de cupones recibidos">
-            <Input type="number" value={total} onChange={(e) => setTotal(e.target.value)} />
+          <Campo label="HASTA cupón Nº:">
+            <NumberInput value={al} onChange={(v) => handleChange(setAl, "al", v)} placeholder="37086218" error={errors.al} />
           </Campo>
           <Campo label="Valor de cupón (Q)">
-            <Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
+            <NumberInput allowDecimal value={valor} onChange={(v) => handleChange(setValor, "valor", v)} error={errors.valor} />
           </Campo>
+        </div>
+
+        <div className="rounded-xl px-3 py-2" style={{ background: "var(--bg-hover)" }}>
+          <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+            Total de cupones recibidos
+          </p>
+          <p className="text-lg font-extrabold" style={{ color: "var(--text-1)" }}>
+            {totalCalculado} cupones
+          </p>
         </div>
 
         <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
           <p className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
-            Firmas del reporte oficial
+            Reporte Oficial
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <Campo label="Elaborado por">
-              <Input value={elaboradoPor} onChange={(e) => setElaboradoPor(e.target.value)} placeholder="Nombre y apellido" />
+              <Input value={elaboradoPor} readOnly={!isAdmin} onChange={isAdmin ? (e) => handleChange(setElaboradoPor, "elaboradoPor", e.target.value) : undefined} placeholder="Nombre y apellido" error={errors.elaboradoPor} />
             </Campo>
             <Campo label="Jefatura de Abastecimientos">
-              <Input value={jefeAbastecimientos} onChange={(e) => setJefeAbastecimientos(e.target.value)} placeholder="Nombre y apellido" />
+              <Input value={jefeAbastecimientos} onChange={(e) => handleChange(setJefeAbastecimientos, "jefeAbastecimientos", e.target.value)} placeholder="Nombre y apellido" error={errors.jefeAbastecimientos} />
             </Campo>
             <Campo label="Jefe 33ª Compañía">
-              <Input value={jefe33Cia} onChange={(e) => setJefe33Cia(e.target.value)} placeholder="Nombre y apellido" />
+              <Input value={jefe33Cia} onChange={(e) => handleChange(setJefe33Cia, "jefe33Cia", e.target.value)} placeholder="Nombre y apellido" error={errors.jefe33Cia} />
             </Campo>
             <Campo label="Director">
-              <Input value={director} onChange={(e) => setDirector(e.target.value)} placeholder="Nombre y apellido" />
+              <Input value={director} onChange={(e) => handleChange(setDirector, "director", e.target.value)} placeholder="Nombre y apellido" error={errors.director} />
             </Campo>
           </div>
         </div>
@@ -685,7 +862,7 @@ function PeriodoModal({
         <Campo label="Notas">
           <textarea
             value={notas}
-            onChange={(e) => setNotas(e.target.value)}
+            onChange={(e) => handleChange(setNotas, "notas", e.target.value)}
             rows={3}
             className="w-full rounded-lg px-3 py-2 text-sm outline-none focus-ring-premium"
             style={{ background: "var(--bg-input)", color: "var(--text-1)", border: "1px solid var(--border)" }}
@@ -743,11 +920,14 @@ function CuponModal({
   const [al, setAl] = useState("");
   const [valor, setValor] = useState("100");
   const [observaciones, setObservaciones] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const { toast } = useAlert();
-  const { draft, savedAt, online, save, clear } = useFormDraft<CuponDraft>("cupon.create");
+  const { user } = useAuth();
+  const { isAdmin } = usePermisos();
+  const { draft, online, save, clear } = useFormDraft<CuponDraft>("cupon.create");
   const draftRef = useRef<CuponDraft | null>(draft);
+  const dirtyRef = useRef(false);
 
   useEffect(() => {
     draftRef.current = draft;
@@ -771,15 +951,14 @@ function CuponModal({
 
   useEffect(() => {
     if (!open || cupon) return;
-    if (!cuponDraft.vehiculoId && !cuponDraft.responsable && !cuponDraft.del && !cuponDraft.al) {
-      clear();
-      return;
+    if (dirtyRef.current) {
+      save(cuponDraft);
     }
-    save(cuponDraft);
-  }, [cuponDraft, open, cupon, save, clear]);
+  }, [cuponDraft, open, cupon, save]);
 
   useEffect(() => {
     if (!open) return;
+    dirtyRef.current = false;
     if (cupon) {
       setVehiculoId(cupon.vehiculoId ? String(cupon.vehiculoId) : "");
       setResponsable(cupon.responsable);
@@ -806,18 +985,32 @@ function CuponModal({
       toast.info("Se recuperó el borrador del cupón.");
     } else {
       setVehiculoId("");
-      setResponsable("");
+      setResponsable(user?.name ?? "");
       setFecha(fechaDelPeriodo(anio, mes));
       setKilometraje("");
       setGalonaje("");
       setGasolineraId("");
-      setDel("");
+      const usados = periodo?.cupones ?? [];
+      const siguienteCupon = usados.length === 0
+        ? (periodo?.cuponInicialDel ?? "")
+        : Math.max(...usados.map((c) => c.cuponAl)) + 1;
+      setDel(siguienteCupon ? String(siguienteCupon) : "");
       setAl("");
       setValor(String(periodo?.valorCuponDefault ?? 100));
       setObservaciones("");
     }
-    setError(null);
+    setErrors({});
   }, [open, cupon, anio, mes, periodo, toast]);
+
+  function handleChange(setter: (v: string) => void, key: string, value: string) {
+    dirtyRef.current = true;
+    setter(value);
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
 
   const totalCupones = useMemo(() => {
     const d = Number(del);
@@ -830,12 +1023,21 @@ function CuponModal({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!responsable.trim()) return setError("El responsable es obligatorio.");
-    if (!fecha) return setError("La fecha es obligatoria.");
-    if (!del || !al) return setError("Indica el rango de cupones.");
-    if (Number(al) < Number(del)) return setError("El cupón 'Al' no puede ser menor que 'Del'.");
-    if (!valor || Number(valor) <= 0) return setError("El valor del cupón debe ser mayor a cero.");
-    setError(null);
+    const errs: Record<string, string> = {};
+    if (!vehiculoId) errs.vehiculoId = "Debe seleccionar un vehículo.";
+    if (!responsable.trim()) errs.responsable = "El responsable es obligatorio.";
+    if (!fecha) errs.fecha = "La fecha es obligatoria.";
+    if (!del) errs.del = "Próximo cupón Nº es obligatorio.";
+    if (!al) errs.al = "Cupón Al es obligatorio.";
+    if (del && al && Number(al) < Number(del)) errs.al = "El cupón 'Al' no puede ser menor que 'Del'.";
+    if (!valor || Number(valor) <= 0) errs.valor = "El valor del cupón debe ser mayor a cero.";
+    if (!gasolineraId) errs.gasolineraId = "Debe seleccionar gasolinera.";
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      toast.error("Complete los campos obligatorios");
+      return;
+    }
+    setErrors({});
     setSaving(true);
     try {
       await onSave(
@@ -857,8 +1059,9 @@ function CuponModal({
         cupon?.registroId,
       );
       if (!cupon) clear();
-    } catch {
-      setError("No se pudo guardar el cupón.");
+      toast.success("Cupón guardado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar el cupón");
     } finally {
       setSaving(false);
     }
@@ -883,52 +1086,56 @@ function CuponModal({
       }
     >
       <form id="cupon-form" onSubmit={submit} className="flex flex-col gap-3">
-        {!cupon && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
+        {!cupon && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Campo label="Vehículo">
+          <Campo label="Vehículo" required>
             <SelectField
               label=""
               placeholder="Selecciona vehículo"
               value={vehiculoId}
-              onChange={setVehiculoId}
+              onChange={(v) => handleChange(setVehiculoId, "vehiculoId", v)}
               options={vehiculos.map((v) => ({
                 value: String(v.vehiculoId),
                 label: `${v.codigo ? `#${v.codigo} · ` : ""}${v.marca} ${v.modelo}${v.placa ? ` (${v.placa})` : ""}`,
               }))}
+              error={errors.vehiculoId}
             />
           </Campo>
           <Campo label="Responsable" required>
-            <Input value={responsable} onChange={(e) => setResponsable(e.target.value)} />
+            <Input value={responsable} readOnly={!isAdmin} onChange={isAdmin ? (e) => handleChange(setResponsable, "responsable", e.target.value) : undefined} error={errors.responsable} />
           </Campo>
           <Campo label="Fecha" required>
-            <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            <Input type="date" value={fecha} onChange={(e) => handleChange(setFecha, "fecha", e.target.value)} error={errors.fecha} />
           </Campo>
           <Campo label="Kilometraje">
-            <Input type="number" value={kilometraje} onChange={(e) => setKilometraje(e.target.value)} />
+            <NumberInput value={kilometraje} onChange={(v) => handleChange(setKilometraje, "kilometraje", v)} />
           </Campo>
           <Campo label="Galonaje">
-            <Input type="number" step="0.01" value={galonaje} onChange={(e) => setGalonaje(e.target.value)} />
+            <NumberInput allowDecimal value={galonaje} onChange={(v) => handleChange(setGalonaje, "galonaje", v)} />
           </Campo>
-          <Campo label="Gasolinera">
-            <SelectField
-              label=""
-              placeholder="Selecciona gasolinera"
-              value={gasolineraId}
-              onChange={setGasolineraId}
-              options={gasolineras.map((g) => ({ value: String(g.id), label: g.nombre }))}
-            />
-          </Campo>
-          <Campo label="Cupón Del" required>
-            <Input type="number" value={del} onChange={(e) => setDel(e.target.value)} />
+          <GasolineraAutocomplete
+            value={gasolineraId}
+            onChange={(v) => handleChange(setGasolineraId, "gasolineraId", v)}
+            gasolineras={gasolineras}
+            onCreate={async (nombre) => {
+              const nueva = await crearCatalogo("gasolineras", nombre);
+              setGasolineras((prev) => [...prev, nueva]);
+              return nueva;
+            }}
+            required
+            error={errors.gasolineraId}
+          />
+          <Campo label="Próximo cupón Nº:" required>
+            <NumberInput value={del} onChange={(v) => handleChange(setDel, "del", v)} error={errors.del} />
           </Campo>
           <Campo label="Cupón Al" required>
-            <Input type="number" value={al} onChange={(e) => setAl(e.target.value)} />
+            <NumberInput value={al} onChange={(v) => handleChange(setAl, "al", v)} error={errors.al} />
           </Campo>
           <Campo label="Valor de cupón (Q)" required>
-            <Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} />
+            <NumberInput allowDecimal value={valor} onChange={(v) => handleChange(setValor, "valor", v)} error={errors.valor} />
           </Campo>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl p-3" style={{ background: "var(--bg-hover)" }}>
             <p className="text-[10px] font-bold uppercase" style={{ color: "var(--text-3)" }}>
               Total de cupones
@@ -945,29 +1152,16 @@ function CuponModal({
               {money(haber)}
             </p>
           </div>
-          <div className="rounded-xl p-3" style={{ background: "var(--bg-hover)" }}>
-            <p className="text-[10px] font-bold uppercase" style={{ color: "var(--text-3)" }}>
-              Firma digital
-            </p>
-            <p className="text-sm font-extrabold" style={{ color: "var(--text-1)" }}>
-              {cupon?.firmaBase64 ? "Registrada" : "Pendiente"}
-            </p>
-          </div>
         </div>
         <Campo label="Observaciones">
           <textarea
             value={observaciones}
-            onChange={(e) => setObservaciones(e.target.value)}
+            onChange={(e) => handleChange(setObservaciones, "observaciones", e.target.value)}
             rows={2}
             className="w-full rounded-lg px-3 py-2 text-sm outline-none focus-ring-premium"
             style={{ background: "var(--bg-input)", color: "var(--text-1)", border: "1px solid var(--border)" }}
           />
         </Campo>
-        {error && (
-          <p className="text-xs font-medium" style={{ color: "var(--brand-600)" }}>
-            {error}
-          </p>
-        )}
       </form>
     </Modal>
   );

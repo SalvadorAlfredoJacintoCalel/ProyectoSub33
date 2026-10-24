@@ -15,15 +15,17 @@ namespace Backend_Sub33.Models.Entities
         [Column("usuario_id")]
         public Guid UsuarioId { get; set; }
 
-        [Required]
-        [MaxLength(6)]
-        [Column("codigo_otp")]
-        public string CodigoOtp { get; set; } = string.Empty;
+        [MaxLength(64)]
+        [Column("codigo_otp_hash")]
+        public string? CodigoOtpHash { get; set; }
 
-        [Required]
         [MaxLength(20)]
         [Column("telefono_destino")]
-        public string TelefonoDestino { get; set; } = string.Empty;
+        public string? TelefonoDestino { get; set; }
+
+        [MaxLength(255)]
+        [Column("email_destino")]
+        public string? EmailDestino { get; set; }
 
         [Required]
         [Column("expira_en")]

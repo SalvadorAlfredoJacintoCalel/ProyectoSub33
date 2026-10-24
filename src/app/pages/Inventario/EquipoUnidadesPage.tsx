@@ -467,7 +467,7 @@ export function EquipoUnidadesPage() {
         }
       >
         <FormErrorSummary show={Object.keys(assignErrors).length > 0} />
-        <div className="mb-4"><DraftBanner savedAt={savedAt} online={online} onDiscard={clear} /></div>
+        <div className="mb-4"><DraftBanner draft={draft} online={online} onDiscard={clear} /></div>
         <div className="flex flex-col gap-4">
           <SelectField
             label="Unidad"

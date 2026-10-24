@@ -1,6 +1,30 @@
 import { ApiError, ApiErrorResponse, RequestOptions, ApiClientConfig } from "../../types/api";
+import { tokenStore } from "../auth/tokenStore";
 
 const DEFAULT_BASE_URL = "http://localhost:5196/api";
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAccessToken(baseUrl: string): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch(`${baseUrl}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = (await res.json().catch(() => null)) as { token?: string } | null;
+        const token = data?.token ?? null;
+        tokenStore.set(token);
+        return token;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
 
 function getBaseUrl(): string {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) {
@@ -55,21 +79,20 @@ export function createApiClient(config?: Partial<ApiClientConfig>): {
   delete: <T>(path: string, options?: RequestOptions) => Promise<T>;
 } {
   const baseUrl = config?.baseUrl ?? getBaseUrl();
-  const getToken = config?.getToken ?? (() => localStorage.getItem("authToken"));
+  const getToken = config?.getToken ?? (() => tokenStore.get());
   const inFlightRequests = new Map<string, Promise<unknown>>();
 
   async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { params, headers, ...fetchOptions } = options;
-    const token = getToken();
-
     const url = buildUrl(baseUrl, path, params);
-    const mergedHeaders: Record<string, string> = {
-      ...createJsonHeaders(token),
-      ...(headers as Record<string, string>),
-    };
     const method = String(fetchOptions.method ?? "GET").toUpperCase();
 
-    const doFetch = async (): Promise<T> => {
+    const doFetch = async (token: string | null): Promise<T> => {
+      const mergedHeaders: Record<string, string> = {
+        ...createJsonHeaders(token),
+        ...(headers as Record<string, string>),
+      };
+
       const response = await fetch(url, {
         ...fetchOptions,
         headers: mergedHeaders,
@@ -87,6 +110,24 @@ export function createApiClient(config?: Partial<ApiClientConfig>): {
       return response.json() as Promise<T>;
     };
 
+    const execute = async (): Promise<T> => {
+      const token = getToken();
+      try {
+        return await doFetch(token);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401 && token) {
+          const newToken = await refreshAccessToken(baseUrl);
+          if (newToken) {
+            return await doFetch(newToken);
+          }
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("auth:unauthorized"));
+          }
+        }
+        throw error;
+      }
+    };
+
     // Deduplicar peticiones GET concurrentes (sin cache de datos obsoletos)
     if (method === "GET") {
       const cacheKey = `GET:${url}`;
@@ -95,7 +136,7 @@ export function createApiClient(config?: Partial<ApiClientConfig>): {
         return existing as Promise<T>;
       }
 
-      const promise = doFetch();
+      const promise = execute();
       inFlightRequests.set(cacheKey, promise);
       try {
         return await promise;
@@ -104,7 +145,7 @@ export function createApiClient(config?: Partial<ApiClientConfig>): {
       }
     }
 
-    return doFetch();
+    return execute();
   }
 
   return {

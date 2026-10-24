@@ -9,8 +9,16 @@ import type {
 
 export function useCupones() {
   const hoy = new Date();
-  const [anio, setAnio] = useState(hoy.getFullYear());
-  const [mes, setMes] = useState(hoy.getMonth() + 1);
+  const saved = (() => {
+    try {
+      const raw = localStorage.getItem("sub33.cupones.periodo");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const [anio, setAnio] = useState(saved?.anio ?? hoy.getFullYear());
+  const [mes, setMes] = useState(saved?.mes ?? hoy.getMonth() + 1);
   const [periodo, setPeriodo] = useState<CuponPeriodo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +37,11 @@ export function useCupones() {
   }, []);
 
   useEffect(() => {
+    try {
+      localStorage.setItem("sub33.cupones.periodo", JSON.stringify({ anio, mes }));
+    } catch {
+      /* noop */
+    }
     void cargar(anio, mes);
   }, [cargar, anio, mes]);
 
@@ -69,6 +82,30 @@ export function useCupones() {
     [recargar],
   );
 
+  const desactivarCupon = useCallback(
+    async (id: number) => {
+      await vehiculosService.desactivarCupon(id);
+      await recargar();
+    },
+    [recargar],
+  );
+
+  const reactivarCupon = useCallback(
+    async (id: number) => {
+      await vehiculosService.reactivarCupon(id);
+      await recargar();
+    },
+    [recargar],
+  );
+
+  const purgeCupon = useCallback(
+    async (id: number) => {
+      await vehiculosService.purgeCupon(id);
+      await recargar();
+    },
+    [recargar],
+  );
+
   return {
     anio,
     mes,
@@ -82,5 +119,8 @@ export function useCupones() {
     crearCupon,
     actualizarCupon,
     eliminarCupon,
+    desactivarCupon,
+    reactivarCupon,
+    purgeCupon,
   };
 }

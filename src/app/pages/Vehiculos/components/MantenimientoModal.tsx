@@ -8,6 +8,7 @@ import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { ApiError, crearCatalogo, getCatalogo } from "@/services/configuracionService";
+import { finanzasService } from "@/services/finanzasService";
 import type {
   CatalogoItem,
   EstadoMantenimiento,
@@ -271,6 +272,17 @@ export function MantenimientoModal({
         firmaPiloto: nil(form.firmaPiloto),
         firmaJefeServicio: nil(form.firmaJefeServicio),
       });
+      if (finalizando && mantenimiento && Number(form.costo) > 0) {
+        try {
+          await finanzasService.crearGastoDesdeMantenimiento(
+            mantenimiento.mantenimientoId,
+            Number(form.costo),
+            `Mantenimiento #${mantenimiento.mantenimientoId} - ${vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : "vehículo"}`,
+          );
+        } catch {
+          toast.warning("El gasto de mantenimiento no pudo registrarse en Finanzas.");
+        }
+      }
       if (!mantenimiento) clear();
       onClose();
     } catch (e) {
@@ -351,7 +363,7 @@ export function MantenimientoModal({
       }
     >
       <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {!mantenimiento && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
+        {!mantenimiento && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
         <Section
           number="1"
           title="Datos de identificación y encabezado"

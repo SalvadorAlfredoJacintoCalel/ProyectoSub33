@@ -28,10 +28,12 @@ import { Modal } from "@/app/components/ui/modal";
 import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { NumberInput } from "@/app/components/ui/NumberInput";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { useDonaciones } from "@/hooks/useDonaciones";
 import { usePermisos } from "@/hooks/usePermisos";
+import { finanzasService } from "@/services/finanzasService";
 import { LibroDonacionesTab } from "./LibroDonacionesTab";
 import type {
   Donacion,
@@ -413,7 +415,7 @@ function DonacionModal({
       }
     >
       {/* Stepper */}
-      {!initial && <div className="mb-4"><DraftBanner savedAt={savedAt} online={online} onDiscard={clear} /></div>}
+      {!initial && <div className="mb-4"><DraftBanner draft={draft} online={online} onDiscard={clear} /></div>}
       <div className="mb-6 flex items-center">
         {STEPS.map((label, i) => (
           <div key={label} className="flex items-center" style={{ flex: i === STEPS.length - 1 ? "0 0 auto" : 1 }}>
@@ -481,7 +483,7 @@ function DonacionModal({
         <div className="flex flex-col gap-4">
           {form.tipo === "Monetaria" ? (
             <div className="grid grid-cols-3 gap-4">
-              <Input type="number" min={0} step="0.01" label="Monto (Q) *" placeholder="0.00" value={form.monto} onChange={(e) => setField("monto", e.target.value)} error={errors.monto} />
+              <NumberInput allowDecimal label="Monto (Q) *" placeholder="0.00" value={form.monto} onChange={(v) => setField("monto", v)} error={errors.monto} />
               <div>
                 <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Método de Pago</label>
                 <select value={form.metodoPago} onChange={(e) => setField("metodoPago", e.target.value as MetodoPago)}
@@ -517,8 +519,8 @@ function DonacionModal({
                   {form.materiales.map((m, i) => (
                     <div key={i} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 80px 120px 32px" }}>
                       <Input placeholder="Descripción del artículo" value={m.descripcion} onChange={(e) => setMaterialField(i, "descripcion", e.target.value)} />
-                      <Input type="number" min={1} placeholder="Cant." value={m.cantidad} onChange={(e) => setMaterialField(i, "cantidad", Number(e.target.value))} />
-                      <Input type="number" min={0} step="0.01" placeholder="Valor est. (Q)" value={m.valorEstimado || ""} onChange={(e) => setMaterialField(i, "valorEstimado", Number(e.target.value))} />
+                      <NumberInput placeholder="Cant." value={m.cantidad} onChange={(v) => setMaterialField(i, "cantidad", Number(v))} />
+                      <NumberInput allowDecimal placeholder="Valor est. (Q)" value={m.valorEstimado || ""} onChange={(v) => setMaterialField(i, "valorEstimado", Number(v))} />
                       <button type="button" onClick={() => removeMaterial(i)} disabled={form.materiales.length === 1} className="rounded p-1" style={{ color: form.materiales.length === 1 ? "var(--neutral-300)" : "var(--brand-500)", cursor: form.materiales.length === 1 ? "not-allowed" : "pointer" }}>
                         <X size={16} />
                       </button>
@@ -642,7 +644,18 @@ export function DonacionesPage() {
           noComprobante: form.tipo === "Monetaria" ? form.noComprobante : undefined,
           materiales: form.tipo === "Material" ? form.materiales : undefined,
         };
-        await createDonacion(dto);
+        const creada = await createDonacion(dto);
+        if (dto.tipo === "Monetaria" && monto > 0) {
+          try {
+            await finanzasService.crearIngresoDesdeDonacion(
+              creada.donacionId,
+              monto,
+              `Donación ${dto.tipo} - ${dto.donante}`,
+            );
+          } catch {
+            toast.warning("El ingreso por donación no pudo registrarse en Finanzas.");
+          }
+        }
         toast.success("Donación registrada correctamente");
       }
       setShowForm(false);

@@ -14,6 +14,6 @@ public interface IPersonalService
     Task<ServiceResult<PersonalResponseDto>> CreateAsync(CreatePersonalDto dto, CancellationToken ct = default);
     Task<ServiceResult<PersonalResponseDto>> UpdateAsync(Guid id, UpdatePersonalDto dto, CancellationToken ct = default);
     Task<ServiceResult> ChangeEstadoAsync(Guid id, bool estado, CancellationToken ct = default);
-    Task<ServiceResult> ActualizarAccesoSistemaAsync(Guid personalId, string username, string password, int rolId, CancellationToken ct = default);
+    Task<ServiceResult> ActualizarAccesoSistemaAsync(Guid personalId, string username, string password, string? email, int rolId, CancellationToken ct = default);
     Task<ServiceResult> DeleteAsync(Guid id, CancellationToken ct = default);
 }

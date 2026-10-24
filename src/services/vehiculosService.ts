@@ -141,6 +141,18 @@ export const vehiculosService = {
     await apiClient.delete<ApiEnvelope<unknown>>(`${API_BASE}/cupones/${id}`);
   },
 
+  desactivarCupon: async (id: number): Promise<void> => {
+    await apiClient.patch<ApiEnvelope<unknown>>(`${API_BASE}/cupones/${id}/desactivar`);
+  },
+
+  reactivarCupon: async (id: number): Promise<void> => {
+    await apiClient.patch<ApiEnvelope<unknown>>(`${API_BASE}/cupones/${id}/reactivar`);
+  },
+
+  purgeCupon: async (id: number): Promise<void> => {
+    await apiClient.delete<ApiEnvelope<unknown>>(`${API_BASE}/cupones/${id}/purge?confirmoEliminacionPermanente=true`);
+  },
+
   // ── Catálogos ─────────────────────────────────────────────────────────────
   getTiposVehiculo: async (): Promise<CatalogoItem[]> =>
     apiClient.get<CatalogoItem[]>("/configuracion/catalogos/tipos-vehiculo"),

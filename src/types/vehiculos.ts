@@ -111,6 +111,9 @@ export interface VehiculoCupon {
   firmaBase64?: string | null;
   saldo: number;
   observaciones?: string | null;
+  activo?: boolean;
+  eliminadoEn?: string | null;
+  eliminadoPorNombre?: string | null;
 }
 
 export interface Vehiculo {

@@ -59,6 +59,11 @@ public class AccesoSistemaDto
     [MinLength(8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
     public string Password { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "El correo electrónico es requerido")]
+    [EmailAddress(ErrorMessage = "El correo electrónico no es válido")]
+    [MaxLength(255)]
+    public string Email { get; set; } = string.Empty;
+
     [Range(1, int.MaxValue, ErrorMessage = "El rol del sistema es requerido")]
     public int RolId { get; set; }
 }
@@ -109,6 +114,7 @@ public class UsuarioAccesoDto
 {
     public Guid UsuarioId { get; init; }
     public string Username { get; init; } = string.Empty;
+    public string? Email { get; init; }
     public bool Estado { get; init; }
     public int? RolId { get; init; }
     public string? Rol { get; init; }

@@ -1,7 +1,9 @@
+import { tokenStore } from "@/services/auth/tokenStore";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5196/api";
 
 const getAuthHeader = () => {
-  const token = localStorage.getItem("authToken");
+  const token = tokenStore.get();
   if (token) {
     return { Authorization: `Bearer ${token}` };
   }
@@ -58,6 +60,8 @@ export interface UsuarioConfig {
   rolNombre: string;
   rolId: number;
   estado: boolean;
+  bloqueada?: boolean;
+  intentosFallidos?: number;
   createdAt?: string;
 }
 
@@ -143,6 +147,13 @@ export const cambiarRolUsuario = async (id: string, rolId: number): Promise<void
     method: "PUT",
     headers: jsonHeaders(),
     body: JSON.stringify({ rolId }),
+  });
+};
+
+export const desbloquearUsuario = async (id: string): Promise<void> => {
+  await request(`${API_BASE_URL}/configuracion/usuarios/${id}/desbloquear`, {
+    method: "POST",
+    headers: jsonHeaders(),
   });
 };
 

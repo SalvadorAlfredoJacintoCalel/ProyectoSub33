@@ -272,7 +272,7 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
       }
     >
       <form id="vehiculo-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
-        {!vehiculo && <DraftBanner savedAt={savedAt} online={online} onDiscard={clear} />}
+        {!vehiculo && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
         <section>
           <h3 className="mb-3 text-sm font-bold" style={{ color: "var(--text-1)" }}>
             Identificación

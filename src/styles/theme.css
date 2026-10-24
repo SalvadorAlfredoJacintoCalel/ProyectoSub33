@@ -421,3 +421,13 @@
     line-height: 1.5;
   }
 }
+
+/* Oculta el ojo nativo del navegador en campos de contraseña (evita doble ícono) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input[type="password"]::-webkit-contacts-auto-fill-button,
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+}

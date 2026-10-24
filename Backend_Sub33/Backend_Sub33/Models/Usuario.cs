@@ -26,8 +26,24 @@ public class Usuario
     [NotMapped]
     public string NombreCompleto { get; set; } = string.Empty;
 
+    [Column("email")]
+    public string? Email { get; set; }
+
+    [JsonIgnore]
+    [Column("foto_base64")]
+    public string? FotoBase64 { get; set; }
+
     [Column("estado")]
     public bool Estado { get; set; }
+
+    [Column("intentos_fallidos")]
+    public int IntentosFallidos { get; set; }
+
+    [Column("bloqueada")]
+    public bool Bloqueada { get; set; }
+
+    [Column("debe_cambiar_contrasena")]
+    public bool DebeCambiarContrasena { get; set; }
 
     [Column("ultimo_login")]
     public DateTime? UltimoLogin { get; set; }

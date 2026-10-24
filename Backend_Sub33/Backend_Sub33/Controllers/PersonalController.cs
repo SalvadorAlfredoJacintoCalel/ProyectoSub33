@@ -87,7 +87,7 @@ public class PersonalController : ApiControllerBase
     public async Task<IActionResult> ActualizarAcceso(Guid id, [FromBody] AccesoSistemaUpdateDto? dto, CancellationToken ct)
         => dto is null
             ? BadRequest("El cuerpo de la solicitud es requerido.")
-            : Respond(await _personalService.ActualizarAccesoSistemaAsync(id, dto.Username, dto.Password, dto.RolId, ct), "Acceso al sistema actualizado correctamente.");
+            : Respond(await _personalService.ActualizarAccesoSistemaAsync(id, dto.Username, dto.Password, dto.Email, dto.RolId, ct), "Acceso al sistema actualizado correctamente.");
 
     [HttpRequirePermission("personal.eliminar")]
     [HttpDelete("{id:guid}")]

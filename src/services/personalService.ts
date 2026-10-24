@@ -45,12 +45,14 @@ export interface ActualizarPersonalDto {
 export interface AccesoSistemaDto {
   username: string;
   password: string;
+  email: string;
   rolId: number;
 }
 
 export interface AccesoSistemaUpdateDto {
   username: string;
   password: string;
+  email?: string;
   rolId: number;
 }
 
@@ -76,6 +78,7 @@ export interface PersonalResponse {
     usuarioId: string;
     username: string;
     estado: boolean;
+    email?: string;
     rolId?: number;
     rol?: string;
   };

@@ -873,7 +873,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
       >
         <FormErrorSummary show={Object.keys(errors).length > 0} />
         {editModal?.mode === "add" && (
-          <div className="mb-4"><DraftBanner savedAt={savedAt} online={online} onDiscard={clear} /></div>
+          <div className="mb-4"><DraftBanner draft={draft} online={online} onDiscard={clear} /></div>
         )}
 
         <CollapsibleSection label="Datos" icon={User}>

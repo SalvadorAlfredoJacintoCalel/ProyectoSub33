@@ -83,4 +83,30 @@ public class CuponesController : ApiControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteCupon(int id)
         => Respond(await _cuponService.DeleteAsync(id), "Cupón eliminado correctamente.");
+
+    [HttpRequirePermission("vehiculos.cupones.eliminar")]
+    [HttpPatch("{id:int}/desactivar")]
+    public async Task<IActionResult> DesactivarCupon(int id)
+    {
+        var usuarioNombre = User?.Identity?.Name ?? "Sistema";
+        return Respond(await _cuponService.DesactivarAsync(id, usuarioNombre), "Cupón desactivado correctamente.");
+    }
+
+    [HttpRequirePermission("vehiculos.cupones.eliminar")]
+    [HttpRequireRole("Administrador")]
+    [HttpPatch("{id:int}/reactivar")]
+    public async Task<IActionResult> ReactivarCupon(int id)
+    {
+        var usuarioNombre = User?.Identity?.Name ?? "Sistema";
+        return Respond(await _cuponService.ReactivarAsync(id, usuarioNombre), "Cupón reactivado correctamente.");
+    }
+
+    [HttpRequirePermission("vehiculos.cupones.eliminar")]
+    [HttpRequireRole("Administrador")]
+    [HttpDelete("{id:int}/purge")]
+    public async Task<IActionResult> HardDeleteCupon(int id)
+    {
+        var usuarioNombre = User?.Identity?.Name ?? "Sistema";
+        return Respond(await _cuponService.HardDeleteAsync(id, usuarioNombre), "Cupón eliminado permanentemente.");
+    }
 }

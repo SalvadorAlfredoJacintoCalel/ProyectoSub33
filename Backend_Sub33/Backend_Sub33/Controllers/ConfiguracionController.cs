@@ -219,6 +219,8 @@ namespace Backend_Sub33.Controllers
                         RolNombre = u.UsuarioRoles.Select(ur => ur.Rol.Nombre).FirstOrDefault() ?? "Sin Rol",
                         RolId = u.UsuarioRoles.Select(ur => ur.Rol.RolId).FirstOrDefault(),
                         Estado = u.Estado,
+                        Bloqueada = u.Bloqueada,
+                        IntentosFallidos = u.IntentosFallidos,
                         CreatedAt = u.CreatedAt
                     })
                     .ToListAsync();
@@ -308,6 +310,32 @@ namespace Backend_Sub33.Controllers
             {
                 _logger.LogError(ex, "Error al cambiar el rol del usuario: {Id}", id);
                 return StatusCode(500, new { mensaje = "Error al cambiar el rol", detalle = ex.Message });
+            }
+        }
+
+        [HttpPost("usuarios/{id:guid}/desbloquear")]
+        public async Task<IActionResult> DesbloquearUsuario(Guid id)
+        {
+            try
+            {
+                var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.UsuarioId == id);
+                if (usuario == null)
+                {
+                    return NotFound(new { mensaje = "Usuario no encontrado" });
+                }
+
+                usuario.Bloqueada = false;
+                usuario.IntentosFallidos = 0;
+                usuario.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { mensaje = "Usuario desbloqueado correctamente" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al desbloquear el usuario: {Id}", id);
+                return StatusCode(500, new { mensaje = "Error al desbloquear el usuario", detalle = ex.Message });
             }
         }
 
