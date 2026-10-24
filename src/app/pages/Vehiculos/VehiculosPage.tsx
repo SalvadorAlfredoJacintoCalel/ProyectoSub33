@@ -43,7 +43,6 @@ import { VehiculoFormModal } from "./components/VehiculoFormModal";
 import { VehiculoDrawer } from "./components/VehiculoDrawer";
 import { VehiculoCard } from "./components/VehiculoCard";
 import { MantenimientoModal } from "./components/MantenimientoModal";
-import { MantenimientoPrintModal } from "./components/MantenimientoPrintModal";
 import { MantenimientoPrintSheet } from "./components/MantenimientoPrintSheet";
 import { CARD_STYLE, ESTADOS_OPERATIVOS } from "./components/vehiculoHelpers";
 
@@ -84,7 +83,7 @@ export function VehiculosPage() {
   const [activeTab, setActiveTab] = useState("flota");
   const [kpiFiltro, setKpiFiltro] = useState<KpiFiltro | null>(null);
   const [printTarget, setPrintTarget] = useState<{ vehiculo: Vehiculo; mantenimiento: VehiculoMantenimiento } | null>(null);
-  const [printOpen, setPrintOpen] = useState(false);
+  const [imprimirMantenimiento, setImprimirMantenimiento] = useState(false);
 
   const { user } = useAuth();
   const impresoPor = (user?.name || user?.username || "Usuario").trim();
@@ -270,8 +269,23 @@ export function VehiculosPage() {
 
   function abrirImpresion(vehiculo: Vehiculo, mantenimiento: VehiculoMantenimiento) {
     setPrintTarget({ vehiculo, mantenimiento });
-    setPrintOpen(true);
+    setImprimirMantenimiento(true);
   }
+
+  useEffect(() => {
+    if (!imprimirMantenimiento || !printTarget) return;
+    const timer = setTimeout(() => {
+      window.print();
+      setImprimirMantenimiento(false);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [imprimirMantenimiento, printTarget]);
+
+  useEffect(() => {
+    const clear = () => setPrintTarget(null);
+    window.addEventListener("afterprint", clear);
+    return () => window.removeEventListener("afterprint", clear);
+  }, []);
 
   async function guardarMantenimientoDesdeDetalle(data: VehiculoMantenimientoCreate) {
     if (!mantenimientoVehiculo) return;
@@ -575,17 +589,6 @@ export function VehiculosPage() {
         talleres={talleres}
         onSubmit={guardarMantenimientoDesdeDetalle}
         onTallerCreado={() => void recargarTalleres()}
-        onPrint={(m) => mantenimientoVehiculo && abrirImpresion(mantenimientoVehiculo, m)}
-      />
-
-      <MantenimientoPrintModal
-        open={printOpen}
-        onClose={() => {
-          setPrintOpen(false);
-          setPrintTarget(null);
-        }}
-        vehiculo={printTarget?.vehiculo ?? null}
-        mantenimiento={printTarget?.mantenimiento ?? null}
       />
 
       {printTarget &&

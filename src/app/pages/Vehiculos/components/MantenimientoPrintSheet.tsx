@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { Vehiculo, VehiculoMantenimiento } from "@/types/vehiculos";
+import logoIzquierdo from "@/imports/image-1.png";
+import logoDerecho from "@/imports/image-2.png";
 
 interface Props {
   vehiculo: Vehiculo;
@@ -91,17 +93,20 @@ export function MantenimientoPrintSheet({ vehiculo, mantenimiento }: Props) {
         lineHeight: 1.35,
       }}
     >
-      <header style={{ display: "flex", justifyContent: "space-between", gap: "24px", borderBottom: "3px solid #111", paddingBottom: "10px" }}>
-        <div>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "3px solid #111", paddingBottom: "8px" }}>
+        <img src={logoIzquierdo} alt="Insignia" style={{ height: 60, width: 60, objectFit: "contain", background: "#fff" }} />
+        <div style={{ flex: 1, textAlign: "center" }}>
           <div style={{ fontSize: "16px", fontWeight: 800, letterSpacing: "0.02em" }}>33ª Compañía de Bomberos Voluntarios</div>
           <div style={{ fontSize: "13px", fontWeight: 700, marginTop: "2px" }}>Hoja de control y reporte de mantenimiento</div>
         </div>
-        <div style={{ textAlign: "right", fontSize: "10px" }}>
-          <div><strong>Hoja No.</strong> M-{String(mantenimiento.mantenimientoId).padStart(4, "0")}</div>
-          <div><strong>Estado:</strong> {mantenimiento.estado}</div>
-          <div><strong>Impreso:</strong> {new Date().toLocaleString("es-GT")}</div>
-        </div>
+        <img src={logoDerecho} alt="Insignia" style={{ height: 60, width: 60, objectFit: "contain", background: "#fff" }} />
       </header>
+
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", fontSize: "10px", marginTop: "4px" }}>
+        <span><strong>Hoja No.</strong> M-{String(mantenimiento.mantenimientoId).padStart(4, "0")}</span>
+        <span><strong>Estado:</strong> {mantenimiento.estado}</span>
+        <span><strong>Impreso:</strong> {new Date().toLocaleString("es-GT")}</span>
+      </div>
 
       <Bloque titulo="1. Identificación del vehículo y del servicio">
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -209,13 +214,20 @@ export function MantenimientoPrintSheet({ vehiculo, mantenimiento }: Props) {
             </tr>
             <tr>
               <td style={etiqueta}>Jefe de servicio</td>
-              <td style={celda}>{texto(mantenimiento.jefeServicio)}</td>
-              <td style={etiqueta}>Firma piloto</td>
-              <td style={{ ...celda, height: "42px" }}>{texto(mantenimiento.firmaPiloto)}</td>
+              <td style={celda} colSpan={3}>{texto(mantenimiento.jefeServicio)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+          <tbody>
+            <tr>
+              <td style={{ ...etiqueta, width: "50%", textAlign: "center" }}>Firma del piloto</td>
+              <td style={{ ...etiqueta, width: "50%", textAlign: "center" }}>Firma del jefe de servicio</td>
             </tr>
             <tr>
-              <td style={etiqueta}>Firma jefe de servicio</td>
-              <td style={{ ...celda, height: "42px" }} colSpan={3}>{texto(mantenimiento.firmaJefeServicio)}</td>
+              <td style={{ ...celda, height: "70px", borderBottom: "1px solid #8a8a8a" }} />
+              <td style={{ ...celda, height: "70px", borderBottom: "1px solid #8a8a8a" }} />
             </tr>
           </tbody>
         </table>

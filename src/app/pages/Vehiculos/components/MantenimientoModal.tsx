@@ -1,5 +1,4 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Printer } from "lucide-react";
 import { Modal } from "@/app/components/ui/modal";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -48,10 +47,9 @@ interface FormState {
   pilotoPermanente: string;
   pilotoVoluntario: string;
   escuadra: string;
-  horarioTurno: string;
+  turnoInicio: string;
+  turnoFin: string;
   jefeServicio: string;
-  firmaPiloto: string;
-  firmaJefeServicio: string;
 }
 
 const EMPTY: FormState = {
@@ -84,10 +82,9 @@ const EMPTY: FormState = {
   pilotoPermanente: "",
   pilotoVoluntario: "",
   escuadra: "",
-  horarioTurno: "",
+  turnoInicio: "",
+  turnoFin: "",
   jefeServicio: "",
-  firmaPiloto: "",
-  firmaJefeServicio: "",
 };
 
 function fromMantenimiento(m: VehiculoMantenimiento): FormState {
@@ -121,15 +118,21 @@ function fromMantenimiento(m: VehiculoMantenimiento): FormState {
     pilotoPermanente: m.pilotoPermanente ?? "",
     pilotoVoluntario: m.pilotoVoluntario ?? "",
     escuadra: m.escuadra ?? "",
-    horarioTurno: m.horarioTurno ?? "",
+    turnoInicio: parseHorario(m.horarioTurno)[0],
+    turnoFin: parseHorario(m.horarioTurno)[1],
     jefeServicio: m.jefeServicio ?? "",
-    firmaPiloto: m.firmaPiloto ?? "",
-    firmaJefeServicio: m.firmaJefeServicio ?? "",
   };
 }
 
 const nil = (value: string) => value.trim() || null;
 const normalizarNombre = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+
+function parseHorario(value?: string | null): [string, string] {
+  if (!value) return ["", ""];
+  const partes = value.split(/[-–—]/).map((p) => p.trim()).filter(Boolean);
+  if (partes.length >= 2) return [partes[0], partes[1]];
+  return [partes[0] ?? "", ""];
+}
 
 function fechaHoy() {
   const ahora = new Date();
@@ -146,7 +149,6 @@ interface Props {
   talleres: CatalogoItem[];
   onSubmit: (data: VehiculoMantenimientoCreate) => Promise<void>;
   onTallerCreado?: () => void;
-  onPrint?: (mantenimiento: VehiculoMantenimiento) => void;
 }
 
 export function MantenimientoModal({
@@ -157,7 +159,6 @@ export function MantenimientoModal({
   talleres,
   onSubmit,
   onTallerCreado,
-  onPrint,
 }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [error, setError] = useState<string | null>(null);
@@ -267,10 +268,10 @@ export function MantenimientoModal({
         pilotoPermanente: nil(form.pilotoPermanente),
         pilotoVoluntario: nil(form.pilotoVoluntario),
         escuadra: nil(form.escuadra),
-        horarioTurno: nil(form.horarioTurno),
+        horarioTurno: form.turnoInicio || form.turnoFin
+          ? `${form.turnoInicio}${form.turnoFin ? ` - ${form.turnoFin}` : ""}`
+          : null,
         jefeServicio: nil(form.jefeServicio),
-        firmaPiloto: nil(form.firmaPiloto),
-        firmaJefeServicio: nil(form.firmaJefeServicio),
       });
       if (finalizando && mantenimiento && Number(form.costo) > 0) {
         try {
@@ -323,12 +324,6 @@ export function MantenimientoModal({
       }
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {mantenimiento && onPrint && (
-            <Button variant="outline" type="button" onClick={() => onPrint(mantenimiento)}>
-              <Printer className="size-4" />
-              Imprimir
-            </Button>
-          )}
           <Button variant="outline" type="button" onClick={onClose}>
             Cancelar
           </Button>
@@ -617,7 +612,7 @@ export function MantenimientoModal({
 
         <Section
           number="6"
-          title="Control de personal y firmas"
+          title="Control de personal"
           description="Responsables del servicio y conformidad de la unidad."
         >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -636,28 +631,30 @@ export function MantenimientoModal({
               value={form.escuadra}
               onChange={(e) => set("escuadra", e.target.value)}
             />
-            <Input
-              label="Horario de turno"
-              value={form.horarioTurno}
-              onChange={(e) => set("horarioTurno", e.target.value)}
-              placeholder="Ej. 08:00 - 18:00"
-            />
+            <div>
+              <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
+                Horario de turno (inicio)
+              </label>
+              <Input
+                type="time"
+                value={form.turnoInicio}
+                onChange={(e) => set("turnoInicio", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>
+                Horario de turno (fin)
+              </label>
+              <Input
+                type="time"
+                value={form.turnoFin}
+                onChange={(e) => set("turnoFin", e.target.value)}
+              />
+            </div>
             <Input
               label="Jefe de servicio a cargo"
               value={form.jefeServicio}
               onChange={(e) => set("jefeServicio", e.target.value)}
-            />
-            <Input
-              label="Firma del piloto"
-              value={form.firmaPiloto}
-              onChange={(e) => set("firmaPiloto", e.target.value)}
-              placeholder="Nombre y firma"
-            />
-            <Input
-              label="Firma del jefe de servicio"
-              value={form.firmaJefeServicio}
-              onChange={(e) => set("firmaJefeServicio", e.target.value)}
-              placeholder="Nombre y firma"
             />
           </div>
         </Section>

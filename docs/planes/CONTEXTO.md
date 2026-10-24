@@ -1824,3 +1824,13 @@ pm test passing.
 - Verificado: 
 pm run build éxito, 
 pm test passing.
+
+## Mantenimiento: formulario + impresión desde Historial (2026-10-24)
+
+- **Formulario (MantenimientoModal)**: se quitaron los campos "Firma del piloto" y "Firma del jefe de servicio" (ya no se capturan; backend los recibe nulos). "Horario de turno" ahora es un **rango** con dos selectores 	ype="time" (inicio y fin), guardado en horarioTurno como "HH:MM - HH:MM". Se quitó el botón "Imprimir" y el prop onPrint del formulario.
+- **Hoja de impresión (MantenimientoPrintSheet)**: se agregaron las **2 imágenes superiores** (image-1 izquierda / image-2 derecha) y las firmas ahora aparecen como **línea en blanco** (para firma física), ya no muestran texto.
+- **Historial (MantenimientoTab)**: onRowClick abre un **Drawer lateral izquierdo** con el detalle del mantenimiento y botones **Imprimir** y **Eliminar**. Se eliminó la columna "Acciones" del datatable.
+- **VehiculosPage**: la impresión se dispara **directo** (brirImpresion → render en portal .print-area + window.print() con limpieza en fterprint). Se eliminó el MantenimientoPrintModal (vista previa) del flujo y el onPrint del modal.
+- Cupones intacto. Verificado: 
+pm run build éxito, 
+pm test passing.
