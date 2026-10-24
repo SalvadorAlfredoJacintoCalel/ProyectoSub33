@@ -58,6 +58,7 @@ export function Modal({
           }}
         />
         <DialogPrimitive.Content
+          {...(!description && { "aria-describedby": undefined })}
           className={cn(
             "fixed left-1/2 top-1/2 z-[var(--z-modal)] flex max-h-[90vh] w-full -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--bg-card)] shadow-[var(--elevation-brand-3)]",
             SIZE_CLASSES[size],

@@ -1,14 +1,21 @@
 ﻿import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, DollarSign, Receipt } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Receipt, Printer } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
+import { Drawer } from "@/app/components/ui/drawer";
 import { useFinanzas } from "@/hooks/useFinanzas";
+import { finanzasService } from "@/services/finanzasService";
+import { useAuth } from "@/context/AuthContext";
 import { formatDate } from "@/utils/format";
 import { FinanzasKpiBar } from "./components/FinanzasKpiBar";
 import { FinanzasFilters, type FinanzasFiltrosState } from "./components/FinanzasFilters";
 import { TransaccionModal } from "./components/TransaccionModal";
+import { PrintSheetHost } from "@/app/components/print/PrintSheetHost";
+import { usePrintList } from "@/app/components/print/usePrintList";
+import { PrintDetailHost } from "@/app/components/print/PrintDetailHost";
+import { usePrintDetail } from "@/app/components/print/usePrintDetail";
 import type { Transaccion, TipoTransaccion } from "@/types/finanzas";
 
 const PAGE_SIZE = 8;
@@ -54,6 +61,62 @@ export function FinanzasPage() {
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Transaccion | null>(null);
   const [saving, setSaving] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<Transaccion | null>(null);
+
+  const { user } = useAuth();
+  const impresoPor = (user?.name || user?.username || "Usuario").trim();
+
+  const printDetail = usePrintDetail({
+    titulo: "Detalle de Transacción",
+    impresoPor,
+    buildCampos: () =>
+      detailTarget
+        ? [
+            { label: "Fecha", value: formatDate(detailTarget.fecha) },
+            { label: "Tipo", value: TIPO_LABEL[detailTarget.tipo] },
+            { label: "Descripción", value: detailTarget.descripcion },
+            { label: "Monto", value: `${detailTarget.tipo === "GASTO" ? "-" : "+"}${fmt(detailTarget.monto)}` },
+            { label: "Responsable", value: detailTarget.responsableNombre || "—" },
+            { label: "Referencia", value: detailTarget.referencia || "—" },
+            { label: "Origen", value: detailTarget.moduloOrigen || "Manual" },
+            { label: "Referencia de origen", value: detailTarget.referenciaOrigen || "—" },
+            { label: "Creado", value: detailTarget.createdAt ? formatDate(detailTarget.createdAt) : "—" },
+          ]
+        : [],
+  });
+
+  const printList = usePrintList<Transaccion>({
+    titulo: "Reporte de Finanzas",
+    impresoPor,
+    filtros: [
+      filtros.fechaDesde && `Desde ${filtros.fechaDesde}`,
+      filtros.fechaHasta && `Hasta ${filtros.fechaHasta}`,
+      filtros.tipo && `Tipo: ${TIPO_LABEL[filtros.tipo as TipoTransaccion]}`,
+      filtros.busqueda && `Búsqueda: "${filtros.busqueda}"`,
+    ].filter(Boolean).join(" · ") || undefined,
+    fetchAll: async () => {
+      const res = await finanzasService.getTransacciones({
+        pagina: 1,
+        tamanio: 1000,
+        tipo: filtros.tipo || undefined,
+        fechaDesde: filtros.fechaDesde || undefined,
+        fechaHasta: filtros.fechaHasta || undefined,
+        busqueda: filtros.busqueda || undefined,
+      });
+      return res.items;
+    },
+    columnas: () => ["Fecha", "Tipo", "Descripción", "Monto", "Responsable", "Referencia", "Origen"],
+    filas: (items) =>
+      items.map((t) => [
+        formatDate(t.fecha),
+        TIPO_LABEL[t.tipo],
+        t.descripcion,
+        `${t.tipo === "GASTO" ? "-" : "+"}${fmt(t.monto)}`,
+        t.responsableNombre || "—",
+        t.referencia || "—",
+        t.moduloOrigen || "Manual",
+      ]),
+  });
 
   const recargar = () => {
     loadTransacciones({
@@ -92,11 +155,6 @@ export function FinanzasPage() {
 
   function openCreate() {
     setEditTarget(null);
-    setShowModal(true);
-  }
-
-  function openEdit(t: Transaccion) {
-    setEditTarget(t);
     setShowModal(true);
   }
 
@@ -142,10 +200,18 @@ export function FinanzasPage() {
     try {
       await deleteTransaccion(t.transaccionId);
       toast.success("Transacción eliminada.");
+      setDetailTarget(null);
       recargar();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al eliminar");
     }
+  }
+
+  function handleEditFromDetail() {
+    if (!detailTarget) return;
+    setEditTarget(detailTarget);
+    setDetailTarget(null);
+    setShowModal(true);
   }
 
   const columns: DataTableColumn<Transaccion>[] = [
@@ -164,9 +230,15 @@ export function FinanzasPage() {
       header: "Descripción",
       className: "max-w-56 truncate",
       cell: (r) => (
-        <span title={r.descripcion} style={{ color: "var(--text-1)" }}>
+        <button
+          type="button"
+          onClick={() => setDetailTarget(r)}
+          title="Ver detalle"
+          className="max-w-56 truncate text-left font-medium underline-offset-2 hover:underline"
+          style={{ color: "var(--text-1)" }}
+        >
           {r.descripcion}
-        </span>
+        </button>
       ),
     },
     {
@@ -199,28 +271,6 @@ export function FinanzasPage() {
       header: "Origen",
       cell: (r) => <span style={{ color: "var(--text-2)" }}>{r.moduloOrigen || "Manual"}</span>,
     },
-    {
-      key: "acciones",
-      header: "Acciones",
-      cell: (r) => (
-        <div className="flex items-center gap-1">
-          <button
-            title="Editar"
-            onClick={() => openEdit(r)}
-            className="rounded-md p-1.5 text-amber-600 transition-colors hover:bg-[var(--bg-hover)]"
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            title="Eliminar"
-            onClick={() => requestDelete(r)}
-            className="rounded-md p-1.5 text-red-600 transition-colors hover:bg-[var(--bg-hover)]"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
   return (
@@ -230,9 +280,14 @@ export function FinanzasPage() {
           <h1 className="text-2xl font-bold text-[var(--text-1)]">Finanzas</h1>
           <p className="mt-0.5 text-sm text-[var(--text-3)]">Gestión de ingresos, gastos y donaciones</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus size={16} /> Nueva Transacción
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => void printList.imprimir()}>
+            <Printer size={16} /> Imprimir
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus size={16} /> Nueva Transacción
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6">
@@ -244,6 +299,7 @@ export function FinanzasPage() {
         data={transacciones}
         getRowKey={(r) => r.transaccionId}
         loading={loading}
+        onRowClick={(r) => setDetailTarget(r)}
         serverPagination={{
           page,
           pageSize: PAGE_SIZE,
@@ -266,6 +322,69 @@ export function FinanzasPage() {
         transaccion={editTarget}
         saving={saving}
         onSave={handleSave}
+      />
+
+      <Drawer
+        open={detailTarget !== null}
+        onClose={() => setDetailTarget(null)}
+        side="right"
+        size="md"
+        title="Detalle de Transacción"
+        icon={<Receipt size={18} />}
+        statusBadge={
+          detailTarget ? (
+            <Badge variant={TIPO_BADGE[detailTarget.tipo]} size="sm">{TIPO_LABEL[detailTarget.tipo]}</Badge>
+          ) : undefined
+        }
+        footer={
+          <div className="flex w-full justify-end gap-2">
+            <Button variant="outline" onClick={() => void printDetail.print()}>
+              <Printer size={15} /> Imprimir
+            </Button>
+            <Button variant="brand-outline" onClick={() => detailTarget && requestDelete(detailTarget)}>
+              <Trash2 size={15} /> Eliminar
+            </Button>
+            <Button variant="brand" onClick={handleEditFromDetail}>
+              <Pencil size={15} /> Editar
+            </Button>
+          </div>
+        }
+      >
+        {detailTarget && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              { label: "Fecha", value: formatDate(detailTarget.fecha) },
+              { label: "Tipo", value: TIPO_LABEL[detailTarget.tipo] },
+              { label: "Descripción", value: detailTarget.descripcion, span: true },
+              { label: "Monto", value: `${detailTarget.tipo === "GASTO" ? "-" : "+"}${fmt(detailTarget.monto)}` },
+              { label: "Responsable", value: detailTarget.responsableNombre || "—" },
+              { label: "Referencia", value: detailTarget.referencia || "—" },
+              { label: "Origen", value: detailTarget.moduloOrigen || "Manual" },
+              { label: "Referencia de origen", value: detailTarget.referenciaOrigen || "—" },
+              { label: "Creado", value: detailTarget.createdAt ? formatDate(detailTarget.createdAt) : "—" },
+            ].map((f) => (
+              <div key={f.label} className={f.span ? "sm:col-span-2" : ""} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)" }}>
+                  {f.label}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-1)", wordBreak: "break-word" }}>{f.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Drawer>
+
+      <PrintSheetHost
+        titulo={printList.titulo}
+        impresoPor={printList.impresoPor}
+        filtros={printList.filtros}
+        state={printList.state}
+      />
+
+      <PrintDetailHost
+        titulo={printDetail.titulo}
+        impresoPor={printDetail.impresoPor}
+        state={printDetail.state}
       />
     </div>
   );

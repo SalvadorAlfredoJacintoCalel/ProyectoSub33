@@ -65,27 +65,11 @@ const TABLE_COLS = [
 
 // ─── Print stylesheet ─────────────────────────────────────────────────────────
 const PRINT_CSS = `
-/* Screen: keep print form hidden */
-.srm-print-form { display: none; }
-
 @media print {
   @page {
     size: Letter portrait;
     margin: 1.4cm 1.8cm;
   }
-  body > * { visibility: hidden !important; }
-  .srm-print-form {
-    display: block !important;
-    visibility: visible !important;
-    position: fixed !important;
-    inset: 0 !important;
-    background: white !important;
-    z-index: 99999 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-  .srm-print-form * { visibility: visible !important; }
-  .srm-print-form { overflow: hidden !important; }
   .srm-pf-section { page-break-inside: avoid; break-inside: avoid; }
 }
 `;
@@ -789,62 +773,70 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onTe
   ];
 
   return (
-    <Drawer
-      open
-      onClose={onClose}
-      side="right"
-      size="xl"
-      title={`REPORTE DE SERVICIO · ${emergencia.numeroIncidente}`}
-      icon={<Calendar className="size-6" />}
-      statusBadge={
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant={
-              emergencia.estado === "Terminado"
-                ? "warning"
-                : emergencia.estado === "Inactivo"
-                  ? "default"
-                  : "success"
-            }
-            dot
-          >
-            {emergencia.estado}
-          </Badge>
-          <span className="text-[12px] font-medium" style={{ color: "var(--text-2)" }}>{formatFechaTabla(emergencia.fecha)}</span>
-          {tipoEmergenciaNombre && (
-            <>
-              <span style={{ color: "var(--text-3)" }}>·</span>
-              <span className="text-[12px] font-medium" style={{ color: "var(--text-2)" }}>{tipoEmergenciaNombre}</span>
-            </>
-          )}
-        </div>
-      }
-      footer={
-        <>
-          <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="size-4" /> Imprimir
-          </Button>
-          {emergencia.estado === "En proceso" && onTerminar && (
-            <Button variant="brand" onClick={onTerminar}>
-              <CheckCircle2 className="size-4" /> Marcar como Terminado
+    <>
+      <Drawer
+        open
+        onClose={onClose}
+        side="right"
+        size="xl"
+        title={`REPORTE DE SERVICIO · ${emergencia.numeroIncidente}`}
+        icon={<Calendar className="size-6" />}
+        statusBadge={
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              variant={
+                emergencia.estado === "Terminado"
+                  ? "warning"
+                  : emergencia.estado === "Inactivo"
+                    ? "default"
+                    : "success"
+              }
+              dot
+            >
+              {emergencia.estado}
+            </Badge>
+            <span className="text-[12px] font-medium" style={{ color: "var(--text-2)" }}>{formatFechaTabla(emergencia.fecha)}</span>
+            {tipoEmergenciaNombre && (
+              <>
+                <span style={{ color: "var(--text-3)" }}>·</span>
+                <span className="text-[12px] font-medium" style={{ color: "var(--text-2)" }}>{tipoEmergenciaNombre}</span>
+              </>
+            )}
+          </div>
+        }
+        footer={
+          <>
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="size-4" /> Imprimir
             </Button>
-          )}
-          {emergencia.estado === "Terminado" && onDesactivar && (
-            <Button variant="brand-outline" onClick={onDesactivar}>
-              <Power className="size-4" /> Desactivar
-            </Button>
-          )}
-          {onEdit && (
-            <Button variant="brand" onClick={onEdit}>
-              <Pencil className="size-4" /> Editar
-            </Button>
-          )}
-        </>
-      }
-    >
-      <PrintForm service={service} />
-      <Tabs variant="glass" tabs={tabs} />
-    </Drawer>
+            {emergencia.estado === "En proceso" && onTerminar && (
+              <Button variant="brand" onClick={onTerminar}>
+                <CheckCircle2 className="size-4" /> Marcar como Terminado
+              </Button>
+            )}
+            {emergencia.estado === "Terminado" && onDesactivar && (
+              <Button variant="brand-outline" onClick={onDesactivar}>
+                <Power className="size-4" /> Desactivar
+              </Button>
+            )}
+            {onEdit && (
+              <Button variant="brand" onClick={onEdit}>
+                <Pencil className="size-4" /> Editar
+              </Button>
+            )}
+          </>
+        }
+      >
+        <Tabs variant="glass" tabs={tabs} />
+      </Drawer>
+
+      {createPortal(
+        <div className="print-sheet">
+          <PrintForm service={service} />
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 

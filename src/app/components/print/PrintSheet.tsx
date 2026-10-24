@@ -2,9 +2,9 @@ import type { CSSProperties } from "react";
 import logoIzquierdo from "@/imports/image-1.png";
 import logoDerecho from "@/imports/image-2.png";
 
-interface ReportePrintSheetProps {
+export interface PrintSheetProps {
   titulo: string;
-  filtros: string;
+  filtros?: string;
   impresoPor: string;
   columnas: string[];
   filas: string[][];
@@ -34,7 +34,7 @@ function fechaImpresion(): string {
   });
 }
 
-export function ReportePrintSheet({ titulo, filtros, impresoPor, columnas, filas, totalRegistros }: ReportePrintSheetProps) {
+export function PrintSheet({ titulo, filtros, impresoPor, columnas, filas, totalRegistros }: PrintSheetProps) {
   return (
     <>
       <style>{`
@@ -45,17 +45,6 @@ export function ReportePrintSheet({ titulo, filtros, impresoPor, columnas, filas
         .excel-table td, .excel-table th { page-break-inside: avoid; }
         @media print {
           @page { size: landscape; margin: 8mm; }
-          html, body { height: auto !important; overflow: visible !important; background: #fff !important; margin: 0 !important; padding: 0 !important; }
-          #root { height: auto !important; overflow: visible !important; }
-          .animate-page-enter, .animate-page-exit, .animate-in, .animate-slide-up, .animate-scale-in, .animate-morph-enter, .animate-morph-exit {
-            animation: none !important;
-            transform: none !important;
-          }
-          main { transform: none !important; }
-          .no-print { display: none !important; }
-          body * { visibility: hidden; }
-          .print-only, .print-only * { visibility: visible; }
-          .print-only { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; }
         }
       `}</style>
 
@@ -74,8 +63,8 @@ export function ReportePrintSheet({ titulo, filtros, impresoPor, columnas, filas
         <h2 style={{ margin: "14px 0 0", fontSize: "15px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.04em" }}>{titulo}</h2>
 
         <div style={{ marginTop: "8px", fontSize: "10.5px", color: "#222" }}>
-          <div><strong>Filtros:</strong> {filtros}</div>
-          <div style={{ marginTop: "2px" }}><strong>Total registros:</strong> {totalRegistros}</div>
+          {filtros ? <div><strong>Filtros:</strong> {filtros}</div> : null}
+          <div style={{ marginTop: filtros ? "2px" : 0 }}><strong>Total registros:</strong> {totalRegistros}</div>
           <div style={{ marginTop: "2px" }}><strong>Impreso por:</strong> {impresoPor} · <strong>Fecha de impresión:</strong> {fechaImpresion()}</div>
         </div>
 

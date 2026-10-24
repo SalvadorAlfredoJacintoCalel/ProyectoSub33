@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   BookOpen,
   List,
+  Printer,
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
@@ -34,7 +35,13 @@ import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table"
 import { useDonaciones } from "@/hooks/useDonaciones";
 import { usePermisos } from "@/hooks/usePermisos";
 import { finanzasService } from "@/services/finanzasService";
+import { donacionService } from "@/services/donacionService";
+import { useAuth } from "@/context/AuthContext";
 import { LibroDonacionesTab } from "./LibroDonacionesTab";
+import { PrintSheetHost } from "@/app/components/print/PrintSheetHost";
+import { usePrintList } from "@/app/components/print/usePrintList";
+import { PrintDetailHost } from "@/app/components/print/PrintDetailHost";
+import { usePrintDetail } from "@/app/components/print/usePrintDetail";
 import type {
   Donacion,
   DonacionCreate,
@@ -63,6 +70,13 @@ interface FormErrors {
 
 function formatQ(n: number): string {
   return "Q " + n.toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function splitDpiNit(v?: string | null): { dpi: string; nit: string } {
+  const val = (v ?? "").trim();
+  if (!val) return { dpi: "—", nit: "—" };
+  if (/^\d{13}$/.test(val)) return { dpi: val, nit: "—" };
+  return { dpi: "—", nit: val };
 }
 
 function generateRecibo(): string {
@@ -139,6 +153,40 @@ function DField({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function DetailModal({ donacion, onClose, onEdit }: { donacion: Donacion; onClose: () => void; onEdit?: () => void }) {
+  const { user } = useAuth();
+  const impresoPor = (user?.name || user?.username || "Usuario").trim();
+  const printDetail = usePrintDetail({
+    titulo: "Detalle de Donación",
+    impresoPor,
+    buildCampos: () => {
+      const campos = [
+        { label: "No. Recibo", value: donacion.noRecibo },
+        { label: "Fecha", value: donacion.fecha ? donacion.fecha.split("T")[0] : "—" },
+        { label: "Donante", value: donacion.donante },
+        { label: "DPI / NIT", value: donacion.dpiNit ?? "—" },
+        { label: "Teléfono", value: donacion.telefono ?? "—" },
+        { label: "Elemento", value: getElementoLabel(donacion) },
+        { label: "Tipo", value: donacion.tipo },
+        { label: "Categoría", value: donacion.categoria ?? "—" },
+        { label: "Estado", value: donacion.estado },
+      ];
+      if (donacion.tipo === "Monetaria") {
+        campos.push(
+          { label: "Monto", value: formatQ(donacion.monto) },
+          { label: "Método de Pago", value: donacion.metodoPago ?? "—" },
+          { label: "No. Comprobante", value: donacion.noComprobante ?? "—" },
+        );
+      } else if (donacion.materiales && donacion.materiales.length > 0) {
+        campos.push({
+          label: "Artículos donados",
+          value: donacion.materiales.map((m) => `${m.descripcion} (${m.cantidad} × ${formatQ(m.valorEstimado)})`).join("\n"),
+        });
+        campos.push({ label: "Total estimado", value: formatQ(donacion.monto) });
+      }
+      return campos;
+    },
+  });
+
   const tabs: TabItem[] = [
     {
       id: "informacion",
@@ -209,24 +257,37 @@ function DetailModal({ donacion, onClose, onEdit }: { donacion: Donacion; onClos
   ];
 
   return (
-    <Drawer
-      open
-      onClose={onClose}
-      side="right"
-      size="lg"
-      title={donacion.donante}
-      icon={<Gift className="size-6" />}
-      statusBadge={<Badge variant={donacion.tipo === "Monetaria" ? "warning" : "info"} dot>{donacion.tipo}</Badge>}
-      footer={
-        onEdit ? (
-          <Button variant="brand" onClick={onEdit}>
-            <Pencil className="size-4" /> Editar
-          </Button>
-        ) : undefined
-      }
-    >
-      <Tabs variant="glass" tabs={tabs} />
-    </Drawer>
+    <>
+      <Drawer
+        open
+        onClose={onClose}
+        side="right"
+        size="lg"
+        title={donacion.donante}
+        icon={<Gift className="size-6" />}
+        statusBadge={<Badge variant={donacion.tipo === "Monetaria" ? "warning" : "info"} dot>{donacion.tipo}</Badge>}
+        footer={
+          <div className="flex w-full justify-end gap-2">
+            <Button variant="outline" onClick={() => void printDetail.print()}>
+              <Printer size={15} /> Imprimir
+            </Button>
+            {onEdit && (
+              <Button variant="brand" onClick={onEdit}>
+                <Pencil className="size-4" /> Editar
+              </Button>
+            )}
+          </div>
+        }
+      >
+        <Tabs variant="glass" tabs={tabs} />
+      </Drawer>
+
+      <PrintDetailHost
+        titulo={printDetail.titulo}
+        impresoPor={printDetail.impresoPor}
+        state={printDetail.state}
+      />
+    </>
   );
 }
 
@@ -574,6 +635,45 @@ export function DonacionesPage() {
   const [viewTarget, setViewTarget] = useState<Donacion | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const { user } = useAuth();
+  const impresoPor = (user?.name || user?.username || "Usuario").trim();
+
+  const printList = usePrintList<Donacion>({
+    titulo: "Reporte de Donaciones",
+    impresoPor,
+    filtros: [
+      search && `Búsqueda: "${search}"`,
+      activeTab !== "Todos" && `Categoría: ${activeTab}`,
+    ].filter(Boolean).join(" · ") || undefined,
+    fetchAll: async () => {
+      const res = await donacionService.getDonaciones({
+        pagina: 1,
+        tamanio: 1000,
+        busqueda: search || undefined,
+        categoria: activeTab === "Todos" ? undefined : activeTab,
+      });
+      return res.items;
+    },
+    columnas: () => ["Fecha", "No. Recibo", "Donante", "DPI", "NIT", "Elemento", "Tipo", "Descripción / Monto", "Estado"],
+    filas: (items) =>
+      items.map((d) => {
+        const { dpi, nit } = splitDpiNit(d.dpiNit);
+        return [
+          d.fecha ? d.fecha.split("T")[0] : "—",
+          d.noRecibo,
+          d.donante,
+          dpi,
+          nit,
+          getElementoLabel(d),
+          d.tipo,
+          d.tipo === "Monetaria"
+            ? formatQ(d.monto)
+            : (d.materiales?.map((m) => m.descripcion).join(", ") ?? "") + ` (est. ${formatQ(d.monto)})`,
+          d.estado,
+        ];
+      }),
+  });
+
   useEffect(() => {
     const timer = setTimeout(() => {
       loadDonaciones({
@@ -829,6 +929,11 @@ export function DonacionesPage() {
               Libro mensual
             </button>
           </div>
+          {vista === "registros" && (
+            <Button variant="outline" onClick={() => void printList.imprimir()}>
+              <Printer size={16} /> Imprimir
+            </Button>
+          )}
           {vista === "registros" && permisosDonaciones.registrar && (
             <Button variant="brand" onClick={() => { setEditTarget(null); setShowForm(true); }}>
               <Plus size={16} />
@@ -911,6 +1016,13 @@ export function DonacionesPage() {
       )}
         </>
       )}
+
+      <PrintSheetHost
+        titulo={printList.titulo}
+        impresoPor={printList.impresoPor}
+        filtros={printList.filtros}
+        state={printList.state}
+      />
     </div>
   );
 }

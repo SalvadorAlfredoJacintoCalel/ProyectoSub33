@@ -13,7 +13,10 @@ import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
 import { useDonacionLibro } from "@/hooks/useDonacionLibro";
 import { usePermisos } from "@/hooks/usePermisos";
+import { useAuth } from "@/context/AuthContext";
 import { getCatalogo, type CatalogoItem } from "@/services/configuracionService";
+import { PrintSheetHost } from "@/app/components/print/PrintSheetHost";
+import { usePrintList } from "@/app/components/print/usePrintList";
 import type { DonacionMovimiento, DonacionMovimientoCreate, DonacionMovimientoUpdate } from "@/types/donacion";
 
 const MESES = [
@@ -63,6 +66,27 @@ export function LibroDonacionesTab() {
     }),
     [libro],
   );
+
+  const { user } = useAuth();
+  const impresoPor = (user?.name || user?.username || "Usuario").trim();
+  const printList = usePrintList<DonacionMovimiento>({
+    titulo: `Libro de Donaciones — ${MESES[mes - 1]} ${anio}`,
+    impresoPor,
+    filtros: `Saldo mes anterior: ${formatMoneda(resumen.saldoInicial)} · Entradas: ${formatMoneda(resumen.entradas)} · Salidas: ${formatMoneda(resumen.salidas)} · Saldo final: ${formatMoneda(resumen.saldoFinal)}`,
+    fetchAll: async () => movimientos,
+    columnas: () => ["Fecha", "Descripción", "Firma", "Tipo de documento", "No. de documento", "Entrada", "Salida", "Saldo"],
+    filas: (items) =>
+      items.map((m) => [
+        formatFechaCorta(m.fecha),
+        m.descripcion,
+        m.firmado ? "Firmado" : "Pendiente",
+        m.tipoDocumentoNombre || "—",
+        m.noDocumento || "—",
+        m.entrada > 0 ? formatMoneda(m.entrada) : "—",
+        m.salida > 0 ? formatMoneda(m.salida) : "—",
+        formatMoneda(m.saldo),
+      ]),
+  });
 
   async function guardar(data: DonacionMovimientoCreate, id?: number) {
     try {
@@ -148,7 +172,7 @@ export function LibroDonacionesTab() {
             <Download size={16} />
             Exportar CSV
           </Button>
-          <Button variant="outline" onClick={() => window.print()} disabled={movimientos.length === 0}>
+          <Button variant="outline" onClick={() => void printList.imprimir()} disabled={movimientos.length === 0}>
             <Printer size={16} />
             Imprimir
           </Button>
@@ -370,6 +394,13 @@ export function LibroDonacionesTab() {
         tiposDocumento={tiposDocumento}
         movimiento={editTarget}
         onSave={guardar}
+      />
+
+      <PrintSheetHost
+        titulo={printList.titulo}
+        impresoPor={printList.impresoPor}
+        filtros={printList.filtros}
+        state={printList.state}
       />
     </div>
   );

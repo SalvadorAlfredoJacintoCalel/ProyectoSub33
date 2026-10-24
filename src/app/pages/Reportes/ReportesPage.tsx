@@ -1,8 +1,9 @@
 ﻿import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Printer, Search, RotateCcw } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { ReportePrintSheet } from "./components/ReportePrintSheet";
+import { PrintSheet } from "@/app/components/print/PrintSheet";
 import { getPersonal } from "@/services/personalService";
 import { emergenciaService } from "@/services/emergenciaService";
 import { inventarioService } from "@/services/inventarioService";
@@ -413,17 +414,20 @@ export function ReportesPage() {
         </div>
       </div>
 
-      {/* ── Hoja imprimible (solo impresión) ── */}
-      <div className="print-only" style={{ position: "absolute", left: "-9999px", top: 0, width: "100%" }}>
-        <ReportePrintSheet
-          titulo={`Reporte de ${MODULOS.find((m) => m.id === modulo)?.label ?? ""}`}
-          filtros={filtrosResumen}
-          impresoPor={impresoPor}
-          columnas={columnas}
-          filas={filas}
-          totalRegistros={totalRegistros}
-        />
-      </div>
+      {/* ── Hoja imprimible (solo impresión, portal) ── */}
+      {createPortal(
+        <div className="print-sheet">
+          <PrintSheet
+            titulo={`Reporte de ${MODULOS.find((m) => m.id === modulo)?.label ?? ""}`}
+            filtros={filtrosResumen}
+            impresoPor={impresoPor}
+            columnas={columnas}
+            filas={filas}
+            totalRegistros={totalRegistros}
+          />
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

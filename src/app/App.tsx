@@ -30,6 +30,8 @@ import {
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
 import { subirFoto } from "@/services/authService";
+import { dashboardService } from "@/services/dashboardService";
+import type { DashboardResumen } from "@/types/dashboard";
 
 // ─── Theme colors (light mode only) ──────────────────────────────────────────
 
@@ -164,6 +166,8 @@ function AppContent() {
   const [period, setPeriod] = useState<Period>("month");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardResumen | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
 
   const [historialOpen, setHistorialOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -178,7 +182,7 @@ function AppContent() {
 
   const sidebarW = sidebarCollapsed ? 72 : 256;
   const effectiveCollapsed = sidebarCollapsed && !isMobile;
-  const navItems = ALL_NAV.filter(n => n.id === "bienvenida" || modulos.includes(n.id));
+  const navItems = ALL_NAV.filter(n => n.id === "bienvenida" || n.id === "analytics" || modulos.includes(n.id));
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -203,7 +207,7 @@ function AppContent() {
 
   // Guard active nav on modules change
   useEffect(() => {
-    if (activeNav !== "bienvenida" && !modulos.includes(activeNav)) setActiveNav("bienvenida");
+    if (activeNav !== "bienvenida" && activeNav !== "analytics" && !modulos.includes(activeNav)) setActiveNav("bienvenida");
   }, [modulos, activeNav]);
 
   // Lock body scroll when a drawer/modal is open
@@ -224,6 +228,19 @@ function AppContent() {
   useEffect(() => {
     setAvatarUrl(user?.fotoBase64 ?? null);
   }, [user]);
+
+  // Cargar el resumen general del dashboard (visible para todos los usuarios)
+  useEffect(() => {
+    if (activeNav !== "analytics") return;
+    let cancelled = false;
+    setDashboardLoading(true);
+    dashboardService
+      .getResumen()
+      .then((res) => { if (!cancelled) setDashboard(res); })
+      .catch(() => { if (!cancelled) setDashboard(null); })
+      .finally(() => { if (!cancelled) setDashboardLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeNav]);
 
   function handleAvatarBase64(base64: string) {
     setAvatarUrl(base64);
@@ -253,6 +270,27 @@ function AppContent() {
     ? (nameParts[0][0] + nameParts[nameParts.length - 1][0])
     : (nameParts[0]?.[0] ?? "U")).toUpperCase();
   const currentPageLabel = ALL_NAV.find(n => n.id === activeNav)?.label ?? "Inicio";
+
+  const d = dashboard;
+  const incidentesData = (d?.incidentesPorTipo ?? []).map((x, i) => ({
+    label: x.tipo.toUpperCase(),
+    value: x.cantidad,
+    color: ["#a6000c", "#854d0e", "#1565c0", "#71717a", "#16a34a", "#7c3aed", "#D97706"][i % 7],
+  }));
+  const semanaData = (d?.semana ?? []).map(x => ({ day: x.dia, v: x.cantidad }));
+  const ultimosServicios = d?.ultimosServicios ?? [];
+
+  function pct(actual: number, anterior: number): string {
+    if (!anterior) return actual > 0 ? "+100%" : "0%";
+    const diff = Math.round(((actual - anterior) / anterior) * 100);
+    return `${diff >= 0 ? "+" : ""}${diff}%`;
+  }
+  const monedaQ = (n: number) => `Q${(Number(n ?? 0)).toLocaleString("es-GT", { maximumFractionDigits: 0 })}`;
+  function shortDate(v?: string | null): string {
+    if (!v) return "—";
+    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : v;
+  }
 
   function ModuleWrap({ children }: { children: ReactNode }) {
     return (
@@ -596,10 +634,10 @@ function AppContent() {
               {/* KPI row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                 {[
-                  { label: "Emergencias / mes", value: "0",     accent: C.red,     sub: "0% vs mes anterior" },
-                  { label: "Personal activo",   value: "0",     accent: "#16a34a", sub: "0 Activos · 0 Inactivos" },
-                  { label: "Flota operativa",   value: "0 / 0",  accent: "#1565c0", sub: "" },
-                  { label: "Donaciones / mes",  value: "Q0",     accent: "#D97706", sub: "↑ vs Q0 anterior" },
+                  { label: "Emergencias / mes", value: String(d?.emergenciasMes ?? 0), accent: C.red, sub: `${pct(d?.emergenciasMes ?? 0, d?.emergenciasMesAnterior ?? 0)} vs mes anterior` },
+                  { label: "Personal activo", value: String(d?.personalActivos ?? 0), accent: "#16a34a", sub: `${d?.personalActivos ?? 0} Activos · ${d?.personalInactivos ?? 0} Inactivos` },
+                  { label: "Flota operativa", value: `${d?.vehiculosOperativos ?? 0} / ${d?.vehiculosTotal ?? 0}`, accent: "#1565c0", sub: "" },
+                  { label: "Donaciones / mes", value: monedaQ(d?.donacionesMes ?? 0), accent: "#D97706", sub: `${pct(d?.donacionesMes ?? 0, d?.donacionesMesAnterior ?? 0)} vs mes anterior` },
                 ].map((k, i) => (
                   <div key={k.label} className={`p-5 rounded-2xl animate-slide-up-stagger stagger-${i + 1}`} style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
                     <div className="h-1 w-8 rounded-full mb-4" style={{ background: k.accent }} />
@@ -619,41 +657,19 @@ function AppContent() {
                       <h3 className="font-bold text-[16px]" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>Incidentes por Tipo</h3>
                       <p className="text-[12px] mt-0.5" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Distribución acumulada</p>
                     </div>
-                    <div ref={dropRef} className="relative">
-                      <button onClick={() => setDropdownOpen(o => !o)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all"
-                        style={{ borderColor: C.border, color: C.textSecond, background: C.inputBg, fontFamily: "Inter, sans-serif" }}>
-                        {PERIOD_LABELS[period]}
-                        <ChevronDown style={{ width: 11, height: 11 }} />
-                      </button>
-                      {dropdownOpen && (
-                        <div className="absolute right-0 top-full mt-1 w-40 rounded-xl shadow-lg z-30 overflow-hidden"
-                          style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
-                          {(Object.keys(PERIOD_LABELS) as Period[]).map(p => (
-                            <button key={p} onClick={() => { setPeriod(p); setDropdownOpen(false); }}
-                              className="w-full px-4 py-2.5 text-left text-[12px] font-bold transition-colors"
-                              style={{ color: period === p ? C.red : C.textPrimary, background: period === p ? C.redLight : undefined, fontFamily: "Inter, sans-serif" }}
-                              onMouseEnter={e => { if (period !== p) (e.currentTarget as HTMLElement).style.background = C.hoverBg; }}
-                              onMouseLeave={e => { if (period !== p) (e.currentTarget as HTMLElement).style.background = ""; }}>
-                              {PERIOD_LABELS[p]}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
                   </div>
                   <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={INCIDENT_DATA[period]} margin={{ top: 4, right: 0, left: -24, bottom: 0 }} barCategoryGap="38%">
+                      <BarChart data={incidentesData} margin={{ top: 4, right: 0, left: -24, bottom: 0 }} barCategoryGap="38%">
                         <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.04)" />
                         <XAxis dataKey="label" axisLine={false} tickLine={false}
                           tick={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10, fill: C.textMuted, letterSpacing: 0.5 }} dy={8} />
-                        <YAxis axisLine={false} tickLine={false}
+                        <YAxis axisLine={false} tickLine={false} allowDecimals={false}
                           tick={{ fontFamily: "Inter, sans-serif", fontSize: 10, fill: "#CBD5E1" }} width={28} />
                         <Tooltip cursor={{ fill: "rgba(0,0,0,0.03)" }}
                           contentStyle={{ background: "#1E293B", border: "none", borderRadius: 10, fontSize: 12, color: "#fff", padding: "6px 12px" }} />
                         <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={52}>
-                          {INCIDENT_DATA[period].map((d, i) => <Cell key={`bar-${period}-${i}`} fill={d.color} />)}
+                          {incidentesData.map((dd, i) => <Cell key={`bar-${i}`} fill={dd.color} />)}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -691,13 +707,13 @@ function AppContent() {
                     <p className="text-[12px] text-[#94A3B8] mt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>Tendencia de actividad operativa</p>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-extrabold text-[28px] text-white" style={{ fontFamily: "Manrope, sans-serif" }}>0%</span>
-                    <span className="text-[12px] font-bold text-[#4ade80] uppercase">vs semana anterior</span>
+                    <span className="font-extrabold text-[28px] text-white" style={{ fontFamily: "Manrope, sans-serif" }}>{(d?.semana ?? []).reduce((a, x) => a + x.cantidad, 0)}</span>
+                    <span className="text-[12px] font-bold text-[#4ade80] uppercase">emergencias esta semana</span>
                   </div>
                 </div>
                 <div className="h-28">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={WEEKLY_DATA} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+                    <AreaChart data={semanaData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor={C.red} stopOpacity={0.8} />
@@ -705,7 +721,7 @@ function AppContent() {
                         </linearGradient>
                       </defs>
                       <XAxis dataKey="day" hide />
-                      <YAxis hide domain={[0, 14]} />
+                      <YAxis hide allowDecimals={false} />
                       <Tooltip contentStyle={{ background: C.heroBg, border: "none", borderRadius: 8, fontSize: 11, color: "#fff", padding: "4px 10px" }}
                         cursor={{ stroke: "rgba(255,255,255,0.08)", strokeWidth: 1 }} />
                       <Area type="monotone" dataKey="v" stroke={C.red} strokeWidth={2.5} fill="url(#areaGrad)" dot={false}
@@ -733,26 +749,32 @@ function AppContent() {
                       </tr>
                     </thead>
                     <tbody>
-                      {HISTORIAL.slice(0, 6).map((r, i) => (
-                        <tr key={r.id}
+                      {ultimosServicios.slice(0, 6).map((r, i) => (
+                        <tr key={`${r.numeroIncidente}-${i}`}
                           style={{ background: i % 2 === 0 ? C.cardBg : C.pageBg, borderBottom: `1px solid ${C.border}` }}
                           onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
                           onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? C.cardBg : C.pageBg}>
-                          <td className="px-5 py-3 font-bold text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.red }}>{r.id}</td>
-                          <td className="px-5 py-3 text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{r.fecha}</td>
-                          <td className="px-5 py-3 text-[12px] font-semibold" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{r.hora}</td>
+                          <td className="px-5 py-3 font-bold text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.red }}>{r.numeroIncidente}</td>
+                          <td className="px-5 py-3 text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{shortDate(r.fecha)}</td>
+                          <td className="px-5 py-3 text-[12px] font-semibold" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{r.hora ?? "—"}</td>
                           <td className="px-5 py-3">
                             <span className="px-2 py-0.5 rounded-md text-[10px] font-bold"
-                              style={{ background: r.tipo === "Médico" ? "#EFF6FF" : r.tipo === "Incendio" ? "#FFF1F0" : "#F0FDF4",
-                                color: r.tipo === "Médico" ? "#1565c0" : r.tipo === "Incendio" ? C.red : "#15803d" }}>
+                              style={{ background: "#EFF6FF", color: "#1565c0" }}>
                               {r.tipo}
                             </span>
                           </td>
                           <td className="px-5 py-3 text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{r.paciente}</td>
                           <td className="px-5 py-3 text-[11px] max-w-[160px] truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{r.ubicacion}</td>
-                          <td className="px-5 py-3 text-[11px] font-bold" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{r.unidad}</td>
+                          <td className="px-5 py-3 text-[11px] font-bold" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{r.unidad || "—"}</td>
                         </tr>
                       ))}
+                      {ultimosServicios.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="px-5 py-8 text-center text-[13px]" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>
+                            {dashboardLoading ? "Cargando..." : "Aún no hay servicios registrados."}
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -793,24 +815,29 @@ function AppContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {HISTORIAL.map((r, i) => (
-                    <tr key={r.id} style={{ background: i % 2 !== 0 ? C.hoverBg : undefined }}>
-                      <td className="py-3 pr-6 text-[12px] font-bold" style={{ fontFamily: "Inter, sans-serif", color: C.red }}>{r.id}</td>
-                      <td className="py-3 pr-6 text-[13px]" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{r.fecha}</td>
-                      <td className="py-3 pr-6 text-[13px]" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{r.hora}</td>
+                  {ultimosServicios.map((r, i) => (
+                    <tr key={`${r.numeroIncidente}-${i}`} style={{ background: i % 2 !== 0 ? C.hoverBg : undefined }}>
+                      <td className="py-3 pr-6 text-[12px] font-bold" style={{ fontFamily: "Inter, sans-serif", color: C.red }}>{r.numeroIncidente}</td>
+                      <td className="py-3 pr-6 text-[13px]" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{shortDate(r.fecha)}</td>
+                      <td className="py-3 pr-6 text-[13px]" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{r.hora ?? "—"}</td>
                       <td className="py-3 pr-6">
                         <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold" style={{ background: C.hoverBg, color: C.textPrimary, fontFamily: "Inter, sans-serif" }}>{r.tipo}</span>
                       </td>
                       <td className="py-3 pr-6 text-[13px]" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{r.paciente}</td>
                       <td className="py-3 pr-6 text-[13px] max-w-[180px] truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{r.ubicacion}</td>
-                      <td className="py-3 text-[12px] font-bold" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{r.unidad}</td>
+                      <td className="py-3 text-[12px] font-bold" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{r.unidad || "—"}</td>
                     </tr>
                   ))}
+                  {ultimosServicios.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-[13px]" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Aún no hay servicios registrados.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
             <div className="px-8 py-4 shrink-0 flex items-center justify-between border-t" style={{ borderColor: C.border }}>
-              <span className="text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{HISTORIAL.length} registros</span>
+              <span className="text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{ultimosServicios.length} registros</span>
               <button onClick={() => setHistorialOpen(false)} className="px-5 py-2 rounded-xl text-[12px] font-bold transition-colors"
                 style={{ background: C.hoverBg, color: C.textPrimary, border: `1px solid ${C.border}`, fontFamily: "Inter, sans-serif" }}>
                 Cerrar

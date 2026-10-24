@@ -21,7 +21,12 @@ import { useInventario } from "@/hooks/useInventario";
 import { useAuth } from "@/context/AuthContext";
 import { usePermisos } from "@/hooks/usePermisos";
 import { donacionService } from "@/services/donacionService";
+import { inventarioService } from "@/services/inventarioService";
 import { getParametros } from "@/services/configuracionService";
+import { PrintSheetHost } from "@/app/components/print/PrintSheetHost";
+import { usePrintList } from "@/app/components/print/usePrintList";
+import { PrintDetailHost } from "@/app/components/print/PrintDetailHost";
+import { usePrintDetail } from "@/app/components/print/usePrintDetail";
 import { MovimientosPage, tipoMeta } from "@/app/pages/Inventario/MovimientosPage";
 import { EquipoUnidadesPage } from "@/app/pages/Inventario/EquipoUnidadesPage";
 import { ServicioInsumosPage } from "@/app/pages/Inventario/ServicioInsumosPage";
@@ -343,6 +348,62 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
   const [form, setForm] = useState<ItemFormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof ItemFormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const impresoPor = (user?.name || user?.username || "Usuario").trim();
+  const printList = usePrintList<InventarioItem>({
+    titulo: "Reporte de Inventario",
+    impresoPor,
+    filtros: [
+      search && `Búsqueda: "${search}"`,
+      categoriaFilter && `Categoría: ${catalogos.categorias.find((c) => c.id === categoriaFilter)?.nombre ?? categoriaFilter}`,
+      estadoFilter && `Estado: ${estadoFilter}`,
+      stockFilter && `Stock: ${STOCK_FILTER_LABEL[stockFilter]}`,
+    ].filter(Boolean).join(" · ") || undefined,
+    fetchAll: async () => {
+      const res = await inventarioService.getItems({
+        pagina: 1,
+        tamanio: 1000,
+        busqueda: search || undefined,
+        categoriaInvId: categoriaFilter ? Number(categoriaFilter) : undefined,
+        estado: estadoFilter || undefined,
+      });
+      return res.items;
+    },
+    columnas: () => ["Código", "Nombre", "Categoría", "Ubicación", "Cantidad", "Unidad", "Valor Unit.", "Estado"],
+    filas: (list) =>
+      list.map((i) => [
+        i.codigoBarras || "—",
+        i.nombre,
+        i.categoriaNombre,
+        i.ubicacion || "—",
+        String(i.stockActual),
+        i.unidadMedida,
+        i.valorUnitario != null ? `Q ${Number(i.valorUnitario).toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—",
+        i.estado || "—",
+      ]),
+  });
+
+  const printDetail = usePrintDetail({
+    titulo: "Ficha de Item",
+    impresoPor,
+    buildCampos: () =>
+      selectedItem
+        ? [
+            { label: "Código", value: selectedItem.codigoBarras || "—" },
+            { label: "Nombre", value: selectedItem.nombre },
+            { label: "Categoría", value: selectedItem.categoriaNombre },
+            { label: "Ubicación", value: selectedItem.ubicacion || "—" },
+            { label: "Cantidad", value: `${selectedItem.stockActual} ${selectedItem.unidadMedida}` },
+            { label: "Stock mínimo", value: String(selectedItem.stockMinimo) },
+            { label: "Valor unitario", value: formatMoneda(selectedItem.valorUnitario) },
+            { label: "Valor total", value: formatMoneda(selectedItem.total) },
+            { label: "Estado", value: selectedItem.estado || "Activo" },
+            { label: "Origen", value: selectedItem.origen || "Compra Propia" },
+            { label: "Donante", value: selectedItem.nombreDonante || "—" },
+            { label: "No. Recibo", value: selectedItem.noRecibo || "—" },
+          ]
+        : [],
+  });
 
   const { draft, savedAt, online, save, clear } = useFormDraft<ItemFormState>("inventario.item");
 
@@ -841,11 +902,16 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
                 </span>
               )}
             </div>
-            {permisosInventario.crear && (
-              <Button variant="brand" onClick={openAdd}>
-                <Plus className="size-4" /> Nuevo Item
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => void printList.imprimir()}>
+                <Printer className="size-4" /> Imprimir
               </Button>
-            )}
+              {permisosInventario.crear && (
+                <Button variant="brand" onClick={openAdd}>
+                  <Plus className="size-4" /> Nuevo Item
+                </Button>
+              )}
+            </div>
           </div>
         }
       />
@@ -1061,6 +1127,9 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         }
         footer={
           <>
+            <Button variant="outline" onClick={() => void printDetail.print()}>
+              <Printer className="size-4" /> Imprimir
+            </Button>
             {permisosInventario.eliminar && (
               <Button variant="brand-outline" onClick={() => selectedItem && requestDelete(selectedItem)}>
                 <Trash2 className="size-4" /> Eliminar
@@ -1148,6 +1217,19 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
           />
         </div>
       </Modal>
+
+      <PrintSheetHost
+        titulo={printList.titulo}
+        impresoPor={printList.impresoPor}
+        filtros={printList.filtros}
+        state={printList.state}
+      />
+
+      <PrintDetailHost
+        titulo={printDetail.titulo}
+        impresoPor={printDetail.impresoPor}
+        state={printDetail.state}
+      />
     </div>
   );
 }
@@ -1282,6 +1364,38 @@ function ValorizadoTab() {
 
   const totalGeneral = useMemo(() => grupos.reduce((acc, g) => acc + g.subtotal, 0), [grupos]);
 
+  const { user } = useAuth();
+  const impresoPor = (user?.name || user?.username || "Usuario").trim();
+  const printList = usePrintList<InventarioItem>({
+    titulo: `${subestacion || "Inventario"} — Inventario Valorizado`,
+    impresoPor,
+    filtros: direccion || undefined,
+    fetchAll: async () => items,
+    columnas: () => ["Código", "Cant.", "Descripción", "Valor Unit.", "Total", "Estado", "Donación", "Central", "Ubicación", "Categoría"],
+    filas: () => {
+      const rows: string[][] = [];
+      for (const g of grupos) {
+        for (const it of g.items) {
+          rows.push([
+            it.codigoBarras || "—",
+            String(it.stockActual),
+            it.nombre,
+            formatMoneda(it.valorUnitario),
+            formatMoneda(it.total),
+            it.estado ?? "Activo",
+            (it.origen ?? "") === "Donado" ? "Sí" : "",
+            it.esCentral ? "Sí" : "",
+            it.ubicacion || "—",
+            g.categoria,
+          ]);
+        }
+        rows.push(["", "", `Subtotal ${g.categoria}`, "", formatMoneda(g.subtotal), "", "", "", "", g.categoria]);
+      }
+      rows.push(["", "", "TOTAL GENERAL", "", formatMoneda(totalGeneral), "", "", "", "", ""]);
+      return rows;
+    },
+  });
+
   function handleExport() {
     const headers = ["Código", "Cantidad", "Descripción", "Valor Unitario", "Total", "Activo/Baja", "Donación", "Central", "Ubicación", "Categoría"];
     const rows: (string | number)[][] = [];
@@ -1329,7 +1443,7 @@ function ValorizadoTab() {
           <Button variant="brand-outline" onClick={handleExport}>
             <Download className="size-4" /> Exportar CSV
           </Button>
-          <Button variant="brand-outline" onClick={() => window.print()}>
+          <Button variant="brand-outline" onClick={() => void printList.imprimir()}>
             <Printer className="size-4" /> Imprimir
           </Button>
         </div>
@@ -1414,6 +1528,13 @@ function ValorizadoTab() {
           <span className="text-base font-extrabold" style={{ color: "var(--brand-600)" }}>{formatMoneda(totalGeneral)}</span>
         </div>
       </div>
+
+      <PrintSheetHost
+        titulo={printList.titulo}
+        impresoPor={printList.impresoPor}
+        filtros={printList.filtros}
+        state={printList.state}
+      />
     </div>
   );
 }

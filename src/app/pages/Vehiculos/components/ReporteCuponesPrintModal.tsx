@@ -96,16 +96,6 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
         .excel-table th, .excel-table td { border: 1px solid #333; padding: 4px 5px; text-align: center; vertical-align: middle; white-space: nowrap; }
         @media print {
           @page { size: landscape; margin: 8mm; }
-          html, body { height: auto !important; overflow: visible !important; background: #fff !important; margin: 0 !important; padding: 0 !important; }
-          #root { height: auto !important; overflow: visible !important; }
-          .animate-page-enter, .animate-page-exit, .animate-in, .animate-slide-up, .animate-scale-in {
-            animation: none !important;
-            transform: none !important;
-          }
-          .no-print { display: none !important; }
-          body * { visibility: hidden; }
-          .print-only, .print-only * { visibility: visible; }
-          .print-only { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; }
         }
       `}</style>
 

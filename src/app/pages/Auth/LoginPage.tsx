@@ -133,7 +133,7 @@ function LeftHero() {
         {/* Company name above seals */}
         <div className="bg-[#7a0000] text-center pt-3 pb-1">
           <p className="font-bold text-[13px] tracking-[1.8px] text-white/90 uppercase" style={{ fontFamily: "Manrope, sans-serif" }}>
-            33ª COMPAÑÍA BOMBEROS VOLUNTARIOS
+            Sub 33 COMPAÑÍA BOMBEROS VOLUNTARIOS
           </p>
           <p className="font-bold text-[10px] tracking-[1.4px] text-white/55 uppercase mt-0.5" style={{ fontFamily: "Inter, sans-serif" }}>
             SAN LUCAS TOLIMÁN, SOLOLÁ
@@ -200,7 +200,7 @@ function RightPanel({ children }: { children: ReactNode }) {
             />
           </div>
           <p className="font-bold text-[13px] tracking-[1.5px] text-white uppercase" style={{ fontFamily: "Manrope, sans-serif" }}>
-            33ª COMPAÑÍA BOMBEROS VOLUNTARIOS
+            Sub 33ª COMPAÑÍA BOMBEROS VOLUNTARIOS
           </p>
           <p className="font-bold text-[10px] tracking-[1.4px] uppercase mt-1" style={{ fontFamily: "Inter, sans-serif", color: "#f5c500" }}>
             SIEMPRE AL SERVICIO DE NUESTRA COMUNIDAD
@@ -576,7 +576,7 @@ export function LoginPage({ onLogin }: Props) {
             <div className="text-center mb-5">
               <h2 className="leading-tight text-balance">
                 <span className="block font-extrabold text-[clamp(22px,2.8vw,30px)] text-[#c11d1d] tracking-[-0.2px] lg:tracking-[-0.5px]" style={{ fontFamily: "Manrope, sans-serif" }}>
-                  SERVICIO,
+                  DISCIPLINA,
                 </span>
                 <span className="block font-extrabold text-[clamp(22px,2.8vw,30px)] text-[#1b2e4b] tracking-[-0.2px] lg:tracking-[-0.5px]" style={{ fontFamily: "Manrope, sans-serif" }}>
                   HONOR Y ABNEGACIÓN

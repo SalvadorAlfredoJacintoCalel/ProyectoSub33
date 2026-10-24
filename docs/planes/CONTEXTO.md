@@ -1777,3 +1777,50 @@ pm test passing.
 - Verificado: dotnet build 0 errores, 
 pm run build éxito, 
 pm test passing.
+
+## Login obligatorio + Dashboard real + impresión profesional en todos los módulos (2026-10-24)
+
+- **Login obligatorio**: AuthContext ya no restaura la sesión al arrancar; siempre inicia en el login y exige usuario/contraseña. Al montar limpia localStorage (user/role/modulos/permisos).
+- **Dashboard (resumen general, visible para todos)**: nuevo GET /api/dashboard/resumen (DashboardController + DashboardService + DTOs/Dashboard/DashboardDtos.cs). Devuelve emergencias del mes (y mes anterior), personal, vehículos, donaciones del mes, incidentes por tipo, tendencia semanal (últimos 7 días) y últimos servicios.
+  - Frontend: src/services/dashboardService.ts + src/types/dashboard.ts; App.tsx ahora consume datos reales (KPIs, gráficas de barras/área y tabla de últimos servicios). El item de navegación "Dashboard" se muestra a **todos** los usuarios (App.tsx incluye nalytics en el filtro de nav).
+- **Impresión profesional unificada**:
+  - Componente compartido src/app/components/print/PrintSheet.tsx (logos izquierda/derecha, membrete "SUBESTACIÓN 33", tabla tipo Excel centrada, salto de página limpio). Reportes ahora usa este componente.
+  - usePrintList (hook) + PrintSheetHost (host oculto .print-only) reutilizables.
+  - Se agregó botón "Imprimir" con hoja profesional en: **Finanzas**, **Donaciones** (registros), **Personal**, **Inventario** (items) y **Vehículos** (flota). Emergencias, Cupones y Mantenimiento ya tenían hoja dedicada.
+- Verificado: dotnet build 0 errores, 
+pm run build éxito, 
+pm test passing.
+
+## Impresión detallada + libro mensual + valorizado + detalle finanzas (2026-10-24)
+
+- **Donaciones → Libro mensual**: el botón "Imprimir" ahora usa PrintSheet (tabla con membrete y logos) en vez de captura de pantalla.
+- **Inventario → Valorizado**: el botón "Imprimir" ahora usa PrintSheet (tabla con logos y subtotales por categoría).
+- **Impresión de un solo registro (ficha)** en todos los módulos (excepto cupones): nuevo PrintDetailSheet + usePrintDetail + PrintDetailHost (hoja retrato, tabla campo/valor, con logos). Aplicado a **Finanzas**, **Donaciones**, **Personal**, **Inventario** (item) y **Vehículos** (ficha). Emergencias ya tenía su formulario oficial.
+- **Finanzas**: al hacer clic en la descripción se abre un **modal de detalle** con todos los datos del registro y acciones (Imprimir / Editar / Eliminar) dentro del modal.
+- Verificado: 
+pm run build éxito, 
+pm test passing.
+
+## Finanzas: detalle lateral + limpieza de acciones + fix warning Radix (2026-10-24)
+
+- El detalle de una transacción ahora se abre como **Drawer lateral derecho** (igual que los demás módulos) en vez de modal centrado. Grid de campos responsivo (grid-cols-1 sm:grid-cols-2).
+- Se **eliminó la columna "Acciones"** del DataTable de Finanzas; las acciones (Imprimir / Editar / Eliminar) quedan solo dentro del drawer de detalle. Se agregó onRowClick para abrir el detalle al hacer clic en cualquier fila (además de la descripción).
+- Fix de warning de Radix Missing Description or aria-describedby: en ui/modal.tsx se agrega ria-describedby={undefined} cuando el modal no tiene descripción, evitando el warning sin romper los modales que sí tienen descripción.
+- Verificado: 
+pm run build éxito, 
+pm test passing.
+
+## Fix hoja en blanco en impresiones (2026-10-24)
+
+- **Causa**: las hojas usaban ody * { visibility: hidden } (oculta pero conserva el espacio) + min-h-screen en la app, generando una página extra en blanco.
+- **Solución**: migrar TODAS las hojas al patrón de portal + display: none.
+  - Nuevo src/styles/print.css (importado en index.css): ody > *:not(.print-sheet):not(.print-area) { display: none } en impresión; .print-sheet/.print-area ocultas en pantalla y visibles en print.
+  - PrintSheetHost/PrintDetailHost ahora renderizan vía createPortal(document.body) con clase print-sheet.
+  - ReportesPage, CuponesTab y EmergenciasPage migrados a portal (print-sheet).
+  - PrintSheet/PrintDetailSheet/ReporteCuponesPrintSheet y PRINT_CSS de emergencias limpiados: solo conservan @page (landscape/portrait) y page-break; se eliminó el patrón isibility/.print-only.
+  - nimations.css: se quitó la regla .print-only/.srm-print-form de impresión.
+  - Hooks usePrintList/usePrintDetail: limpian el state en fterprint para que solo exista una hoja montada a la vez.
+- Diseño de Cupones y Emergencias **intacto** (solo cambió su mecanismo de aislamiento).
+- Verificado: 
+pm run build éxito, 
+pm test passing.

@@ -1,0 +1,22 @@
+/* ── Impresión global: hojas aisladas renderizadas vía portal a document.body ── */
+.print-sheet,
+.print-area { display: none; }
+
+@media print {
+  html, body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  /* Oculta toda la app y demás portales, dejando solo la hoja activa */
+  body > *:not(.print-sheet):not(.print-area) { display: none !important; }
+  .print-sheet,
+  .print-area {
+    display: block !important;
+    width: 100% !important;
+  }
+  .no-print { display: none !important; }
+}

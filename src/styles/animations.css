@@ -137,6 +137,4 @@
 /* Print styles */
 @media print {
   .no-print { display: none !important; }
-  .print-only { display: block !important; }
-  .srm-print-form { display: block !important; }
 }

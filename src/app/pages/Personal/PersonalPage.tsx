@@ -26,9 +26,14 @@ import type { Estado, Miembro, FormState, RangoItem, RolItem } from "@/types/per
 import { formatDate } from "@/utils/format";
 import { emptyFormState, miembroToForm, personalResponseToForm, personalResponseToMiembro } from "@/utils/formHelpers";
 import { useAlert } from "@/app/components/ui/AlertContext";
+import { useAuth } from "@/context/AuthContext";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { usePermisos } from "@/hooks/usePermisos";
+import { PrintSheetHost } from "@/app/components/print/PrintSheetHost";
+import { usePrintList } from "@/app/components/print/usePrintList";
+import { PrintDetailHost } from "@/app/components/print/PrintDetailHost";
+import { usePrintDetail } from "@/app/components/print/usePrintDetail";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const BRAND = "var(--brand-600)";
@@ -111,6 +116,62 @@ export function PersonalPage() {
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast, alert } = useAlert();
+
+  const { user } = useAuth();
+  const impresoPor = (user?.name || user?.username || "Usuario").trim();
+
+  const printList = usePrintList<Miembro>({
+    titulo: "Reporte de Personal",
+    impresoPor,
+    filtros: [
+      searchInput && `Búsqueda: "${searchInput}"`,
+      filterEstado && `Estado: ${filterEstado}`,
+      filterRango && `Rango: ${rangos.find((r) => r.id === filterRango)?.nombre ?? filterRango}`,
+    ].filter(Boolean).join(" · ") || undefined,
+    fetchAll: async () => {
+      const res = await getPersonal({
+        pagina: 1,
+        tamanio: 1000,
+        busqueda: searchInput || undefined,
+        rangoId: filterRango || undefined,
+        estado: filterEstado === "" ? undefined : filterEstado === "Activo",
+      });
+      return res.items.map(personalResponseToMiembro);
+    },
+    columnas: () => ["Código", "Nombre completo", "DPI", "Rango", "Teléfono", "Estado", "Fecha de ingreso"],
+    filas: (items) =>
+      items.map((m) => [
+        m.codigoBombero || "—",
+        m.nombreCompleto,
+        m.dpi,
+        m.rangoNombre || "—",
+        m.telefono || "—",
+        m.estado ? "Activo" : "Inactivo",
+        formatDate(m.fechaIngreso),
+      ]),
+  });
+
+  const printDetail = usePrintDetail({
+    titulo: "Ficha de Personal",
+    impresoPor,
+    buildCampos: () =>
+      selectedRecord
+        ? [
+            { label: "Código Bombero", value: selectedRecord.codigoBombero || "Sin asignar" },
+            { label: "Nombre completo", value: selectedRecord.nombreCompleto },
+            { label: "DPI", value: selectedRecord.dpi },
+            { label: "Rango", value: selectedRecord.rangoNombre || "—" },
+            { label: "Teléfono", value: selectedRecord.telefono || "—" },
+            { label: "Fecha de nacimiento", value: selectedRecord.fechaNacimiento ? formatDate(selectedRecord.fechaNacimiento) : "—" },
+            { label: "Fecha de ingreso", value: formatDate(selectedRecord.fechaIngreso) },
+            { label: "Estado", value: selectedRecord.estado ? "Activo" : "Inactivo" },
+            { label: "Contacto de emergencia", value: selectedRecord.contactoEmergenciaNombre || "—" },
+            { label: "Tel. de emergencia", value: selectedRecord.contactoEmergenciaTelefono || "—" },
+            { label: "Usuario del sistema", value: selectedRecord.username || selectedRecord.usuario?.username || "Sin cuenta" },
+            { label: "Rol del sistema", value: selectedRecord.rolNombre || selectedRecord.usuario?.rol || "Sin rol" },
+          ]
+        : [],
+  });
   const [rangos, setRangos] = useState<RangoItem[]>([]);
   const [roles, setRoles] = useState<RolItem[]>([]);
   const [isLoadingRangos, setIsLoadingRangos] = useState(true);
@@ -592,12 +653,18 @@ export function PersonalPage() {
             Bomberos Voluntarios San Lucas Tolimán
           </p>
         </div>
-        {permisosPersonal.crear && (
-          <Button variant="brand" onClick={openAddModal}>
-            <Plus className="size-4" />
-            Nuevo Miembro
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => void printList.imprimir()}>
+            <Printer className="size-4" />
+            Imprimir
           </Button>
-        )}
+          {permisosPersonal.crear && (
+            <Button variant="brand" onClick={openAddModal}>
+              <Plus className="size-4" />
+              Nuevo Miembro
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Stat Cards ───────────────────────────────────────────────────────── */}
@@ -783,12 +850,10 @@ export function PersonalPage() {
         }
         footer={
           <>
-            {permisosPersonal.editar && (
-              <Button variant="brand-outline" onClick={() => window.print()}>
-                <Printer className="size-4" />
-                Imprimir
-              </Button>
-            )}
+            <Button variant="brand-outline" onClick={() => void printDetail.print()}>
+              <Printer className="size-4" />
+              Imprimir
+            </Button>
             {permisosPersonal.editar && (
               <Button variant="brand" onClick={handleEditFromDetail}>
                 <Pencil className="size-4" />
@@ -837,6 +902,19 @@ export function PersonalPage() {
           </div>
         </div>
       )}
+
+      <PrintSheetHost
+        titulo={printList.titulo}
+        impresoPor={printList.impresoPor}
+        filtros={printList.filtros}
+        state={printList.state}
+      />
+
+      <PrintDetailHost
+        titulo={printDetail.titulo}
+        impresoPor={printDetail.impresoPor}
+        state={printDetail.state}
+      />
     </div>
   );
 }

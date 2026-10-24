@@ -9,6 +9,7 @@ import {
   Gift,
   History,
   Plus,
+  Printer,
   Search,
   Ticket,
   Truck,
@@ -24,7 +25,10 @@ import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { formatMoneda } from "@/app/pages/Inventario/components/format";
 import { useVehiculos } from "@/hooks/useVehiculos";
 import { usePermisos } from "@/hooks/usePermisos";
+import { useAuth } from "@/context/AuthContext";
 import { vehiculosService } from "@/services/vehiculosService";
+import { PrintSheetHost } from "@/app/components/print/PrintSheetHost";
+import { usePrintList } from "@/app/components/print/usePrintList";
 import type {
   EstadoOperativo,
   Vehiculo,
@@ -81,6 +85,32 @@ export function VehiculosPage() {
   const [kpiFiltro, setKpiFiltro] = useState<KpiFiltro | null>(null);
   const [printTarget, setPrintTarget] = useState<{ vehiculo: Vehiculo; mantenimiento: VehiculoMantenimiento } | null>(null);
   const [printOpen, setPrintOpen] = useState(false);
+
+  const { user } = useAuth();
+  const impresoPor = (user?.name || user?.username || "Usuario").trim();
+  const printList = usePrintList<Vehiculo>({
+    titulo: "Reporte de Vehículos",
+    impresoPor,
+    filtros: filtros.busqueda ? `Búsqueda: "${filtros.busqueda}"` : undefined,
+    fetchAll: async () => {
+      const res = await vehiculosService.getVehiculos({ pagina: 1, tamanio: 500, estadoOperativo: filtros.estadoOperativo, estado: filtros.estado, busqueda: filtros.busqueda });
+      return res.items;
+    },
+    columnas: () => ["Código", "Unidad", "Tipo", "Marca / Modelo", "Año", "Placa", "Estado operativo", "Origen", "Valor", "Estado"],
+    filas: (list) =>
+      list.map((v) => [
+        v.codigo || "—",
+        v.noUnidad || "—",
+        v.tipoNombre || "—",
+        `${v.marca} ${v.modelo}`,
+        v.anio != null ? String(v.anio) : "—",
+        v.placa || "—",
+        v.estadoOperativo,
+        v.origen,
+        formatMoneda(Number(v.valorUnitario || 0)),
+        v.estado,
+      ]),
+  });
 
   const cargarStats = useCallback(async () => {
     try {
@@ -333,6 +363,10 @@ export function VehiculosPage() {
             >
               Limpiar
             </Button>
+            <Button variant="outline" onClick={() => void printList.imprimir()}>
+              <Printer size={16} />
+              Imprimir
+            </Button>
             {permisosVehiculos.crud && (
               <Button
                 onClick={() => {
@@ -561,6 +595,13 @@ export function VehiculosPage() {
           </div>,
           document.body,
         )}
+
+      <PrintSheetHost
+        titulo={printList.titulo}
+        impresoPor={printList.impresoPor}
+        filtros={printList.filtros}
+        state={printList.state}
+      />
     </div>
   );
 }

@@ -6,6 +6,9 @@ import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { formatFechaCorta, formatMoneda } from "@/app/pages/Inventario/components/format";
 import { usePermisos } from "@/hooks/usePermisos";
+import { useAuth } from "@/context/AuthContext";
+import { PrintDetailHost } from "@/app/components/print/PrintDetailHost";
+import { usePrintDetail } from "@/app/components/print/usePrintDetail";
 import type { EstadoOperativo, Vehiculo, VehiculoMantenimiento } from "@/types/vehiculos";
 import {
   ESTADOS_OPERATIVOS,
@@ -38,6 +41,39 @@ export function VehiculoDrawer({
   onPrintMantenimiento,
 }: Props) {
   const { vehiculos: permisosVehiculos } = usePermisos();
+  const { user } = useAuth();
+  const impresoPor = (user?.name || user?.username || "Usuario").trim();
+  const printDetail = usePrintDetail({
+    titulo: "Ficha de Vehículo",
+    impresoPor,
+    buildCampos: () =>
+      vehiculo
+        ? [
+            { label: "Código interno", value: vehiculo.codigo || "—" },
+            { label: "No. de unidad", value: vehiculo.noUnidad || "—" },
+            { label: "Tipo", value: vehiculo.tipoNombre || "—" },
+            { label: "Marca / Modelo", value: `${vehiculo.marca} ${vehiculo.modelo}` },
+            { label: "Año", value: vehiculo.anio != null ? String(vehiculo.anio) : "—" },
+            { label: "Color", value: vehiculo.color || "—" },
+            { label: "Placa", value: vehiculo.placa || "—" },
+            { label: "Chasis", value: vehiculo.chasis || "—" },
+            { label: "No. de motor", value: vehiculo.motor || "S/M" },
+            { label: "Combustible", value: vehiculo.combustible || "—" },
+            { label: "Capacidad tanque", value: vehiculo.capacidadTanque != null ? `${vehiculo.capacidadTanque} gal` : "—" },
+            { label: "Kilometraje", value: `${vehiculo.kilometraje.toLocaleString("es-GT")} km` },
+            { label: "Condición de llantas", value: vehiculo.condicionLlantas || "—" },
+            { label: "Volante / Dirección", value: vehiculo.volanteDireccion || "—" },
+            { label: "Estado operativo", value: vehiculo.estadoOperativo },
+            { label: "Origen", value: vehiculo.origen },
+            { label: "Valor unitario", value: formatMoneda(vehiculo.valorUnitario) },
+            { label: "Ubicación", value: vehiculo.ubicacion || "—" },
+            { label: "Donante", value: vehiculo.donante || "—" },
+            { label: "No. recibo", value: vehiculo.noReciboDonacion || "—" },
+            { label: "Registrado", value: formatFechaCorta(vehiculo.createdAt) },
+            { label: "Estado", value: vehiculo.estado },
+          ]
+        : [],
+  });
   if (!vehiculo) return null;
   const v = vehiculo;
   const mantenimientoEnProceso = v.mantenimientos?.some((m) => m.estado === "En proceso") ?? false;
@@ -265,12 +301,13 @@ export function VehiculoDrawer({
   ];
 
   return (
-    <Drawer
-      open={open}
-      onClose={onClose}
-      side="right"
-      size="xl"
-      title={`${v.marca} ${v.modelo}${v.anio ? ` ${v.anio}` : ""}`}
+    <>
+      <Drawer
+        open={open}
+        onClose={onClose}
+        side="right"
+        size="xl"
+        title={`${v.marca} ${v.modelo}${v.anio ? ` ${v.anio}` : ""}`}
       icon={<Wrench size={18} />}
       statusBadge={
         <div className="flex flex-wrap gap-1.5">
@@ -283,6 +320,10 @@ export function VehiculoDrawer({
       }
       footer={
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => void printDetail.print()}>
+            <Printer size={16} />
+            Imprimir
+          </Button>
           {permisosVehiculos.crud && (
             <Button variant="brand-outline" onClick={() => onEdit(v)}>
               <Pencil size={16} />
@@ -310,6 +351,13 @@ export function VehiculoDrawer({
       <div className="lg:p-5">
         <Tabs variant="glass" tabs={detailTabs} />
       </div>
-    </Drawer>
+      </Drawer>
+
+      <PrintDetailHost
+        titulo={printDetail.titulo}
+        impresoPor={printDetail.impresoPor}
+        state={printDetail.state}
+      />
+    </>
   );
 }

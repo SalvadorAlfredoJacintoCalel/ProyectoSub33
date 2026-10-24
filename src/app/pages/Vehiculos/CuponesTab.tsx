@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Download, Pencil, Plus, Printer, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
@@ -617,10 +618,11 @@ export function CuponesTab() {
         title={firmaCupon ? `Firma de ${firmaCupon.responsable}` : "Firma digital"}
       />
 
-      {reporte && (
-        <div className="print-only" style={{ position: 'absolute', left: '-9999px', top: 0, width: '100%' }}>
+      {reporte && createPortal(
+        <div className="print-sheet">
           <ReporteCuponesPrintSheet reporte={reporte} />
-        </div>
+        </div>,
+        document.body,
       )}
 
       <DetalleCuponModal

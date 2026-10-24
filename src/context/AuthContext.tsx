@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { getMisModulos, getMisPermisos, ApiError } from "@/services/seguridadService";
-import { refresh as authRefresh, logout as authLogout } from "@/services/authService";
+import { logout as authLogout } from "@/services/authService";
 import { tokenStore } from "@/services/auth/tokenStore";
 import { normalizeRole, type UserRole } from "@/constants/roles";
 
@@ -126,37 +126,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await Promise.all([loadModulos(), loadPermisos()]);
   }, [loadModulos, loadPermisos]);
 
-  // Restaurar sesión al recargar usando el refresh token (cookie httpOnly).
+  // Siempre iniciar en el login: no se restaura la sesión automáticamente al
+  // arrancar. Se limpian los datos locales obsoletos para forzar el login.
   useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-      if (!storedUser) return;
-
-      const result = await authRefresh();
-      if (cancelled) return;
-
-      if (result.success) {
-        setUser(result.user as UserData);
-        setLoggedIn(true);
-        const resolvedRole = (result.user as UserData).role;
-        setRoleState(resolvedRole);
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(result.user));
-        localStorage.setItem(STORAGE_KEYS.ROLE, resolvedRole);
-        void loadPermisosYModulos();
-      } else {
-        localStorage.removeItem(STORAGE_KEYS.USER);
-        localStorage.removeItem(STORAGE_KEYS.ROLE);
-        localStorage.removeItem(STORAGE_KEYS.MODULOS);
-        localStorage.removeItem(STORAGE_KEYS.PERMISOS);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [loadPermisosYModulos]);
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    localStorage.removeItem(STORAGE_KEYS.ROLE);
+    localStorage.removeItem(STORAGE_KEYS.MODULOS);
+    localStorage.removeItem(STORAGE_KEYS.PERMISOS);
+    setUser(null);
+    setLoggedIn(false);
+    setRoleState("voluntario");
+    setModulos([]);
+    setPermisos([]);
+  }, []);
 
   // Cierre de sesión global cuando el apiClient detecta 401 sin poder renovar.
   useEffect(() => {
