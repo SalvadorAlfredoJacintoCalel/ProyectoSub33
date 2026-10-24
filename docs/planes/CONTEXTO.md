@@ -1733,3 +1733,37 @@ Ejecutado `PLAN_MEJORAS_SEGURIDAD_FORMATO.md` (entregables 1-7).
 - Se **quitaron la imagen/logo** del correo de verificación por completo (ya no se envía LinkedResource ni data URI). La plantilla queda limpia: encabezado "SUBESTACIÓN 33" + saludo al usuario + código + pie, sin adjuntos ni imágenes.
 - EmailService ya no inyecta IWebHostEnvironment (dependencia removida).
 - Verificado: dotnet build 0 warnings / 0 errors.
+
+## Módulo de Reportes imprimibles (2026-10-23)
+
+- Reportes/ReportesPage.tsx reescrito (antes era mock/charts vacíos). Ahora es un sistema de **impresión de reportes por módulo** (sin cupones).
+- Módulos: **Personal, Emergencias, Inventario, Donaciones, Vehículos, Finanzas** — un reporte por módulo con tabla tipo Excel.
+- Reportes/components/ReportePrintSheet.tsx (genérico): membrete **"SUBESTACIÓN 33"** + subtítulo "Bomberos Voluntarios · San Lucas Tolimán, Sololá", título del reporte, **filtros aplicados**, **"Impreso por: {nombre completo}"** (del usuario logueado, sin correo), fecha de impresión, total de registros y tabla .excel-table con @media print (patrón de ReporteCuponesPrintSheet).
+- Filtros por módulo (rápidos): Personal (estado/búsqueda), Emergencias (estado/desde/hasta/búsqueda), Inventario (categoría/búsqueda), Donaciones (tipo/estado/búsqueda), Vehículos (estado/estado operativo/búsqueda), Finanzas (tipo/desde/hasta/búsqueda) + "Limpiar".
+- Vista previa en pantalla (tabla con scroll + sticky header) + botón **Imprimir** (window.print()).
+- Datos reales vía servicios existentes (getPersonal, emergenciaService.getEmergencias, inventarioService.getItems, donacionService.getDonaciones, ehiculosService.getVehiculos, inanzasService.getTransacciones) con página grande (500–1000).
+- Se eliminó la dependencia de recharts en Reportes (el chunk charts se redujo).
+
+### Verificación
+- 
+pm run build → éxito.
+- 
+pm test → 61/61 passing.
+
+## Reportes: logos + fecha de creación + centrado (2026-10-23)
+
+- Reportes/components/ReportePrintSheet.tsx: encabezado con **2 logos institucionales** (image-1.png a la izquierda, image-2.png a la derecha) y "SUBESTACIÓN 33" centrado.
+- Todo el contenido de la hoja queda **centrado** (título, filtros, total, impreso por, fecha y celdas de la tabla).
+- Se agregó la **fecha de creación** de los registros al reporte: columnas "Creado" (createdAt) en Inventario, Donaciones, Vehículos y Finanzas; "Ingreso" (echaIngreso) en Personal.
+- Verificado: 
+pm run build éxito, 
+pm test 61/61 passing.
+
+## Reportes: centrado + logos fondo blanco (2026-10-23)
+
+- Corregido el desplazamiento a la derecha en la impresión: se resetearon las animaciones/transform (nimate-page-enter, etc.) y 	ransform del <main> (Framer Motion) dentro de @media print en ReportePrintSheet.tsx.
+- Los logos image-1.png / image-2.png ahora tienen **fondo blanco** (se procesaron para quitar el fondo negro) y se les aplica ackground: #fff.
+- Se agregó salto de página limpio (	head repetido por página, page-break-inside: avoid en filas).
+- Verificado: 
+pm run build éxito, 
+pm test passing.
