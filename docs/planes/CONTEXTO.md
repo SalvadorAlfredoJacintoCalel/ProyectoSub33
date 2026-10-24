@@ -1767,3 +1767,13 @@ pm test 61/61 passing.
 - Verificado: 
 pm run build éxito, 
 pm test passing.
+
+## Reportes: donaciones DPI/NIT separados + emergencias personal asignado (2026-10-24)
+
+- **Donaciones**: columna "DPI/NIT" dividida en dos columnas "DPI" y "NIT" (splitDpiNit: 13 dígitos → DPI, de lo contrario → NIT).
+- **Emergencias**: se quitó la columna "Estado"; se agregaron "Personal asignado" (nombres con rol: piloto/camillero/etc.) y "Registrado por" (nombre completo de quien registró).
+- Backend: EmergenciaListItemDto ahora incluye CreadoPorNombre y PersonalAsignadoResumen; el query de listado agrega creado_por_nombre (LEFT JOIN personal) y subconsulta personal_asignado_resumen (string_agg de servicio_personal_asignado + cat_roles_servicio).
+- Frontend: EmergenciaListItem con creadoPorNombre y personalAsignadoResumen.
+- Verificado: dotnet build 0 errores, 
+pm run build éxito, 
+pm test passing.

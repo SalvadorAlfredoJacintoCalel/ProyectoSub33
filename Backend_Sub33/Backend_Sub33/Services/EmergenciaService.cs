@@ -314,8 +314,20 @@ namespace Backend_Sub33.Services
                          FROM servicio_tipos_asistencia sta 
                          WHERE sta.servicio_id = es.servicio_id),
                         ''
-                    ) AS tipos_asistencia_raw
+                    ) AS tipos_asistencia_raw,
+                    COALESCE(
+                        NULLIF(TRIM(CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido)), ''),
+                        es.creado_por_nombre
+                    ) AS creado_por_nombre,
+                    COALESCE(
+                        (SELECT string_agg(TRIM(spa.nombre_personal) || ' (' || COALESCE(crs.nombre, 'Asignado') || ')', ', ')
+                         FROM servicio_personal_asignado spa
+                         LEFT JOIN cat_roles_servicio crs ON crs.rol_servicio_id = spa.rol_servicio_id
+                         WHERE spa.servicio_id = es.servicio_id),
+                        ''
+                    ) AS personal_asignado_resumen
                 FROM emergencias_servicios es
+                LEFT JOIN personal p ON p.personal_id = es.formulado_por_id
                 WHERE {whereClause}
                 ORDER BY es.fecha DESC, es.servicio_id DESC
                 LIMIT @TamanoPagina OFFSET @Offset";

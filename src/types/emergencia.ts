@@ -91,6 +91,8 @@ export interface EmergenciaListItem {
   estado: EstadoEmergencia;
   tiposAsistencia: string[];
   formuladoPorId?: string | null;
+  creadoPorNombre?: string | null;
+  personalAsignadoResumen?: string;
 }
 
 export interface EmergenciaCreate {

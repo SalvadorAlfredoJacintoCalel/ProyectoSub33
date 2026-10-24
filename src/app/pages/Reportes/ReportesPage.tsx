@@ -37,6 +37,13 @@ function boolEstado(v?: boolean | null): string {
   return v ? "Activo" : "Inactivo";
 }
 
+function splitDpiNit(v?: string | null): { dpi: string; nit: string } {
+  const val = (v ?? "").trim();
+  if (!val) return { dpi: "—", nit: "—" };
+  if (/^\d{13}$/.test(val)) return { dpi: val, nit: "—" };
+  return { dpi: "—", nit: val };
+}
+
 const inputStyle: React.CSSProperties = {
   padding: "7px 10px",
   fontSize: 13,
@@ -119,11 +126,13 @@ export function ReportesPage() {
           busqueda: busqueda || undefined, estado: estado || undefined,
           desde: desde || undefined, hasta: hasta || undefined,
         });
-        cols = ["No. incidente", "Fecha", "Paciente", "Edad", "Género", "Ubicación", "Hospital", "Unidad", "Estado"];
+        cols = ["No. incidente", "Fecha", "Paciente", "Edad", "Género", "Ubicación", "Hospital", "Unidad", "Personal asignado", "Registrado por"];
         rows = res.items.map((e) => [
           e.numeroIncidente, fechaCorta(e.fecha), e.paciente,
           e.edad != null ? String(e.edad) : "—", e.genero ?? "—",
-          e.ubicacion ?? "—", e.hospitalDestinoNombre ?? "—", e.unidadAsignadaNombre ?? "—", e.estado,
+          e.ubicacion ?? "—", e.hospitalDestinoNombre ?? "—", e.unidadAsignadaNombre ?? "—",
+          e.personalAsignadoResumen?.trim() || "—",
+          e.creadoPorNombre?.trim() || "—",
         ]);
       } else if (modulo === "inventario") {
         const res = await inventarioService.getItems({
@@ -143,11 +152,14 @@ export function ReportesPage() {
           pagina: 1, tamanio: 1000,
           busqueda: busqueda || undefined, tipo: tipo || undefined, estado: estado || undefined,
         });
-        cols = ["No. recibo", "Fecha", "Donante", "DPI/NIT", "Tipo", "Categoría", "Monto", "Estado", "Creado"];
-        rows = res.items.map((d) => [
-          d.noRecibo ?? "—", fechaCorta(d.fecha), d.donante,
-          d.dpiNit ?? "—", d.tipo, d.categoria ?? "—", moneda(d.monto), d.estado, fechaCorta(d.createdAt),
-        ]);
+        cols = ["No. recibo", "Fecha", "Donante", "DPI", "NIT", "Tipo", "Categoría", "Monto", "Estado", "Creado"];
+        rows = res.items.map((d) => {
+          const { dpi, nit } = splitDpiNit(d.dpiNit);
+          return [
+            d.noRecibo ?? "—", fechaCorta(d.fecha), d.donante, dpi, nit,
+            d.tipo, d.categoria ?? "—", moneda(d.monto), d.estado, fechaCorta(d.createdAt),
+          ];
+        });
       } else if (modulo === "vehiculos") {
         const res = await vehiculosService.getVehiculos({
           pagina: 1, tamanio: 500,

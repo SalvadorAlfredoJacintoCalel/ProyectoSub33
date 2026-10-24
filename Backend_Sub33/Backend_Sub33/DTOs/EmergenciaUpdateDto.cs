@@ -107,6 +107,8 @@ namespace Backend_Sub33.DTOs
         public int? VehiculoId { get; set; }
         public string Estado { get; set; } = "En proceso";
         public Guid? FormuladoPorId { get; set; }
+        public string? CreadoPorNombre { get; set; }
+        public string PersonalAsignadoResumen { get; set; } = string.Empty;
         public string TiposAsistenciaRaw { get; set; } = string.Empty;
         public List<string> TiposAsistencia { get; set; } = new();
     }
