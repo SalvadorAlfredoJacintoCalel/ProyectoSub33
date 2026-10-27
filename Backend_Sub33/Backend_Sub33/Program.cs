@@ -72,8 +72,17 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(x => x.CustomSchemaIds(type => type.FullName));
 
 // 3. Política CORS (orígenes del frontend, con credenciales para cookies)
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:5173", "http://127.0.0.1:5173" };
+// Se permiten los orígenes configurados (appsettings/env) más los locales y el frontend desplegado.
+var allowedOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? Array.Empty<string>())
+    .Concat(new[]
+    {
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://front-sub33.onrender.com"
+    })
+    .Distinct()
+    .ToArray();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowApp", policy =>
