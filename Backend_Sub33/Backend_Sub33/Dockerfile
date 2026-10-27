@@ -3,11 +3,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY ["Backend_Sub33.csproj", "."]
-RUN dotnet restore "Backend_Sub33.csproj"
+COPY ["Backend_Sub33/Backend_Sub33/Backend_Sub33.csproj", "Backend_Sub33/Backend_Sub33/"]
+RUN dotnet restore "Backend_Sub33/Backend_Sub33/Backend_Sub33.csproj"
 
-COPY . .
-RUN dotnet publish "Backend_Sub33.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:TreatWarningsAsErrors=false /p:AnalysisLevel=none
+COPY ["Backend_Sub33/Backend_Sub33/", "Backend_Sub33/Backend_Sub33/"]
+RUN dotnet publish "Backend_Sub33/Backend_Sub33/Backend_Sub33.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:TreatWarningsAsErrors=false /p:AnalysisLevel=none
 
 # Etapa 2: runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime

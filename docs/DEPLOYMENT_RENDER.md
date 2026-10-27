@@ -36,21 +36,24 @@ Navegador → Frontend (Render Static Site, https://<frontend>.onrender.com)
    cd Backend_Sub33\Backend_Sub33
    dotnet build      # 0 errores
    ```
-3. **`Program.cs` debe soportar Forwarded Headers** (Render termina TLS y manda `X-Forwarded-Proto: https`). Si no está, agregar antes de `app.UseHttpsRedirection();`:
+3. **`Program.cs` debe soportar Forwarded Headers** (Render termina TLS y manda `X-Forwarded-Proto: https`). Ya está incluido; el orden es:
 
    ```csharp
    using Microsoft.AspNetCore.HttpOverrides;
 
    // ... después de `var app = builder.Build();`
-   app.UseForwardedHeaders(new ForwardedHeadersOptions
+   var forwardedOptions = new ForwardedHeadersOptions
    {
        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-   });
+   };
+   forwardedOptions.KnownNetworks.Clear();
+   forwardedOptions.KnownProxies.Clear();
+   app.UseForwardedHeaders(forwardedOptions);
 
    app.UseHttpsRedirection();
    ```
 
-   > Esto evita loops de redirección y asegura que las cookies `Secure` se emitan bien tras el proxy de Render.
+   > Desde ASP.NET Core 8.0.17 el middleware ignora proxies no configurados; limpiar las listas es necesario para que el proxy de Render sea confiable. Esto evita loops de redirección y asegura que las cookies `Secure` se emitan bien.
 
 4. **Rotar la app-password de Gmail** (la actual quedó expuesta) y usar la nueva como variable de entorno `Smtp__Password`.
 
@@ -96,8 +99,10 @@ psql "postgresql://USUARIO:CLAVE@HOST/dbname?sslmode=require" -c "SELECT usernam
 1. En Render → **New → Web Service** → conectar el repositorio de GitHub.
 2. Configurar:
    - **Name**: `sub33-backend`
-   - **Root Directory**: `Backend_Sub33/Backend_Sub33`
-   - **Dockerfile Path**: `Backend_Sub33/Backend_Sub33/Dockerfile` (o solo `Dockerfile` si el Root Directory ya es esa carpeta)
+   - **Root Directory**: vacío (raíz del repositorio)
+   - **Dockerfile Path**: `Backend_Sub33/Backend_Sub33/Dockerfile`
+
+   > El Dockerfile usa rutas relativas a la raíz (`Backend_Sub33/Backend_Sub33/...`), así que el contexto de build debe ser la raíz del repo.
 3. **Variables de entorno** (Environment → secretos):
 
    | Variable | Valor |

@@ -20,8 +20,8 @@ services:
 
   backend:
     build:
-      context: ./Backend_Sub33/Backend_Sub33
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Backend_Sub33/Backend_Sub33/Dockerfile
     container_name: sub33-backend
     environment:
       ASPNETCORE_URLS: http://0.0.0.0:5196
