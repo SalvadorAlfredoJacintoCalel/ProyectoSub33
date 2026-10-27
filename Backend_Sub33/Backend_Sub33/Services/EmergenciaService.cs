@@ -1,0 +1,958 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Dapper;
+using Backend_Sub33.Data;
+using Backend_Sub33.DTOs;
+using Backend_Sub33.DTOs.Inventario;
+
+namespace Backend_Sub33.Services
+{
+    public interface IEmergenciaService
+    {
+        Task<EmergenciaListResponseDto> ListarEmergenciasAsync(EmergenciaFiltrosDto filtros);
+        Task<EmergenciaResponseDto?> ObtenerEmergenciaPorIdAsync(int id);
+        Task<EmergenciaResponseDto> CrearEmergenciaAsync(EmergenciaCreateDto dto);
+        Task<EmergenciaResponseDto?> ActualizarEmergenciaAsync(int id, EmergenciaUpdateDto dto);
+        Task<bool> CambiarEstadoAsync(int id, string estado);
+        Task<string> ObtenerSiguienteIncidenteAsync();
+    }
+
+    public class EmergenciaService : IEmergenciaService
+    {
+        private readonly AppDbContext _context;
+        private readonly ICurrentUser _currentUser;
+
+        public EmergenciaService(AppDbContext context, ICurrentUser currentUser)
+        {
+            _context = context;
+            _currentUser = currentUser;
+        }
+
+        private System.Data.Common.DbConnection AbrirConexion()
+        {
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
+            return connection;
+        }
+
+        private sealed class RolServicioRow
+        {
+            public int RolServicioId { get; set; }
+            public string Nombre { get; set; } = string.Empty;
+        }
+
+        private sealed class VehiculoEmergenciaRow
+        {
+            public int VehiculoId { get; set; }
+            public string? Codigo { get; set; }
+            public string? NoUnidad { get; set; }
+            public string? Marca { get; set; }
+            public string? Modelo { get; set; }
+            public string Estado { get; set; } = string.Empty;
+            public string EstadoOperativo { get; set; } = string.Empty;
+        }
+
+        private sealed class EmergenciaEstadoRow
+        {
+            public int ServicioId { get; set; }
+            public string Estado { get; set; } = string.Empty;
+            public int? VehiculoId { get; set; }
+            public Guid? FormuladoPorId { get; set; }
+        }
+
+        private static string ResolverNombreVehiculo(VehiculoEmergenciaRow vehiculo)
+        {
+            if (!string.IsNullOrWhiteSpace(vehiculo.NoUnidad)) return vehiculo.NoUnidad.Trim();
+            if (!string.IsNullOrWhiteSpace(vehiculo.Codigo)) return vehiculo.Codigo.Trim();
+            return $"{vehiculo.Marca} {vehiculo.Modelo}".Trim();
+        }
+
+        private static async Task<VehiculoEmergenciaRow> ObtenerVehiculoAsync(
+            System.Data.Common.DbConnection connection,
+            int vehiculoId,
+            System.Data.Common.DbTransaction? transaction)
+        {
+            var vehiculo = await connection.QueryFirstOrDefaultAsync<VehiculoEmergenciaRow>(
+                @"SELECT vehiculo_id, codigo, no_unidad, marca, modelo, estado, estado_operativo
+                  FROM vehiculos
+                  WHERE vehiculo_id = @Id",
+                new { Id = vehiculoId }, transaction);
+
+            if (vehiculo == null)
+            {
+                throw new InvalidOperationException("Vehículo no encontrado.");
+            }
+
+            return vehiculo;
+        }
+
+        private static async Task<VehiculoEmergenciaRow> ValidarVehiculoDisponibleAsync(
+            System.Data.Common.DbConnection connection,
+            int? vehiculoId,
+            System.Data.Common.DbTransaction? transaction,
+            int? servicioExcluir = null)
+        {
+            if (!vehiculoId.HasValue)
+            {
+                throw new InvalidOperationException("El vehículo es obligatorio.");
+            }
+
+            var vehiculo = await ObtenerVehiculoAsync(connection, vehiculoId.Value, transaction);
+
+            if (vehiculo.Estado != "Activo" || vehiculo.EstadoOperativo != "Operativa")
+            {
+                throw new InvalidOperationException("El vehículo no está disponible para destacar (debe estar Activo y Operativa).");
+            }
+
+            var sqlDuplicado = servicioExcluir.HasValue
+                ? "SELECT COUNT(*) FROM emergencias_servicios WHERE vehiculo_id = @VehiculoId AND estado = 'En proceso' AND servicio_id <> @ServicioId"
+                : "SELECT COUNT(*) FROM emergencias_servicios WHERE vehiculo_id = @VehiculoId AND estado = 'En proceso'";
+
+            var duplicado = await connection.ExecuteScalarAsync<int>(
+                sqlDuplicado,
+                new { VehiculoId = vehiculoId.Value, ServicioId = servicioExcluir ?? 0 },
+                transaction);
+
+            if (duplicado > 0)
+            {
+                throw new InvalidOperationException("El vehículo ya está asignado a otra emergencia en proceso.");
+            }
+
+            return vehiculo;
+        }
+
+        private static async Task AsignarVehiculoEnServicioAsync(
+            System.Data.Common.DbConnection connection,
+            System.Data.Common.DbTransaction transaction,
+            int vehiculoId)
+        {
+            await connection.ExecuteAsync(
+                @"UPDATE vehiculos
+                  SET estado_operativo = 'En Servicio', updated_at = CURRENT_TIMESTAMP
+                  WHERE vehiculo_id = @Id AND estado = 'Activo'",
+                new { Id = vehiculoId }, transaction);
+        }
+
+        private static async Task LiberarVehiculoAsync(
+            System.Data.Common.DbConnection connection,
+            System.Data.Common.DbTransaction transaction,
+            int vehiculoId)
+        {
+            await connection.ExecuteAsync(
+                @"UPDATE vehiculos
+                  SET estado_operativo = 'Operativa', updated_at = CURRENT_TIMESTAMP
+                  WHERE vehiculo_id = @Id AND estado_operativo = 'En Servicio'",
+                new { Id = vehiculoId }, transaction);
+        }
+
+        private static string NormalizarRol(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+            var descompuesto = s.Trim().ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder(descompuesto.Length);
+            foreach (var c in descompuesto)
+            {
+                if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark)
+                {
+                    sb.Append(c);
+                }
+            }
+            return sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
+        }
+
+        // Regla operativa: mínimo 2 personas, al menos 1 Piloto y 1 acompañante
+        // (Camillero o Socorrista). Solo se exige un rol si ese rol existe en el catálogo.
+        private static async Task ValidarPersonalAsignadoAsync(System.Data.Common.DbConnection connection, IEnumerable<PersonalAsignadoDto>? personal)
+        {
+            var lista = (personal ?? Enumerable.Empty<PersonalAsignadoDto>()).ToList();
+
+            var roles = (await connection.QueryAsync<RolServicioRow>(
+                "SELECT rol_servicio_id AS RolServicioId, nombre AS Nombre FROM cat_roles_servicio")).ToList();
+
+            int? RolId(string esperado) => roles
+                .Where(r => NormalizarRol(r.Nombre) == esperado)
+                .Select(r => (int?)r.RolServicioId)
+                .FirstOrDefault();
+
+            var idPiloto = RolId("piloto");
+            var idCamillero = RolId("camillero");
+            var idSocorrista = RolId("socorrista");
+
+            if (lista.Count == 0)
+            {
+                throw new InvalidOperationException("Debe asignar el personal que atendió la emergencia.");
+            }
+
+            if (lista.Any(p => p.RolServicioId == null))
+            {
+                throw new InvalidOperationException("Asigna un rol a cada persona asignada.");
+            }
+
+            if (lista.Count < 2)
+            {
+                throw new InvalidOperationException("Debe asignar al menos 2 personas.");
+            }
+
+            var rolesSel = lista.Select(p => p.RolServicioId).ToList();
+
+            if (idPiloto != null && !rolesSel.Contains(idPiloto.Value))
+            {
+                throw new InvalidOperationException("El personal asignado debe incluir un Piloto.");
+            }
+
+            var tieneAcompanante =
+                (idCamillero != null && rolesSel.Contains(idCamillero.Value)) ||
+                (idSocorrista != null && rolesSel.Contains(idSocorrista.Value));
+
+            if ((idCamillero != null || idSocorrista != null) && !tieneAcompanante)
+            {
+                throw new InvalidOperationException("El personal asignado debe incluir un acompañante (Camillero o Socorrista).");
+            }
+        }
+
+        private void ValidarPropiedadEmergencia(EmergenciaEstadoRow actual)
+        {
+            if (_currentUser.EsAdmin) return;
+
+            var personalId = _currentUser.PersonalId;
+
+            if (!personalId.HasValue)
+            {
+                throw new UnauthorizedAccessException("Solo el creador o un administrador pueden modificar esta emergencia.");
+            }
+
+            if (!actual.FormuladoPorId.HasValue || actual.FormuladoPorId.Value != personalId.Value)
+            {
+                throw new UnauthorizedAccessException("Solo el creador o un administrador pueden modificar esta emergencia.");
+            }
+        }
+
+        public async Task<EmergenciaListResponseDto> ListarEmergenciasAsync(EmergenciaFiltrosDto filtros)
+        {
+            using var connection = AbrirConexion();
+
+            var whereConditions = new List<string> { "1=1" };
+            var parameters = new DynamicParameters();
+
+            if (!string.IsNullOrWhiteSpace(filtros.Busqueda))
+            {
+                whereConditions.Add(@"(es.numero_incidente ILIKE @Busqueda OR es.paciente ILIKE @Busqueda OR es.solicitante ILIKE @Busqueda OR es.domicilio ILIKE @Busqueda OR es.ubicacion ILIKE @Busqueda)");
+                parameters.Add("Busqueda", $"%{filtros.Busqueda}%");
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.Unidad))
+            {
+                whereConditions.Add("es.unidad_asignada_nombre ILIKE @Unidad");
+                parameters.Add("Unidad", $"%{filtros.Unidad}%");
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.Tipo))
+            {
+                whereConditions.Add("EXISTS (SELECT 1 FROM servicio_tipos_asistencia sta WHERE sta.servicio_id = es.servicio_id AND sta.tipo_asistencia = @Tipo)");
+                parameters.Add("Tipo", filtros.Tipo);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.Piloto))
+            {
+                whereConditions.Add("EXISTS (SELECT 1 FROM servicio_personal_asignado spa WHERE spa.servicio_id = es.servicio_id AND spa.nombre_personal ILIKE @Piloto)");
+                parameters.Add("Piloto", $"%{filtros.Piloto}%");
+            }
+
+            if (filtros.Desde.HasValue)
+            {
+                whereConditions.Add("es.fecha >= @Desde");
+                parameters.Add("Desde", filtros.Desde.Value);
+            }
+
+            if (filtros.Hasta.HasValue)
+            {
+                whereConditions.Add("es.fecha <= @Hasta");
+                parameters.Add("Hasta", filtros.Hasta.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.Estado))
+            {
+                whereConditions.Add("es.estado = @Estado");
+                parameters.Add("Estado", filtros.Estado);
+            }
+            else
+            {
+                whereConditions.Add("es.estado <> 'Inactivo'");
+            }
+
+            var whereClause = string.Join(" AND ", whereConditions);
+
+            var sqlTotal = $"SELECT COUNT(*) FROM emergencias_servicios es WHERE {whereClause}";
+            var totalItems = await connection.ExecuteScalarAsync<int>(sqlTotal, parameters);
+
+            var offset = (filtros.Pagina - 1) * filtros.TamanoPagina;
+            var sql = $@"
+                SELECT 
+                    es.servicio_id,
+                    es.numero_incidente,
+                    es.fecha,
+                    to_char(es.hora_salida, 'HH24:MI') AS hora_salida,
+                    to_char(es.hora_entrada, 'HH24:MI') AS hora_entrada,
+                    es.solicitud_tipo,
+                    es.paciente,
+                    es.edad,
+                    es.genero,
+                    es.ubicacion,
+                    es.hospital_destino_nombre,
+                    es.unidad_asignada_nombre,
+                    es.vehiculo_id,
+                    es.estado,
+                    es.formulado_por_id,
+                    COALESCE(
+                        (SELECT string_agg(sta.tipo_asistencia, ', ') 
+                         FROM servicio_tipos_asistencia sta 
+                         WHERE sta.servicio_id = es.servicio_id),
+                        ''
+                    ) AS tipos_asistencia_raw,
+                    COALESCE(
+                        NULLIF(TRIM(CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido)), ''),
+                        es.creado_por_nombre
+                    ) AS creado_por_nombre,
+                    COALESCE(
+                        (SELECT string_agg(TRIM(spa.nombre_personal) || ' (' || COALESCE(crs.nombre, 'Asignado') || ')', ', ')
+                         FROM servicio_personal_asignado spa
+                         LEFT JOIN cat_roles_servicio crs ON crs.rol_servicio_id = spa.rol_servicio_id
+                         WHERE spa.servicio_id = es.servicio_id),
+                        ''
+                    ) AS personal_asignado_resumen
+                FROM emergencias_servicios es
+                LEFT JOIN personal p ON p.personal_id = es.formulado_por_id
+                WHERE {whereClause}
+                ORDER BY es.fecha DESC, es.servicio_id DESC
+                LIMIT @TamanoPagina OFFSET @Offset";
+
+            parameters.Add("TamanoPagina", filtros.TamanoPagina);
+            parameters.Add("Offset", offset);
+
+            var items = await connection.QueryAsync<EmergenciaListItemDto>(sql, parameters);
+
+            var listaItems = items.ToList();
+            foreach (var item in listaItems)
+            {
+                if (!string.IsNullOrEmpty(item.TiposAsistenciaRaw))
+                {
+                    item.TiposAsistencia = item.TiposAsistenciaRaw.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).ToList();
+                }
+            }
+
+            var totalPaginas = (int)Math.Ceiling((double)totalItems / filtros.TamanoPagina);
+
+            return new EmergenciaListResponseDto
+            {
+                Items = listaItems,
+                TotalItems = totalItems,
+                PaginaActual = filtros.Pagina,
+                TamanoPagina = filtros.TamanoPagina,
+                TotalPaginas = totalPaginas,
+                TienePaginaAnterior = filtros.Pagina > 1,
+                TienePaginaSiguiente = filtros.Pagina < totalPaginas
+            };
+        }
+
+        public async Task<EmergenciaResponseDto?> ObtenerEmergenciaPorIdAsync(int id)
+        {
+            using var connection = AbrirConexion();
+
+                var sql = @"
+                SELECT 
+                    e.servicio_id,
+                    e.numero_incidente,
+                    e.fecha,
+                    to_char(e.hora_salida, 'HH24:MI') AS hora_salida,
+                    to_char(e.hora_entrada, 'HH24:MI') AS hora_entrada,
+                    e.solicitud_tipo,
+                    e.paciente,
+                    e.edad,
+                    e.genero,
+                    e.solicitante,
+                    e.acompanante,
+                    e.domicilio,
+                    e.fallecio,
+                    e.ubicacion,
+                    e.tipo_emergencia_id,
+                    e.hospital_destino_id,
+                    e.hospital_destino_nombre,
+                    e.estado_entrega,
+                    e.unidad_asignada_id,
+                    e.unidad_asignada_nombre,
+                    e.vehiculo_id,
+                    e.formulado_por_id,
+                    COALESCE(
+                        NULLIF(TRIM(CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido)), ''),
+                        e.creado_por_nombre
+                    ) AS creado_por_nombre,
+                    e.resumen,
+                    e.estado,
+                    e.created_at AS fecha_creacion,
+                    e.updated_at AS fecha_modificacion
+                FROM emergencias_servicios e
+                LEFT JOIN personal p ON p.personal_id = e.formulado_por_id
+                WHERE e.servicio_id = @Id";
+
+            var emergencia = await connection.QueryFirstOrDefaultAsync<EmergenciaResponseDto>(sql, new { Id = id });
+
+            if (emergencia == null) return null;
+
+            var sqlTipos = "SELECT tipo_asistencia FROM servicio_tipos_asistencia WHERE servicio_id = @Id";
+            var tipos = await connection.QueryAsync<string>(sqlTipos, new { Id = id });
+            emergencia.TiposAsistencia = tipos.ToList();
+
+            var sqlPersonal = "SELECT spa.personal_id, spa.nombre_personal, spa.rol_servicio_id, COALESCE(crs.nombre, '') AS rol_en_servicio FROM servicio_personal_asignado spa LEFT JOIN cat_roles_servicio crs ON crs.rol_servicio_id = spa.rol_servicio_id WHERE spa.servicio_id = @Id";
+            var personal = await connection.QueryAsync<PersonalAsignadoDto>(sqlPersonal, new { Id = id });
+            emergencia.PersonalAsignado = personal.ToList();
+
+            var sqlSignos = "SELECT presion_arterial, frecuencia_cardiaca, frecuencia_respiratoria, saturacion_oxigeno, to_char(hora_toma, 'HH24:MI') AS hora_toma FROM signos_vitales_paciente WHERE servicio_id = @Id";
+            var signos = await connection.QueryFirstOrDefaultAsync<SignosVitalesDto>(sqlSignos, new { Id = id });
+            emergencia.SignosVitales = signos;
+
+            return emergencia;
+        }
+
+        public async Task<EmergenciaResponseDto> CrearEmergenciaAsync(EmergenciaCreateDto dto)
+        {
+            using var connection = AbrirConexion();
+
+            await ValidarPersonalAsignadoAsync(connection, dto.PersonalAsignado);
+
+            var vehiculo = await ValidarVehiculoDisponibleAsync(connection, dto.VehiculoId, null);
+            var unidadNombre = ResolverNombreVehiculo(vehiculo);
+
+            using var transaction = connection.BeginTransaction();
+
+            int servicioId;
+
+            try
+            {
+                var numeroIncidente = dto.NumeroIncidente?.Trim();
+                if (string.IsNullOrEmpty(numeroIncidente))
+                {
+                    var anioActual = DateTime.Now.Year;
+                    var ultimoCodigo = await connection.QueryFirstOrDefaultAsync<string?>(
+                        "SELECT numero_incidente FROM emergencias_servicios WHERE numero_incidente LIKE @Pattern ORDER BY servicio_id DESC LIMIT 1;",
+                        new { Pattern = $"INC-{anioActual}-%" }, transaction);
+                    int siguienteNumero = 1;
+                    if (!string.IsNullOrEmpty(ultimoCodigo))
+                    {
+                        var partes = ultimoCodigo.Split('-');
+                        if (partes.Length == 3 && int.TryParse(partes[2], out int actual))
+                        {
+                            siguienteNumero = actual + 1;
+                        }
+                    }
+                    numeroIncidente = $"INC-{anioActual}-{siguienteNumero:D3}";
+                }
+
+                var hospitalNombre = dto.HospitalDestinoNombre;
+                if (string.IsNullOrWhiteSpace(hospitalNombre) && dto.HospitalDestinoId.HasValue)
+                {
+                    hospitalNombre = await connection.QueryFirstOrDefaultAsync<string?>(
+                        "SELECT nombre FROM cat_hospitales WHERE hospital_id = @Id",
+                        new { Id = dto.HospitalDestinoId.Value }, transaction);
+                }
+
+                TimeSpan? horaSalida = TimeSpan.TryParse(dto.HoraSalida, out var hs) ? hs : null;
+                TimeSpan? horaEntrada = TimeSpan.TryParse(dto.HoraEntrada, out var he) ? he : null;
+
+                var sqlEmergencia = @"
+                    INSERT INTO emergencias_servicios (
+                        numero_incidente, fecha, hora_salida, hora_entrada, solicitud_tipo,
+                        paciente, edad, genero, solicitante, acompanante, domicilio, fallecio,
+                        ubicacion, tipo_emergencia_id, hospital_destino_id, hospital_destino_nombre,
+                        estado_entrega, unidad_asignada_id, unidad_asignada_nombre, vehiculo_id, formulado_por_id,
+                        creado_por_nombre, resumen, estado
+                    ) VALUES (
+                        @NumeroIncidente, COALESCE(@Fecha, CURRENT_DATE), 
+                        @HoraSalida, @HoraEntrada, @SolicitudTipo,
+                        @Paciente, @Edad, @Genero, @Solicitante, @Acompanante, @Domicilio, @Fallecio,
+                        @Ubicacion, @TipoEmergenciaId, @HospitalDestinoId, @HospitalDestinoNombre,
+                        @EstadoEntrega, NULL, @UnidadAsignadaNombre, @VehiculoId, @FormuladoPorId,
+                        @CreadoPorNombre, @Resumen, 'En proceso'
+                    ) RETURNING servicio_id;";
+
+                servicioId = await connection.QuerySingleAsync<int>(sqlEmergencia, new
+                {
+                    NumeroIncidente = numeroIncidente,
+                    Fecha = dto.Fecha,
+                    HoraSalida = horaSalida,
+                    HoraEntrada = horaEntrada,
+                    SolicitudTipo = string.IsNullOrWhiteSpace(dto.SolicitudTipo) ? "Telefónica" : dto.SolicitudTipo,
+                    Paciente = dto.Paciente,
+                    Edad = dto.Edad,
+                    Genero = string.IsNullOrWhiteSpace(dto.Genero) ? "No especificado" : dto.Genero,
+                    Solicitante = dto.Solicitante,
+                    Acompanante = dto.Acompanante,
+                    Domicilio = dto.Domicilio,
+                    Fallecio = dto.Fallecio,
+                    Ubicacion = dto.Ubicacion,
+                    TipoEmergenciaId = dto.TipoEmergenciaId,
+                    HospitalDestinoId = dto.HospitalDestinoId,
+                    HospitalDestinoNombre = hospitalNombre,
+                    EstadoEntrega = dto.EstadoEntrega,
+                    UnidadAsignadaNombre = unidadNombre,
+                    VehiculoId = vehiculo.VehiculoId,
+                    FormuladoPorId = dto.FormuladoPorId,
+                    CreadoPorNombre = string.IsNullOrWhiteSpace(dto.CreadoPorNombre) ? "Bombero" : dto.CreadoPorNombre,
+                    Resumen = dto.Resumen
+                }, transaction);
+
+                await AsignarVehiculoEnServicioAsync(connection, transaction, vehiculo.VehiculoId);
+
+                if (dto.TiposAsistencia != null && dto.TiposAsistencia.Any())
+                {
+                    foreach (var tipo in dto.TiposAsistencia)
+                    {
+                        await connection.ExecuteAsync(
+                            "INSERT INTO servicio_tipos_asistencia (servicio_id, tipo_asistencia) VALUES (@ServicioId, @Tipo)",
+                            new { ServicioId = servicioId, Tipo = tipo }, transaction);
+                    }
+                }
+
+                if (dto.PersonalAsignado != null && dto.PersonalAsignado.Any())
+                {
+                    foreach (var personal in dto.PersonalAsignado)
+                    {
+                        await connection.ExecuteAsync(
+                            "INSERT INTO servicio_personal_asignado (servicio_id, personal_id, nombre_personal, rol_servicio_id) VALUES (@ServicioId, @PersonalId, @NombrePersonal, @RolServicioId)",
+                            new { ServicioId = servicioId, PersonalId = (object?)personal.PersonalId ?? DBNull.Value, NombrePersonal = personal.NombrePersonal, RolServicioId = (object?)personal.RolServicioId ?? DBNull.Value }, transaction);
+                    }
+                }
+
+                if (dto.SignosVitales != null)
+                {
+                    TimeSpan? horaToma = TimeSpan.TryParse(dto.SignosVitales.HoraToma, out var ht) ? ht : null;
+                    await connection.ExecuteAsync(
+                        @"INSERT INTO signos_vitales_paciente (servicio_id, presion_arterial, frecuencia_cardiaca, frecuencia_respiratoria, saturacion_oxigeno, hora_toma) 
+                          VALUES (@ServicioId, @PresionArterial, @FrecuenciaCardiaca, @FrecuenciaRespiratoria, @SaturacionOxigeno, @HoraToma)",
+                        new { ServicioId = servicioId,
+                              PresionArterial = dto.SignosVitales.PresionArterial != null ? (object)dto.SignosVitales.PresionArterial : DBNull.Value,
+                              FrecuenciaCardiaca = dto.SignosVitales.FrecuenciaCardiaca != null ? (object)dto.SignosVitales.FrecuenciaCardiaca : DBNull.Value,
+                              FrecuenciaRespiratoria = dto.SignosVitales.FrecuenciaRespiratoria != null ? (object)dto.SignosVitales.FrecuenciaRespiratoria : DBNull.Value,
+                              SaturacionOxigeno = dto.SignosVitales.SaturacionOxigeno != null ? (object)dto.SignosVitales.SaturacionOxigeno : DBNull.Value,
+                              HoraToma = horaToma }, transaction);
+                }
+
+                // Procesar insumos utilizados
+                if (dto.InsumosUtilizados != null && dto.InsumosUtilizados.Any())
+                {
+                    foreach (var ins in dto.InsumosUtilizados)
+                    {
+                        var item = await connection.QueryFirstOrDefaultAsync<InventarioItemDto>(
+                            "SELECT item_id, nombre, stock_actual FROM inventario_items WHERE item_id = @ItemId",
+                            new { ins.ItemId }, transaction);
+
+                        if (item == null)
+                            throw new InvalidOperationException($"Item {ins.ItemId} no existe en inventario");
+
+                        if (item.StockActual < ins.Cantidad)
+                            throw new InvalidOperationException($"Stock insuficiente para {item.Nombre}. Disponible: {item.StockActual}, Solicitado: {ins.Cantidad}");
+
+                        await connection.ExecuteAsync(
+                            "UPDATE inventario_items SET stock_actual = stock_actual - @Cantidad WHERE item_id = @ItemId",
+                            new { ins.ItemId, ins.Cantidad }, transaction);
+
+                        var tipoMovId = await connection.QueryFirstOrDefaultAsync<int>(
+                            "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'USO_SERVICIO'",
+                            transaction: transaction);
+
+                        await connection.ExecuteAsync(
+                            @"INSERT INTO inventario_movimientos (item_id, tipo_mov_id, cantidad, motivo, responsable_id, fecha_hora)
+                              VALUES (@ItemId, @TipoMovId, @Cantidad, @Motivo, @ResponsableId, CURRENT_TIMESTAMP)",
+                            new
+                            {
+                                ins.ItemId,
+                                TipoMovId = tipoMovId,
+                                ins.Cantidad,
+                                Motivo = $"Uso en servicio {numeroIncidente}",
+                                ResponsableId = (object?)dto.FormuladoPorId ?? DBNull.Value
+                            }, transaction);
+
+                        await connection.ExecuteAsync(
+                            "INSERT INTO servicio_insumos_utilizados (servicio_id, item_id, cantidad) VALUES (@ServicioId, @ItemId, @Cantidad)",
+                            new { ServicioId = servicioId, ins.ItemId, ins.Cantidad }, transaction);
+                    }
+                }
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+
+            var creada = await ObtenerEmergenciaPorIdAsync(servicioId);
+            return creada!;
+        }
+
+        public async Task<EmergenciaResponseDto?> ActualizarEmergenciaAsync(int id, EmergenciaUpdateDto dto)
+        {
+            using var connection = AbrirConexion();
+
+            var actual = await connection.QueryFirstOrDefaultAsync<EmergenciaEstadoRow>(
+                "SELECT servicio_id, estado, vehiculo_id, formulado_por_id FROM emergencias_servicios WHERE servicio_id = @Id",
+                new { Id = id });
+
+            if (actual == null) return null;
+
+            ValidarPropiedadEmergencia(actual);
+
+            await ValidarPersonalAsignadoAsync(connection, dto.PersonalAsignado);
+
+            if (!dto.VehiculoId.HasValue)
+            {
+                throw new InvalidOperationException("El vehículo es obligatorio.");
+            }
+
+            var vehiculo = actual.VehiculoId == dto.VehiculoId
+                ? await ObtenerVehiculoAsync(connection, dto.VehiculoId.Value, null)
+                : await ValidarVehiculoDisponibleAsync(connection, dto.VehiculoId, null, id);
+
+            var unidadNombre = ResolverNombreVehiculo(vehiculo);
+
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                var hospitalNombre = dto.HospitalDestinoNombre;
+                if (string.IsNullOrWhiteSpace(hospitalNombre) && dto.HospitalDestinoId.HasValue)
+                {
+                    hospitalNombre = await connection.QueryFirstOrDefaultAsync<string?>(
+                        "SELECT nombre FROM cat_hospitales WHERE hospital_id = @Id",
+                        new { Id = dto.HospitalDestinoId.Value }, transaction);
+                }
+
+                TimeSpan? horaSalida = TimeSpan.TryParse(dto.HoraSalida, out var hs) ? hs : null;
+                TimeSpan? horaEntrada = TimeSpan.TryParse(dto.HoraEntrada, out var he) ? he : null;
+
+                var sqlUpdate = @"
+                    UPDATE emergencias_servicios SET
+                        numero_incidente = @NumeroIncidente,
+                        fecha = COALESCE(@Fecha, fecha),
+                        hora_salida = @HoraSalida,
+                        hora_entrada = @HoraEntrada,
+                        solicitud_tipo = @SolicitudTipo,
+                        paciente = @Paciente,
+                        edad = @Edad,
+                        genero = @Genero,
+                        solicitante = @Solicitante,
+                        acompanante = @Acompanante,
+                        domicilio = @Domicilio,
+                        fallecio = @Fallecio,
+                        ubicacion = @Ubicacion,
+                        tipo_emergencia_id = @TipoEmergenciaId,
+                        hospital_destino_id = @HospitalDestinoId,
+                        hospital_destino_nombre = @HospitalDestinoNombre,
+                        estado_entrega = @EstadoEntrega,
+                        unidad_asignada_id = NULL,
+                        unidad_asignada_nombre = @UnidadAsignadaNombre,
+                        vehiculo_id = @VehiculoId,
+                        formulado_por_id = @FormuladoPorId,
+                        creado_por_nombre = @CreadoPorNombre,
+                        resumen = @Resumen,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE servicio_id = @Id";
+
+                await connection.ExecuteAsync(sqlUpdate, new
+                {
+                    Id = id,
+                    NumeroIncidente = dto.NumeroIncidente,
+                    Fecha = dto.Fecha,
+                    HoraSalida = horaSalida,
+                    HoraEntrada = horaEntrada,
+                    SolicitudTipo = string.IsNullOrWhiteSpace(dto.SolicitudTipo) ? "Telefónica" : dto.SolicitudTipo,
+                    Paciente = dto.Paciente,
+                    Edad = dto.Edad,
+                    Genero = string.IsNullOrWhiteSpace(dto.Genero) ? "No especificado" : dto.Genero,
+                    Solicitante = dto.Solicitante,
+                    Acompanante = dto.Acompanante,
+                    Domicilio = dto.Domicilio,
+                    Fallecio = dto.Fallecio,
+                    Ubicacion = dto.Ubicacion,
+                    TipoEmergenciaId = dto.TipoEmergenciaId,
+                    HospitalDestinoId = dto.HospitalDestinoId,
+                    HospitalDestinoNombre = hospitalNombre,
+                    EstadoEntrega = dto.EstadoEntrega,
+                    UnidadAsignadaNombre = unidadNombre,
+                    VehiculoId = vehiculo.VehiculoId,
+                    FormuladoPorId = dto.FormuladoPorId,
+                    CreadoPorNombre = string.IsNullOrWhiteSpace(dto.CreadoPorNombre) ? "Bombero" : dto.CreadoPorNombre,
+                    Resumen = dto.Resumen
+                }, transaction);
+
+                if (actual.VehiculoId != dto.VehiculoId)
+                {
+                    if (actual.VehiculoId.HasValue)
+                    {
+                        await LiberarVehiculoAsync(connection, transaction, actual.VehiculoId.Value);
+                    }
+
+                    if (actual.Estado == "En proceso")
+                    {
+                        await AsignarVehiculoEnServicioAsync(connection, transaction, vehiculo.VehiculoId);
+                    }
+                }
+
+                await connection.ExecuteAsync(
+                    "DELETE FROM servicio_tipos_asistencia WHERE servicio_id = @Id", new { Id = id }, transaction);
+
+                if (dto.TiposAsistencia != null && dto.TiposAsistencia.Any())
+                {
+                    foreach (var tipo in dto.TiposAsistencia)
+                    {
+                        await connection.ExecuteAsync(
+                            "INSERT INTO servicio_tipos_asistencia (servicio_id, tipo_asistencia) VALUES (@ServicioId, @Tipo)",
+                            new { ServicioId = id, Tipo = tipo }, transaction);
+                    }
+                }
+
+                await connection.ExecuteAsync(
+                    "DELETE FROM servicio_personal_asignado WHERE servicio_id = @Id", new { Id = id }, transaction);
+
+                if (dto.PersonalAsignado != null && dto.PersonalAsignado.Any())
+                {
+                    foreach (var personal in dto.PersonalAsignado)
+                    {
+                        await connection.ExecuteAsync(
+                            "INSERT INTO servicio_personal_asignado (servicio_id, personal_id, nombre_personal, rol_servicio_id) VALUES (@ServicioId, @PersonalId, @NombrePersonal, @RolServicioId)",
+                            new { ServicioId = id, PersonalId = (object?)personal.PersonalId ?? DBNull.Value, NombrePersonal = personal.NombrePersonal, RolServicioId = (object?)personal.RolServicioId ?? DBNull.Value }, transaction);
+                    }
+                }
+
+                if (dto.SignosVitales != null)
+                {
+                    TimeSpan? horaToma = TimeSpan.TryParse(dto.SignosVitales.HoraToma, out var ht) ? ht : null;
+
+                    var existeSignos = await connection.ExecuteScalarAsync<int>(
+                        "SELECT COUNT(*) FROM signos_vitales_paciente WHERE servicio_id = @Id", new { Id = id }, transaction);
+
+                    if (existeSignos > 0)
+                    {
+                        await connection.ExecuteAsync(
+                            @"UPDATE signos_vitales_paciente SET
+                                presion_arterial = @PresionArterial,
+                                frecuencia_cardiaca = @FrecuenciaCardiaca,
+                                frecuencia_respiratoria = @FrecuenciaRespiratoria,
+                                saturacion_oxigeno = @SaturacionOxigeno,
+                                hora_toma = @HoraToma
+                              WHERE servicio_id = @Id",
+                            new { Id = id,
+                                  PresionArterial = dto.SignosVitales.PresionArterial != null ? (object)dto.SignosVitales.PresionArterial : DBNull.Value,
+                                  FrecuenciaCardiaca = dto.SignosVitales.FrecuenciaCardiaca != null ? (object)dto.SignosVitales.FrecuenciaCardiaca : DBNull.Value,
+                                  FrecuenciaRespiratoria = dto.SignosVitales.FrecuenciaRespiratoria != null ? (object)dto.SignosVitales.FrecuenciaRespiratoria : DBNull.Value,
+                                  SaturacionOxigeno = dto.SignosVitales.SaturacionOxigeno != null ? (object)dto.SignosVitales.SaturacionOxigeno : DBNull.Value,
+                                  HoraToma = horaToma }, transaction);
+                    }
+                    else
+                    {
+                        await connection.ExecuteAsync(
+                            @"INSERT INTO signos_vitales_paciente (servicio_id, presion_arterial, frecuencia_cardiaca, frecuencia_respiratoria, saturacion_oxigeno, hora_toma) 
+                              VALUES (@ServicioId, @PresionArterial, @FrecuenciaCardiaca, @FrecuenciaRespiratoria, @SaturacionOxigeno, @HoraToma)",
+                            new { ServicioId = id,
+                                  PresionArterial = dto.SignosVitales.PresionArterial != null ? (object)dto.SignosVitales.PresionArterial : DBNull.Value,
+                                  FrecuenciaCardiaca = dto.SignosVitales.FrecuenciaCardiaca != null ? (object)dto.SignosVitales.FrecuenciaCardiaca : DBNull.Value,
+                                  FrecuenciaRespiratoria = dto.SignosVitales.FrecuenciaRespiratoria != null ? (object)dto.SignosVitales.FrecuenciaRespiratoria : DBNull.Value,
+                                  SaturacionOxigeno = dto.SignosVitales.SaturacionOxigeno != null ? (object)dto.SignosVitales.SaturacionOxigeno : DBNull.Value,
+                                  HoraToma = horaToma }, transaction);
+                    }
+                }
+
+                // Reconciliar insumos utilizados (edición): ajusta stock y registra movimientos
+                var insumosNuevos = (dto.InsumosUtilizados ?? new List<InsumoEmergenciaDto>())
+                    .Where(i => i.ItemId > 0 && i.Cantidad > 0)
+                    .GroupBy(i => i.ItemId)
+                    .Select(g => new InsumoEmergenciaDto { ItemId = g.Key, Cantidad = g.Sum(x => x.Cantidad) })
+                    .ToList();
+
+                var insumosPrevios = (await connection.QueryAsync<(int ItemId, int Cantidad)>(
+                    "SELECT item_id, cantidad FROM servicio_insumos_utilizados WHERE servicio_id = @Id",
+                    new { Id = id }, transaction)).ToDictionary(x => x.ItemId, x => x.Cantidad);
+
+                var tipoUsoInsumo = await connection.QueryFirstOrDefaultAsync<int>(
+                    "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'USO_SERVICIO'",
+                    transaction: transaction);
+                var tipoReversion = await connection.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'REVERSION_SERVICIO'",
+                    transaction: transaction)
+                    ?? await connection.QueryFirstOrDefaultAsync<int?>(
+                        "SELECT tipo_mov_id FROM cat_tipos_movimiento WHERE codigo = 'ENTRADA'",
+                        transaction: transaction);
+
+                var itemIds = insumosPrevios.Keys.Union(insumosNuevos.Select(i => i.ItemId)).ToList();
+                foreach (var itemId in itemIds)
+                {
+                    var cantidadPrevia = insumosPrevios.TryGetValue(itemId, out var pv) ? pv : 0;
+                    var cantidadNueva = insumosNuevos.FirstOrDefault(i => i.ItemId == itemId)?.Cantidad ?? 0;
+                    var delta = cantidadNueva - cantidadPrevia;
+                    if (delta == 0) continue;
+
+                    var item = await connection.QueryFirstOrDefaultAsync<(string Nombre, int StockActual)>(
+                        "SELECT nombre, stock_actual FROM inventario_items WHERE item_id = @Id",
+                        new { Id = itemId }, transaction);
+
+                    if (item == default)
+                        throw new InvalidOperationException($"Item {itemId} no existe en inventario");
+
+                    if (delta > 0)
+                    {
+                        if (item.StockActual < delta)
+                            throw new InvalidOperationException($"Stock insuficiente para {item.Nombre}. Disponible: {item.StockActual}, Requerido: {delta}");
+
+                        await connection.ExecuteAsync(
+                            "UPDATE inventario_items SET stock_actual = stock_actual - @Cantidad WHERE item_id = @Id",
+                            new { Id = itemId, Cantidad = delta }, transaction);
+
+                        await connection.ExecuteAsync(
+                            @"INSERT INTO inventario_movimientos (item_id, tipo_mov_id, cantidad, motivo, responsable_id, fecha_hora)
+                              VALUES (@ItemId, @TipoMovId, @Cantidad, @Motivo, @ResponsableId, CURRENT_TIMESTAMP)",
+                            new
+                            {
+                                ItemId = itemId,
+                                TipoMovId = tipoUsoInsumo,
+                                Cantidad = delta,
+                                Motivo = $"Uso en servicio {dto.NumeroIncidente} (edición)",
+                                ResponsableId = (object?)dto.FormuladoPorId ?? DBNull.Value
+                            }, transaction);
+                    }
+                    else
+                    {
+                        var devolver = -delta;
+
+                        await connection.ExecuteAsync(
+                            "UPDATE inventario_items SET stock_actual = stock_actual + @Cantidad WHERE item_id = @Id",
+                            new { Id = itemId, Cantidad = devolver }, transaction);
+
+                        if (tipoReversion.HasValue)
+                        {
+                            await connection.ExecuteAsync(
+                                @"INSERT INTO inventario_movimientos (item_id, tipo_mov_id, cantidad, motivo, responsable_id, fecha_hora)
+                                  VALUES (@ItemId, @TipoMovId, @Cantidad, @Motivo, @ResponsableId, CURRENT_TIMESTAMP)",
+                                new
+                                {
+                                    ItemId = itemId,
+                                    TipoMovId = tipoReversion.Value,
+                                    Cantidad = devolver,
+                                    Motivo = $"Reversión por edición de servicio {dto.NumeroIncidente}",
+                                    ResponsableId = (object?)dto.FormuladoPorId ?? DBNull.Value
+                                }, transaction);
+                        }
+                    }
+                }
+
+                await connection.ExecuteAsync(
+                    "DELETE FROM servicio_insumos_utilizados WHERE servicio_id = @Id",
+                    new { Id = id }, transaction);
+
+                foreach (var ins in insumosNuevos)
+                {
+                    await connection.ExecuteAsync(
+                        "INSERT INTO servicio_insumos_utilizados (servicio_id, item_id, cantidad) VALUES (@ServicioId, @ItemId, @Cantidad)",
+                        new { ServicioId = id, ins.ItemId, ins.Cantidad }, transaction);
+                }
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+
+            var actualizada = await ObtenerEmergenciaPorIdAsync(id);
+            return actualizada;
+        }
+
+        public async Task<bool> CambiarEstadoAsync(int id, string estado)
+        {
+            using var connection = AbrirConexion();
+
+            var actual = await connection.QueryFirstOrDefaultAsync<EmergenciaEstadoRow>(
+                "SELECT servicio_id, estado, vehiculo_id, formulado_por_id FROM emergencias_servicios WHERE servicio_id = @Id",
+                new { Id = id });
+
+            if (actual == null) return false;
+
+            ValidarPropiedadEmergencia(actual);
+
+            var destino = estado?.Trim() ?? string.Empty;
+
+            if (destino == "Inactivo" && actual.Estado == "En proceso")
+            {
+                throw new InvalidOperationException("Primero marque el servicio como Terminado antes de desactivarlo.");
+            }
+
+            var transicionValida =
+                (destino == "Terminado" && actual.Estado == "En proceso") ||
+                (destino == "Inactivo" && actual.Estado == "Terminado");
+
+            if (!transicionValida)
+            {
+                throw new InvalidOperationException("Transición de estado no permitida. Use: En proceso → Terminado → Inactivo.");
+            }
+
+            using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                await connection.ExecuteAsync(
+                    @"UPDATE emergencias_servicios
+                      SET estado = @Estado, updated_at = CURRENT_TIMESTAMP
+                      WHERE servicio_id = @Id",
+                    new { Id = id, Estado = destino }, transaction);
+
+                if (destino == "Terminado" && actual.VehiculoId.HasValue)
+                {
+                    await LiberarVehiculoAsync(connection, transaction, actual.VehiculoId.Value);
+                }
+
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+
+            return true;
+        }
+
+        public async Task<string> ObtenerSiguienteIncidenteAsync()
+        {
+            using var connection = AbrirConexion();
+
+            var anioActual = DateTime.Now.Year;
+            var sqlUltimo = @"
+                SELECT numero_incidente 
+                FROM emergencias_servicios 
+                WHERE numero_incidente LIKE @Pattern 
+                ORDER BY servicio_id DESC 
+                LIMIT 1;";
+
+            var ultimoCodigo = await connection.QueryFirstOrDefaultAsync<string>(
+                sqlUltimo, 
+                new { Pattern = $"INC-{anioActual}-%" });
+
+            int siguienteNumero = 1;
+            if (!string.IsNullOrEmpty(ultimoCodigo))
+            {
+                var partes = ultimoCodigo.Split('-');
+                if (partes.Length == 3 && int.TryParse(partes[2], out int actual))
+                {
+                    siguienteNumero = actual + 1;
+                }
+            }
+
+            return $"INC-{anioActual}-{siguienteNumero:D3}";
+        }
+    }
+}

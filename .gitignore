@@ -1,0 +1,40 @@
+# ── Dependencias ──
+node_modules/
+dist/
+
+# ── Salidas de compilación ──
+bin/
+obj/
+publish/
+
+# ── IDE / sistema ──
+.vs/
+.vscode/
+*.user
+Thumbs.db
+
+# ── Certificados locales (NUNCA subir) ──
+*.pfx
+*.p12
+
+# ── Logs ──
+*.log
+*.err.log
+
+# ── Variables de entorno (NUNCA subir secretos) ──
+.env
+.env.*
+!.env.example
+
+# ── Config local con secretos (SMTP, conexión, etc.) — NO subir a git ──
+# Regla de base: cualquier appsettings de entorno puede llevar credenciales.
+# Solo se conserva appsettings.json (sin secretos).
+**/appsettings.Development.json
+**/appsettings.Production.json
+**/appsettings.Staging.json
+**/appsettings.Local.json
+
+# ── Dump de base de datos (contiene datos reales, NO subir) ──
+init.sql
+*.dump
+*.sql.backup

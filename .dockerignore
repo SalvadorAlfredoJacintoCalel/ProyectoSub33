@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.gitignore
+Backend_Sub33
+docs
+*.log
+*.md
+docker-compose.yml
+init.sql
+DOCKER_INSTRUCTIONS.md
+DEPLOYMENT.md
+.env
+.env.*
+!env.example

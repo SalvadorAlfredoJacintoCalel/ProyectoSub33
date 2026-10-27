@@ -1,0 +1,69 @@
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Backend_Sub33.Models.Entities;
+
+namespace Backend_Sub33.Models;
+
+[Table("personal")]
+public class Personal
+{
+    [Key]
+    [Column("personal_id")]
+    public Guid PersonalId { get; set; }
+
+    [Column("primer_nombre")]
+    [Required(ErrorMessage = "El primer nombre es requerido")]
+    public string PrimerNombre { get; set; } = string.Empty;
+
+    [Column("segundo_nombre")]
+    public string? SegundoNombre { get; set; }
+
+    [Column("primer_apellido")]
+    [Required(ErrorMessage = "El primer apellido es requerido")]
+    public string PrimerApellido { get; set; } = string.Empty;
+
+    [Column("segundo_apellido")]
+    public string? SegundoApellido { get; set; }
+
+    [Column("dpi")]
+    [Required(ErrorMessage = "El DPI es requerido")]
+    public string Dpi { get; set; } = string.Empty;
+
+    [Column("fecha_nacimiento")]
+    public DateTime? FechaNacimiento { get; set; }
+
+    [Column("rango_id")]
+    public int? RangoId { get; set; }
+
+    [Column("codigo_bombero")]
+    [MaxLength(30)]
+    public string? CodigoBombero { get; set; }
+
+    [Column("fecha_ingreso")]
+    public DateTime FechaIngreso { get; set; }
+
+    [Column("telefono")]
+    public string Telefono { get; set; } = string.Empty;
+
+    [Column("estado")]
+    public bool Estado { get; set; } = true;
+
+    [Column("contacto_emergencia_nombre")]
+    public string? ContactoEmergenciaNombre { get; set; }
+
+    [Column("contacto_emergencia_telefono")]
+    public string? ContactoEmergenciaTelefono { get; set; }
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("search_text")]
+    public string? SearchText { get; set; }
+
+    [ForeignKey("RangoId")]
+    public virtual CatRango? Rango { get; set; }
+}

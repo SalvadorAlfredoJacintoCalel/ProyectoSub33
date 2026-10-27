@@ -1,0 +1,430 @@
+using Microsoft.EntityFrameworkCore;
+using Backend_Sub33.Models;
+using Backend_Sub33.Models.Entities;
+
+namespace Backend_Sub33.Data;
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options) { }
+
+    public DbSet<Usuario> Usuarios { get; set; }
+    public DbSet<Personal> Personal { get; set; }
+    public DbSet<UsuarioRol> UsuarioRoles { get; set; }
+    public DbSet<UsuarioModulo> UsuarioModulos { get; set; }
+    public DbSet<Rol> Roles { get; set; }
+    public DbSet<RolPermiso> RolPermisos { get; set; }
+    public DbSet<RolModulo> RolModulos { get; set; }
+    public DbSet<CatModulo> CatModulos { get; set; }
+    public DbSet<Permiso> Permisos { get; set; }
+    public DbSet<UsuarioPermiso> UsuarioPermisos { get; set; }
+    public DbSet<ParametroSistema> ParametrosSistema { get; set; }
+    public DbSet<CatRango> CatRangos { get; set; }
+    public DbSet<CatTipoEmergencia> CatTiposEmergencia { get; set; }
+    public DbSet<CatHospital> CatHospitales { get; set; }
+    public DbSet<CatUnidad> CatUnidades { get; set; }
+    public DbSet<InventarioItem> InventarioItems { get; set; }
+    public DbSet<InventarioMovimiento> InventarioMovimientos { get; set; }
+    public DbSet<EquipoUnidad> EquipoUnidades { get; set; }
+    public DbSet<ServicioInsumoUtilizado> ServicioInsumosUtilizados { get; set; }
+    public DbSet<Donacion> Donaciones { get; set; }
+    public DbSet<MaterialDonacion> MaterialesDonacion { get; set; }
+    public DbSet<FinanzaTransaccion> FinanzasTransacciones { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // CatModulo
+        modelBuilder.Entity<CatModulo>(entity =>
+        {
+            entity.ToTable("cat_modulos");
+            entity.HasKey(e => e.ModuloId);
+            entity.Property(e => e.ModuloId).HasColumnName("modulo_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.CodigoModulo).HasColumnName("codigo").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.NombreModulo).HasColumnName("nombre").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+
+            entity.HasIndex(e => e.CodigoModulo).IsUnique();
+        });
+
+        // ParametroSistema
+        modelBuilder.Entity<ParametroSistema>(entity =>
+        {
+            entity.ToTable("parametros_sistema");
+            entity.HasKey(e => e.ParametroId);
+            entity.Property(e => e.ParametroId).HasColumnName("parametro_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Clave).HasColumnName("clave").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Valor).HasColumnName("valor").IsRequired();
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion").HasMaxLength(255);
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.Clave).IsUnique();
+        });
+
+        // CatRango
+        modelBuilder.Entity<CatRango>(entity =>
+        {
+            entity.ToTable("cat_rangos");
+            entity.HasKey(e => e.RangoId);
+            entity.Property(e => e.RangoId).HasColumnName("rango_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Rango).HasColumnName("rango").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.Rango).IsUnique();
+        });
+
+        // CatTipoEmergencia
+        modelBuilder.Entity<CatTipoEmergencia>(entity =>
+        {
+            entity.ToTable("cat_tipos_emergencia");
+            entity.HasKey(e => e.TipoEmergenciaId);
+            entity.Property(e => e.TipoEmergenciaId).HasColumnName("tipo_emergencia_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Tipo).HasColumnName("tipo").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.RequiereUnidad).HasColumnName("requiere_unidad").HasDefaultValue(false);
+            entity.Property(e => e.ColorHex).HasColumnName("color_hex").HasMaxLength(7);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // CatHospital
+        modelBuilder.Entity<CatHospital>(entity =>
+        {
+            entity.ToTable("cat_hospitales");
+            entity.HasKey(e => e.HospitalId);
+            entity.Property(e => e.HospitalId).HasColumnName("hospital_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(150);
+            entity.Property(e => e.Direccion).HasColumnName("direccion");
+            entity.Property(e => e.Telefono).HasColumnName("telefono").HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        // CatUnidad
+        modelBuilder.Entity<CatUnidad>(entity =>
+        {
+            entity.ToTable("cat_unidades");
+            entity.HasKey(e => e.UnidadId);
+            entity.Property(e => e.UnidadId).HasColumnName("unidad_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.CodigoUnidad).HasColumnName("codigo_unidad").IsRequired().HasMaxLength(20);
+            entity.Property(e => e.TipoUnidadId).HasColumnName("tipo_unidad_id");
+            entity.Property(e => e.Placa).HasColumnName("placa").HasMaxLength(15);
+            entity.Property(e => e.Estado).HasColumnName("estado").HasMaxLength(30).HasDefaultValue("Disponible");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.CodigoUnidad).IsUnique();
+        });
+
+        // Personal
+        modelBuilder.Entity<Personal>(entity =>
+        {
+            entity.ToTable("personal");
+            entity.HasKey(e => e.PersonalId);
+            entity.Property(e => e.PersonalId).HasColumnName("personal_id").HasColumnType("uuid").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.PrimerNombre).HasColumnName("primer_nombre").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.SegundoNombre).HasColumnName("segundo_nombre").HasMaxLength(100);
+            entity.Property(e => e.PrimerApellido).HasColumnName("primer_apellido").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.SegundoApellido).HasColumnName("segundo_apellido").HasMaxLength(100);
+            entity.Property(e => e.Dpi).HasColumnName("dpi").IsRequired().HasMaxLength(20);
+            entity.Property(e => e.FechaNacimiento).HasColumnName("fecha_nacimiento").HasColumnType("date");
+            entity.Property(e => e.RangoId).HasColumnName("rango_id");
+            entity.Property(e => e.CodigoBombero).HasColumnName("codigo_bombero").HasMaxLength(30);
+            entity.Property(e => e.FechaIngreso).HasColumnName("fecha_ingreso").HasColumnType("date");
+            entity.Property(e => e.Telefono).HasColumnName("telefono").HasMaxLength(20);
+            entity.Property(e => e.Estado).HasColumnName("estado").HasDefaultValue(true);
+            entity.Property(e => e.ContactoEmergenciaNombre).HasColumnName("contacto_emergencia_nombre").HasMaxLength(150);
+            entity.Property(e => e.ContactoEmergenciaTelefono).HasColumnName("contacto_emergencia_telefono").HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamp with time zone").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.SearchText).HasColumnName("search_text").ValueGeneratedOnAddOrUpdate();
+
+            entity.HasIndex(e => e.Dpi).IsUnique();
+
+            entity.HasIndex(e => e.CodigoBombero).IsUnique();
+
+            entity.HasOne(e => e.Rango)
+                  .WithMany()
+                  .HasForeignKey(e => e.RangoId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_personal_rango");
+        });
+
+        // Usuario
+        modelBuilder.Entity<Usuario>(entity =>
+        {
+            entity.ToTable("usuarios");
+            entity.HasKey(e => e.UsuarioId);
+            entity.Property(e => e.UsuarioId).HasColumnName("usuario_id").HasColumnType("uuid").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.PersonalId).HasColumnName("personal_id").HasColumnType("uuid");
+            entity.Property(e => e.Username).HasColumnName("username").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.PasswordHash).HasColumnName("password_hash").IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(255);
+            entity.Property(e => e.FotoBase64).HasColumnName("foto_base64");
+            entity.Property(e => e.Estado).HasColumnName("estado").HasDefaultValue(true);
+            entity.Property(e => e.IntentosFallidos).HasColumnName("intentos_fallidos").HasDefaultValue(0);
+            entity.Property(e => e.Bloqueada).HasColumnName("bloqueada").HasDefaultValue(false);
+            entity.Property(e => e.DebeCambiarContrasena).HasColumnName("debe_cambiar_contrasena").HasDefaultValue(false);
+            entity.Property(e => e.UltimoLogin).HasColumnName("ultimo_login").HasColumnType("timestamp with time zone");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.Username).IsUnique();
+
+            entity.HasOne(e => e.Personal)
+                  .WithMany()
+                  .HasForeignKey(e => e.PersonalId)
+                  .OnDelete(DeleteBehavior.SetNull)
+                  .HasConstraintName("fk_usuario_personal");
+        });
+
+        // Rol
+        modelBuilder.Entity<Rol>(entity =>
+        {
+            entity.ToTable("roles");
+            entity.HasKey(e => e.RolId);
+            entity.Property(e => e.RolId).HasColumnName("rol_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.Nombre).IsUnique();
+        });
+
+        // UsuarioRol (Many-to-Many)
+        modelBuilder.Entity<UsuarioRol>(entity =>
+        {
+            entity.ToTable("usuario_roles");
+            entity.HasKey(ur => new { ur.UsuarioId, ur.RolId });
+            entity.Property(ur => ur.UsuarioId).HasColumnName("usuario_id").HasColumnType("uuid");
+            entity.Property(ur => ur.RolId).HasColumnName("rol_id");
+
+            entity.HasOne(ur => ur.Usuario)
+                  .WithMany(u => u.UsuarioRoles)
+                  .HasForeignKey(ur => ur.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_usuario_rol_usuario");
+
+            entity.HasOne(ur => ur.Rol)
+                  .WithMany(r => r.UsuarioRoles)
+                  .HasForeignKey(ur => ur.RolId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_usuario_rol_rol");
+        });
+
+        // Permiso (catálogo de permisos ligado a cat_modulos)
+        modelBuilder.Entity<Permiso>(entity =>
+        {
+            entity.ToTable("permisos");
+            entity.HasKey(e => e.PermisoId);
+            entity.Property(e => e.PermisoId).HasColumnName("permiso_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Codigo).HasColumnName("codigo").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ModuloId).HasColumnName("modulo_id");
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasIndex(e => e.Codigo).IsUnique();
+
+            entity.HasOne(e => e.Modulo)
+                  .WithMany(m => m.Permisos)
+                  .HasForeignKey(e => e.ModuloId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_permiso_modulo");
+        });
+
+        // RolPermiso (Many-to-Many con permisos)
+        modelBuilder.Entity<RolPermiso>(entity =>
+        {
+            entity.ToTable("rol_permisos");
+            entity.HasKey(rp => new { rp.RolId, rp.PermisoId });
+            entity.Property(rp => rp.RolId).HasColumnName("rol_id");
+            entity.Property(rp => rp.PermisoId).HasColumnName("permiso_id");
+
+            entity.HasOne(rp => rp.Rol)
+                  .WithMany(r => r.RolPermisos)
+                  .HasForeignKey(rp => rp.RolId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_rp_rol");
+
+            entity.HasOne(rp => rp.Permiso)
+                  .WithMany(p => p.RolPermisos)
+                  .HasForeignKey(rp => rp.PermisoId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_rp_permiso");
+        });
+
+        // UsuarioPermiso (override de permisos por usuario)
+        modelBuilder.Entity<UsuarioPermiso>(entity =>
+        {
+            entity.ToTable("usuario_permisos");
+            entity.HasKey(up => new { up.UsuarioId, up.PermisoId });
+            entity.Property(up => up.UsuarioId).HasColumnName("usuario_id");
+            entity.Property(up => up.PermisoId).HasColumnName("permiso_id");
+
+            entity.HasOne(up => up.Usuario)
+                  .WithMany()
+                  .HasForeignKey(up => up.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_up_usuario");
+
+            entity.HasOne(up => up.Permiso)
+                  .WithMany()
+                  .HasForeignKey(up => up.PermisoId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_up_permiso");
+        });
+
+        // RolModulo (Many-to-Many rol <-> modulo)
+        modelBuilder.Entity<RolModulo>(entity =>
+        {
+            entity.ToTable("rol_modulo");
+            entity.HasKey(rm => new { rm.RolId, rm.ModuloId });
+            entity.Property(rm => rm.RolId).HasColumnName("rol_id");
+            entity.Property(rm => rm.ModuloId).HasColumnName("modulo_id");
+
+            entity.HasOne(rm => rm.Rol)
+                  .WithMany(r => r.RolModulos)
+                  .HasForeignKey(rm => rm.RolId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_rol_modulo_rol");
+
+            entity.HasOne(rm => rm.Modulo)
+                  .WithMany()
+                  .HasForeignKey(rm => rm.ModuloId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_rol_modulo_modulo");
+        });
+
+        // UsuarioModulo (Many-to-Many usuario <-> modulo)
+        modelBuilder.Entity<UsuarioModulo>(entity =>
+        {
+            entity.ToTable("usuario_modulos");
+            entity.HasKey(um => new { um.UsuarioId, um.ModuloId });
+            entity.Property(um => um.UsuarioId).HasColumnName("usuario_id").HasColumnType("uuid");
+            entity.Property(um => um.ModuloId).HasColumnName("modulo_id");
+
+            entity.HasOne(um => um.Usuario)
+                  .WithMany()
+                  .HasForeignKey(um => um.UsuarioId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_usuario_modulo_usuario");
+
+            entity.HasOne(um => um.Modulo)
+                  .WithMany()
+                  .HasForeignKey(um => um.ModuloId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_usuario_modulo_modulo");
+        });
+
+        // InventarioItem
+        modelBuilder.Entity<InventarioItem>(entity =>
+        {
+            entity.ToTable("inventario_items");
+            entity.HasKey(e => e.ItemId);
+            entity.Property(e => e.ItemId).HasColumnName("item_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.CategoriaInvId).HasColumnName("categoria_inv_id").IsRequired();
+            entity.Property(e => e.ProveedorId).HasColumnName("proveedor_id");
+            entity.Property(e => e.CodigoBarras).HasColumnName("codigo_barras").HasMaxLength(100);
+            entity.Property(e => e.Nombre).HasColumnName("nombre").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.StockActual).HasColumnName("stock_actual").IsRequired();
+            entity.Property(e => e.StockMinimo).HasColumnName("stock_minimo").IsRequired();
+            entity.Property(e => e.UnidadMedida).HasColumnName("unidad_medida").HasMaxLength(50);
+            entity.Property(e => e.DonacionId).HasColumnName("donacion_id");
+            entity.Property(e => e.Origen).HasColumnName("origen").HasMaxLength(20).HasDefaultValue("Compra Propia");
+            entity.Property(e => e.NombreDonante).HasColumnName("nombre_donante").HasMaxLength(150);
+            entity.Property(e => e.NoRecibo).HasColumnName("no_recibo").HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+        });
+
+        // InventarioMovimiento
+        modelBuilder.Entity<InventarioMovimiento>(entity =>
+        {
+            entity.ToTable("inventario_movimientos");
+            entity.HasKey(e => e.MovimientoId);
+            entity.Property(e => e.MovimientoId).HasColumnName("movimiento_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.ItemId).HasColumnName("item_id").IsRequired();
+            entity.Property(e => e.TipoMovId).HasColumnName("tipo_mov_id").IsRequired();
+            entity.Property(e => e.Cantidad).HasColumnName("cantidad").IsRequired();
+            entity.Property(e => e.Motivo).HasColumnName("motivo").IsRequired();
+            entity.Property(e => e.ResponsableId).HasColumnName("responsable_id");
+            entity.Property(e => e.FechaHora).HasColumnName("fecha_hora");
+        });
+
+        // EquipoUnidad (clave compuesta)
+        modelBuilder.Entity<EquipoUnidad>(entity =>
+        {
+            entity.ToTable("equipo_unidades");
+            entity.HasKey(e => new { e.UnidadId, e.ItemId });
+            entity.Property(e => e.UnidadId).HasColumnName("unidad_id");
+            entity.Property(e => e.ItemId).HasColumnName("item_id");
+            entity.Property(e => e.CantidadAsignada).HasColumnName("cantidad_asignada").IsRequired();
+        });
+
+        // ServicioInsumoUtilizado (clave compuesta)
+        modelBuilder.Entity<ServicioInsumoUtilizado>(entity =>
+        {
+            entity.ToTable("servicio_insumos_utilizados");
+            entity.HasKey(e => new { e.ServicioId, e.ItemId });
+            entity.Property(e => e.ServicioId).HasColumnName("servicio_id");
+            entity.Property(e => e.ItemId).HasColumnName("item_id");
+            entity.Property(e => e.Cantidad).HasColumnName("cantidad").IsRequired();
+        });
+
+        // Donacion
+        modelBuilder.Entity<Donacion>(entity =>
+        {
+            entity.ToTable("donaciones");
+            entity.HasKey(e => e.DonacionId);
+            entity.Property(e => e.DonacionId).HasColumnName("donacion_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Fecha).HasColumnName("fecha").IsRequired();
+            entity.Property(e => e.NoRecibo).HasColumnName("no_recibo").IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Donante).HasColumnName("donante").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.DpiNit).HasColumnName("dpi_nit").HasMaxLength(20);
+            entity.Property(e => e.Telefono).HasColumnName("telefono").HasMaxLength(20);
+            entity.Property(e => e.Tipo).HasColumnName("tipo").IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Categoria).HasColumnName("categoria").HasMaxLength(50);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.Monto).HasColumnName("monto").HasColumnType("numeric(12,2)");
+            entity.Property(e => e.Estado).HasColumnName("estado").HasMaxLength(20).HasDefaultValue("Pendiente");
+            entity.Property(e => e.MetodoPago).HasColumnName("metodo_pago").HasMaxLength(20);
+            entity.Property(e => e.NoComprobante).HasColumnName("no_comprobante").HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasIndex(e => e.NoRecibo).IsUnique();
+        });
+
+        // MaterialDonacion
+        modelBuilder.Entity<MaterialDonacion>(entity =>
+        {
+            entity.ToTable("materiales_donacion");
+            entity.HasKey(e => e.MaterialId);
+            entity.Property(e => e.MaterialId).HasColumnName("material_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.DonacionId).HasColumnName("donacion_id").IsRequired();
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Cantidad).HasColumnName("cantidad").IsRequired();
+            entity.Property(e => e.ValorEstimado).HasColumnName("valor_estimado").HasColumnType("numeric(12,2)");
+            entity.Property(e => e.Categoria).HasColumnName("categoria").HasMaxLength(50);
+        });
+
+        // FinanzaTransaccion
+        modelBuilder.Entity<FinanzaTransaccion>(entity =>
+        {
+            entity.ToTable("finanzas_transacciones");
+            entity.HasKey(e => e.TransaccionId);
+            entity.Property(e => e.TransaccionId).HasColumnName("transaccion_id").ValueGeneratedOnAdd();
+            entity.Property(e => e.Tipo).HasColumnName("tipo").IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion").IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Monto).HasColumnName("monto").HasColumnType("numeric(14,2)").IsRequired();
+            entity.Property(e => e.Fecha).HasColumnName("fecha").IsRequired();
+            entity.Property(e => e.Referencia).HasColumnName("referencia").HasMaxLength(100);
+            entity.Property(e => e.ResponsableId).HasColumnName("responsable_id").IsRequired();
+            entity.Property(e => e.ResponsableNombre).HasColumnName("responsable_nombre").IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ModuloOrigen).HasColumnName("modulo_origen").HasMaxLength(50);
+            entity.Property(e => e.ReferenciaOrigen).HasColumnName("referencia_origen").HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+        });
+    }
+}

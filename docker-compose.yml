@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sub33-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en tu archivo .env}
+      POSTGRES_DB: ${POSTGRES_DB:-Sub_33}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Esquema versionado (sin datos reales). Para un dump local, usa:
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./Backend_Sub33/Backend_Sub33/Data/SQL/schema_only_sub33.sql:/docker-entrypoint-initdb.d/schema_only_sub33.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-Sub_33}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./Backend_Sub33/Backend_Sub33
+      dockerfile: Dockerfile
+    container_name: sub33-backend
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:5196
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__PostgreSQL: Host=db;Port=5432;Database=${POSTGRES_DB:-Sub_33};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+      Jwt__Key: ${JWT_KEY:?Define JWT_KEY en tu archivo .env}
+      Jwt__Issuer: ${JWT_ISSUER:-Backend_Sub33}
+      Jwt__Audience: ${JWT_AUDIENCE:-Backend_Sub33_Client}
+      Seguridad__OtpSecret: ${OTP_SECRET:?Define OTP_SECRET en tu archivo .env}
+      Smtp__Host: ${SMTP_HOST:-smtp.gmail.com}
+      Smtp__Port: ${SMTP_PORT:-587}
+      Smtp__User: ${SMTP_USER:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
+      Smtp__FromName: ${SMTP_FROM_NAME:-Subestacion 33}
+      Cors__AllowedOrigins__0: ${CORS_ORIGIN:-http://localhost:8080}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sub33-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
