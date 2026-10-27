@@ -47,7 +47,8 @@ public class EmailService : IEmailService
 
         using var client = new SmtpClient();
         client.CheckCertificateRevocation = false;
-        await client.ConnectAsync(host, port, SecureSocketOptions.StartTls, ct);
+        var secureOptions = port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+        await client.ConnectAsync(host, port, secureOptions, ct);
         await client.AuthenticateAsync(user, password, ct);
         await client.SendAsync(message, ct);
         await client.DisconnectAsync(true, ct);
