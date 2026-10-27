@@ -8,8 +8,11 @@ RUN npm ci
 
 COPY . .
 
-# URL relativa de la API → nginx hace el proxy a /api
-ENV VITE_API_BASE_URL=/api
+# URL de la API (se inyecta en build time; Vite la inlinea en el bundle).
+# Puedes pasarla con:  docker build --build-arg VITE_API_BASE_URL=https://...
+# Por defecto apunta al backend desplegado en Render.
+ARG VITE_API_BASE_URL=https://backend-sub33.onrender.com/api
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 RUN npm run build
 
