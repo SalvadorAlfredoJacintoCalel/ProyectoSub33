@@ -1,11 +1,20 @@
-using MailKit.Net.Smtp;
-using MailKit.Security;
-using MimeKit;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Backend_Sub33.Services;
 
 public class EmailService : IEmailService
 {
+    private const string ResendEmailsUrl = "https://api.resend.com/emails";
+
+    private static readonly HttpClient Http = new()
+    {
+        Timeout = TimeSpan.FromSeconds(30)
+    };
+
     private readonly IConfiguration _configuration;
     private readonly ILogger<EmailService> _logger;
 
@@ -17,41 +26,51 @@ public class EmailService : IEmailService
 
     public async Task EnviarCodigoOtpAsync(string correoDestino, string nombreUsuario, string codigoOtp, CancellationToken ct = default)
     {
-        var host = _configuration["Smtp:Host"];
-        var portRaw = _configuration["Smtp:Port"];
-        var user = _configuration["Smtp:User"];
-        var password = _configuration["Smtp:Password"];
-        var fromName = _configuration["Smtp:FromName"] ?? "Subestación 33";
+        var apiKey = _configuration["Resend:ApiKey"];
+        var from = _configuration["Resend:From"] ?? "Subestación 33 <onboarding@resend.dev>";
 
-        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
-            _logger.LogWarning("Configuración SMTP incompleta; no se envió el correo a {Destino}", correoDestino);
+            _logger.LogWarning("Falta Resend:ApiKey; no se envió el correo a {Destino}", correoDestino);
             return;
         }
 
-        if (!int.TryParse(portRaw, out var port))
+        var payload = new
         {
-            port = 587;
-        }
-
-        var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(fromName, user));
-        message.To.Add(MailboxAddress.Parse(correoDestino));
-        message.Subject = "Código de verificación - Subestación 33";
-
-        var bodyBuilder = new BodyBuilder
-        {
-            HtmlBody = BuildHtml(nombreUsuario, codigoOtp)
+            from,
+            to = correoDestino,
+            subject = "Código de verificación - Subestación 33",
+            html = BuildHtml(nombreUsuario, codigoOtp)
         };
-        message.Body = bodyBuilder.ToMessageBody();
 
-        using var client = new SmtpClient();
-        client.CheckCertificateRevocation = false;
-        var secureOptions = port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
-        await client.ConnectAsync(host, port, secureOptions, ct);
-        await client.AuthenticateAsync(user, password, ct);
-        await client.SendAsync(message, ct);
-        await client.DisconnectAsync(true, ct);
+        var json = JsonSerializer.Serialize(payload);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, ResendEmailsUrl)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {apiKey}");
+
+        try
+        {
+            using var response = await Http.SendAsync(request, ct);
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError(
+                    "Resend respondió {StatusCode} al enviar correo a {Destino}: {Body}",
+                    (int)response.StatusCode, correoDestino, body);
+            }
+            else
+            {
+                _logger.LogInformation("Correo enviado a {Destino} vía Resend (200 OK).", correoDestino);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al enviar correo a {Destino} vía Resend.", correoDestino);
+        }
     }
 
     private static string BuildHtml(string nombreUsuario, string codigoOtp)
