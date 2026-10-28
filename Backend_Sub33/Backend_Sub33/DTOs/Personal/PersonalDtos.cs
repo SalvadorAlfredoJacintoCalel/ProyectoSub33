@@ -68,6 +68,22 @@ public class AccesoSistemaDto
     public int RolId { get; set; }
 }
 
+public class AccesoSistemaEdicionDto
+{
+    [Required(ErrorMessage = "El nombre de usuario es requerido")]
+    [MaxLength(50)]
+    public string Username { get; set; } = string.Empty;
+
+    [MaxLength(255)]
+    [EmailAddress(ErrorMessage = "El correo electrónico no es válido")]
+    public string Email { get; set; } = string.Empty;
+
+    [Range(1, int.MaxValue, ErrorMessage = "El rol del sistema es requerido")]
+    public int RolId { get; set; }
+
+    public string? Password { get; set; }
+}
+
 public class UpdatePersonalDto
 {
     [MaxLength(50)]
@@ -102,7 +118,7 @@ public class UpdatePersonalDto
     [MaxLength(20)]
     public string? ContactoEmergenciaTelefono { get; set; }
 
-    public AccesoSistemaDto? AccesoSistema { get; set; }
+    public AccesoSistemaEdicionDto? AccesoSistema { get; set; }
 }
 
 public class CambiarEstadoDto

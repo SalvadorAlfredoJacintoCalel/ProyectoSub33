@@ -32,11 +32,13 @@ public class EmailService : IEmailService
         return EnviarAsync(correoDestino, from, subject, html, ct);
     }
 
-    public Task<bool> EnviarCredencialesAsync(string correoDestino, string primerNombre, string nombreUsuario, string contrasenaTemporal, CancellationToken ct = default)
+    public Task<bool> EnviarCredencialesAsync(string correoDestino, string primerNombre, string nombreUsuario, string contrasenaTemporal, bool esCuentaNueva = false, CancellationToken ct = default)
     {
         var from = _configuration["Resend:FromCredenciales"] ?? "Sub 33 - SLT <onboarding@resend.dev>";
-        var subject = "Tus credenciales de acceso - Subestación 33";
-        var html = BuildCredencialesHtml(primerNombre, nombreUsuario, contrasenaTemporal);
+        var subject = esCuentaNueva
+            ? "Tus credenciales de acceso - Subestación 33"
+            : "Tus credenciales de acceso se actualizaron - Subestación 33";
+        var html = BuildCredencialesHtml(primerNombre, nombreUsuario, contrasenaTemporal, esCuentaNueva);
         return EnviarAsync(correoDestino, from, subject, html, ct);
     }
 
@@ -139,9 +141,15 @@ public class EmailService : IEmailService
         """;
     }
 
-    private static string BuildCredencialesHtml(string primerNombre, string nombreUsuario, string contrasenaTemporal)
+    private static string BuildCredencialesHtml(string primerNombre, string nombreUsuario, string contrasenaTemporal, bool esCuentaNueva)
     {
         var nombre = string.IsNullOrWhiteSpace(primerNombre) ? "Usuario" : primerNombre;
+        var cuerpo = esCuentaNueva
+            ? "Se ha creado tu cuenta en el sistema. A continuación encontrarás tus credenciales de acceso temporal:"
+            : "Tus credenciales de acceso han sido actualizadas. A continuación encontrarás tu usuario y tu nueva contraseña temporal:";
+        var aviso = esCuentaNueva
+            ? "Por seguridad, cambia tu contraseña después del primer inicio de sesión."
+            : "Por seguridad, cambia tu contraseña después de iniciar sesión.";
 
         return $"""
         <!DOCTYPE html>
@@ -165,7 +173,7 @@ public class EmailService : IEmailService
                     <td style="padding:32px 28px;">
                       <p style="margin:0 0 8px;color:#1b1b1c;font-size:15px;">Hola, <strong>{nombre}</strong>:</p>
                       <p style="margin:0 0 24px;color:#71717a;font-size:14px;line-height:1.6;">
-                        Se ha creado tu cuenta en el sistema. A continuación encontrarás tus credenciales de acceso temporal:
+                        {cuerpo}
                       </p>
                       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f7f9fc;border:1px solid #e4e4e7;border-radius:10px;">
                         <tr>
@@ -178,7 +186,7 @@ public class EmailService : IEmailService
                         </tr>
                       </table>
                       <p style="margin:24px 0 0;color:#71717a;font-size:13px;line-height:1.6;">
-                        Por seguridad, cambia tu contraseña después del primer inicio de sesión.
+                        {aviso}
                       </p>
                     </td>
                   </tr>

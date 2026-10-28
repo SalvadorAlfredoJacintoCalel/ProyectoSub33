@@ -339,7 +339,7 @@ public partial class PersonalService : IPersonalService
                 if (dto.AccesoSistema is not null)
                 {
                     var enviado = await TryEnviarCredencialesAsync(
-                        email, personal.PrimerNombre, username, dto.AccesoSistema.Password, ct);
+                        email, personal.PrimerNombre, username, dto.AccesoSistema.Password, esCuentaNueva: true, ct);
                     if (!enviado)
                     {
                         _logger.LogWarning("No se enviaron las credenciales al crear el usuario {Username}", username);
@@ -530,6 +530,7 @@ public partial class PersonalService : IPersonalService
             string? accessEmail = null;
             var accessRolId = 0;
             var enviarCredenciales = false;
+            var cuentaNueva = false;
 
             if (dto.AccesoSistema is not null)
             {
@@ -637,6 +638,7 @@ public partial class PersonalService : IPersonalService
                         await _context.SaveChangesAsync(ct);
 
                         enviarCredenciales = true;
+                        cuentaNueva = true;
                     }
                     else
                     {
@@ -684,7 +686,7 @@ public partial class PersonalService : IPersonalService
             if (enviarCredenciales && dto.AccesoSistema is not null)
             {
                 var enviado = await TryEnviarCredencialesAsync(
-                    accessEmail, personal.PrimerNombre, accessUsername, dto.AccesoSistema.Password, ct);
+                    accessEmail, personal.PrimerNombre, accessUsername, dto.AccesoSistema.Password, cuentaNueva, ct);
                 if (!enviado)
                 {
                     _logger.LogWarning("No se enviaron las credenciales al actualizar el acceso de {Username}", accessUsername);
@@ -814,7 +816,7 @@ public partial class PersonalService : IPersonalService
                     .FirstOrDefaultAsync(ct);
 
                 var enviado = await TryEnviarCredencialesAsync(
-                    usuario.Email, primerNombre, usuario.Username, password, ct);
+                    usuario.Email, primerNombre, usuario.Username, password, esCuentaNueva: false, ct);
                 if (!enviado)
                 {
                     _logger.LogWarning("No se enviaron las credenciales al actualizar el acceso de {Username}", usuario.Username);
@@ -864,7 +866,7 @@ public partial class PersonalService : IPersonalService
                 await _context.SaveChangesAsync(ct);
 
                 var enviado = await _emailService.EnviarCredencialesAsync(
-                    usuario.Email, primerNombre ?? usuario.Username, usuario.Username, contrasenaTemporal, ct);
+                    usuario.Email, primerNombre ?? usuario.Username, usuario.Username, contrasenaTemporal, esCuentaNueva: false, ct);
 
                 if (!enviado)
                 {
@@ -997,7 +999,7 @@ public partial class PersonalService : IPersonalService
     }
 
     private async Task<bool> TryEnviarCredencialesAsync(
-        string? correo, string? primerNombre, string? username, string? password, CancellationToken ct)
+        string? correo, string? primerNombre, string? username, string? password, bool esCuentaNueva, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(correo) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
@@ -1007,7 +1009,7 @@ public partial class PersonalService : IPersonalService
         try
         {
             return await _emailService.EnviarCredencialesAsync(
-                correo, primerNombre ?? username, username, password, ct);
+                correo, primerNombre ?? username, username, password, esCuentaNueva, ct);
         }
         catch (Exception ex)
         {
