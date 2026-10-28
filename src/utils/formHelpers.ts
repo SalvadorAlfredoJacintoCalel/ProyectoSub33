@@ -49,6 +49,7 @@ export function personalResponseToMiembro(p: PersonalResponse): Miembro {
       ? {
           username: p.usuario.username,
           estado: p.usuario.estado,
+          email: p.usuario.email,
           rolId: p.usuario.rolId,
           rol: p.usuario.rol,
         }

@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Plus, Search, Users, UserCheck, UserX, ChevronDown, Printer, Pencil, History, FileText, Info, AlertTriangle } from "lucide-react";
+import { Plus, Search, Users, UserCheck, UserX, ChevronDown, Printer, Pencil, History, FileText, Info, AlertTriangle, Mail } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { PersonalForm } from "@/app/pages/Personal/components/PersonalForm";
 import { Drawer } from "@/app/components/ui/drawer";
@@ -19,6 +19,7 @@ import {
   registrarPersonal,
   actualizarPersonal,
   eliminarPersonal,
+  reenviarCredenciales,
   type CrearPersonalDto,
   type ActualizarPersonalDto,
 } from "../../../services/personalService";
@@ -54,8 +55,9 @@ function MemberInfo({ member }: { member: Miembro }) {
     { label: "Contacto de Emergencia", value: member.contactoEmergenciaNombre || "—" },
     { label: "Tel. de Emergencia", value: member.contactoEmergenciaTelefono || "—" },
     { label: "Usuario del Sistema", value: member.username || member.usuario?.username || "Sin cuenta" },
+    { label: "Correo electrónico", value: member.usuario?.email || "—" },
     { label: "Rol del Sistema", value: member.rolNombre || member.usuario?.rol || "Sin rol" },
-    { label: "Acceso al Sistema", value: member.username || member.usuario ? "Sí" : "No" },
+    { label: "Acceso al Sistema", value: (member.username || member.usuario) ? "Sí" : "No" },
   ];
 
   return (
@@ -113,6 +115,7 @@ export function PersonalPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<Miembro | null>(null);
   const detailFetchRef = useRef<string | null>(null);
+  const [reenviandoCredenciales, setReenviandoCredenciales] = useState(false);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast, alert } = useAlert();
@@ -168,6 +171,7 @@ export function PersonalPage() {
             { label: "Contacto de emergencia", value: selectedRecord.contactoEmergenciaNombre || "—" },
             { label: "Tel. de emergencia", value: selectedRecord.contactoEmergenciaTelefono || "—" },
             { label: "Usuario del sistema", value: selectedRecord.username || selectedRecord.usuario?.username || "Sin cuenta" },
+            { label: "Correo electrónico", value: selectedRecord.usuario?.email || "—" },
             { label: "Rol del sistema", value: selectedRecord.rolNombre || selectedRecord.usuario?.rol || "Sin rol" },
           ]
         : [],
@@ -361,6 +365,35 @@ export function PersonalPage() {
     const record = selectedRecord;
     setDetailOpen(false);
     openEditModal(record);
+  }
+
+  async function handleReenviarCredenciales() {
+    if (!selectedRecord) return;
+    if (!permisosPersonal.accesoSistema) {
+      toast.warning("No tienes permiso para reenviar credenciales.");
+      return;
+    }
+    if (!selectedRecord.usuario?.email) {
+      toast.warning("El usuario no tiene un correo electrónico registrado.");
+      return;
+    }
+
+    const confirmado = await alert.confirm(
+      "Reenviar credenciales",
+      `Se generará una nueva contraseña temporal y se enviará a ${selectedRecord.usuario.email}. La contraseña anterior dejará de funcionar. ¿Deseas continuar?`
+    );
+    if (!confirmado) return;
+
+    setReenviandoCredenciales(true);
+    try {
+      await reenviarCredenciales(selectedRecord.personalId);
+      toast.success("Credenciales reenviadas al correo registrado.");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "No se pudieron reenviar las credenciales.";
+      toast.error(msg);
+    } finally {
+      setReenviandoCredenciales(false);
+    }
   }
 
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
@@ -854,6 +887,22 @@ export function PersonalPage() {
               <Printer className="size-4" />
               Imprimir
             </Button>
+            {permisosPersonal.accesoSistema && selectedRecord?.usuario && (
+              <Button
+                variant="outline"
+                onClick={() => void handleReenviarCredenciales()}
+                loading={reenviandoCredenciales}
+                disabled={!selectedRecord.usuario.email}
+                title={
+                  selectedRecord.usuario.email
+                    ? "Generar una nueva contraseña temporal y enviarla al correo registrado"
+                    : "El usuario no tiene correo electrónico registrado"
+                }
+              >
+                <Mail className="size-4" />
+                Reenviar credenciales
+              </Button>
+            )}
             {permisosPersonal.editar && (
               <Button variant="brand" onClick={handleEditFromDetail}>
                 <Pencil className="size-4" />

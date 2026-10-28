@@ -89,6 +89,11 @@ public class PersonalController : ApiControllerBase
             ? BadRequest("El cuerpo de la solicitud es requerido.")
             : Respond(await _personalService.ActualizarAccesoSistemaAsync(id, dto.Username, dto.Password, dto.Email, dto.RolId, ct), "Acceso al sistema actualizado correctamente.");
 
+    [HttpRequirePermission("personal.acceso-sistema")]
+    [HttpPost("{id:guid}/reenviar-credenciales")]
+    public async Task<IActionResult> ReenviarCredenciales(Guid id, CancellationToken ct)
+        => Respond(await _personalService.ReenviarCredencialesAsync(id, ct), "Credenciales reenviadas correctamente.");
+
     [HttpRequirePermission("personal.eliminar")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Eliminar(Guid id, CancellationToken ct)

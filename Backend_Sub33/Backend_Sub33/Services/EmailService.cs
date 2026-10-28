@@ -24,7 +24,7 @@ public class EmailService : IEmailService
         _logger = logger;
     }
 
-    public Task EnviarCodigoOtpAsync(string correoDestino, string nombreUsuario, string codigoOtp, CancellationToken ct = default)
+    public Task<bool> EnviarCodigoOtpAsync(string correoDestino, string nombreUsuario, string codigoOtp, CancellationToken ct = default)
     {
         var from = _configuration["Resend:From"] ?? "Subestación 33 <onboarding@resend.dev>";
         var subject = "Código de verificación - Subestación 33";
@@ -32,7 +32,7 @@ public class EmailService : IEmailService
         return EnviarAsync(correoDestino, from, subject, html, ct);
     }
 
-    public Task EnviarCredencialesAsync(string correoDestino, string primerNombre, string nombreUsuario, string contrasenaTemporal, CancellationToken ct = default)
+    public Task<bool> EnviarCredencialesAsync(string correoDestino, string primerNombre, string nombreUsuario, string contrasenaTemporal, CancellationToken ct = default)
     {
         var from = _configuration["Resend:FromCredenciales"] ?? "Sub 33 - SLT <onboarding@resend.dev>";
         var subject = "Tus credenciales de acceso - Subestación 33";
@@ -40,14 +40,14 @@ public class EmailService : IEmailService
         return EnviarAsync(correoDestino, from, subject, html, ct);
     }
 
-    private async Task EnviarAsync(string correoDestino, string from, string subject, string html, CancellationToken ct)
+    private async Task<bool> EnviarAsync(string correoDestino, string from, string subject, string html, CancellationToken ct)
     {
         var apiKey = _configuration["Resend:ApiKey"];
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             _logger.LogWarning("Falta Resend:ApiKey; no se envió el correo a {Destino}", correoDestino);
-            return;
+            return false;
         }
 
         var payload = new
@@ -76,15 +76,16 @@ public class EmailService : IEmailService
                 _logger.LogError(
                     "Resend respondió {StatusCode} al enviar correo a {Destino}: {Body}",
                     (int)response.StatusCode, correoDestino, body);
+                return false;
             }
-            else
-            {
-                _logger.LogInformation("Correo enviado a {Destino} vía Resend (200 OK).", correoDestino);
-            }
+
+            _logger.LogInformation("Correo enviado a {Destino} vía Resend (200 OK).", correoDestino);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al enviar correo a {Destino} vía Resend.", correoDestino);
+            return false;
         }
     }
 

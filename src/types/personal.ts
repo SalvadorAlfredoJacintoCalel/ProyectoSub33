@@ -19,6 +19,7 @@ export interface Miembro {
   usuario?: {
     username: string;
     estado: boolean;
+    email?: string;
     rolId?: number;
     rol?: string;
   };

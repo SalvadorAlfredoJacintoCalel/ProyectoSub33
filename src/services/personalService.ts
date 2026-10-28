@@ -264,6 +264,15 @@ export const actualizarAccesoSistema = async (id: string, dto: AccesoSistemaUpda
   }
 };
 
+export const reenviarCredenciales = async (id: string): Promise<void> => {
+  try {
+    await apiClient.post<BackendEnvelope<void>>(`/personal/${id}/reenviar-credenciales`, {});
+  } catch (error) {
+    console.error("Error reenviando credenciales:", error);
+    throw error;
+  }
+};
+
 export const getPersonalById = async (id: string): Promise<PersonalResponse> => {
   try {
     const res = await apiClient.get<BackendEnvelope<PersonalResponse>>(`/personal/${id}`);

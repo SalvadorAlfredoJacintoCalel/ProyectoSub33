@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Net.Mail;
 using Backend_Sub33.Common;
@@ -15,11 +16,13 @@ public partial class PersonalService : IPersonalService
 
     private readonly AppDbContext _context;
     private readonly ILogger<PersonalService> _logger;
+    private readonly IEmailService _emailService;
 
-    public PersonalService(AppDbContext context, ILogger<PersonalService> logger)
+    public PersonalService(AppDbContext context, ILogger<PersonalService> logger, IEmailService emailService)
     {
         _context = context;
         _logger = logger;
+        _emailService = emailService;
     }
 
     public async Task<ServiceResult<PaginatedResult<PersonalResumenDto>>> GetResumenAsync(
@@ -333,6 +336,16 @@ public partial class PersonalService : IPersonalService
                     return ServiceResult<PersonalResponseDto>.From(creado);
                 }
 
+                if (dto.AccesoSistema is not null)
+                {
+                    var enviado = await TryEnviarCredencialesAsync(
+                        email, personal.PrimerNombre, username, dto.AccesoSistema.Password, ct);
+                    if (!enviado)
+                    {
+                        _logger.LogWarning("No se enviaron las credenciales al crear el usuario {Username}", username);
+                    }
+                }
+
                 return ServiceResult<PersonalResponseDto>.Success(creado.Data!);
             }
             catch
@@ -516,6 +529,7 @@ public partial class PersonalService : IPersonalService
             string? accessPasswordHash = null;
             string? accessEmail = null;
             var accessRolId = 0;
+            var enviarCredenciales = false;
 
             if (dto.AccesoSistema is not null)
             {
@@ -621,6 +635,8 @@ public partial class PersonalService : IPersonalService
                             RolId = accessRolId
                         });
                         await _context.SaveChangesAsync(ct);
+
+                        enviarCredenciales = true;
                     }
                     else
                     {
@@ -629,6 +645,7 @@ public partial class PersonalService : IPersonalService
                         if (accessPasswordHash is not null)
                         {
                             usuario.PasswordHash = accessPasswordHash;
+                            enviarCredenciales = true;
                         }
 
                         usuario.Estado = personal.Estado;
@@ -662,6 +679,16 @@ public partial class PersonalService : IPersonalService
                 }
 
                 throw;
+            }
+
+            if (enviarCredenciales && dto.AccesoSistema is not null)
+            {
+                var enviado = await TryEnviarCredencialesAsync(
+                    accessEmail, personal.PrimerNombre, accessUsername, dto.AccesoSistema.Password, ct);
+                if (!enviado)
+                {
+                    _logger.LogWarning("No se enviaron las credenciales al actualizar el acceso de {Username}", accessUsername);
+                }
             }
 
             return await GetByIdAsync(id, ct);
@@ -748,7 +775,9 @@ public partial class PersonalService : IPersonalService
                 usuario.Email = emailNormalizado;
             }
 
-            if (!string.IsNullOrWhiteSpace(password))
+            var passwordCambiada = !string.IsNullOrWhiteSpace(password);
+
+            if (passwordCambiada)
             {
                 if (password.Length < 8)
                 {
@@ -776,12 +805,94 @@ public partial class PersonalService : IPersonalService
 
             await _context.SaveChangesAsync(ct);
 
+            if (passwordCambiada)
+            {
+                var primerNombre = await _context.Personal
+                    .AsNoTracking()
+                    .Where(p => p.PersonalId == personalId)
+                    .Select(p => p.PrimerNombre)
+                    .FirstOrDefaultAsync(ct);
+
+                var enviado = await TryEnviarCredencialesAsync(
+                    usuario.Email, primerNombre, usuario.Username, password, ct);
+                if (!enviado)
+                {
+                    _logger.LogWarning("No se enviaron las credenciales al actualizar el acceso de {Username}", usuario.Username);
+                }
+            }
+
             return ServiceResult.Success();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al actualizar el acceso al sistema del personal {Id}", personalId);
             return ServiceResult.Internal("Error al actualizar el acceso al sistema.");
+        }
+    }
+
+    public async Task<ServiceResult> ReenviarCredencialesAsync(Guid personalId, CancellationToken ct = default)
+    {
+        try
+        {
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.PersonalId == personalId, ct);
+            if (usuario is null)
+            {
+                return ServiceResult.NotFound("El miembro no tiene una cuenta de acceso al sistema.");
+            }
+
+            if (string.IsNullOrWhiteSpace(usuario.Email))
+            {
+                return ServiceResult.BadRequest("El usuario no tiene un correo electrónico registrado.");
+            }
+
+            var primerNombre = await _context.Personal
+                .AsNoTracking()
+                .Where(p => p.PersonalId == personalId)
+                .Select(p => p.PrimerNombre)
+                .FirstOrDefaultAsync(ct);
+
+            var contrasenaTemporal = GenerarContrasenaTemporal();
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(contrasenaTemporal);
+
+            using var transaction = await _context.Database.BeginTransactionAsync(ct);
+
+            try
+            {
+                usuario.PasswordHash = passwordHash;
+                usuario.DebeCambiarContrasena = true;
+                usuario.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync(ct);
+
+                var enviado = await _emailService.EnviarCredencialesAsync(
+                    usuario.Email, primerNombre ?? usuario.Username, usuario.Username, contrasenaTemporal, ct);
+
+                if (!enviado)
+                {
+                    await transaction.RollbackAsync(ct);
+                    return ServiceResult.Internal("No se pudo enviar el correo. Verifica la configuración de Resend e intenta de nuevo.");
+                }
+
+                await transaction.CommitAsync(ct);
+                return ServiceResult.Success();
+            }
+            catch
+            {
+                try
+                {
+                    await transaction.RollbackAsync(ct);
+                }
+                catch (Exception rollbackEx)
+                {
+                    _logger.LogWarning(rollbackEx, "Error al revertir el reenvío de credenciales de {Id}", personalId);
+                }
+
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al reenviar las credenciales del personal {Id}", personalId);
+            return ServiceResult.Internal("Error al reenviar las credenciales.");
         }
     }
 
@@ -872,6 +983,38 @@ public partial class PersonalService : IPersonalService
 
     private static string? NormalizeOptional(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string GenerarContrasenaTemporal()
+    {
+        const string caracteres = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+        var resultado = new char[12];
+        for (var i = 0; i < resultado.Length; i++)
+        {
+            resultado[i] = caracteres[RandomNumberGenerator.GetInt32(caracteres.Length)];
+        }
+
+        return new string(resultado);
+    }
+
+    private async Task<bool> TryEnviarCredencialesAsync(
+        string? correo, string? primerNombre, string? username, string? password, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(correo) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            return false;
+        }
+
+        try
+        {
+            return await _emailService.EnviarCredencialesAsync(
+                correo, primerNombre ?? username, username, password, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "No se pudieron enviar las credenciales de acceso a {Correo}", correo);
+            return false;
+        }
+    }
 
     private static PersonalResponseDto MapResponse(Personal p, Usuario? usuario, string codigo)
     {
