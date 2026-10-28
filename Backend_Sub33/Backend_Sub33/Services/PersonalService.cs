@@ -871,7 +871,7 @@ public partial class PersonalService : IPersonalService
                 if (!enviado)
                 {
                     await transaction.RollbackAsync(ct);
-                    return ServiceResult.Internal("No se pudo enviar el correo. Verifica la configuración de Resend e intenta de nuevo.");
+                    return ServiceResult.Internal("No se pudo enviar el correo. Verifica la configuración de Brevo e intenta de nuevo.");
                 }
 
                 await transaction.CommitAsync(ct);

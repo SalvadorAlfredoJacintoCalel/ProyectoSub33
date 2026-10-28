@@ -8,7 +8,9 @@ namespace Backend_Sub33.Services;
 
 public class EmailService : IEmailService
 {
-    private const string ResendEmailsUrl = "https://api.resend.com/emails";
+    private const string BrevoEmailUrl = "https://api.brevo.com/v3/smtp/email";
+    private const string BrevoSenderName = "Subestación 33";
+    private const string BrevoSenderEmail = "sjacintoc@miumg.edu.gt";
 
     private static readonly HttpClient Http = new()
     {
@@ -26,47 +28,45 @@ public class EmailService : IEmailService
 
     public Task<bool> EnviarCodigoOtpAsync(string correoDestino, string nombreUsuario, string codigoOtp, CancellationToken ct = default)
     {
-        var from = _configuration["Resend:From"] ?? "Subestación 33 <onboarding@resend.dev>";
         var subject = "Código de verificación - Subestación 33";
         var html = BuildCodigoOtpHtml(nombreUsuario, codigoOtp);
-        return EnviarAsync(correoDestino, from, subject, html, ct);
+        return EnviarAsync(correoDestino, subject, html, ct);
     }
 
     public Task<bool> EnviarCredencialesAsync(string correoDestino, string primerNombre, string nombreUsuario, string contrasenaTemporal, bool esCuentaNueva = false, CancellationToken ct = default)
     {
-        var from = _configuration["Resend:FromCredenciales"] ?? "Sub 33 - SLT <onboarding@resend.dev>";
         var subject = esCuentaNueva
             ? "Tus credenciales de acceso - Subestación 33"
             : "Tus credenciales de acceso se actualizaron - Subestación 33";
         var html = BuildCredencialesHtml(primerNombre, nombreUsuario, contrasenaTemporal, esCuentaNueva);
-        return EnviarAsync(correoDestino, from, subject, html, ct);
+        return EnviarAsync(correoDestino, subject, html, ct);
     }
 
-    private async Task<bool> EnviarAsync(string correoDestino, string from, string subject, string html, CancellationToken ct)
+    private async Task<bool> EnviarAsync(string correoDestino, string subject, string html, CancellationToken ct)
     {
-        var apiKey = _configuration["Resend:ApiKey"];
+        var apiKey = _configuration["Brevo:ApiKey"];
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            _logger.LogWarning("Falta Resend:ApiKey; no se envió el correo a {Destino}", correoDestino);
+            _logger.LogWarning("Falta Brevo:ApiKey; no se envió el correo a {Destino}", correoDestino);
             return false;
         }
 
         var payload = new
         {
-            from,
-            to = correoDestino,
+            sender = new { name = BrevoSenderName, email = BrevoSenderEmail },
+            to = new[] { new { email = correoDestino } },
             subject,
-            html
+            htmlContent = html
         };
 
         var json = JsonSerializer.Serialize(payload);
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, ResendEmailsUrl)
+        using var request = new HttpRequestMessage(HttpMethod.Post, BrevoEmailUrl)
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
-        request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {apiKey}");
+        request.Headers.TryAddWithoutValidation("api-key", apiKey);
 
         try
         {
@@ -76,17 +76,17 @@ public class EmailService : IEmailService
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError(
-                    "Resend respondió {StatusCode} al enviar correo a {Destino}: {Body}",
+                    "Brevo respondió {StatusCode} al enviar correo a {Destino}: {Body}",
                     (int)response.StatusCode, correoDestino, body);
                 return false;
             }
 
-            _logger.LogInformation("Correo enviado a {Destino} vía Resend (200 OK).", correoDestino);
+            _logger.LogInformation("Correo enviado a {Destino} vía Brevo.", correoDestino);
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al enviar correo a {Destino} vía Resend.", correoDestino);
+            _logger.LogError(ex, "Error al enviar correo a {Destino} vía Brevo.", correoDestino);
             return false;
         }
     }
