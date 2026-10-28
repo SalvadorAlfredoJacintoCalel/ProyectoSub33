@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Backend_Sub33.Attributes;
 using Backend_Sub33.Common;
 using Backend_Sub33.DTOs.Finanzas;
 using Backend_Sub33.Services;
@@ -21,6 +22,7 @@ public class FinanzasController : ApiControllerBase
     }
 
     [HttpGet]
+    [HttpRequirePermission("finanzas.ver")]
     public async Task<IActionResult> GetTransacciones(
         [FromQuery] string? tipo = null,
         [FromQuery] DateTime? fechaDesde = null,
@@ -43,14 +45,17 @@ public class FinanzasController : ApiControllerBase
     }
 
     [HttpGet("resumen")]
+    [HttpRequirePermission("finanzas.ver")]
     public async Task<IActionResult> GetResumen([FromQuery] DateTime? desde = null, [FromQuery] DateTime? hasta = null)
         => Respond(await _finanzasService.ObtenerResumenAsync(desde, hasta));
 
     [HttpGet("{id:long}")]
+    [HttpRequirePermission("finanzas.ver")]
     public async Task<IActionResult> GetTransaccion(long id)
         => Respond(await _finanzasService.ObtenerPorIdAsync(id));
 
     [HttpPost]
+    [HttpRequirePermission("finanzas.crear")]
     public async Task<IActionResult> CreateTransaccion([FromBody] TransaccionCreateDto? dto)
     {
         if (dto is null)
@@ -65,6 +70,7 @@ public class FinanzasController : ApiControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [HttpRequirePermission("finanzas.editar")]
     public async Task<IActionResult> UpdateTransaccion(long id, [FromBody] TransaccionUpdateDto? dto)
     {
         if (dto is null)
@@ -78,6 +84,7 @@ public class FinanzasController : ApiControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [HttpRequirePermission("finanzas.eliminar")]
     public async Task<IActionResult> DeleteTransaccion(long id)
         => Respond(await _finanzasService.EliminarTransaccionAsync(id), "Transacción eliminada correctamente.");
 

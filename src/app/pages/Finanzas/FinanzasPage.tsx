@@ -6,6 +6,7 @@ import { Button } from "@/app/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Drawer } from "@/app/components/ui/drawer";
 import { useFinanzas } from "@/hooks/useFinanzas";
+import { usePermisos } from "@/hooks/usePermisos";
 import { finanzasService } from "@/services/finanzasService";
 import { useAuth } from "@/context/AuthContext";
 import { formatDate } from "@/utils/format";
@@ -64,6 +65,7 @@ export function FinanzasPage() {
   const [detailTarget, setDetailTarget] = useState<Transaccion | null>(null);
 
   const { user } = useAuth();
+  const { finanzas } = usePermisos();
   const impresoPor = (user?.name || user?.username || "Usuario").trim();
 
   const printDetail = usePrintDetail({
@@ -284,9 +286,11 @@ export function FinanzasPage() {
           <Button variant="outline" onClick={() => void printList.imprimir()}>
             <Printer size={16} /> Imprimir
           </Button>
-          <Button onClick={openCreate}>
-            <Plus size={16} /> Nueva Transacción
-          </Button>
+          {finanzas.crear && (
+            <Button onClick={openCreate}>
+              <Plus size={16} /> Nueva Transacción
+            </Button>
+          )}
         </div>
       </div>
 
@@ -341,12 +345,16 @@ export function FinanzasPage() {
             <Button variant="outline" onClick={() => void printDetail.print()}>
               <Printer size={15} /> Imprimir
             </Button>
-            <Button variant="brand-outline" onClick={() => detailTarget && requestDelete(detailTarget)}>
-              <Trash2 size={15} /> Eliminar
-            </Button>
-            <Button variant="brand" onClick={handleEditFromDetail}>
-              <Pencil size={15} /> Editar
-            </Button>
+            {finanzas.eliminar && (
+              <Button variant="brand-outline" onClick={() => detailTarget && requestDelete(detailTarget)}>
+                <Trash2 size={15} /> Eliminar
+              </Button>
+            )}
+            {finanzas.editar && (
+              <Button variant="brand" onClick={handleEditFromDetail}>
+                <Pencil size={15} /> Editar
+              </Button>
+            )}
           </div>
         }
       >

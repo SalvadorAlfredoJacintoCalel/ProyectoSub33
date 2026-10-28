@@ -41,6 +41,10 @@ const CODIGOS_SECRETARIO = new Set([
   "emergencias.crear",
   "emergencias.editar",
   "emergencias.cambiar-estado",
+  "finanzas.ver",
+  "finanzas.crear",
+  "finanzas.editar",
+  "finanzas.eliminar",
 ]);
 
 const CODIGOS_VOLUNTARIO = new Set([
@@ -113,6 +117,13 @@ export interface PermisosEmergencias {
 export interface PermisosSeguridad {
   ver: boolean;
   editar: boolean;
+}
+
+export interface PermisosFinanzas {
+  ver: boolean;
+  crear: boolean;
+  editar: boolean;
+  eliminar: boolean;
 }
 
 export function usePermisos() {
@@ -200,6 +211,13 @@ export function usePermisos() {
     editar: tiene("seguridad.permisos"),
   };
 
+  const finanzas: PermisosFinanzas = {
+    ver: tiene("finanzas.ver"),
+    crear: tiene("finanzas.crear"),
+    editar: tiene("finanzas.editar"),
+    eliminar: tiene("finanzas.eliminar"),
+  };
+
   return {
     isAdmin,
     isSecretario,
@@ -212,5 +230,6 @@ export function usePermisos() {
     donaciones,
     emergencias,
     seguridad,
+    finanzas,
   };
 }

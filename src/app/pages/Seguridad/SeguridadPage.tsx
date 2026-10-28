@@ -627,7 +627,6 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         return;
       }
       toast.success("Permisos actualizados");
-      await cargarPermisos();
     } catch (error) {
       console.error("Error guardando permisos:", error);
       toast.error("Error guardando permisos");
@@ -636,6 +635,13 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   };
 
   const handleTogglePermiso = async (permisoId: number, asignado: boolean) => {
+    setPermisosAgrupados((prev) =>
+      prev.map((m) => ({
+        ...m,
+        permisos: m.permisos.map((p) => (p.permisoId === permisoId ? { ...p, asignado } : p)),
+      }))
+    );
+
     const todos = permisosAgrupados.flatMap((m) => m.permisos);
     const ids = todos
       .filter((p) => (p.permisoId === permisoId ? asignado : p.asignado))

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { getMisModulos, getMisPermisos, ApiError } from "@/services/seguridadService";
-import { logout as authLogout } from "@/services/authService";
+import { logout as authLogout, refresh as authRefresh } from "@/services/authService";
 import { tokenStore } from "@/services/auth/tokenStore";
 import { normalizeRole, type UserRole } from "@/constants/roles";
 
@@ -37,7 +37,14 @@ const STORAGE_KEYS = {
 } as const;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserData | null>(null);
+  const [user, setUser] = useState<UserData | null>(() => {
+    try {
+      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+      return storedUser ? (JSON.parse(storedUser) as UserData) : null;
+    } catch {
+      return null;
+    }
+  });
   const [role, setRoleState] = useState<UserRole>(() => {
     try {
       const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
@@ -72,7 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return [];
     }
   });
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.USER) !== null;
+    } catch {
+      return false;
+    }
+  });
 
   const logout = useCallback(() => {
     void authLogout();
@@ -126,20 +139,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await Promise.all([loadModulos(), loadPermisos()]);
   }, [loadModulos, loadPermisos]);
 
-  // Siempre iniciar en el login: no se restaura la sesión automáticamente al
-  // arrancar. Se limpian los datos locales obsoletos para forzar el login.
-  useEffect(() => {
-    localStorage.removeItem(STORAGE_KEYS.USER);
-    localStorage.removeItem(STORAGE_KEYS.ROLE);
-    localStorage.removeItem(STORAGE_KEYS.MODULOS);
-    localStorage.removeItem(STORAGE_KEYS.PERMISOS);
-    setUser(null);
-    setLoggedIn(false);
-    setRoleState("voluntario");
-    setModulos([]);
-    setPermisos([]);
-  }, []);
-
   // Cierre de sesión global cuando el apiClient detecta 401 sin poder renovar.
   useEffect(() => {
     const handler = () => logout();
@@ -162,6 +161,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [loadPermisosYModulos]
   );
+
+  // Restaura la sesión al arrancar: si hay datos guardados y la cookie de
+  // refresh sigue vigente, se renueva el token sin volver al login. Si la
+  // cookie expiró, se limpia y se muestra el login.
+  useEffect(() => {
+    let activo = true;
+
+    const restaurar = async () => {
+      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+      if (!storedUser) return;
+
+      const resultado = await authRefresh();
+      if (!activo) return;
+
+      if (resultado.success && resultado.token) {
+        login(resultado.token, resultado.user);
+      } else {
+        logout();
+      }
+    };
+
+    void restaurar();
+
+    return () => {
+      activo = false;
+    };
+  }, [login, logout]);
 
   return (
     <AuthContext.Provider value={{ user, role, modulos, permisos, loggedIn, login, logout }}>

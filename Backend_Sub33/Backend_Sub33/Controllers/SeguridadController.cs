@@ -33,25 +33,45 @@ public class SeguridadController : ControllerBase
             return Unauthorized(new { mensaje = "Usuario no autenticado" });
         }
 
-        // Prioridad: módulos explícitos del usuario (usuario_modulos).
+        // Los módulos visibles son la unión de:
+        // 1. módulos explícitos del usuario (usuario_modulos),
+        // 2. módulos heredados de sus roles (rol_modulo) y
+        // 3. módulos implicados por sus permisos efectivos (rol + usuario).
+        // Así, al otorgar un permiso en la matriz, el módulo aparece automáticamente.
+        var modulos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         var usuarioModulos = await _context.UsuarioModulos
             .Where(um => um.UsuarioId == usuarioId)
             .Select(um => um.Modulo.CodigoModulo)
             .ToListAsync();
 
-        if (usuarioModulos.Count > 0)
-        {
-            return Ok(usuarioModulos);
-        }
-
-        // Fallback: módulos heredados de sus roles (rol_modulo).
         var rolModulos = await _context.UsuarioRoles
             .Where(ur => ur.UsuarioId == usuarioId)
             .SelectMany(ur => ur.Rol.RolModulos.Select(rm => rm.Modulo.CodigoModulo))
             .Distinct()
             .ToListAsync();
 
-        return Ok(rolModulos);
+        var modulosPorPermisosUsuario = await _context.UsuarioPermisos
+            .Where(up => up.UsuarioId == usuarioId)
+            .Select(up => up.Permiso.Modulo.CodigoModulo)
+            .Distinct()
+            .ToListAsync();
+
+        var modulosPorPermisosRol = await _context.RolPermisos
+            .Where(rp => rp.Rol.UsuarioRoles.Any(ur => ur.UsuarioId == usuarioId))
+            .Select(rp => rp.Permiso.Modulo.CodigoModulo)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var m in usuarioModulos.Concat(rolModulos).Concat(modulosPorPermisosUsuario).Concat(modulosPorPermisosRol))
+        {
+            if (!string.IsNullOrWhiteSpace(m))
+            {
+                modulos.Add(m);
+            }
+        }
+
+        return Ok(modulos);
     }
 
     // ── Listar módulos por usuario (incluye flag de asignado) ─────────────────
