@@ -309,11 +309,12 @@ public class AuthController : ControllerBase
 
     private void SetRefreshCookie(HttpResponse response, string refreshToken, bool recordar)
     {
+        var esDesarrollo = _environment.IsDevelopment();
         var options = new CookieOptions
         {
             HttpOnly = true,
-            Secure = !_environment.IsDevelopment(),
-            SameSite = SameSiteMode.Strict,
+            Secure = !esDesarrollo,
+            SameSite = esDesarrollo ? SameSiteMode.Lax : SameSiteMode.None,
             Path = "/api/auth"
         };
 
@@ -327,10 +328,12 @@ public class AuthController : ControllerBase
 
     private void ClearRefreshCookie(HttpResponse response)
     {
+        var esDesarrollo = _environment.IsDevelopment();
         response.Cookies.Delete(RefreshCookieName, new CookieOptions
         {
             HttpOnly = true,
-            SameSite = SameSiteMode.Strict,
+            Secure = !esDesarrollo,
+            SameSite = esDesarrollo ? SameSiteMode.Lax : SameSiteMode.None,
             Path = "/api/auth"
         });
     }
