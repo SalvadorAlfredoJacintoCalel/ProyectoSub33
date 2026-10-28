@@ -24,10 +24,25 @@ public class EmailService : IEmailService
         _logger = logger;
     }
 
-    public async Task EnviarCodigoOtpAsync(string correoDestino, string nombreUsuario, string codigoOtp, CancellationToken ct = default)
+    public Task EnviarCodigoOtpAsync(string correoDestino, string nombreUsuario, string codigoOtp, CancellationToken ct = default)
+    {
+        var from = _configuration["Resend:From"] ?? "Subestación 33 <onboarding@resend.dev>";
+        var subject = "Código de verificación - Subestación 33";
+        var html = BuildCodigoOtpHtml(nombreUsuario, codigoOtp);
+        return EnviarAsync(correoDestino, from, subject, html, ct);
+    }
+
+    public Task EnviarCredencialesAsync(string correoDestino, string primerNombre, string nombreUsuario, string contrasenaTemporal, CancellationToken ct = default)
+    {
+        var from = _configuration["Resend:FromCredenciales"] ?? "Sub 33 - SLT <onboarding@resend.dev>";
+        var subject = "Tus credenciales de acceso - Subestación 33";
+        var html = BuildCredencialesHtml(primerNombre, nombreUsuario, contrasenaTemporal);
+        return EnviarAsync(correoDestino, from, subject, html, ct);
+    }
+
+    private async Task EnviarAsync(string correoDestino, string from, string subject, string html, CancellationToken ct)
     {
         var apiKey = _configuration["Resend:ApiKey"];
-        var from = _configuration["Resend:From"] ?? "Subestación 33 <onboarding@resend.dev>";
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
@@ -39,8 +54,8 @@ public class EmailService : IEmailService
         {
             from,
             to = correoDestino,
-            subject = "Código de verificación - Subestación 33",
-            html = BuildHtml(nombreUsuario, codigoOtp)
+            subject,
+            html
         };
 
         var json = JsonSerializer.Serialize(payload);
@@ -73,7 +88,7 @@ public class EmailService : IEmailService
         }
     }
 
-    private static string BuildHtml(string nombreUsuario, string codigoOtp)
+    private static string BuildCodigoOtpHtml(string nombreUsuario, string codigoOtp)
     {
         var nombreMostrado = string.IsNullOrWhiteSpace(nombreUsuario) ? "Usuario" : nombreUsuario;
 
@@ -111,6 +126,63 @@ public class EmailService : IEmailService
                   </tr>
                   <tr>
                     <td style="background-color:#7a0000;padding:16px;text-align:center;">
+                      <p style="margin:0;color:#ffffff;font-size:12px;">Siempre al servicio de nuestra comunidad</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+        """;
+    }
+
+    private static string BuildCredencialesHtml(string primerNombre, string nombreUsuario, string contrasenaTemporal)
+    {
+        var nombre = string.IsNullOrWhiteSpace(primerNombre) ? "Usuario" : primerNombre;
+
+        return $"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        </head>
+        <body style="margin:0;padding:0;background-color:#f0efed;font-family:Arial,Helvetica,sans-serif;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f0efed;padding:24px;">
+            <tr>
+              <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
+                  <tr>
+                    <td style="background-color:#1B365D;padding:24px;text-align:center;">
+                      <h1 style="margin:0;color:#ffffff;font-size:20px;letter-spacing:1px;">SUBESTACIÓN 33</h1>
+                      <p style="margin:6px 0 0;color:#f5c500;font-size:13px;text-transform:uppercase;letter-spacing:1px;">Bomberos Voluntarios · San Lucas Tolimán, Sololá</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:32px 28px;">
+                      <p style="margin:0 0 8px;color:#1b1b1c;font-size:15px;">Hola, <strong>{nombre}</strong>:</p>
+                      <p style="margin:0 0 24px;color:#71717a;font-size:14px;line-height:1.6;">
+                        Se ha creado tu cuenta en el sistema. A continuación encontrarás tus credenciales de acceso temporal:
+                      </p>
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f7f9fc;border:1px solid #e4e4e7;border-radius:10px;">
+                        <tr>
+                          <td style="padding:14px 16px;border-bottom:1px solid #e4e4e7;color:#71717a;font-size:13px;">Usuario</td>
+                          <td style="padding:14px 16px;border-bottom:1px solid #e4e4e7;color:#1b1b1c;font-size:15px;font-weight:bold;text-align:right;">{nombreUsuario}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:14px 16px;color:#71717a;font-size:13px;">Contraseña temporal</td>
+                          <td style="padding:14px 16px;color:#1b1b1c;font-size:15px;font-weight:bold;text-align:right;">{contrasenaTemporal}</td>
+                        </tr>
+                      </table>
+                      <p style="margin:24px 0 0;color:#71717a;font-size:13px;line-height:1.6;">
+                        Por seguridad, cambia tu contraseña después del primer inicio de sesión.
+                      </p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="background-color:#8B0000;padding:16px;text-align:center;">
                       <p style="margin:0;color:#ffffff;font-size:12px;">Siempre al servicio de nuestra comunidad</p>
                     </td>
                   </tr>
