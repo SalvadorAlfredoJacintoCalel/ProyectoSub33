@@ -131,8 +131,10 @@ export function createApiClient(config?: Partial<ApiClientConfig>): {
       }
     };
 
-    // Deduplicar peticiones GET concurrentes (sin cache de datos obsoletos)
-    if (method === "GET") {
+    // Deduplicar peticiones GET concurrentes (sin cache de datos obsoletos).
+    // Se omite la deduplicación cuando la petición trae su propia señal de
+    // cancelación, para no reutilizar una promesa que pudo ser abortada.
+    if (method === "GET" && !options.signal) {
       const cacheKey = `GET:${url}`;
       const existing = inFlightRequests.get(cacheKey);
       if (existing) {

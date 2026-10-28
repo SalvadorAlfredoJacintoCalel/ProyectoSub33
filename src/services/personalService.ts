@@ -201,6 +201,7 @@ export const getPersonal = async (
       tamanio: payload?.tamanio ?? (params.tamanio ?? 10),
     };
   } catch (error) {
+    if ((error as Error)?.name === "AbortError") throw error;
     console.error("Error fetching personal:", error);
     throw error;
   }
