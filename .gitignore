@@ -36,5 +36,6 @@ Thumbs.db
 
 # ── Dump de base de datos (contiene datos reales, NO subir) ──
 init.sql
+datos_sub33.sql
 *.dump
 *.sql.backup
