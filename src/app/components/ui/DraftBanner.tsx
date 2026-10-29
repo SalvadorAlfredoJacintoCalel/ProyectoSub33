@@ -29,7 +29,9 @@ export function DraftBanner({ draft, online, onDiscard }: DraftBannerProps) {
           className="text-[12px] font-semibold truncate"
           style={{ fontFamily: "Inter, sans-serif", color: "var(--text-2)" }}
         >
-          {online ? "Guardado como borrador" : "Sin conexión · guardado como borrador"}
+          {online
+            ? "Borrador guardado"
+            : "Sin conexión · vuelve a intentarlo cuando tengas internet"}
         </span>
       </div>
       <button

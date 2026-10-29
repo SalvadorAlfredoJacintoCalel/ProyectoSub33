@@ -3,6 +3,7 @@ import {
   isValidElement,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -15,7 +16,8 @@ import { Input } from "@/app/components/ui/input";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { useAlert } from "@/app/components/ui/AlertSystem";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
+import { useAuth } from "@/context/AuthContext";
 import { ApiError, crearCatalogo, getCatalogo } from "@/services/configuracionService";
 import type {
   CatalogoItem,
@@ -129,35 +131,43 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const { toast } = useAlert();
-  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>("vehiculo.create");
-  const draftRef = useRef<FormState | null>(draft);
-
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
+  const { user } = useAuth();
+  const baselineRef = useRef<FormState>(EMPTY);
+  const draftKey = vehiculo ? `vehiculo.edit.${vehiculo.vehiculoId}` : "vehiculo.create";
+  const dirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(baselineRef.current),
+    [form]
+  );
+  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>(draftKey, {
+    module: "vehiculos",
+    label: vehiculo ? "Editar vehículo" : "Nuevo vehículo",
+    entityId: vehiculo ? String(vehiculo.vehiculoId) : null,
+    username: user?.username ?? null,
+    dirty,
+  });
 
   useEffect(() => {
     if (!open) return;
     if (vehiculo) {
-      setForm(fromVehiculo(vehiculo));
-    } else if (draftRef.current) {
-      setForm(draftRef.current);
-      toast.info("Se recuperó el borrador del vehículo.");
+      const base = fromVehiculo(vehiculo);
+      baselineRef.current = base;
+      setForm(readDraftValue<FormState>(`vehiculo.edit.${vehiculo.vehiculoId}`) ?? base);
     } else {
-      setForm(EMPTY);
+      baselineRef.current = EMPTY;
+      setForm(readDraftValue<FormState>("vehiculo.create") ?? EMPTY);
     }
     setErrors({});
-  }, [open, vehiculo, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, vehiculo]);
 
   useEffect(() => {
-    if (!open || vehiculo) return;
-    if (JSON.stringify(form) === JSON.stringify(EMPTY)) {
+    if (!open) return;
+    if (!dirty) {
       clear();
       return;
     }
     save(form);
-  }, [form, open, vehiculo, save, clear]);
+  }, [form, dirty, open, save, clear]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -246,11 +256,16 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
       };
 
       await onSubmit(payload);
-      if (!vehiculo) clear();
+      clear();
       onClose();
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleCancel() {
+    clear();
+    onClose();
   }
 
   return (
@@ -262,7 +277,7 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
       description="Registra los datos de la unidad y su origen."
       footer={
         <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" type="button" onClick={onClose}>
+          <Button variant="outline" type="button" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button variant="brand" type="submit" form="vehiculo-form" loading={saving}>
@@ -272,7 +287,7 @@ export function VehiculoFormModal({ open, onClose, vehiculo, tipos, onSubmit, on
       }
     >
       <form id="vehiculo-form" onSubmit={handleSubmit} className="flex flex-col gap-6">
-        {!vehiculo && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
+        <DraftBanner draft={draft} online={online} onDiscard={clear} />
         <section>
           <h3 className="mb-3 text-sm font-bold" style={{ color: "var(--text-1)" }}>
             Identificación

@@ -24,6 +24,7 @@ import { useAlert } from "@/app/components/ui/AlertSystem";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { formatMoneda } from "@/app/pages/Inventario/components/format";
 import { useVehiculos } from "@/hooks/useVehiculos";
+import { consumeDraftOpenRequest, subscribeOpenDraft, requestOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { usePermisos } from "@/hooks/usePermisos";
 import { useAuth } from "@/context/AuthContext";
 import { vehiculosService } from "@/services/vehiculosService";
@@ -87,6 +88,44 @@ export function VehiculosPage() {
 
   const { user } = useAuth();
   const impresoPor = (user?.name || user?.username || "Usuario").trim();
+
+  const handleOpenDraft = useCallback(
+    (key: string) => {
+      if (key.startsWith("periodo.") || key.startsWith("cupon.")) {
+        setActiveTab("cupones");
+        requestOpenDraft("vehiculos-cupones", key);
+        return;
+      }
+      if (key === "vehiculo.create") {
+        setEditTarget(null);
+        setActiveTab("flota");
+        setShowForm(true);
+        return;
+      }
+      if (key.startsWith("vehiculo.edit.")) {
+        const id = Number(key.slice("vehiculo.edit.".length));
+        const v = vehiculos.find((x) => x.vehiculoId === id);
+        if (v) {
+          setEditTarget(v);
+          setActiveTab("flota");
+          setShowForm(true);
+        }
+        return;
+      }
+      if (key.startsWith("mantenimiento.")) {
+        toast.info("Abre el vehículo correspondiente para retomar este borrador.");
+      }
+    },
+    [vehiculos, toast]
+  );
+
+  useEffect(() => {
+    const pendingKey = consumeDraftOpenRequest("vehiculos");
+    if (pendingKey) handleOpenDraft(pendingKey);
+    return subscribeOpenDraft((module, key) => {
+      if (module === "vehiculos") handleOpenDraft(key);
+    });
+  }, [handleOpenDraft]);
   const printList = usePrintList<Vehiculo>({
     titulo: "Reporte de Vehículos",
     impresoPor,

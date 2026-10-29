@@ -1,10 +1,12 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Modal } from "@/app/components/ui/modal";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
+import { useAuth } from "@/context/AuthContext";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { ApiError, crearCatalogo, getCatalogo } from "@/services/configuracionService";
 import { finanzasService } from "@/services/finanzasService";
@@ -166,35 +168,46 @@ export function MantenimientoModal({
   const finalizeRef = useRef(false);
   const formId = useId();
   const { toast } = useAlert();
-  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>("mantenimiento.create");
-  const draftRef = useRef<FormState | null>(draft);
-
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
+  const { user } = useAuth();
+  const baselineRef = useRef<FormState>(EMPTY);
+  const draftKey = mantenimiento
+    ? `mantenimiento.edit.${mantenimiento.mantenimientoId}`
+    : "mantenimiento.create";
+  const dirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(baselineRef.current),
+    [form]
+  );
+  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>(draftKey, {
+    module: "vehiculos",
+    label: mantenimiento ? "Editar mantenimiento" : "Nuevo mantenimiento",
+    entityId: mantenimiento ? String(mantenimiento.mantenimientoId) : null,
+    username: user?.username ?? null,
+    dirty,
+  });
 
   useEffect(() => {
     if (!open) return;
     if (mantenimiento) {
-      setForm(fromMantenimiento(mantenimiento));
-    } else if (draftRef.current) {
-      setForm(draftRef.current);
-      toast.info("Se recuperó el borrador de la hoja de mantenimiento.");
+      const base = fromMantenimiento(mantenimiento);
+      baselineRef.current = base;
+      setForm(readDraftValue<FormState>(`mantenimiento.edit.${mantenimiento.mantenimientoId}`) ?? base);
     } else {
-      setForm(EMPTY);
+      baselineRef.current = EMPTY;
+      setForm(readDraftValue<FormState>("mantenimiento.create") ?? EMPTY);
     }
     setError(null);
     finalizeRef.current = false;
-  }, [open, mantenimiento, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mantenimiento]);
 
   useEffect(() => {
-    if (!open || mantenimiento) return;
-    if (JSON.stringify(form) === JSON.stringify(EMPTY)) {
+    if (!open) return;
+    if (!dirty) {
       clear();
       return;
     }
     save(form);
-  }, [form, open, mantenimiento, save, clear]);
+  }, [form, dirty, open, save, clear]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -284,7 +297,7 @@ export function MantenimientoModal({
           toast.warning("El gasto de mantenimiento no pudo registrarse en Finanzas.");
         }
       }
-      if (!mantenimiento) clear();
+      clear();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar la hoja de mantenimiento.");
@@ -292,6 +305,11 @@ export function MantenimientoModal({
       setSaving(false);
       finalizeRef.current = false;
     }
+  }
+
+  function handleCancel() {
+    clear();
+    onClose();
   }
 
   const unidad = vehiculo
@@ -324,7 +342,7 @@ export function MantenimientoModal({
       }
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button variant="outline" type="button" onClick={onClose}>
+          <Button variant="outline" type="button" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button
@@ -358,7 +376,7 @@ export function MantenimientoModal({
       }
     >
       <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {!mantenimiento && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
+        <DraftBanner draft={draft} online={online} onDiscard={clear} />
         <Section
           number="1"
           title="Datos de identificación y encabezado"

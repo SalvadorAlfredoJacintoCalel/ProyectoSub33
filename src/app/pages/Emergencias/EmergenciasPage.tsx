@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, type ReactNode } from "react";
+﻿import { useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   Calendar, CheckCircle2, Plus, Search,
@@ -19,6 +19,7 @@ import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table"
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
 import { usePermisos } from "@/hooks/usePermisos";
+import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { inventarioService } from "@/services/inventarioService";
 import type { Emergencia, EmergenciaListItem, EmergenciaFiltros, EstadoEmergencia } from "@/types/emergencia";
 import type { ServicioInsumoUtilizado } from "@/types/inventario";
@@ -887,6 +888,29 @@ export function EmergenciasPage() {
   const [showRegister, setShowRegister] = useState(false);
   const [selectedEmergencia, setSelectedEmergencia] = useState<Emergencia | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  const handleOpenDraft = useCallback((key: string) => {
+    if (key === "emergencia.create") {
+      setEditingId(null);
+      setShowRegister(true);
+      return;
+    }
+    if (key.startsWith("emergencia.edit.")) {
+      const id = Number(key.slice("emergencia.edit.".length));
+      if (Number.isFinite(id) && id > 0) {
+        setShowRegister(false);
+        setEditingId(id);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const pendingKey = consumeDraftOpenRequest("emergencias");
+    if (pendingKey) handleOpenDraft(pendingKey);
+    return subscribeOpenDraft((module, key) => {
+      if (module === "emergencias") handleOpenDraft(key);
+    });
+  }, [handleOpenDraft]);
 
   useEffect(() => {
     cargarCatalogos();

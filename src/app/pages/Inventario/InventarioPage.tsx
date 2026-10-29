@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, Fragment } from "react";
+﻿import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
 import type { ElementType, ReactNode } from "react";
 import {
   Pencil, Trash2, Plus, Search, Package, Boxes, ArrowLeftRight, Truck, ChevronLeft, ChevronRight,
@@ -8,6 +8,8 @@ import {
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
+import { consumeDraftOpenRequest, subscribeOpenDraft, requestOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Skeleton } from "@/app/components/ui/skeleton";
@@ -405,16 +407,62 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         : [],
   });
 
-  const { draft, savedAt, online, save, clear } = useFormDraft<ItemFormState>("inventario.item");
+  const itemBaselineRef = useRef<ItemFormState>(EMPTY_FORM);
+  const itemDraftKey =
+    editModal?.mode === "edit" && editModal.item
+      ? `inventario.item.edit.${editModal.item.itemId}`
+      : "inventario.item";
+  const itemDirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(itemBaselineRef.current),
+    [form]
+  );
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<ItemFormState>(itemDraftKey, {
+    module: "inventario",
+    label: editModal?.mode === "edit" ? "Editar item" : "Nuevo item",
+    entityId: editModal?.mode === "edit" && editModal.item ? String(editModal.item.itemId) : null,
+    username: user?.username ?? null,
+    dirty: itemDirty,
+  });
 
   useEffect(() => {
-    if (editModal?.mode !== "add") return;
-    if (JSON.stringify(form) === JSON.stringify(EMPTY_FORM)) {
+    if (editModal === null) return;
+    if (!itemDirty) {
       clear();
       return;
     }
     save(form);
-  }, [form, editModal, save, clear]);
+  }, [form, itemDirty, editModal, save, clear]);
+
+  const handleOpenItemDraft = useCallback(
+    (key: string) => {
+      if (key === "inventario.item") {
+        itemBaselineRef.current = EMPTY_FORM;
+        setForm(readDraftValue<ItemFormState>("inventario.item") ?? EMPTY_FORM);
+        setErrors({});
+        setEditModal({ mode: "add" });
+        return;
+      }
+      if (key.startsWith("inventario.item.edit.")) {
+        const id = Number(key.slice("inventario.item.edit.".length));
+        const item = items.find((i) => i.itemId === id);
+        if (!item) return;
+        itemBaselineRef.current = itemToForm(item);
+        setForm(readDraftValue<ItemFormState>(key) ?? itemToForm(item));
+        setErrors({});
+        setEditModal({ mode: "edit", item });
+      }
+    },
+    [items]
+  );
+
+  useEffect(() => {
+    const pendingKey = consumeDraftOpenRequest("inventario-items");
+    if (pendingKey) handleOpenItemDraft(pendingKey);
+    return subscribeOpenDraft((module, key) => {
+      if (module === "inventario-items") handleOpenItemDraft(key);
+    });
+  }, [handleOpenItemDraft]);
 
   // Donaciones (para origen "Donado")
   const [donacionesMaterial, setDonacionesMaterial] = useState<Donacion[]>([]);
@@ -592,12 +640,8 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
       toast.warning("No tienes permiso para registrar nuevos items.");
       return;
     }
-    if (draft) {
-      setForm(draft);
-      toast.info("Se recuperó el borrador del item.");
-    } else {
-      setForm(EMPTY_FORM);
-    }
+    itemBaselineRef.current = EMPTY_FORM;
+    setForm(readDraftValue<ItemFormState>("inventario.item") ?? EMPTY_FORM);
     setErrors({});
     setEditModal({ mode: "add" });
   }
@@ -607,7 +651,9 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
       toast.warning("No tienes permiso para editar items.");
       return;
     }
-    setForm(itemToForm(item));
+    const baseline = itemToForm(item);
+    itemBaselineRef.current = baseline;
+    setForm(readDraftValue<ItemFormState>(`inventario.item.edit.${item.itemId}`) ?? baseline);
     setErrors({});
     setEditModal({ mode: "edit", item });
   }
@@ -615,6 +661,11 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
   function closeModal() {
     setEditModal(null);
     setErrors({});
+  }
+
+  function handleCancel() {
+    clear();
+    closeModal();
   }
 
   function openDetail(item: InventarioItem) {
@@ -708,6 +759,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
           await darDeBajaItem(editModal.item.itemId, user?.personalId ?? null);
         }
         toast.success("Item actualizado correctamente");
+        clear();
       }
       setEditModal(null);
       setSelectedItem(null);
@@ -932,15 +984,13 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
         footer={
           <>
-            <Button variant="brand-outline" onClick={closeModal}>Cancelar</Button>
+            <Button variant="brand-outline" onClick={handleCancel}>Cancelar</Button>
             <Button variant="brand" loading={submitting} onClick={handleSave}>Guardar</Button>
           </>
         }
       >
         <FormErrorSummary show={Object.keys(errors).length > 0} />
-        {editModal?.mode === "add" && (
-          <div className="mb-4"><DraftBanner draft={draft} online={online} onDiscard={clear} /></div>
-        )}
+        <div className="mb-4"><DraftBanner draft={draft} online={online} onDiscard={clear} /></div>
 
         <CollapsibleSection label="Datos" icon={User}>
           <div className="grid grid-cols-2 gap-4">
@@ -1547,6 +1597,27 @@ export function InventarioPage() {
     setTopTab(tab);
     if (tab === "items") setItemsFilter(stockFilter ?? null);
   }
+
+  const handleOpenDraft = useCallback((key: string) => {
+    if (key.startsWith("inventario.item")) {
+      setTopTab("items");
+      requestOpenDraft("inventario-items", key);
+    } else if (key.startsWith("inventario.ajuste")) {
+      setTopTab("movimientos");
+      requestOpenDraft("inventario-movimientos", key);
+    } else if (key.startsWith("inventario.asignar-equipo")) {
+      setTopTab("equipo");
+      requestOpenDraft("inventario-equipo", key);
+    }
+  }, []);
+
+  useEffect(() => {
+    const pendingKey = consumeDraftOpenRequest("inventario");
+    if (pendingKey) handleOpenDraft(pendingKey);
+    return subscribeOpenDraft((module, key) => {
+      if (module === "inventario") handleOpenDraft(key);
+    });
+  }, [handleOpenDraft]);
 
   return (
     <div className="min-h-screen p-4 sm:p-6" style={{ background: "var(--bg-page)", fontFamily: "Inter, sans-serif" }}>

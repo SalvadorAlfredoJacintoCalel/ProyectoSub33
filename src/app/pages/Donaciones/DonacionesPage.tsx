@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import {
   Plus,
   Search,
@@ -23,6 +23,8 @@ import {
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
+import { consumeDraftOpenRequest, subscribeOpenDraft, requestOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { Modal } from "@/app/components/ui/modal";
@@ -344,46 +346,58 @@ function donacionToForm(d: Donacion): DonacionForm {
 
 function DonacionModal({
   initial,
+  entityId,
   onSave,
   onClose,
   onDelete,
   saving,
 }: {
   initial: DonacionForm | null;
-  onSave: (f: DonacionForm) => void;
+  entityId?: number | null;
+  onSave: (f: DonacionForm) => Promise<boolean> | boolean;
   onClose: () => void;
   onDelete?: () => void;
   saving?: boolean;
 }) {
+  const { user } = useAuth();
   const [form, setForm] = useState<DonacionForm>(initial ?? emptyForm());
   const [errors, setErrors] = useState<FormErrors>({});
   const [step, setStep] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { toast } = useAlert();
-  const { draft, savedAt, online, save, clear } = useFormDraft<DonacionForm>("donacion.create");
-  const dirtyRef = useRef(false);
+  const baselineRef = useRef<DonacionForm>(form);
+  const draftKey = entityId ? `donacion.edit.${entityId}` : "donacion.create";
+  const dirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(baselineRef.current),
+    [form]
+  );
+  const { draft, savedAt, online, save, clear } = useFormDraft<DonacionForm>(draftKey, {
+    module: "donaciones",
+    label: entityId ? "Editar donación" : "Nueva donación",
+    entityId: entityId ? String(entityId) : null,
+    username: user?.username ?? null,
+    dirty,
+  });
 
   useEffect(() => {
-    if (initial !== null || !draft) return;
-    setForm(draft);
-    dirtyRef.current = true;
-    toast.info("Se recuperó el borrador de la donación.");
+    const saved = readDraftValue<DonacionForm>(draftKey);
+    if (saved) setForm(saved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (initial !== null) return;
-    if (!dirtyRef.current) return;
+    if (!dirty) {
+      clear();
+      return;
+    }
     save(form);
-  }, [form, initial, save]);
+  }, [form, dirty, save, clear]);
 
   function setField<K extends keyof DonacionForm>(key: K, val: DonacionForm[K]) {
-    dirtyRef.current = true;
     setForm((prev) => ({ ...prev, [key]: val }));
   }
 
   function setMaterialField(idx: number, key: keyof MaterialDonacion, val: string | number) {
-    dirtyRef.current = true;
     setForm((prev) => {
       const updated = prev.materiales.map((m, i) => (i === idx ? { ...m, [key]: val } : m));
       return { ...prev, materiales: updated };
@@ -391,12 +405,10 @@ function DonacionModal({
   }
 
   function addMaterial() {
-    dirtyRef.current = true;
     setForm((prev) => ({ ...prev, materiales: [...prev.materiales, { descripcion: "", cantidad: 1, valorEstimado: 0 }] }));
   }
 
   function removeMaterial(idx: number) {
-    dirtyRef.current = true;
     setForm((prev) => ({ ...prev, materiales: prev.materiales.filter((_, i) => i !== idx) }));
   }
 
@@ -429,11 +441,15 @@ function DonacionModal({
     setStep((s) => Math.max(0, s - 1));
   }
 
-  function handleSubmit() {
-    if (validateStep(0) && validateStep(1)) {
-      onSave(form);
-      if (!initial) clear();
-    }
+  async function handleSubmit() {
+    if (!validateStep(0) || !validateStep(1)) return;
+    const ok = await onSave(form);
+    if (ok !== false) clear();
+  }
+
+  function handleCancel() {
+    clear();
+    onClose();
   }
 
   const totalMaterial = form.materiales.reduce((s, m) => s + (Number(m.valorEstimado) || 0), 0);
@@ -460,7 +476,7 @@ function DonacionModal({
           </div>
           <div className="flex items-center gap-3">
             {step === 0 ? (
-              <Button variant="brand-outline" onClick={onClose}>Cancelar</Button>
+              <Button variant="brand-outline" onClick={handleCancel}>Cancelar</Button>
             ) : (
               <Button variant="outline" onClick={prev}>Atrás</Button>
             )}
@@ -476,7 +492,7 @@ function DonacionModal({
       }
     >
       {/* Stepper */}
-      {!initial && <div className="mb-4"><DraftBanner draft={draft} online={online} onDiscard={clear} /></div>}
+      <div className="mb-4"><DraftBanner draft={draft} online={online} onDiscard={clear} /></div>
       <div className="mb-6 flex items-center">
         {STEPS.map((label, i) => (
           <div key={label} className="flex items-center" style={{ flex: i === STEPS.length - 1 ? "0 0 auto" : 1 }}>
@@ -635,6 +651,48 @@ export function DonacionesPage() {
   const [viewTarget, setViewTarget] = useState<Donacion | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const handleOpenDraft = useCallback(
+    async (key: string) => {
+      if (key.startsWith("libro-donaciones.")) {
+        setVista("libro");
+        requestOpenDraft("libro-donaciones", key);
+        return;
+      }
+      if (key === "donacion.create") {
+        setEditTarget(null);
+        setVista("registros");
+        setShowForm(true);
+        return;
+      }
+      if (!key.startsWith("donacion.edit.")) return;
+      const id = Number(key.slice("donacion.edit.".length));
+      if (!Number.isFinite(id) || id <= 0) return;
+      const existing = donaciones.find((d) => d.donacionId === id);
+      setVista("registros");
+      if (existing) {
+        setEditTarget(existing);
+        setShowForm(true);
+        return;
+      }
+      try {
+        const data = await donacionService.getDonacionById(id);
+        setEditTarget(data);
+        setShowForm(true);
+      } catch {
+        toast.error("No se pudo abrir la donación del borrador.");
+      }
+    },
+    [donaciones, toast]
+  );
+
+  useEffect(() => {
+    const pendingKey = consumeDraftOpenRequest("donaciones");
+    if (pendingKey) void handleOpenDraft(pendingKey);
+    return subscribeOpenDraft((module, key) => {
+      if (module === "donaciones") void handleOpenDraft(key);
+    });
+  }, [handleOpenDraft]);
+
   const { user } = useAuth();
   const impresoPor = (user?.name || user?.username || "Usuario").trim();
 
@@ -699,14 +757,14 @@ export function DonacionesPage() {
     setPage(1);
   }
 
-  async function handleSave(form: DonacionForm) {
+  async function handleSave(form: DonacionForm): Promise<boolean> {
     if (editTarget && !permisosDonaciones.editar) {
       toast.warning("Solo los administradores pueden modificar donaciones registradas.");
-      return;
+      return false;
     }
     if (!editTarget && !permisosDonaciones.registrar) {
       toast.warning("No tienes permiso para registrar donaciones.");
-      return;
+      return false;
     }
     const monto = form.tipo === "Monetaria" ? Number(form.monto) : form.materiales.reduce((s, m) => s + Number(m.valorEstimado), 0);
 
@@ -761,9 +819,11 @@ export function DonacionesPage() {
       setShowForm(false);
       setEditTarget(null);
       loadDonaciones({ pagina: page, tamanio: PAGE_SIZE, busqueda: search || undefined, categoria: activeTab === "Todos" ? undefined : activeTab });
+      return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al guardar la donación";
       toast.error(msg);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -1001,6 +1061,7 @@ export function DonacionesPage() {
       {showForm && (
         <DonacionModal
           initial={editTarget ? donacionToForm(editTarget) : null}
+          entityId={editTarget?.donacionId ?? null}
           onSave={handleSave}
           onClose={() => { setShowForm(false); setEditTarget(null); }}
           onDelete={editTarget && permisosDonaciones.eliminar ? handleDeleteFromModal : undefined}

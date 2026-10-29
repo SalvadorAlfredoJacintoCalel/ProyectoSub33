@@ -28,6 +28,8 @@ import {
   Camera, UserCircle, Moon, Sun, Menu,
 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { listDraftsForUser, subscribeDrafts, type DraftMeta } from "@/services/drafts/draftRegistry";
+import { requestOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
 import { subirFoto } from "@/services/authService";
 import { dashboardService } from "@/services/dashboardService";
@@ -87,7 +89,14 @@ const INCIDENT_DATA: Record<Period, { label: string; value: number; color: strin
 };
 const WEEKLY_DATA: number[] = [];
 
-const NOTIFICATIONS = [];
+const NAV_FOR_MODULE: Record<string, string> = {
+  emergencias: "emergencias",
+  personal: "personal",
+  donaciones: "donaciones",
+  "libro-donaciones": "donaciones",
+  inventario: "inventario",
+  vehiculos: "vehiculos",
+};
 
 const BULLETINS = [
   { id:1, type:"turno",  title:"Turno Activo en Línea",      body:"4 elementos de guardia — Comandante de turno: Soc. García Ajú",      meta:"08:00 – 16:00 hrs",    color:"#16a34a", Icon: Users },
@@ -183,6 +192,29 @@ function AppContent() {
   const sidebarW = sidebarCollapsed ? 72 : 256;
   const effectiveCollapsed = sidebarCollapsed && !isMobile;
   const navItems = ALL_NAV.filter(n => n.id === "bienvenida" || n.id === "analytics" || modulos.includes(n.id));
+
+  const [pendingDrafts, setPendingDrafts] = useState<DraftMeta[]>([]);
+  useEffect(() => {
+    const refresh = () => setPendingDrafts(listDraftsForUser(user?.username ?? null));
+    refresh();
+    return subscribeDrafts(refresh);
+  }, [user?.username]);
+
+  const notifications = pendingDrafts.map((d) => ({
+    id: d.key,
+    dot: C.red,
+    title: d.label || "Borrador guardado",
+    body: "Borrador sin enviar",
+    time: new Date(d.updatedAt).toLocaleString("es-GT"),
+  }));
+
+  function openDraftFromBell(d: DraftMeta) {
+    const navId = NAV_FOR_MODULE[d.module] ?? d.module;
+    setNotifOpen(false);
+    setProfileDropOpen(false);
+    if (modulos.includes(navId)) setActiveNav(navId);
+    requestOpenDraft(d.module, d.key);
+  }
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -430,24 +462,37 @@ function AppContent() {
                 style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
                 <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: C.border }}>
                   <span className="font-bold text-[13px]" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>Alertas</span>
-                  <span className="text-white text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.red }}>{NOTIFICATIONS.length}</span>
+                  <span className="text-white text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.red }}>{notifications.length}</span>
                 </div>
-                {NOTIFICATIONS.map(n => (
-                  <div key={n.id} className="flex items-start gap-3 px-5 py-3.5 border-b transition-colors cursor-default" style={{ borderColor: C.border }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
-                    <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: n.dot }} />
-                    <div className="min-w-0">
-                      <p className="font-bold text-[12px] leading-tight" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{n.title}</p>
-                      <p className="text-[11px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{n.body}</p>
-                      <p className="text-[10px] mt-0.5" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{n.time}</p>
-                    </div>
+                {notifications.length === 0 ? (
+                  <div className="px-5 py-8 text-center text-[12px]" style={{ color: C.textMuted }}>No hay borradores pendientes.</div>
+                ) : (
+                  notifications.map((n, i) => {
+                    const draft = pendingDrafts[i];
+                    return (
+                      <button
+                        key={n.id}
+                        onClick={() => draft && openDraftFromBell(draft)}
+                        className="flex w-full items-start gap-3 px-5 py-3.5 border-b text-left transition-colors"
+                        style={{ borderColor: C.border }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
+                        <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: n.dot }} />
+                        <div className="min-w-0">
+                          <p className="font-bold text-[12px] leading-tight" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{n.title}</p>
+                          <p className="text-[11px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{n.body}</p>
+                          <p className="text-[10px] mt-0.5" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{n.time}</p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+                {notifications.length > 0 && (
+                  <div className="px-5 py-3">
+                    <button className="w-full text-center font-bold text-[11px] tracking-wide uppercase transition-opacity hover:opacity-70"
+                      style={{ fontFamily: "Inter, sans-serif", color: C.red }}>Borradores pendientes</button>
                   </div>
-                ))}
-                <div className="px-5 py-3">
-                  <button className="w-full text-center font-bold text-[11px] tracking-wide uppercase transition-opacity hover:opacity-70"
-                    style={{ fontFamily: "Inter, sans-serif", color: C.red }}>Ver todas</button>
-                </div>
+                )}
               </div>
             )}
           </div>
@@ -680,21 +725,31 @@ function AppContent() {
                 <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
                   <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: C.border }}>
                     <h3 className="font-bold text-[14px]" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>Actividad</h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.redLight, color: C.red }}>{NOTIFICATIONS.length}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.redLight, color: C.red }}>{notifications.length}</span>
                   </div>
                   <div className="flex-1 divide-y overflow-y-auto" style={{ borderColor: C.border }}>
-                    {NOTIFICATIONS.map((n, i) => (
-                      <div key={n.id} className={`flex items-start gap-3 px-5 py-3.5 transition-colors animate-slide-up-stagger stagger-${Math.min(i + 1, 6)}`}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
-                        <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: n.dot }} />
-                        <div className="min-w-0">
-                          <p className="font-bold text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{n.title}</p>
-                          <p className="text-[11px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{n.body}</p>
-                          <p className="text-[10px] mt-0.5" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{n.time}</p>
-                        </div>
-                      </div>
-                    ))}
+                    {notifications.length === 0 ? (
+                      <div className="px-5 py-8 text-center text-[12px]" style={{ color: C.textMuted }}>No hay borradores pendientes.</div>
+                    ) : (
+                      notifications.map((n, i) => {
+                        const draft = pendingDrafts[i];
+                        return (
+                          <button
+                            key={n.id}
+                            onClick={() => draft && openDraftFromBell(draft)}
+                            className={`flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors animate-slide-up-stagger stagger-${Math.min(i + 1, 6)}`}
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
+                            <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: n.dot }} />
+                            <div className="min-w-0">
+                              <p className="font-bold text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{n.title}</p>
+                              <p className="text-[11px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{n.body}</p>
+                              <p className="text-[10px] mt-0.5" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{n.time}</p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               </div>

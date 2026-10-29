@@ -1,8 +1,11 @@
-﻿import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Plus, Truck, Info, Pencil, AlertTriangle, Search, ChevronRight, Package, Link2, Trash2 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
+import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/draftOpenRequest";
+import { useAuth } from "@/context/AuthContext";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Drawer } from "@/app/components/ui/drawer";
@@ -44,6 +47,7 @@ export function EquipoUnidadesPage() {
   const { equipoUnidades, items, loading, catalogos, loadEquipoUnidades, loadItems, loadCatalogos, asignarEquipo } =
     useInventario();
   const { toast } = useAlert();
+  const { user } = useAuth();
   const { inventario: permisosInventario } = usePermisos();
 
   const [busqueda, setBusqueda] = useState("");
@@ -61,16 +65,59 @@ export function EquipoUnidadesPage() {
   const [assignErrors, setAssignErrors] = useState<Record<string, string>>({});
   const [assignSubmitting, setAssignSubmitting] = useState(false);
 
-  const { draft, savedAt, online, save, clear } = useFormDraft<{ unidadId: string; rows: AssignRow[] }>("inventario.asignar-equipo");
+  const editKeyRef = useRef("");
+  const editBaseRef = useRef({ unidadId: "", itemId: "", cantidadAsignada: "" });
+
+  const assignDirty = useMemo(
+    () => !!assignUnidadId || assignRows.some((r) => r.itemId || r.cantidadAsignada),
+    [assignUnidadId, assignRows]
+  );
+  const { draft, savedAt, online, save, clear } = useFormDraft<{ unidadId: string; rows: AssignRow[] }>(
+    "inventario.asignar-equipo",
+    {
+      module: "inventario",
+      label: "Asignar equipo a unidad",
+      entityId: null,
+      username: user?.username ?? null,
+      dirty: assignDirty,
+    }
+  );
 
   useEffect(() => {
     if (!assignOpen) return;
-    if (!assignUnidadId && !assignRows.some((r) => r.itemId || r.cantidadAsignada)) {
+    if (!assignDirty) {
       clear();
       return;
     }
     save({ unidadId: assignUnidadId, rows: assignRows });
-  }, [assignUnidadId, assignRows, assignOpen, save, clear]);
+  }, [assignUnidadId, assignRows, assignDirty, assignOpen, save, clear]);
+
+  const editDirty = useMemo(
+    () => editing && JSON.stringify(form) !== JSON.stringify(editBaseRef.current),
+    [form, editing]
+  );
+  const editDraftKey = editing ? editKeyRef.current : "inventario.asignar-equipo.edit";
+  const {
+    draft: editDraft,
+    online: editOnline,
+    save: editSave,
+    clear: editClear,
+  } = useFormDraft<{ unidadId: string; itemId: string; cantidadAsignada: string }>(editDraftKey, {
+    module: "inventario",
+    label: "Editar asignación",
+    entityId: editing ? editKeyRef.current.split(".").pop() ?? null : null,
+    username: user?.username ?? null,
+    dirty: editDirty,
+  });
+
+  useEffect(() => {
+    if (!modalOpen || !editing) return;
+    if (!editDirty) {
+      editClear();
+      return;
+    }
+    editSave(form);
+  }, [form, editDirty, modalOpen, editing, editSave, editClear]);
 
   useEffect(() => {
     loadCatalogos();
@@ -131,21 +178,48 @@ export function EquipoUnidadesPage() {
     return map;
   }, [items]);
 
+  const openDraftRef = useRef<(key: string) => void>(() => {});
+  openDraftRef.current = (key) => {
+    if (key === "inventario.asignar-equipo") {
+      openAssign();
+      return;
+    }
+    if (key.startsWith("inventario.asignar-equipo.edit.")) {
+      const idPart = key.slice("inventario.asignar-equipo.edit.".length);
+      const [uid, iid] = idPart.split("-").map(Number);
+      const e = equipoUnidades.find((x) => x.unidadId === uid && x.itemId === iid);
+      if (e) openEdit(e);
+    }
+  };
+
+  useEffect(() => {
+    const pendingKey = consumeDraftOpenRequest("inventario-equipo");
+    if (pendingKey) openDraftRef.current(pendingKey);
+    return subscribeOpenDraft((module, key) => {
+      if (module === "inventario-equipo") openDraftRef.current(key);
+    });
+  }, []);
+
   function openAssign(prefillUnidad?: string) {
     if (!permisosInventario.asignarEquipo) {
       toast.warning("No tienes permiso para asignar equipo a unidades.");
       return;
     }
-    if (draft) {
-      setAssignUnidadId(draft.unidadId);
-      setAssignRows(draft.rows.length ? draft.rows : [newAssignRow()]);
-      toast.info("Se recuperó el borrador de la asignación.");
+    const saved = readDraftValue<{ unidadId: string; rows: AssignRow[] }>("inventario.asignar-equipo");
+    if (saved) {
+      setAssignUnidadId(saved.unidadId);
+      setAssignRows(saved.rows.length ? saved.rows : [newAssignRow()]);
     } else {
       setAssignUnidadId(prefillUnidad ?? unidadFilter ?? "");
       setAssignRows([newAssignRow()]);
     }
     setAssignErrors({});
     setAssignOpen(true);
+  }
+
+  function handleCancelAssign() {
+    clear();
+    setAssignOpen(false);
   }
 
   function addAssignRow() {
@@ -165,11 +239,20 @@ export function EquipoUnidadesPage() {
       toast.warning("No tienes permiso para editar la asignación de equipo.");
       return;
     }
-    setForm({ unidadId: String(e.unidadId), itemId: String(e.itemId), cantidadAsignada: String(e.cantidadAsignada) });
+    const baseline = { unidadId: String(e.unidadId), itemId: String(e.itemId), cantidadAsignada: String(e.cantidadAsignada) };
+    editKeyRef.current = `inventario.asignar-equipo.edit.${e.unidadId}-${e.itemId}`;
+    editBaseRef.current = baseline;
+    setForm(readDraftValue<typeof baseline>(editKeyRef.current) ?? baseline);
     setErrors({});
     setEditing(true);
     setDetailOpen(false);
     setModalOpen(true);
+  }
+
+  function handleCancelEdit() {
+    editClear();
+    setModalOpen(false);
+    setEditing(false);
   }
 
   async function handleSave() {
@@ -196,7 +279,9 @@ export function EquipoUnidadesPage() {
       };
       await asignarEquipo(dto);
       toast.success(editing ? "Asignación actualizada correctamente" : "Equipo asignado correctamente");
+      editClear();
       setModalOpen(false);
+      setEditing(false);
       setForm({ unidadId: "", itemId: "", cantidadAsignada: "" });
       loadEquipoUnidades();
     } catch (err) {
@@ -461,7 +546,7 @@ export function EquipoUnidadesPage() {
         className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
         footer={
           <>
-            <Button variant="brand-outline" onClick={() => setAssignOpen(false)}>Cancelar</Button>
+            <Button variant="brand-outline" onClick={handleCancelAssign}>Cancelar</Button>
             <Button variant="brand" loading={assignSubmitting} onClick={handleSaveAll}>Guardar</Button>
           </>
         }
@@ -555,12 +640,13 @@ export function EquipoUnidadesPage() {
         className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
         footer={
           <>
-            <Button variant="brand-outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button variant="brand-outline" onClick={handleCancelEdit}>Cancelar</Button>
             <Button variant="brand" loading={submitting} onClick={handleSave}>Guardar</Button>
           </>
         }
       >
         <FormErrorSummary show={Object.keys(errors).length > 0} />
+        <div className="mb-4"><DraftBanner draft={editDraft} online={editOnline} onDiscard={editClear} /></div>
         <div className="flex flex-col gap-4">
           <SelectField
             label="Unidad"

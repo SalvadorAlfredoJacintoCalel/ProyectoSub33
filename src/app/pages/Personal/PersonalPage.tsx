@@ -30,6 +30,8 @@ import { useAlert } from "@/app/components/ui/AlertContext";
 import { useAuth } from "@/context/AuthContext";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
+import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { usePermisos } from "@/hooks/usePermisos";
 import { PrintSheetHost } from "@/app/components/print/PrintSheetHost";
 import { usePrintList } from "@/app/components/print/usePrintList";
@@ -39,6 +41,15 @@ import { usePrintDetail } from "@/app/components/print/usePrintDetail";
 // ── Constants ──────────────────────────────────────────────────────────────────
 const BRAND = "var(--brand-600)";
 const PAGE_SIZE = 8;
+
+function stripPersonalSensitive(form: FormState): FormState {
+  return { ...form, contrasena: "", confirmarContrasena: "" };
+}
+
+function personalFormSignature(form: FormState): string {
+  const { contrasena: _contrasena, confirmarContrasena: _confirmar, ...rest } = form;
+  return JSON.stringify(rest);
+}
 
 function slugify(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "");
@@ -97,16 +108,33 @@ export function PersonalPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>("personal.create");
+  const { user } = useAuth();
+  const [baselineForm, setBaselineForm] = useState<FormState | null>(null);
+
+  const draftKey = editingId ? `personal.edit.${editingId}` : "personal.create";
+  const draftDirty = useMemo(() => {
+    if (!editModalOpen) return false;
+    const reference = editingId ? baselineForm : emptyFormState();
+    if (!reference) return false;
+    return personalFormSignature(form) !== personalFormSignature(reference);
+  }, [form, editModalOpen, editingId, baselineForm]);
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<FormState>(draftKey, {
+    module: "personal",
+    label: editingId ? "Editar personal" : "Nuevo personal",
+    entityId: editingId,
+    username: user?.username ?? null,
+    dirty: draftDirty,
+  });
 
   useEffect(() => {
-    if (!editModalOpen || editingId !== null) return;
-    if (JSON.stringify(form) === JSON.stringify(emptyFormState())) {
+    if (!editModalOpen) return;
+    if (!draftDirty) {
       clear();
       return;
     }
-    save(form);
-  }, [form, editModalOpen, editingId, save, clear]);
+    save(stripPersonalSensitive(form));
+  }, [form, editModalOpen, draftDirty, save, clear]);
 
   const [credOpen, setCredOpen] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -120,7 +148,6 @@ export function PersonalPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast, alert } = useAlert();
 
-  const { user } = useAuth();
   const impresoPor = (user?.name || user?.username || "Usuario").trim();
 
   const printList = usePrintList<Miembro>({
@@ -307,14 +334,17 @@ export function PersonalPage() {
     }
   }, []);
 
+  function applyEditDraft(personalId: string, base: FormState) {
+    setBaselineForm(base);
+    const saved = readDraftValue<FormState>(`personal.edit.${personalId}`);
+    setForm(saved ? stripPersonalSensitive({ ...base, ...saved }) : base);
+  }
+
   function openAddModal() {
     setEditingId(null);
-    if (draft) {
-      setForm(draft);
-      toast.info("Se recuperó el borrador del miembro.");
-    } else {
-      setForm(emptyFormState());
-    }
+    setBaselineForm(null);
+    const saved = readDraftValue<FormState>("personal.create");
+    setForm(saved ? stripPersonalSensitive(saved) : emptyFormState());
     setErrors({});
     setCredOpen(false);
     setShowPw(false);
@@ -328,18 +358,41 @@ export function PersonalPage() {
     setShowPw(false);
     setCredOpen(false);
     setEditingHasAccess(false);
+    let base: FormState;
     try {
       const full = await getPersonalById(m.personalId);
-      setForm(personalResponseToForm(full));
+      base = personalResponseToForm(full);
       const hasAccess = Boolean(full.usuario);
       setEditingHasAccess(hasAccess);
       setCredOpen(hasAccess);
     } catch (error) {
       console.error("Error cargando detalle para edición:", error);
-      setForm(miembroToForm(m));
+      base = miembroToForm(m);
       const hasAccess = Boolean(m.username || m.usuario);
       setEditingHasAccess(hasAccess);
       setCredOpen(hasAccess);
+    }
+    applyEditDraft(m.personalId, base);
+    await fetchCatalogos();
+    setEditModalOpen(true);
+  }
+
+  async function openEditById(id: string) {
+    setEditingId(id);
+    setErrors({});
+    setShowPw(false);
+    setCredOpen(false);
+    setEditingHasAccess(false);
+    try {
+      const full = await getPersonalById(id);
+      const base = personalResponseToForm(full);
+      setEditingHasAccess(Boolean(full.usuario));
+      setCredOpen(Boolean(full.usuario));
+      applyEditDraft(id, base);
+    } catch (error) {
+      console.error("Error cargando borrador de edición:", error);
+      toast.error("No se pudo cargar el registro del borrador.");
+      return;
     }
     await fetchCatalogos();
     setEditModalOpen(true);
@@ -348,9 +401,37 @@ export function PersonalPage() {
   function closeModal() {
     setEditModalOpen(false);
     setEditingId(null);
+    setBaselineForm(null);
     setForm(emptyFormState());
     setErrors({});
   }
+
+  function handleCancel() {
+    clear();
+    closeModal();
+  }
+
+  const openDraftRef = useRef<(key: string) => void>(() => {});
+  openDraftRef.current = (key) => {
+    if (key === "personal.create") {
+      openAddModal();
+      return;
+    }
+    if (key.startsWith("personal.edit.")) {
+      const id = key.slice("personal.edit.".length);
+      const member = members.find((m) => m.personalId === id);
+      if (member) void openEditModal(member);
+      else void openEditById(id);
+    }
+  };
+
+  useEffect(() => {
+    const pending = consumeDraftOpenRequest("personal");
+    if (pending) openDraftRef.current(pending);
+    return subscribeOpenDraft((module, key) => {
+      if (module === "personal") openDraftRef.current(key);
+    });
+  }, []);
 
   function closeDetail() {
     setDetailOpen(false);
@@ -492,8 +573,8 @@ export function PersonalPage() {
       } else {
         await registrarPersonal(payload as CrearPersonalDto);
         toast.success("Miembro registrado correctamente.");
-        clear();
       }
+      clear();
       setForm(emptyFormState());
       closeModal();
       await Promise.all([fetchPersonal(), fetchEstadisticas()]);
@@ -847,6 +928,7 @@ export function PersonalPage() {
       <PersonalForm
         open={editModalOpen}
         onClose={closeModal}
+        onCancel={handleCancel}
         editingId={editingId}
         form={form}
         setForm={setForm}

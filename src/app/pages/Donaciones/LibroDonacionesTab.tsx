@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Check, Download, Pencil, Plus, Printer, Trash2, X } from "lucide-react";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
@@ -9,6 +9,8 @@ import { Skeleton } from "@/app/components/ui/skeleton";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
+import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
 import { useDonacionLibro } from "@/hooks/useDonacionLibro";
@@ -57,6 +59,36 @@ export function LibroDonacionesTab() {
   }, []);
 
   const movimientos = libro?.movimientos ?? [];
+
+  const handleOpenDraft = useCallback(
+    (key: string) => {
+      if (key === "libro-donaciones.create") {
+        setEditTarget(null);
+        setModalOpen(true);
+        return;
+      }
+      if (key.startsWith("libro-donaciones.edit.")) {
+        const id = Number(key.slice("libro-donaciones.edit.".length));
+        const existing = movimientos.find((m) => m.movimientoId === id);
+        if (existing) {
+          setEditTarget(existing);
+          setModalOpen(true);
+        } else {
+          toast.info("Abre el mes correspondiente para retomar este borrador.");
+        }
+      }
+    },
+    [movimientos, toast]
+  );
+
+  useEffect(() => {
+    const pendingKey = consumeDraftOpenRequest("libro-donaciones");
+    if (pendingKey) handleOpenDraft(pendingKey);
+    return subscribeOpenDraft((module, key) => {
+      if (module === "libro-donaciones") handleOpenDraft(key);
+    });
+  }, [handleOpenDraft]);
+
   const resumen = useMemo(
     () => ({
       saldoInicial: libro?.saldoInicial ?? 0,
@@ -456,58 +488,75 @@ function MovimientoModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const { toast } = useAlert();
-  const { draft, savedAt, online, save, clear } = useFormDraft<MovimientoDraft>("libro-donaciones.create");
-  const draftRef = useRef<MovimientoDraft | null>(draft);
-
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
+  const { user } = useAuth();
+  const draftKey = movimiento
+    ? `libro-donaciones.edit.${movimiento.movimientoId}`
+    : "libro-donaciones.create";
+  const baseline = useMemo<MovimientoDraft>(
+    () =>
+      movimiento
+        ? {
+            fecha: movimiento.fecha.slice(0, 10),
+            descripcion: movimiento.descripcion,
+            firmado: movimiento.firmado,
+            tipoDocumentoId: movimiento.tipoDocumentoId ? String(movimiento.tipoDocumentoId) : "",
+            noDocumento: movimiento.noDocumento ?? "",
+            entrada: String(movimiento.entrada ?? 0),
+            salida: String(movimiento.salida ?? 0),
+          }
+        : {
+            fecha: fechaHoy(anio, mes),
+            descripcion: "",
+            firmado: false,
+            tipoDocumentoId: "",
+            noDocumento: "",
+            entrada: "0",
+            salida: "0",
+          },
+    [movimiento, anio, mes]
+  );
 
   const movimientoDraft = useMemo<MovimientoDraft>(
     () => ({ fecha, descripcion, firmado, tipoDocumentoId, noDocumento, entrada, salida }),
     [fecha, descripcion, firmado, tipoDocumentoId, noDocumento, entrada, salida]
   );
 
+  const dirty = useMemo(
+    () => JSON.stringify(movimientoDraft) !== JSON.stringify(baseline),
+    [movimientoDraft, baseline]
+  );
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<MovimientoDraft>(draftKey, {
+    module: "libro-donaciones",
+    label: movimiento ? "Editar movimiento" : "Nuevo movimiento",
+    entityId: movimiento ? String(movimiento.movimientoId) : null,
+    username: user?.username ?? null,
+    dirty,
+  });
+
   useEffect(() => {
-    if (!open || movimiento) return;
-    if (!movimientoDraft.descripcion && !movimientoDraft.tipoDocumentoId && !movimientoDraft.noDocumento) {
+    if (!open) return;
+    const saved = readDraftValue<MovimientoDraft>(draftKey);
+    const d = saved ?? baseline;
+    setFecha(d.fecha);
+    setDescripcion(d.descripcion);
+    setFirmado(d.firmado);
+    setTipoDocumentoId(d.tipoDocumentoId);
+    setNoDocumento(d.noDocumento);
+    setEntrada(d.entrada);
+    setSalida(d.salida);
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draftKey]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!dirty) {
       clear();
       return;
     }
     save(movimientoDraft);
-  }, [movimientoDraft, open, movimiento, save, clear]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (movimiento) {
-      setFecha(movimiento.fecha.slice(0, 10));
-      setDescripcion(movimiento.descripcion);
-      setFirmado(movimiento.firmado);
-      setTipoDocumentoId(movimiento.tipoDocumentoId ? String(movimiento.tipoDocumentoId) : "");
-      setNoDocumento(movimiento.noDocumento ?? "");
-      setEntrada(String(movimiento.entrada ?? 0));
-      setSalida(String(movimiento.salida ?? 0));
-    } else if (draftRef.current) {
-      const d = draftRef.current;
-      setFecha(d.fecha);
-      setDescripcion(d.descripcion);
-      setFirmado(d.firmado);
-      setTipoDocumentoId(d.tipoDocumentoId);
-      setNoDocumento(d.noDocumento);
-      setEntrada(d.entrada);
-      setSalida(d.salida);
-      toast.info("Se recuperó el borrador del movimiento.");
-    } else {
-      setFecha(fechaHoy(anio, mes));
-      setDescripcion("");
-      setFirmado(false);
-      setTipoDocumentoId("");
-      setNoDocumento("");
-      setEntrada("0");
-      setSalida("0");
-    }
-    setError(null);
-  }, [open, movimiento, anio, mes, toast]);
+  }, [movimientoDraft, dirty, open, save, clear]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -530,12 +579,17 @@ function MovimientoModal({
         },
         movimiento?.movimientoId,
       );
-      if (!movimiento) clear();
+      clear();
     } catch {
       setError("No se pudo guardar el movimiento.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleCancel() {
+    clear();
+    onClose();
   }
 
   return (
@@ -547,7 +601,7 @@ function MovimientoModal({
       description={`${MESES[mes - 1]} ${anio}`}
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="outline" type="button" onClick={onClose}>
+          <Button variant="outline" type="button" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button type="submit" form="movimiento-form" loading={saving}>
@@ -557,7 +611,7 @@ function MovimientoModal({
       }
     >
       <form id="movimiento-form" onSubmit={submit} className="flex flex-col gap-3">
-        {!movimiento && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
+        <DraftBanner draft={draft} online={online} onDiscard={clear} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Fecha" required>
             <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />

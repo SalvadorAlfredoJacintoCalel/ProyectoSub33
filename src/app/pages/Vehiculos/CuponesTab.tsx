@@ -12,6 +12,8 @@ import { Skeleton } from "@/app/components/ui/skeleton";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
+import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { useCupones } from "@/hooks/useCupones";
 import { usePermisos } from "@/hooks/usePermisos";
@@ -115,6 +117,35 @@ export function CuponesTab() {
 
   const filas = useMemo(() => {
     const todos = periodo?.cupones ?? [];
+
+  const openDraftRef = useRef<(key: string) => void>(() => {});
+  openDraftRef.current = (key) => {
+    if (key === "periodo.create") {
+      setShowPeriodo(true);
+      return;
+    }
+    if (key === "cupon.create") {
+      setCuponEdit(null);
+      setShowCupon(true);
+      return;
+    }
+    if (key.startsWith("cupon.edit.")) {
+      const id = Number(key.slice("cupon.edit.".length));
+      const c = todos.find((x) => x.registroId === id);
+      if (c) {
+        setCuponEdit(c);
+        setShowCupon(true);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const pendingKey = consumeDraftOpenRequest("vehiculos-cupones");
+    if (pendingKey) openDraftRef.current(pendingKey);
+    return subscribeOpenDraft((module, key) => {
+      if (module === "vehiculos-cupones") openDraftRef.current(key);
+    });
+  }, []);
     if (mostrarEliminados) return todos;
     return todos.filter((c) => c.activo !== false);
   }, [periodo, mostrarEliminados]);
@@ -698,13 +729,17 @@ function PeriodoModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { draft, savedAt, online, save, clear } = useFormDraft<PeriodoDraft>("periodo.create");
-  const draftRef = useRef<PeriodoDraft | null>(draft);
-  const dirtyRef = useRef(false);
-
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
+  const periodoBaselineRef = useRef<PeriodoDraft>({
+    del: "",
+    al: "",
+    valor: "100",
+    comisionRealizada: "",
+    notas: "",
+    elaboradoPor: "",
+    jefeAbastecimientos: "",
+    jefe33Cia: "",
+    director: "",
+  });
 
   const totalCalculado = useMemo(() => {
     const d = Number(del);
@@ -717,50 +752,69 @@ function PeriodoModal({
     [del, al, valor, comisionRealizada, notas, elaboradoPor, jefeAbastecimientos, jefe33Cia, director]
   );
 
-  useEffect(() => {
-    if (!open) return;
-    if (dirtyRef.current) {
-      save(periodoDraft);
-    }
-  }, [periodoDraft, open, save]);
+  const periodoDirty = useMemo(
+    () => JSON.stringify(periodoDraft) !== JSON.stringify(periodoBaselineRef.current),
+    [periodoDraft]
+  );
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<PeriodoDraft>("periodo.create", {
+    module: "vehiculos",
+    label: "Configurar período de cupones",
+    entityId: null,
+    username: user?.username ?? null,
+    dirty: periodoDirty,
+  });
 
   useEffect(() => {
     if (!open) return;
-    dirtyRef.current = false;
-    const d = draftRef.current;
-    if (!periodo?.cuponInicialDel && !periodo?.cuponInicialAl && d) {
-      setDel(d.del);
-      setAl(d.al);
-      setValor(d.valor);
-      setComisionRealizada(d.comisionRealizada);
-      setNotas(d.notas);
-      setElaboradoPor(d.elaboradoPor);
-      setJefeAbastecimientos(d.jefeAbastecimientos);
-      setJefe33Cia(d.jefe33Cia);
-      setDirector(d.director);
-    } else {
-      setDel(periodo?.cuponInicialDel ? String(periodo.cuponInicialDel) : "");
-      setAl(periodo?.cuponInicialAl ? String(periodo.cuponInicialAl) : "");
-      setValor(String(periodo?.valorCuponDefault ?? 100));
-      setComisionRealizada(periodo?.comisionRealizada != null ? String(periodo.comisionRealizada) : "");
-      setNotas(periodo?.notas ?? "");
-      setElaboradoPor(periodo?.elaboradoPor ?? "");
-      if (!periodo?.elaboradoPor && user?.name) setElaboradoPor(user.name);
-      setJefeAbastecimientos(periodo?.jefeAbastecimientos ?? "");
-      setJefe33Cia(periodo?.jefe33Cia ?? "");
-      setDirector(periodo?.director ?? "");
+    if (!periodoDirty) {
+      clear();
+      return;
     }
+    save(periodoDraft);
+  }, [periodoDraft, periodoDirty, open, save, clear]);
+
+  useEffect(() => {
+    if (!open) return;
+    const base: PeriodoDraft = {
+      del: periodo?.cuponInicialDel ? String(periodo.cuponInicialDel) : "",
+      al: periodo?.cuponInicialAl ? String(periodo.cuponInicialAl) : "",
+      valor: String(periodo?.valorCuponDefault ?? 100),
+      comisionRealizada: periodo?.comisionRealizada != null ? String(periodo.comisionRealizada) : "",
+      notas: periodo?.notas ?? "",
+      elaboradoPor: periodo?.elaboradoPor ?? (user?.name ?? ""),
+      jefeAbastecimientos: periodo?.jefeAbastecimientos ?? "",
+      jefe33Cia: periodo?.jefe33Cia ?? "",
+      director: periodo?.director ?? "",
+    };
+    periodoBaselineRef.current = base;
+    const saved = readDraftValue<PeriodoDraft>("periodo.create");
+    const d = saved ?? base;
+    setDel(d.del);
+    setAl(d.al);
+    setValor(d.valor);
+    setComisionRealizada(d.comisionRealizada);
+    setNotas(d.notas);
+    setElaboradoPor(d.elaboradoPor);
+    setJefeAbastecimientos(d.jefeAbastecimientos);
+    setJefe33Cia(d.jefe33Cia);
+    setDirector(d.director);
     setErrors({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, periodo]);
 
   function handleChange(setter: (v: string) => void, key: string, value: string) {
-    dirtyRef.current = true;
     setter(value);
     setErrors((prev) => {
       const next = { ...prev };
       delete next[key];
       return next;
     });
+  }
+
+  function handleCancel() {
+    clear();
+    onClose();
   }
 
   async function submit(e: React.FormEvent) {
@@ -814,7 +868,7 @@ function PeriodoModal({
       description={`${MESES[mes - 1]} ${anio}`}
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="outline" type="button" onClick={onClose}>
+          <Button variant="outline" type="button" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button type="submit" form="periodo-form" loading={saving}>
@@ -824,7 +878,7 @@ function PeriodoModal({
       }
     >
       <form id="periodo-form" onSubmit={submit} className="flex flex-col gap-3">
-        {!periodo && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
+        <DraftBanner draft={draft} online={online} onDiscard={clear} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Campo label="Cupon inicial: DE">
             <NumberInput value={del} onChange={(v) => handleChange(setDel, "del", v)} placeholder="37086149" error={errors.del} />
@@ -940,14 +994,18 @@ function CuponModal({
   const { toast } = useAlert();
   const { user } = useAuth();
   const { isAdmin } = usePermisos();
-  const { draft, online, save, clear } = useFormDraft<CuponDraft>("cupon.create");
-  const draftRef = useRef<CuponDraft | null>(draft);
-  const dirtyRef = useRef(false);
-
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
-
+  const cuponBaselineRef = useRef<CuponDraft>({
+    vehiculoId: "",
+    responsable: "",
+    fecha: "",
+    kilometraje: "",
+    galonaje: "",
+    gasolineraId: "",
+    del: "",
+    al: "",
+    valor: "100",
+    observaciones: "",
+  });
   const cuponDraft = useMemo<CuponDraft>(
     () => ({
       vehiculoId,
@@ -964,61 +1022,81 @@ function CuponModal({
     [vehiculoId, responsable, fecha, kilometraje, galonaje, gasolineraId, del, al, valor, observaciones]
   );
 
-  useEffect(() => {
-    if (!open || cupon) return;
-    if (dirtyRef.current) {
-      save(cuponDraft);
-    }
-  }, [cuponDraft, open, cupon, save]);
+  const cuponDirty = useMemo(
+    () => JSON.stringify(cuponDraft) !== JSON.stringify(cuponBaselineRef.current),
+    [cuponDraft]
+  );
+
+  const cuponKey = cupon ? `cupon.edit.${cupon.registroId}` : "cupon.create";
+  const { draft, online, save, clear } = useFormDraft<CuponDraft>(cuponKey, {
+    module: "vehiculos",
+    label: cupon ? "Editar cupón" : "Nuevo cupón",
+    entityId: cupon ? String(cupon.registroId) : null,
+    username: user?.username ?? null,
+    dirty: cuponDirty,
+  });
 
   useEffect(() => {
     if (!open) return;
-    dirtyRef.current = false;
+    if (!cuponDirty) {
+      clear();
+      return;
+    }
+    save(cuponDraft);
+  }, [cuponDraft, cuponDirty, open, save, clear]);
+
+  useEffect(() => {
+    if (!open) return;
+    let base: CuponDraft;
     if (cupon) {
-      setVehiculoId(cupon.vehiculoId ? String(cupon.vehiculoId) : "");
-      setResponsable(cupon.responsable);
-      setFecha(cupon.fecha.slice(0, 10));
-      setKilometraje(cupon.kilometraje != null ? String(cupon.kilometraje) : "");
-      setGalonaje(cupon.galonaje != null ? String(cupon.galonaje) : "");
-      setGasolineraId(cupon.gasolineraId ? String(cupon.gasolineraId) : "");
-      setDel(String(cupon.cuponDel));
-      setAl(String(cupon.cuponAl));
-      setValor(String(cupon.valorCupon));
-      setObservaciones(cupon.observaciones ?? "");
-    } else if (draftRef.current) {
-      const d = draftRef.current;
-      setVehiculoId(d.vehiculoId);
-      setResponsable(d.responsable);
-      setFecha(d.fecha);
-      setKilometraje(d.kilometraje);
-      setGalonaje(d.galonaje);
-      setGasolineraId(d.gasolineraId);
-      setDel(d.del);
-      setAl(d.al);
-      setValor(d.valor);
-      setObservaciones(d.observaciones);
-      toast.info("Se recuperó el borrador del cupón.");
+      base = {
+        vehiculoId: cupon.vehiculoId ? String(cupon.vehiculoId) : "",
+        responsable: cupon.responsable,
+        fecha: cupon.fecha.slice(0, 10),
+        kilometraje: cupon.kilometraje != null ? String(cupon.kilometraje) : "",
+        galonaje: cupon.galonaje != null ? String(cupon.galonaje) : "",
+        gasolineraId: cupon.gasolineraId ? String(cupon.gasolineraId) : "",
+        del: String(cupon.cuponDel),
+        al: String(cupon.cuponAl),
+        valor: String(cupon.valorCupon),
+        observaciones: cupon.observaciones ?? "",
+      };
     } else {
-      setVehiculoId("");
-      setResponsable(user?.name ?? "");
-      setFecha(fechaDelPeriodo(anio, mes));
-      setKilometraje("");
-      setGalonaje("");
-      setGasolineraId("");
       const usados = periodo?.cupones ?? [];
       const siguienteCupon = usados.length === 0
         ? (periodo?.cuponInicialDel ?? "")
         : Math.max(...usados.map((c) => c.cuponAl)) + 1;
-      setDel(siguienteCupon ? String(siguienteCupon) : "");
-      setAl("");
-      setValor(String(periodo?.valorCuponDefault ?? 100));
-      setObservaciones("");
+      base = {
+        vehiculoId: "",
+        responsable: user?.name ?? "",
+        fecha: fechaDelPeriodo(anio, mes),
+        kilometraje: "",
+        galonaje: "",
+        gasolineraId: "",
+        del: siguienteCupon ? String(siguienteCupon) : "",
+        al: "",
+        valor: String(periodo?.valorCuponDefault ?? 100),
+        observaciones: "",
+      };
     }
+    cuponBaselineRef.current = base;
+    const saved = readDraftValue<CuponDraft>(cupon ? `cupon.edit.${cupon.registroId}` : "cupon.create");
+    const d = saved ?? base;
+    setVehiculoId(d.vehiculoId);
+    setResponsable(d.responsable);
+    setFecha(d.fecha);
+    setKilometraje(d.kilometraje);
+    setGalonaje(d.galonaje);
+    setGasolineraId(d.gasolineraId);
+    setDel(d.del);
+    setAl(d.al);
+    setValor(d.valor);
+    setObservaciones(d.observaciones);
     setErrors({});
-  }, [open, cupon, anio, mes, periodo, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cupon, anio, mes, periodo]);
 
   function handleChange(setter: (v: string) => void, key: string, value: string) {
-    dirtyRef.current = true;
     setter(value);
     setErrors((prev) => {
       const next = { ...prev };
@@ -1035,6 +1113,11 @@ function CuponModal({
   }, [del, al]);
 
   const haber = totalCupones * (Number(valor) || 0);
+
+  function handleCancel() {
+    clear();
+    onClose();
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -1073,7 +1156,7 @@ function CuponModal({
         },
         cupon?.registroId,
       );
-      if (!cupon) clear();
+      clear();
       toast.success("Cupón guardado");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo guardar el cupón");
@@ -1091,7 +1174,7 @@ function CuponModal({
       description={`${MESES[mes - 1]} ${anio}`}
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="outline" type="button" onClick={onClose}>
+          <Button variant="outline" type="button" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button type="submit" form="cupon-form" loading={saving}>
@@ -1101,7 +1184,7 @@ function CuponModal({
       }
     >
       <form id="cupon-form" onSubmit={submit} className="flex flex-col gap-3">
-        {!cupon && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
+        <DraftBanner draft={draft} online={online} onDiscard={clear} />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Campo label="Vehículo" required>
             <SelectField

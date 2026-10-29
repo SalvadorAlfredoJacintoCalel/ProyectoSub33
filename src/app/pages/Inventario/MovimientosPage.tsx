@@ -1,8 +1,10 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useMemo, useCallback } from "react";
 import { ArrowLeftRight, Download, X, SlidersHorizontal, AlertTriangle } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
+import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Modal } from "@/app/components/ui/modal";
@@ -61,16 +63,47 @@ export function MovimientosPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const { draft, savedAt, online, save, clear } = useFormDraft<{ itemId: string; cantidad: string; motivo: string }>("inventario.ajuste");
+  const ajusteDirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify({ itemId: "", cantidad: "", motivo: "" }),
+    [form]
+  );
+  const { draft, savedAt, online, save, clear } = useFormDraft<{ itemId: string; cantidad: string; motivo: string }>(
+    "inventario.ajuste",
+    {
+      module: "inventario",
+      label: "Ajuste de inventario",
+      entityId: null,
+      username: user?.username ?? null,
+      dirty: ajusteDirty,
+    }
+  );
 
   useEffect(() => {
     if (!modalOpen) return;
-    if (!form.itemId && !form.cantidad && !form.motivo) {
+    if (!ajusteDirty) {
       clear();
       return;
     }
     save(form);
-  }, [form, modalOpen, save, clear]);
+  }, [form, ajusteDirty, modalOpen, save, clear]);
+
+  const openAjusteFromDraft = useCallback(() => {
+    if (!permisosInventario.ajustes) {
+      toast.warning("No tienes permiso para registrar ajustes de inventario.");
+      return;
+    }
+    setForm(readDraftValue<{ itemId: string; cantidad: string; motivo: string }>("inventario.ajuste") ?? { itemId: "", cantidad: "", motivo: "" });
+    setErrors({});
+    setModalOpen(true);
+  }, [permisosInventario.ajustes, toast]);
+
+  useEffect(() => {
+    const pendingKey = consumeDraftOpenRequest("inventario-movimientos");
+    if (pendingKey === "inventario.ajuste") openAjusteFromDraft();
+    return subscribeOpenDraft((module, key) => {
+      if (module === "inventario-movimientos" && key === "inventario.ajuste") openAjusteFromDraft();
+    });
+  }, [openAjusteFromDraft]);
 
   const tipoAjuste = tiposMovimientoManual.find((t) => (t.codigo || "").toUpperCase() === "AJUSTE") ?? null;
   const itemSeleccionado = items.find((i) => String(i.itemId) === form.itemId) ?? null;
@@ -145,14 +178,14 @@ export function MovimientosPage() {
       toast.warning("No tienes permiso para registrar ajustes de inventario.");
       return;
     }
-    if (draft) {
-      setForm(draft);
-      toast.info("Se recuperó el borrador del ajuste.");
-    } else {
-      setForm({ itemId: "", cantidad: "", motivo: "" });
-    }
+    setForm(readDraftValue<{ itemId: string; cantidad: string; motivo: string }>("inventario.ajuste") ?? { itemId: "", cantidad: "", motivo: "" });
     setErrors({});
     setModalOpen(true);
+  }
+
+  function handleCancel() {
+    clear();
+    setModalOpen(false);
   }
 
   async function handleSave() {
@@ -280,7 +313,7 @@ export function MovimientosPage() {
         className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
         footer={
           <>
-            <Button variant="brand-outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button variant="brand-outline" onClick={handleCancel}>Cancelar</Button>
             <Button variant="brand" loading={submitting} onClick={handleSave}>Registrar Ajuste</Button>
           </>
         }

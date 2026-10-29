@@ -11,6 +11,7 @@ import { DraftBanner } from "@/app/components/ui/DraftBanner";
 interface FormProps {
   open: boolean;
   onClose: () => void;
+  onCancel: () => void;
   editingId: string | null;
   form: FormState;
   setForm: Dispatch<SetStateAction<FormState>>;
@@ -174,6 +175,7 @@ function PasswordInput({
 export function PersonalForm({
   open,
   onClose,
+  onCancel,
   editingId,
   form,
   setForm,
@@ -243,7 +245,7 @@ export function PersonalForm({
       className="before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[var(--grad-primary)]"
       footer={
         <>
-          <Button variant="brand-outline" onClick={onClose}>
+          <Button variant="brand-outline" onClick={onCancel}>
             Cancelar
           </Button>
           <Button variant="brand" loading={saving} onClick={onSubmit}>
@@ -253,11 +255,9 @@ export function PersonalForm({
       }
     >
       {/* Error summary */}
-      {!editingId && (
-        <div className="mb-4">
-          <DraftBanner draft={draft} online={draftOnline} onDiscard={onDraftDiscard} />
-        </div>
-      )}
+      <div className="mb-4">
+        <DraftBanner draft={draft} online={draftOnline} onDiscard={onDraftDiscard} />
+      </div>
       {Object.keys(errors).length > 0 && (
         <div
           className="mb-5 flex items-start gap-3 rounded-xl border p-3 text-sm"

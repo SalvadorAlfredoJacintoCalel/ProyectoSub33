@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   X, ArrowLeft, Lock, Phone, User, MapPin, ChevronDown, Truck, Heart, Loader2, Package,
 } from "lucide-react";
@@ -6,6 +6,7 @@ import { useAlert } from "@/app/components/ui/AlertSystem";
 import { Button } from "@/app/components/ui/button";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
 import { useFormDraft } from "@/hooks/useFormDraft";
+import { readDraftValue } from "@/services/drafts/draftRegistry";
 import { useEmergencias } from "@/hooks/useEmergencias";
 import { useAuth } from "@/context/AuthContext";
 import { usePermisos } from "@/hooks/usePermisos";
@@ -174,7 +175,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     ? permisosEmergencias.editarPropia(formuladoPorIdOriginal)
     : permisosEmergencias.crear;
 
-  const { draft, savedAt, online, save, clear } = useFormDraft<EmergenciaDraft>("emergencia.create");
+  const [baselineDraft, setBaselineDraft] = useState<EmergenciaDraft | null>(null);
 
   const draftValue = useMemo<EmergenciaDraft>(
     () => ({
@@ -233,59 +234,64 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     ]
   );
 
+  const draftKey = isEdit && serviceId ? `emergencia.edit.${serviceId}` : "emergencia.create";
+  const draftDirty = useMemo(
+    () => Boolean(baselineDraft) && JSON.stringify(draftValue) !== JSON.stringify(baselineDraft),
+    [draftValue, baselineDraft]
+  );
+
+  const { draft, savedAt, online, save, clear } = useFormDraft<EmergenciaDraft>(draftKey, {
+    module: "emergencias",
+    label: isEdit ? "Editar emergencia" : "Nueva emergencia",
+    entityId: isEdit && serviceId ? String(serviceId) : null,
+    username: user?.username ?? null,
+    dirty: draftDirty,
+  });
+
+  const applyDraftToState = useCallback((d: EmergenciaDraft) => {
+    setTipoSolicitud(d.tipoSolicitud);
+    setTiempoSalida(d.tiempoSalida);
+    setTiempoLlegada(d.tiempoLlegada);
+    setTipoEmergenciaId(d.tipoEmergenciaId);
+    setTiposAsistencia(d.tiposAsistencia);
+    setUbicacion(d.ubicacion);
+    setHospitalDestinoId(d.hospitalDestinoId);
+    setNombrePaciente(d.nombrePaciente);
+    setEdad(d.edad);
+    setGenero(d.genero);
+    setSolicitante(d.solicitante);
+    setAcompanante(d.acompanante);
+    setFallecido(d.fallecido);
+    setDomicilio(d.domicilio);
+    setPresionArterial(d.presionArterial);
+    setFrecuenciaCardiaca(d.frecuenciaCardiaca);
+    setFrecuenciaRespiratoria(d.frecuenciaRespiratoria);
+    setSaturacion(d.saturacion);
+    setHoraToma(d.horaToma);
+    setEstadoEntrega(d.estadoEntrega);
+    setVehiculoId(d.vehiculoId);
+    setPersonalSeleccionado(d.personalSeleccionado);
+    setResumen(d.resumen);
+    setFecha(d.fecha);
+    setInsumos(d.insumos);
+  }, []);
+
   useEffect(() => {
-    if (isEdit || !draft) return;
-    setTipoSolicitud(draft.tipoSolicitud);
-    setTiempoSalida(draft.tiempoSalida);
-    setTiempoLlegada(draft.tiempoLlegada);
-    setTipoEmergenciaId(draft.tipoEmergenciaId);
-    setTiposAsistencia(draft.tiposAsistencia);
-    setUbicacion(draft.ubicacion);
-    setHospitalDestinoId(draft.hospitalDestinoId);
-    setNombrePaciente(draft.nombrePaciente);
-    setEdad(draft.edad);
-    setGenero(draft.genero);
-    setSolicitante(draft.solicitante);
-    setAcompanante(draft.acompanante);
-    setFallecido(draft.fallecido);
-    setDomicilio(draft.domicilio);
-    setPresionArterial(draft.presionArterial);
-    setFrecuenciaCardiaca(draft.frecuenciaCardiaca);
-    setFrecuenciaRespiratoria(draft.frecuenciaRespiratoria);
-    setSaturacion(draft.saturacion);
-    setHoraToma(draft.horaToma);
-    setEstadoEntrega(draft.estadoEntrega);
-    setVehiculoId(draft.vehiculoId);
-    setPersonalSeleccionado(draft.personalSeleccionado);
-    setResumen(draft.resumen);
-    setFecha(draft.fecha);
-    setInsumos(draft.insumos);
-    toast.info("Se recuperó el borrador del formulario.");
+    if (isEdit) return;
+    setBaselineDraft({ ...draftValue });
+    const saved = readDraftValue<EmergenciaDraft>("emergencia.create");
+    if (saved) applyDraftToState(saved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const draftReady = useRef(false);
   useEffect(() => {
-    if (isEdit) return;
-    if (!draftReady.current) {
-      draftReady.current = true;
-      return;
-    }
-    const vacio =
-      !draftValue.tipoEmergenciaId &&
-      draftValue.tiposAsistencia.length === 0 &&
-      !draftValue.ubicacion.trim() &&
-      !draftValue.nombrePaciente.trim() &&
-      !draftValue.hospitalDestinoId &&
-      !draftValue.vehiculoId &&
-      draftValue.personalSeleccionado.length === 0 &&
-      !draftValue.resumen.trim();
-    if (vacio) {
+    if (!baselineDraft) return;
+    if (!draftDirty) {
       clear();
       return;
     }
     save(draftValue);
-  }, [draftValue, isEdit, save, clear]);
+  }, [draftValue, draftDirty, baselineDraft, save, clear]);
 
   useEffect(() => {
     let mounted = true;
@@ -297,57 +303,64 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
         const em = await obtenerEmergencia(serviceId);
         if (mounted && em) {
           setNumeroIncidente(em.numeroIncidente);
-          setTipoSolicitud(em.solicitudTipo === "Personal" ? "Personal" : "Telefónica");
-          setTiempoSalida(em.horaSalida ?? "");
-          setTiempoLlegada(em.horaEntrada ?? "");
-          setTipoEmergenciaId(em.tipoEmergenciaId ? String(em.tipoEmergenciaId) : "");
-          setTiposAsistencia(em.tiposAsistencia ?? []);
-          setUbicacion(em.ubicacion ?? "");
-          setHospitalDestinoId(em.hospitalDestinoId ? String(em.hospitalDestinoId) : "");
-          setNombrePaciente(em.paciente ?? "");
-          setEdad(em.edad ? String(em.edad) : "");
-          setGenero(em.genero === "No especificado" ? "" : (em.genero ?? ""));
-          setSolicitante(em.solicitante ?? "");
-          setAcompanante(em.acompanante ?? "");
-          setFallecido(em.fallecio ?? false);
-          setDomicilio(em.domicilio ?? "");
-          setEstadoEntrega(em.estadoEntrega ?? "");
-          setVehiculoId(em.vehiculoId ? String(em.vehiculoId) : "");
+          setFormuladoPorIdOriginal(em.formuladoPorId ?? null);
+          setCreadoPorNombreOriginal(em.creadoPorNombre ?? "");
+
           if (em.vehiculoId) {
             const anexo = await vehiculosService.getVehiculoById(em.vehiculoId).catch(() => null);
             if (mounted) setVehiculoAnexo(anexo);
           }
-          setResumen(em.resumen ?? "");
-          setFecha(em.fecha ? em.fecha.split("T")[0] : new Date().toISOString().split("T")[0]);
-          setFormuladoPorIdOriginal(em.formuladoPorId ?? null);
-          setCreadoPorNombreOriginal(em.creadoPorNombre ?? "");
 
-          const sv = em.signosVitales;
-          if (sv) {
-            setPresionArterial(sv.presionArterial ?? "");
-            setFrecuenciaCardiaca(sv.frecuenciaCardiaca != null ? String(sv.frecuenciaCardiaca) : "");
-            setFrecuenciaRespiratoria(sv.frecuenciaRespiratoria != null ? String(sv.frecuenciaRespiratoria) : "");
-            setSaturacion(sv.saturacionOxigeno != null ? String(sv.saturacionOxigeno) : "");
-            setHoraToma(sv.horaToma ?? getNow());
-          }
+          const ins = await inventarioService
+            .getServicioInsumos({ servicioId })
+            .catch((error) => {
+              console.error("Error cargando insumos del servicio:", error);
+              return [];
+            });
+          if (!mounted) return;
 
-          setPersonalSeleccionado(
-            (em.personalAsignado ?? []).map((p) => ({
+          const serverDraft: EmergenciaDraft = {
+            tipoSolicitud: em.solicitudTipo === "Personal" ? "Personal" : "Telefónica",
+            tiempoSalida: em.horaSalida ?? "",
+            tiempoLlegada: em.horaEntrada ?? "",
+            tipoEmergenciaId: em.tipoEmergenciaId ? String(em.tipoEmergenciaId) : "",
+            tiposAsistencia: em.tiposAsistencia ?? [],
+            ubicacion: em.ubicacion ?? "",
+            hospitalDestinoId: em.hospitalDestinoId ? String(em.hospitalDestinoId) : "",
+            nombrePaciente: em.paciente ?? "",
+            edad: em.edad ? String(em.edad) : "",
+            genero: em.genero === "No especificado" ? "" : (em.genero ?? ""),
+            solicitante: em.solicitante ?? "",
+            acompanante: em.acompanante ?? "",
+            fallecido: em.fallecio ?? false,
+            domicilio: em.domicilio ?? "",
+            presionArterial: em.signosVitales?.presionArterial ?? "",
+            frecuenciaCardiaca:
+              em.signosVitales?.frecuenciaCardiaca != null
+                ? String(em.signosVitales.frecuenciaCardiaca)
+                : "",
+            frecuenciaRespiratoria:
+              em.signosVitales?.frecuenciaRespiratoria != null
+                ? String(em.signosVitales.frecuenciaRespiratoria)
+                : "",
+            saturacion:
+              em.signosVitales?.saturacionOxigeno != null ? String(em.signosVitales.saturacionOxigeno) : "",
+            horaToma: em.signosVitales?.horaToma ?? getNow(),
+            estadoEntrega: em.estadoEntrega ?? "",
+            vehiculoId: em.vehiculoId ? String(em.vehiculoId) : "",
+            personalSeleccionado: (em.personalAsignado ?? []).map((p) => ({
               personalId: p.personalId ?? null,
               nombre: p.nombrePersonal,
               rolServicioId: p.rolServicioId ?? null,
-            }))
-          );
-        }
+            })),
+            resumen: em.resumen ?? "",
+            fecha: em.fecha ? em.fecha.split("T")[0] : new Date().toISOString().split("T")[0],
+            insumos: (ins ?? []).map((x) => ({ itemId: x.itemId, cantidad: x.cantidad })),
+          };
 
-        const ins = await inventarioService
-          .getServicioInsumos({ servicioId: serviceId })
-          .catch((error) => {
-            console.error("Error cargando insumos del servicio:", error);
-            return [];
-          });
-        if (mounted) {
-          setInsumos((ins ?? []).map((x) => ({ itemId: x.itemId, cantidad: x.cantidad })));
+          setBaselineDraft(serverDraft);
+          const saved = readDraftValue<EmergenciaDraft>(`emergencia.edit.${serviceId}`);
+          applyDraftToState(saved ?? serverDraft);
         }
       } else {
         const correlativo = await getSiguienteIncidente();
@@ -364,7 +377,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     return () => {
       mounted = false;
     };
-  }, [isEdit, serviceId, cargarCatalogos, obtenerEmergencia, getSiguienteIncidente]);
+  }, [isEdit, serviceId, cargarCatalogos, obtenerEmergencia, getSiguienteIncidente, applyDraftToState]);
 
   useEffect(() => {
     let mounted = true;
@@ -589,6 +602,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
         const actualizada = await actualizarEmergencia(serviceId, dto);
         if (actualizada) {
           toast.success(`Incidente ${actualizada.numeroIncidente} actualizado exitosamente`);
+          clear();
           onSaved?.();
           onClose();
         } else {
@@ -610,6 +624,11 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleCancel() {
+    clear();
+    onClose();
   }
 
   if (loading) {
@@ -706,7 +725,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
             gap: 20,
           }}
         >
-          {!isEdit && <DraftBanner draft={draft} online={online} onDiscard={clear} />}
+          <DraftBanner draft={draft} online={online} onDiscard={clear} />
 
           {/* 1. Código de Emergencia */}
           <section>
@@ -1499,7 +1518,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
             flexShrink: 0,
           }}
         >
-          <Button variant="brand-outline" onClick={onClose} disabled={submitting}>
+          <Button variant="brand-outline" onClick={handleCancel} disabled={submitting}>
             Cancelar
           </Button>
           <Button variant="brand" onClick={handleSubmit} disabled={submitting || !puedeEditar}>
