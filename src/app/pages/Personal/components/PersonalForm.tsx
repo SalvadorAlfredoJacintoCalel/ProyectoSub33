@@ -325,10 +325,11 @@ export function PersonalForm({
       <CollapsibleSection label="Información de Bombero" icon={Award}>
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Código de Bombero"
-            placeholder="Ej. SEC-001 (opcional)"
+            label="Código de Bombero *"
+            placeholder="Ej. VOL-001"
             value={form.codigoBombero}
             onChange={(e) => setField("codigoBombero", e.target.value)}
+            error={errors.codigoBombero}
           />
           <SelectField
             label="Rango"

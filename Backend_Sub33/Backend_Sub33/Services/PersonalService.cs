@@ -87,8 +87,6 @@ public partial class PersonalService : IPersonalService
                 .Take(tamanio)
                 .ToListAsync(ct);
 
-            var codigos = await BuildCodigoIndexAsync(ct);
-
             var ids = registros.Select(p => p.PersonalId).ToList();
             var usuariosPorPersonal = await ObtenerUsuariosPorPersonalAsync(ids, ct);
             var rolesPorPersonal = await ObtenerRolesPorPersonalAsync(ids, ct);
@@ -97,7 +95,6 @@ public partial class PersonalService : IPersonalService
                 .Select(p => new PersonalResumenDto
                 {
                     PersonalId = p.PersonalId.ToString(),
-                    Codigo = GenerarCodigo(p.PersonalId, codigos),
                     CodigoBombero = p.CodigoBombero,
                     NombreCompleto = BuildNombreCompleto(p),
                     Dpi = p.Dpi,
@@ -152,10 +149,8 @@ public partial class PersonalService : IPersonalService
                 .ThenInclude(ur => ur.Rol)
                 .FirstOrDefaultAsync(u => u.PersonalId == id, ct);
 
-            var codigos = await BuildCodigoIndexAsync(ct);
-
             return ServiceResult<PersonalResponseDto>.Success(
-                MapResponse(personal, usuario, GenerarCodigo(personal.PersonalId, codigos)));
+                MapResponse(personal, usuario));
         }
         catch (Exception ex)
         {
@@ -264,17 +259,17 @@ public partial class PersonalService : IPersonalService
                 passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.AccesoSistema.Password);
             }
 
-            string? codigoBombero = string.IsNullOrWhiteSpace(dto.CodigoBombero)
-                ? null
-                : dto.CodigoBombero.Trim().ToUpper();
-
-            if (codigoBombero is not null)
+            if (string.IsNullOrWhiteSpace(dto.CodigoBombero))
             {
-                var codigoExiste = await _context.Personal.AnyAsync(p => p.CodigoBombero == codigoBombero, ct);
-                if (codigoExiste)
-                {
-                    return ServiceResult<PersonalResponseDto>.Conflict("El código de bombero ya existe.");
-                }
+                return ServiceResult<PersonalResponseDto>.BadRequest("El código de bombero es requerido.");
+            }
+
+            var codigoBombero = dto.CodigoBombero.Trim().ToUpper();
+
+            var codigoExiste = await _context.Personal.AnyAsync(p => p.CodigoBombero == codigoBombero, ct);
+            if (codigoExiste)
+            {
+                return ServiceResult<PersonalResponseDto>.Conflict("El código de bombero ya existe.");
             }
 
             using var transaction = await _context.Database.BeginTransactionAsync(ct);
@@ -432,24 +427,22 @@ public partial class PersonalService : IPersonalService
                 personal.RangoId = dto.RangoId.Value;
             }
 
-            if (dto.CodigoBombero is not null)
+            if (string.IsNullOrWhiteSpace(dto.CodigoBombero))
             {
-                var codigo = dto.CodigoBombero.Trim().ToUpper();
-                if (codigo.Length == 0)
+                return ServiceResult<PersonalResponseDto>.BadRequest("El código de bombero es requerido.");
+            }
+
+            var codigo = dto.CodigoBombero.Trim().ToUpper();
+
+            if (codigo != personal.CodigoBombero)
+            {
+                var codigoExiste = await _context.Personal.AnyAsync(p => p.CodigoBombero == codigo && p.PersonalId != id, ct);
+                if (codigoExiste)
                 {
-                    return ServiceResult<PersonalResponseDto>.BadRequest("El código de bombero no puede estar vacío.");
+                    return ServiceResult<PersonalResponseDto>.Conflict("El código de bombero ya se encuentra registrado.");
                 }
 
-                if (codigo != personal.CodigoBombero)
-                {
-                    var codigoExiste = await _context.Personal.AnyAsync(p => p.CodigoBombero == codigo && p.PersonalId != id, ct);
-                    if (codigoExiste)
-                    {
-                        return ServiceResult<PersonalResponseDto>.Conflict("El código de bombero ya se encuentra registrado.");
-                    }
-
-                    personal.CodigoBombero = codigo;
-                }
+                personal.CodigoBombero = codigo;
             }
 
             if (dto.PrimerNombre is not null)
@@ -933,24 +926,6 @@ public partial class PersonalService : IPersonalService
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    private async Task<Dictionary<Guid, int>> BuildCodigoIndexAsync(CancellationToken ct)
-    {
-        var ids = await _context.Personal
-            .AsNoTracking()
-            .OrderBy(p => p.CreatedAt)
-            .ThenBy(p => p.PersonalId)
-            .Select(p => p.PersonalId)
-            .ToListAsync(ct);
-
-        var index = new Dictionary<Guid, int>(ids.Count);
-        for (var i = 0; i < ids.Count; i++)
-        {
-            index[ids[i]] = i + 1;
-        }
-
-        return index;
-    }
-
     private async Task<Dictionary<Guid, string>> ObtenerUsuariosPorPersonalAsync(List<Guid> ids, CancellationToken ct)
     {
         if (ids.Count == 0)
@@ -974,9 +949,6 @@ public partial class PersonalService : IPersonalService
             .ToListAsync(ct);
         return roles.ToDictionary(r => r.PersonalId!.Value, r => r.Nombre);
     }
-
-    private static string GenerarCodigo(Guid id, IReadOnlyDictionary<Guid, int> index)
-        => index.TryGetValue(id, out var secuencia) ? $"BOM-{secuencia:D4}" : "BOM-0000";
 
     private static string BuildNombreCompleto(Personal p)
     {
@@ -1020,14 +992,13 @@ public partial class PersonalService : IPersonalService
         }
     }
 
-    private static PersonalResponseDto MapResponse(Personal p, Usuario? usuario, string codigo)
+    private static PersonalResponseDto MapResponse(Personal p, Usuario? usuario)
     {
         var rolPrincipal = usuario?.UsuarioRoles.FirstOrDefault();
 
         return new PersonalResponseDto
         {
             PersonalId = p.PersonalId,
-            Codigo = codigo,
             CodigoBombero = p.CodigoBombero,
             PrimerNombre = p.PrimerNombre,
             SegundoNombre = p.SegundoNombre,

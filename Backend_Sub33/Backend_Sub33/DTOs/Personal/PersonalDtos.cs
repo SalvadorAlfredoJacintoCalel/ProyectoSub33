@@ -139,7 +139,6 @@ public class UsuarioAccesoDto
 public class PersonalResumenDto
 {
     public string PersonalId { get; init; } = string.Empty;
-    public string Codigo { get; init; } = string.Empty;
     public string? CodigoBombero { get; init; }
     public string NombreCompleto { get; init; } = string.Empty;
     public string Dpi { get; init; } = string.Empty;
@@ -165,7 +164,6 @@ public class PersonalEstadisticasDto
 public class PersonalResponseDto
 {
     public Guid PersonalId { get; init; }
-    public string Codigo { get; init; } = string.Empty;
     public string? CodigoBombero { get; init; }
     public string PrimerNombre { get; init; } = string.Empty;
     public string? SegundoNombre { get; init; }

@@ -66,7 +66,6 @@ export interface PersonalResponse {
   segundoApellido?: string;
   dpi: string;
   fechaNacimiento?: string;
-  codigo: string;
   codigoBombero?: string;
   rangoId?: number;
   rangoNombre?: string;

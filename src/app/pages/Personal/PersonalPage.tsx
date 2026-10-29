@@ -500,6 +500,7 @@ export function PersonalPage() {
     if (!form.primerApellido.trim()) errs.primerApellido = "Primer apellido requerido";
     const dpiDigits = form.dpi.replace(/\D/g, "");
     if (dpiDigits.length !== 13) errs.dpi = "DPI debe tener exactamente 13 dígitos";
+    if (!form.codigoBombero.trim()) errs.codigoBombero = "Código de bombero requerido";
     if (!form.telefono.trim()) errs.telefono = "Teléfono requerido";
     if (!form.contactoEmergencia.trim()) errs.contactoEmergencia = "Nombre del contacto requerido";
     if (!form.telEmergencia.trim()) errs.telEmergencia = "Teléfono de emergencia requerido";

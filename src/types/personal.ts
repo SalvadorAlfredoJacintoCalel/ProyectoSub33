@@ -2,7 +2,6 @@ export type Estado = "Activo" | "Inactivo";
 
 export interface Miembro {
   personalId: string;
-  codigo: string;
   codigoBombero?: string;
   nombreCompleto: string;
   dpi: string;
@@ -32,7 +31,6 @@ export interface FormState {
   segundoApellido: string;
   dpi: string;
   fechaNacimiento: string;
-  codigo: string;
   codigoBombero: string;
   rangoId: number;
   fechaIngreso: string;

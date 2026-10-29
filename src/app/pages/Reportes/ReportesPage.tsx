@@ -106,12 +106,12 @@ export function ReportesPage() {
       if (modulo === "personal") {
         const res = await getPersonal({ pagina: 1, tamanio: 1000, busqueda: busqueda || undefined, estado: estado === "" ? undefined : estado === "Activo" });
         const items = res.items as unknown as Array<{
-          codigo?: string; codigoBombero?: string | null; nombreCompleto?: string; dpi?: string;
+          codigoBombero?: string | null; nombreCompleto?: string; dpi?: string;
           rangoNombre?: string | null; telefono?: string; estado?: boolean; username?: string | null; rolNombre?: string | null; fechaIngreso?: string;
         }>;
         cols = ["Código", "Nombre completo", "DPI", "Rango", "Teléfono", "Estado", "Usuario", "Rol", "Ingreso"];
         rows = items.map((p) => [
-          p.codigo ?? "—",
+          p.codigoBombero ?? "—",
           p.nombreCompleto ?? "—",
           p.dpi ?? "—",
           p.rangoNombre ?? "—",

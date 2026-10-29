@@ -4,7 +4,7 @@ import type { PersonalResponse } from "@/services/personalService";
 export function emptyFormState(): FormState {
   return {
     primerNombre: "", segundoNombre: "", primerApellido: "", segundoApellido: "",
-    dpi: "", fechaNacimiento: "", codigo: "", codigoBombero: "", rangoId: 0, fechaIngreso: "",
+    dpi: "", fechaNacimiento: "", codigoBombero: "", rangoId: 0, fechaIngreso: "",
     telefono: "", estado: "Activo", contactoEmergencia: "", telEmergencia: "",
     usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
   };
@@ -21,7 +21,7 @@ export function miembroToForm(m: Miembro): FormState {
     primerNombre, segundoNombre, primerApellido, segundoApellido,
     dpi: m.dpi, 
     fechaNacimiento: m.fechaNacimiento ? m.fechaNacimiento.split("T")[0] : "",
-    codigo: m.codigo, codigoBombero: m.codigoBombero || "", rangoId: m.rangoId || 0,
+    codigoBombero: m.codigoBombero || "", rangoId: m.rangoId || 0,
     fechaIngreso: m.fechaIngreso, telefono: m.telefono, estado: m.estado ? "Activo" : "Inactivo",
     contactoEmergencia: m.contactoEmergenciaNombre || "", telEmergencia: m.contactoEmergenciaTelefono || "",
     usuario: "", correo: "", contrasena: "", confirmarContrasena: "", rolId: 0,
@@ -31,7 +31,6 @@ export function miembroToForm(m: Miembro): FormState {
 export function personalResponseToMiembro(p: PersonalResponse): Miembro {
   return {
     personalId: p.personalId,
-    codigo: p.codigo,
     codigoBombero: p.codigoBombero,
     nombreCompleto: p.nombreCompleto,
     dpi: p.dpi,
@@ -65,7 +64,6 @@ export function personalResponseToForm(p: PersonalResponse): FormState {
     segundoApellido: p.segundoApellido ?? "",
     dpi: p.dpi ?? "",
     fechaNacimiento: p.fechaNacimiento ? p.fechaNacimiento.split("T")[0] : "",
-    codigo: p.codigo ?? "",
     codigoBombero: p.codigoBombero ?? "",
     rangoId: p.rangoId ?? 0,
     fechaIngreso: p.fechaIngreso ? p.fechaIngreso.split("T")[0] : "",
@@ -85,7 +83,7 @@ export function formToMiembro(f: FormState): Omit<Miembro, "id"> {
   const nombre = [f.primerNombre, f.segundoNombre, f.primerApellido, f.segundoApellido]
     .map((s) => s.trim()).filter(Boolean).join(" ");
   return {
-    codigo: f.codigo.trim(), nombreCompleto: nombre, dpi: f.dpi.trim(), rangoId: f.rangoId, estado: f.estado === "Activo",
+    nombreCompleto: nombre, dpi: f.dpi.trim(), rangoId: f.rangoId, estado: f.estado === "Activo",
     telefono: f.telefono.trim(), contactoEmergenciaNombre: f.contactoEmergencia.trim(),
     contactoEmergenciaTelefono: f.telEmergencia.trim(), fechaIngreso: f.fechaIngreso,
   };
