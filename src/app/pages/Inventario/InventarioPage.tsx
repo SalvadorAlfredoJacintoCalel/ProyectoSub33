@@ -1599,7 +1599,11 @@ export function InventarioPage() {
   }
 
   const handleOpenDraft = useCallback((key: string) => {
-    if (key.startsWith("inventario.item")) {
+    if (key === "inventario.stock.agotado" || key === "inventario.stock.bajo") {
+      const f = key === "inventario.stock.agotado" ? "agotado" : "bajo";
+      setTopTab("items");
+      setItemsFilter(f);
+    } else if (key.startsWith("inventario.item")) {
       setTopTab("items");
       requestOpenDraft("inventario-items", key);
     } else if (key.startsWith("inventario.ajuste")) {

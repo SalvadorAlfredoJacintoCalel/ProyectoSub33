@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ElementType, type ReactNode } from "react";
+import { useState, useRef, useEffect, useCallback, type ElementType, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { LayoutProvider, useLayout } from "@/app/layout/LayoutContext";
 import { ImageWithFallback } from "@/app/components/figma/ImageWithFallback";
@@ -28,8 +28,8 @@ import {
   Camera, UserCircle, Moon, Sun, Menu,
 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { listDraftsForUser, subscribeDrafts, type DraftMeta } from "@/services/drafts/draftRegistry";
 import { requestOpenDraft } from "@/services/drafts/draftOpenRequest";
+import { fetchAlerts, dismissAlert, isDismissed, type AlertItem } from "@/services/notifications/alerts";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
 import { subirFoto } from "@/services/authService";
 import { dashboardService } from "@/services/dashboardService";
@@ -88,15 +88,6 @@ const INCIDENT_DATA: Record<Period, { label: string; value: number; color: strin
   annual: [{ label:"INCENDIOS",value:0,color:"#a6000c"},{ label:"ACCIDENTES",value:0,color:"#854d0e"},{ label:"MÉDICOS",value:0,color:"#1565c0"},{ label:"OTROS",value:0,color:"#71717a"}],
 };
 const WEEKLY_DATA: number[] = [];
-
-const NAV_FOR_MODULE: Record<string, string> = {
-  emergencias: "emergencias",
-  personal: "personal",
-  donaciones: "donaciones",
-  "libro-donaciones": "donaciones",
-  inventario: "inventario",
-  vehiculos: "vehiculos",
-};
 
 const BULLETINS = [
   { id:1, type:"turno",  title:"Turno Activo en Línea",      body:"4 elementos de guardia — Comandante de turno: Soc. García Ajú",      meta:"08:00 – 16:00 hrs",    color:"#16a34a", Icon: Users },
@@ -193,27 +184,37 @@ function AppContent() {
   const effectiveCollapsed = sidebarCollapsed && !isMobile;
   const navItems = ALL_NAV.filter(n => n.id === "bienvenida" || n.id === "analytics" || modulos.includes(n.id));
 
-  const [pendingDrafts, setPendingDrafts] = useState<DraftMeta[]>([]);
-  useEffect(() => {
-    const refresh = () => setPendingDrafts(listDraftsForUser(user?.username ?? null));
-    refresh();
-    return subscribeDrafts(refresh);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+
+  const refreshAlerts = useCallback(async () => {
+    try {
+      const all = await fetchAlerts(user?.username ?? null);
+      setAlerts(all.filter((a) => !isDismissed(a.id)));
+    } catch {
+      /* noop */
+    }
   }, [user?.username]);
 
-  const notifications = pendingDrafts.map((d) => ({
-    id: d.key,
-    dot: C.red,
-    title: d.label || "Borrador guardado",
-    body: "Borrador sin enviar",
-    time: new Date(d.updatedAt).toLocaleString("es-GT"),
-  }));
+  useEffect(() => {
+    void refreshAlerts();
+  }, [refreshAlerts]);
 
-  function openDraftFromBell(d: DraftMeta) {
-    const navId = NAV_FOR_MODULE[d.module] ?? d.module;
+  useEffect(() => {
+    if (notifOpen) void refreshAlerts();
+  }, [notifOpen, refreshAlerts]);
+
+  function acceptAlert(a: AlertItem) {
+    dismissAlert(a.id);
+    setAlerts((prev) => prev.filter((x) => x.id !== a.id));
     setNotifOpen(false);
     setProfileDropOpen(false);
-    if (modulos.includes(navId)) setActiveNav(navId);
-    requestOpenDraft(d.module, d.key);
+    if (a.nav && modulos.includes(a.nav)) setActiveNav(a.nav);
+    if (a.module && a.key) requestOpenDraft(a.module, a.key);
+  }
+
+  function removeAlert(a: AlertItem) {
+    dismissAlert(a.id);
+    setAlerts((prev) => prev.filter((x) => x.id !== a.id));
   }
 
   useEffect(() => {
@@ -455,42 +456,59 @@ function AppContent() {
               onMouseEnter={e => { if (!notifOpen) (e.currentTarget as HTMLElement).style.background = C.hoverBg; }}
               onMouseLeave={e => { if (!notifOpen) (e.currentTarget as HTMLElement).style.background = notifOpen ? C.redLight : ""; }}>
               <Bell style={{ width: 17, height: 17, color: notifOpen ? C.red : C.textSecond }} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: C.red }} />
+              {alerts.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+                  style={{ background: C.red }}>
+                  {alerts.length}
+                </span>
+              )}
             </button>
             {notifOpen && (
               <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl z-40 overflow-hidden animate-scale-in"
                 style={{ background: C.cardBg, border: `1px solid ${C.border}` }}>
                 <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: C.border }}>
                   <span className="font-bold text-[13px]" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>Alertas</span>
-                  <span className="text-white text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.red }}>{notifications.length}</span>
+                  <span className="text-white text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.red }}>{alerts.length}</span>
                 </div>
-                {notifications.length === 0 ? (
-                  <div className="px-5 py-8 text-center text-[12px]" style={{ color: C.textMuted }}>No hay borradores pendientes.</div>
+                {alerts.length === 0 ? (
+                  <div className="px-5 py-8 text-center text-[12px]" style={{ color: C.textMuted }}>No hay alertas pendientes.</div>
                 ) : (
-                  notifications.map((n, i) => {
-                    const draft = pendingDrafts[i];
-                    return (
+                  alerts.map((a) => (
+                    <div
+                      key={a.id}
+                      className="flex items-start gap-3 px-5 py-3.5 border-b transition-colors"
+                      style={{ borderColor: C.border }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
                       <button
-                        key={n.id}
-                        onClick={() => draft && openDraftFromBell(draft)}
-                        className="flex w-full items-start gap-3 px-5 py-3.5 border-b text-left transition-colors"
-                        style={{ borderColor: C.border }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
-                        <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: n.dot }} />
+                        onClick={() => acceptAlert(a)}
+                        className="flex flex-1 items-start gap-3 text-left"
+                        style={{ background: "transparent", border: "none", padding: 0 }}>
+                        <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: a.dot }} />
                         <div className="min-w-0">
-                          <p className="font-bold text-[12px] leading-tight" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{n.title}</p>
-                          <p className="text-[11px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{n.body}</p>
-                          <p className="text-[10px] mt-0.5" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{n.time}</p>
+                          <p className="font-bold text-[12px] leading-tight" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{a.title}</p>
+                          <p className="text-[11px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{a.body}</p>
+                          {a.time ? (
+                            <p className="text-[10px] mt-0.5" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{a.time}</p>
+                          ) : null}
                         </div>
                       </button>
-                    );
-                  })
+                      <button
+                        onClick={() => removeAlert(a)}
+                        aria-label="Quitar alerta"
+                        className="shrink-0 p-1 rounded-md transition-colors"
+                        style={{ color: C.textMuted }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = C.red}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = C.textMuted}>
+                        <X style={{ width: 14, height: 14 }} />
+                      </button>
+                    </div>
+                  ))
                 )}
-                {notifications.length > 0 && (
+                {alerts.length > 0 && (
                   <div className="px-5 py-3">
                     <button className="w-full text-center font-bold text-[11px] tracking-wide uppercase transition-opacity hover:opacity-70"
-                      style={{ fontFamily: "Inter, sans-serif", color: C.red }}>Borradores pendientes</button>
+                      style={{ fontFamily: "Inter, sans-serif", color: C.red }}>Tus alertas</button>
                   </div>
                 )}
               </div>
@@ -725,30 +743,29 @@ function AppContent() {
                 <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
                   <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: C.border }}>
                     <h3 className="font-bold text-[14px]" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>Actividad</h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.redLight, color: C.red }}>{notifications.length}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.redLight, color: C.red }}>{alerts.length}</span>
                   </div>
                   <div className="flex-1 divide-y overflow-y-auto" style={{ borderColor: C.border }}>
-                    {notifications.length === 0 ? (
-                      <div className="px-5 py-8 text-center text-[12px]" style={{ color: C.textMuted }}>No hay borradores pendientes.</div>
+                    {alerts.length === 0 ? (
+                      <div className="px-5 py-8 text-center text-[12px]" style={{ color: C.textMuted }}>No hay alertas pendientes.</div>
                     ) : (
-                      notifications.map((n, i) => {
-                        const draft = pendingDrafts[i];
-                        return (
-                          <button
-                            key={n.id}
-                            onClick={() => draft && openDraftFromBell(draft)}
-                            className={`flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors animate-slide-up-stagger stagger-${Math.min(i + 1, 6)}`}
-                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
-                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
-                            <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: n.dot }} />
-                            <div className="min-w-0">
-                              <p className="font-bold text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{n.title}</p>
-                              <p className="text-[11px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{n.body}</p>
-                              <p className="text-[10px] mt-0.5" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{n.time}</p>
-                            </div>
-                          </button>
-                        );
-                      })
+                      alerts.map((a, i) => (
+                        <button
+                          key={a.id}
+                          onClick={() => acceptAlert(a)}
+                          className={`flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors animate-slide-up-stagger stagger-${Math.min(i + 1, 6)}`}
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.hoverBg}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ""}>
+                          <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: a.dot }} />
+                          <div className="min-w-0">
+                            <p className="font-bold text-[12px]" style={{ fontFamily: "Inter, sans-serif", color: C.textPrimary }}>{a.title}</p>
+                            <p className="text-[11px] mt-0.5 truncate" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{a.body}</p>
+                            {a.time ? (
+                              <p className="text-[10px] mt-0.5" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>{a.time}</p>
+                            ) : null}
+                          </div>
+                        </button>
+                      ))
                     )}
                   </div>
                 </div>
