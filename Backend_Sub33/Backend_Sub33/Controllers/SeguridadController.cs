@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Backend_Sub33.Attributes;
 using Backend_Sub33.Data;
 using Backend_Sub33.DTOs.Seguridad;
 using Backend_Sub33.Models;
@@ -12,10 +14,12 @@ namespace Backend_Sub33.Controllers;
 public class SeguridadController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<SeguridadController> _logger;
 
-    public SeguridadController(AppDbContext context)
+    public SeguridadController(AppDbContext context, ILogger<SeguridadController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -427,6 +431,78 @@ public class SeguridadController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { mensaje = "Error al asignar los permisos", detalle = ex.Message });
+        }
+    }
+
+    // ── Auditoría de acciones (solo administradores) ─────────────────────────
+    [HttpRequirePermission("seguridad.permisos")]
+    [HttpGet("auditoria")]
+    public async Task<IActionResult> Auditoria(
+        [FromQuery] Guid? usuarioId = null,
+        [FromQuery] string? modulo = null,
+        [FromQuery] string? metodo = null,
+        [FromQuery] DateTime? desde = null,
+        [FromQuery] DateTime? hasta = null,
+        [FromQuery] int pagina = 1,
+        [FromQuery] int tamanio = 50)
+    {
+        try
+        {
+            pagina = Math.Max(1, pagina);
+            tamanio = Math.Clamp(tamanio, 1, 200);
+
+            var query = _context.BitacoraAcciones.AsNoTracking().AsQueryable();
+
+            if (usuarioId.HasValue)
+            {
+                query = query.Where(a => a.UsuarioId == usuarioId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(modulo))
+            {
+                query = query.Where(a => a.Modulo == modulo.Trim().ToLowerInvariant());
+            }
+
+            if (!string.IsNullOrWhiteSpace(metodo))
+            {
+                query = query.Where(a => a.Metodo == metodo.Trim().ToUpperInvariant());
+            }
+
+            if (desde.HasValue)
+            {
+                query = query.Where(a => a.FechaHora >= desde.Value);
+            }
+
+            if (hasta.HasValue)
+            {
+                query = query.Where(a => a.FechaHora <= hasta.Value);
+            }
+
+            var total = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(a => a.FechaHora)
+                .Skip((pagina - 1) * tamanio)
+                .Take(tamanio)
+                .Select(a => new
+                {
+                    accionId = a.AccionId,
+                    usuarioId = a.UsuarioId,
+                    usuarioNombre = a.UsuarioNombre,
+                    metodo = a.Metodo,
+                    ruta = a.Ruta,
+                    modulo = a.Modulo,
+                    accion = a.Accion,
+                    fechaHora = a.FechaHora
+                })
+                .ToListAsync();
+
+            return Ok(new { items, total, pagina, tamanio });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener la auditoría");
+            return StatusCode(500, new { mensaje = "Error al obtener la auditoría", detalle = ex.Message });
         }
     }
 }

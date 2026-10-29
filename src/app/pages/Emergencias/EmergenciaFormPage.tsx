@@ -13,6 +13,7 @@ import { inventarioService } from "@/services/inventarioService";
 import { vehiculosService } from "@/services/vehiculosService";
 import { emergenciaService } from "@/services/emergenciaService";
 import { HospitalAutocomplete } from "./components/HospitalAutocomplete";
+import { CatalogAutocomplete } from "./components/CatalogAutocomplete";
 import type { PersonalAsignado } from "@/types/emergencia";
 import type { InventarioItem } from "@/types/inventario";
 import type { Vehiculo } from "@/types/vehiculos";
@@ -741,35 +742,21 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
               <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
             <div style={{ position: "relative" }}>
-              <select
+              <CatalogAutocomplete
                 value={tipoEmergenciaId}
-                onChange={(e) => {
-                  setTipoEmergenciaId(e.target.value);
+                onChange={(id) => {
+                  setTipoEmergenciaId(id);
                   setErrors((prev) => ({ ...prev, tipoEmergenciaId: false }));
                 }}
-                style={{
-                  ...selectBase,
-                  paddingRight: 32,
-                  ...errorField(errors.tipoEmergenciaId),
-                }}
-              >
-                <option value="">Seleccionar tipo de emergencia…</option>
-                {catalogos.tiposEmergencia.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  width: 15,
-                  height: 15,
-                  color: "var(--text-3)",
-                  pointerEvents: "none",
+                items={catalogos.tiposEmergencia}
+                error={errors.tipoEmergenciaId}
+                placeholder="Seleccionar tipo de emergencia…"
+                searchPlaceholder="Buscar o crear tipo…"
+                emptyText="No hay tipos de emergencia registrados"
+                onCreate={async (nombre) => {
+                  const nuevo = await emergenciaService.crearTipoEmergencia(nombre);
+                  await cargarCatalogos();
+                  return nuevo;
                 }}
               />
             </div>

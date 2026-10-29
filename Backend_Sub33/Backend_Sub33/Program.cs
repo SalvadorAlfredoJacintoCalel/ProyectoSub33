@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Backend_Sub33.Attributes;
 using Backend_Sub33.Data;
 using Backend_Sub33.Services;
 
@@ -31,6 +32,7 @@ builder.Services.AddScoped<IDonacionLibroService, DonacionLibroService>();
 builder.Services.AddScoped<IFinanzasService, FinanzasService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ActionLogFilter>();
 
 // Dapper: mapear columnas snake_case (servicio_id) a propiedades PascalCase (ServicioId)
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -62,7 +64,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // 3. Controladores y Swagger
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ActionLogFilter>();
+})
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;

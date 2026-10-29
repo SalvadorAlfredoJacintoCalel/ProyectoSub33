@@ -31,6 +31,7 @@ public class AppDbContext : DbContext
     public DbSet<Donacion> Donaciones { get; set; }
     public DbSet<MaterialDonacion> MaterialesDonacion { get; set; }
     public DbSet<FinanzaTransaccion> FinanzasTransacciones { get; set; }
+    public DbSet<BitacoraAccion> BitacoraAcciones { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

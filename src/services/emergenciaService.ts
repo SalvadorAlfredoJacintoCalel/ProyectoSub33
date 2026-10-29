@@ -37,6 +37,10 @@ export const emergenciaService = {
     return apiClient.get<TipoEmergencia[]>("/configuracion/catalogos/tipos-emergencia");
   },
 
+  crearTipoEmergencia: async (nombre: string): Promise<TipoEmergencia> => {
+    return apiClient.post<TipoEmergencia>("/configuracion/catalogos/tipos-emergencia", { nombre });
+  },
+
   getTiposAsistencia: async (): Promise<CatalogoItem[]> => {
     return apiClient.get<CatalogoItem[]>("/configuracion/catalogos/tipos-asistencia");
   },

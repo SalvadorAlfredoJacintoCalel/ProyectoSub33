@@ -29,15 +29,29 @@ import {
   listarPermisosPorUsuario,
   asignarPermisosRol,
   asignarPermisosUsuario,
+  getAuditoria,
   type PermisoGranular,
   type ModuloConPermisos,
+  type AuditoriaAccion,
 } from "@/services/seguridadService";
 import { actualizarAccesoSistema } from "../../../services/personalService";
 
 const RED = "var(--red)";
 
+const MODULOS_AUDITORIA: { value: string; label: string }[] = [
+  { value: "personal", label: "Personal" },
+  { value: "emergencias", label: "Emergencias" },
+  { value: "inventario", label: "Inventario" },
+  { value: "vehiculos", label: "Vehículos" },
+  { value: "finanzas", label: "Finanzas" },
+  { value: "donaciones", label: "Donaciones" },
+  { value: "seguridad", label: "Configuración" },
+  { value: "configuracion", label: "Catálogos" },
+  { value: "reportes", label: "Reportes" },
+];
+
 type UserRole = "admin" | "voluntario" | "secretario";
-type Tab = "estacion" | "catalogos" | "usuarios" | "permisos";
+type Tab = "estacion" | "catalogos" | "usuarios" | "permisos" | "auditoria";
 type AlertType = "success" | "warning" | "error";
 
 const PARAMETROS_PREDEFINIDOS: { clave: string; label: string; required: boolean }[] = [
@@ -278,6 +292,15 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
   const [modulosExpandidos, setModulosExpandidos] = useState<number[]>([]);
   const [loadingPermisos, setLoadingPermisos] = useState(false);
 
+  // ── Tab 5: Auditoría ──────────────────────────────────────────────────────────
+  const [auditoria, setAuditoria] = useState<AuditoriaAccion[]>([]);
+  const [auditoriaLoading, setAuditoriaLoading] = useState(false);
+  const [audUsuarioId, setAudUsuarioId] = useState("");
+  const [audModulo, setAudModulo] = useState("");
+  const [audMetodo, setAudMetodo] = useState("");
+  const [audDesde, setAudDesde] = useState("");
+  const [audHasta, setAudHasta] = useState("");
+
   // ── Carga de datos ───────────────────────────────────────────────────────────
   const cargarParametros = useCallback(async () => {
     try {
@@ -394,6 +417,32 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     window.addEventListener("usuarios-actualizados", handler);
     return () => window.removeEventListener("usuarios-actualizados", handler);
   }, [cargarUsuariosYRoles]);
+
+  const cargarAuditoria = useCallback(async () => {
+    setAuditoriaLoading(true);
+    try {
+      const res = await getAuditoria({
+        usuarioId: audUsuarioId || undefined,
+        modulo: audModulo || undefined,
+        metodo: audMetodo || undefined,
+        desde: audDesde || undefined,
+        hasta: audHasta || undefined,
+        tamanio: 100,
+      });
+      setAuditoria(res.items ?? []);
+    } catch (error) {
+      console.error("Error cargando auditoría:", error);
+      setAuditoria([]);
+    } finally {
+      setAuditoriaLoading(false);
+    }
+  }, [audUsuarioId, audModulo, audMetodo, audDesde, audHasta]);
+
+  useEffect(() => {
+    if (activeTab === "auditoria") {
+      void cargarAuditoria();
+    }
+  }, [activeTab, cargarAuditoria]);
 
   if (userRole !== "admin") return <AccessDenied />;
 
@@ -685,6 +734,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     { key: "catalogos", label: "Catálogos / Listas Maestras" },
     { key: "usuarios", label: "Usuarios y Roles" },
     { key: "permisos", label: "Matriz de Permisos" },
+    { key: "auditoria", label: "Auditoría" },
   ];
 
   const catalogoActual = CATALOGOS_OPCIONES.find((c) => c.key === catalogoTipo);
@@ -1084,6 +1134,49 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── Tab 5: Auditoría ── */}
+        {activeTab === "auditoria" && (
+          <DataTable<AuditoriaAccion>
+            columns={[
+              { key: "fecha", header: "Fecha", cell: (a) => <span style={{ color: "var(--text-2)", fontSize: 12 }}>{new Date(a.fechaHora).toLocaleString("es-GT")}</span> },
+              { key: "usuario", header: "Usuario", cell: (a) => <span className="font-semibold" style={{ color: "var(--text-1)" }}>{a.usuarioNombre || "—"}</span> },
+              { key: "accion", header: "Acción", cell: (a) => <span style={{ color: "var(--text-1)" }}>{a.accion}</span> },
+              { key: "ruta", header: "Ruta", cell: (a) => <span className="font-mono" style={{ color: "var(--text-3)", fontSize: 12 }}>{a.ruta}</span> },
+              { key: "metodo", header: "Método", cell: (a) => <span style={{ background: "var(--bg-hover)", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>{a.metodo}</span> },
+            ]}
+            data={auditoria}
+            getRowKey={(a) => a.accionId}
+            loading={auditoriaLoading}
+            emptyIcon={Shield}
+            emptyTitle="Sin acciones registradas"
+            emptyDescription="Las acciones de los usuarios del sistema aparecerán aquí."
+            toolbar={
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <select value={audUsuarioId} onChange={(e) => setAudUsuarioId(e.target.value)} style={{ ...inputStyle(), width: 220 }}>
+                  <option value="">Todos los usuarios</option>
+                  {usuarios.map((u) => (
+                    <option key={u.usuarioId} value={u.usuarioId}>{u.nombreCompleto} (@{u.username})</option>
+                  ))}
+                </select>
+                <select value={audModulo} onChange={(e) => setAudModulo(e.target.value)} style={{ ...inputStyle(), width: 170 }}>
+                  <option value="">Todos los módulos</option>
+                  {MODULOS_AUDITORIA.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+                <select value={audMetodo} onChange={(e) => setAudMetodo(e.target.value)} style={{ ...inputStyle(), width: 150 }}>
+                  <option value="">Todos los métodos</option>
+                  {["POST", "PUT", "PATCH", "DELETE"].map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <input type="date" value={audDesde} onChange={(e) => setAudDesde(e.target.value)} style={{ ...inputStyle(), width: 150 }} />
+                <input type="date" value={audHasta} onChange={(e) => setAudHasta(e.target.value)} style={{ ...inputStyle(), width: 150 }} />
+              </div>
+            }
+          />
         )}
       </div>
 

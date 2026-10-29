@@ -72,3 +72,37 @@ export const listarPermisosPorUsuario = async (usuarioId: string): Promise<Permi
 export const asignarPermisosUsuario = async (usuarioId: string, permisoIds: number[]): Promise<void> => {
   await apiClient.post<void>("/seguridad/permisos/usuario/asignar", { usuarioId, permisoIds });
 };
+
+// ── Auditoría de acciones ────────────────────────────────────────────────────────
+
+export interface AuditoriaAccion {
+  accionId: number;
+  usuarioId: string | null;
+  usuarioNombre: string | null;
+  metodo: string;
+  ruta: string;
+  modulo: string;
+  accion: string;
+  fechaHora: string;
+}
+
+export interface AuditoriaFiltros {
+  usuarioId?: string;
+  modulo?: string;
+  metodo?: string;
+  desde?: string;
+  hasta?: string;
+  pagina?: number;
+  tamanio?: number;
+}
+
+export interface AuditoriaPagina {
+  items: AuditoriaAccion[];
+  total: number;
+  pagina: number;
+  tamanio: number;
+}
+
+export const getAuditoria = async (filtros: AuditoriaFiltros = {}): Promise<AuditoriaPagina> => {
+  return apiClient.get<AuditoriaPagina>("/seguridad/auditoria", { params: filtros });
+};
