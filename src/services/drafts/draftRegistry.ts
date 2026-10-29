@@ -13,6 +13,24 @@ const META_PREFIX = "sub33.draftmeta.";
 export const DRAFTS_CHANGED_EVENT = "sub33:drafts-changed";
 export const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+let scopeUsername: string | null = null;
+
+export function setDraftScope(username: string | null): void {
+  scopeUsername = username && username.trim() ? username.trim() : null;
+}
+
+function scopedDataKey(key: string): string {
+  return scopeUsername ? DATA_PREFIX + scopeUsername + "." + key : DATA_PREFIX + key;
+}
+
+function scopedMetaKey(key: string): string {
+  return scopeUsername ? META_PREFIX + scopeUsername + "." + key : META_PREFIX + key;
+}
+
+function scopedMetaPrefix(): string {
+  return scopeUsername ? META_PREFIX + scopeUsername + "." : META_PREFIX;
+}
+
 function hasStorage(): boolean {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
@@ -26,7 +44,7 @@ export function emitDraftsChanged(): void {
 export function readDraftMeta(key: string): DraftMeta | null {
   if (!hasStorage()) return null;
   try {
-    const raw = localStorage.getItem(META_PREFIX + key);
+    const raw = localStorage.getItem(scopedMetaKey(key));
     if (!raw) return null;
     return JSON.parse(raw) as DraftMeta;
   } catch {
@@ -37,7 +55,7 @@ export function readDraftMeta(key: string): DraftMeta | null {
 export function readDraftValue<T>(key: string): T | null {
   if (!hasStorage()) return null;
   try {
-    const raw = localStorage.getItem(DATA_PREFIX + key);
+    const raw = localStorage.getItem(scopedDataKey(key));
     if (!raw) return null;
     return JSON.parse(raw) as T;
   } catch {
@@ -48,8 +66,8 @@ export function readDraftValue<T>(key: string): T | null {
 export function writeDraftValue<T>(key: string, value: T, meta: DraftMeta): void {
   if (!hasStorage()) return;
   try {
-    localStorage.setItem(DATA_PREFIX + key, JSON.stringify(value));
-    localStorage.setItem(META_PREFIX + key, JSON.stringify(meta));
+    localStorage.setItem(scopedDataKey(key), JSON.stringify(value));
+    localStorage.setItem(scopedMetaKey(key), JSON.stringify(meta));
   } catch {
     /* noop */
   }
@@ -58,8 +76,8 @@ export function writeDraftValue<T>(key: string, value: T, meta: DraftMeta): void
 export function clearDraftKey(key: string): void {
   if (!hasStorage()) return;
   try {
-    localStorage.removeItem(DATA_PREFIX + key);
-    localStorage.removeItem(META_PREFIX + key);
+    localStorage.removeItem(scopedDataKey(key));
+    localStorage.removeItem(scopedMetaKey(key));
   } catch {
     /* noop */
   }
@@ -72,15 +90,22 @@ function isExpired(meta: DraftMeta, now: number): boolean {
 export function listDraftsForUser(username?: string | null): DraftMeta[] {
   if (!hasStorage()) return [];
   const now = Date.now();
+  const prefix = scopedMetaPrefix();
   const result: DraftMeta[] = [];
   const expired: string[] = [];
 
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const storageKey = localStorage.key(i);
-      if (!storageKey || !storageKey.startsWith(META_PREFIX)) continue;
-      const meta = readDraftMeta(storageKey.slice(META_PREFIX.length));
-      if (!meta) continue;
+      if (!storageKey || !storageKey.startsWith(prefix)) continue;
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) continue;
+      let meta: DraftMeta;
+      try {
+        meta = JSON.parse(raw) as DraftMeta;
+      } catch {
+        continue;
+      }
       if (isExpired(meta, now)) {
         expired.push(meta.key);
         continue;

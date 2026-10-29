@@ -3,6 +3,7 @@ import { getMisModulos, getMisPermisos, ApiError } from "@/services/seguridadSer
 import { logout as authLogout, refresh as authRefresh } from "@/services/authService";
 import { tokenStore } from "@/services/auth/tokenStore";
 import { normalizeRole, type UserRole } from "@/constants/roles";
+import { setDraftScope } from "@/services/drafts/draftRegistry";
 
 interface UserData {
   username: string;
@@ -99,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoleState("voluntario");
     setModulos([]);
     setPermisos([]);
+    setDraftScope(null);
   }, []);
 
   const isUnauthorized = useCallback((err: unknown) => {
@@ -157,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextUser);
       setRoleState(resolvedRole);
       setLoggedIn(true);
+      setDraftScope(nextUser.username ?? null);
       void loadPermisosYModulos();
     },
     [loadPermisosYModulos]

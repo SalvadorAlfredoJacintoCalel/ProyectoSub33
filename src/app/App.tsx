@@ -29,7 +29,19 @@ import {
 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { requestOpenDraft } from "@/services/drafts/draftOpenRequest";
-import { fetchAlerts, dismissAlert, isDismissed, type AlertItem } from "@/services/notifications/alerts";
+import {
+  fetchAlerts,
+  dismissAlert,
+  dismissAll,
+  isDismissed,
+  getNovelties,
+  markSeen,
+  shouldNotify,
+  markNotified,
+  summarizeNovelties,
+  type AlertItem,
+} from "@/services/notifications/alerts";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
 import { subirFoto } from "@/services/authService";
 import { dashboardService } from "@/services/dashboardService";
@@ -185,15 +197,25 @@ function AppContent() {
   const navItems = ALL_NAV.filter(n => n.id === "bienvenida" || n.id === "analytics" || modulos.includes(n.id));
 
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const { toast } = useAlert();
 
   const refreshAlerts = useCallback(async () => {
     try {
       const all = await fetchAlerts(user?.username ?? null);
-      setAlerts(all.filter((a) => !isDismissed(a.id)));
+      const visible = all.filter((a) => !isDismissed(user?.username ?? null, a.id, a.signature));
+      setAlerts(visible);
+
+      const novelties = getNovelties(user?.username ?? null, visible);
+      if (novelties.length > 0 && shouldNotify(user?.username ?? null)) {
+        const summary = summarizeNovelties(novelties);
+        if (summary) toast.info(summary);
+        markSeen(user?.username ?? null, visible);
+        markNotified(user?.username ?? null);
+      }
     } catch {
       /* noop */
     }
-  }, [user?.username]);
+  }, [user?.username, toast]);
 
   useEffect(() => {
     void refreshAlerts();
@@ -204,7 +226,7 @@ function AppContent() {
   }, [notifOpen, refreshAlerts]);
 
   function acceptAlert(a: AlertItem) {
-    dismissAlert(a.id);
+    dismissAlert(user?.username ?? null, a.id, a.signature);
     setAlerts((prev) => prev.filter((x) => x.id !== a.id));
     setNotifOpen(false);
     setProfileDropOpen(false);
@@ -213,8 +235,13 @@ function AppContent() {
   }
 
   function removeAlert(a: AlertItem) {
-    dismissAlert(a.id);
+    dismissAlert(user?.username ?? null, a.id, a.signature);
     setAlerts((prev) => prev.filter((x) => x.id !== a.id));
+  }
+
+  function markAllRead() {
+    dismissAll(user?.username ?? null, alerts);
+    setAlerts([]);
   }
 
   useEffect(() => {
@@ -507,8 +534,12 @@ function AppContent() {
                 )}
                 {alerts.length > 0 && (
                   <div className="px-5 py-3">
-                    <button className="w-full text-center font-bold text-[11px] tracking-wide uppercase transition-opacity hover:opacity-70"
-                      style={{ fontFamily: "Inter, sans-serif", color: C.red }}>Tus alertas</button>
+                    <button
+                      onClick={markAllRead}
+                      className="w-full text-center font-bold text-[11px] tracking-wide uppercase transition-opacity hover:opacity-70"
+                      style={{ fontFamily: "Inter, sans-serif", color: C.red }}>
+                      Marcar todas como leídas
+                    </button>
                   </div>
                 )}
               </div>
