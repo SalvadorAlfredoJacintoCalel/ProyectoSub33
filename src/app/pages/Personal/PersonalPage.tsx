@@ -467,6 +467,7 @@ export function PersonalPage() {
       dpi: form.dpi,
       fechaNacimiento: form.fechaNacimiento || null,
       rangoId: form.rangoId,
+      codigoBombero: form.codigoBombero.trim(),
       fechaIngreso: form.fechaIngreso || new Date().toISOString().split("T")[0],
       telefono: form.telefono,
       estado: form.estado === "Activo",

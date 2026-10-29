@@ -13,7 +13,6 @@ import { inventarioService } from "@/services/inventarioService";
 import { vehiculosService } from "@/services/vehiculosService";
 import { emergenciaService } from "@/services/emergenciaService";
 import { HospitalAutocomplete } from "./components/HospitalAutocomplete";
-import { CatalogAutocomplete } from "./components/CatalogAutocomplete";
 import type { PersonalAsignado } from "@/types/emergencia";
 import type { InventarioItem } from "@/types/inventario";
 import type { Vehiculo } from "@/types/vehiculos";
@@ -138,6 +137,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
   const [tiempoSalida, setTiempoSalida] = useState("");
   const [tiempoLlegada, setTiempoLlegada] = useState("");
   const [tipoEmergenciaId, setTipoEmergenciaId] = useState("");
+  const [tipoEmergenciaTexto, setTipoEmergenciaTexto] = useState("");
   const [tiposAsistencia, setTiposAsistencia] = useState<string[]>([]);
   const [nuevoTipoAsistencia, setNuevoTipoAsistencia] = useState("");
   const [ubicacion, setUbicacion] = useState("");
@@ -381,6 +381,14 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     };
   }, []);
 
+  useEffect(() => {
+    if (!tipoEmergenciaId) return;
+    const match = catalogos.tiposEmergencia.find((t) => String(t.id) === tipoEmergenciaId);
+    if (match && match.nombre !== tipoEmergenciaTexto) {
+      setTipoEmergenciaTexto(match.nombre);
+    }
+  }, [tipoEmergenciaId, catalogos.tiposEmergencia, tipoEmergenciaTexto]);
+
   function toggleTipoAsistencia(tipo: string) {
     setTiposAsistencia((prev) =>
       prev.includes(tipo) ? prev.filter((t) => t !== tipo) : [...prev, tipo]
@@ -396,6 +404,33 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     }
     setNuevoTipoAsistencia("");
     setErrors((prev) => ({ ...prev, tiposAsistencia: false }));
+  }
+
+  async function confirmarTipoEmergencia(valor: string) {
+    const texto = valor.trim();
+    if (!texto) return;
+
+    const coincidencia = catalogos.tiposEmergencia.find(
+      (t) => t.nombre.toLowerCase() === texto.toLowerCase()
+    );
+    if (coincidencia) {
+      setTipoEmergenciaId(String(coincidencia.id));
+      setTipoEmergenciaTexto(coincidencia.nombre);
+      setErrors((prev) => ({ ...prev, tipoEmergenciaId: false }));
+      return;
+    }
+
+    try {
+      const nuevo = await emergenciaService.crearTipoEmergencia(texto);
+      await cargarCatalogos();
+      setTipoEmergenciaId(String(nuevo.id));
+      setTipoEmergenciaTexto(nuevo.nombre);
+      setErrors((prev) => ({ ...prev, tipoEmergenciaId: false }));
+      toast.success("Tipo de emergencia agregado.");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "No se pudo crear el tipo de emergencia.";
+      toast.error(msg);
+    }
   }
 
   function togglePersonal(personalId: string, nombre: string) {
@@ -741,25 +776,69 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
               Tipo de Emergencia
               <span style={{ color: "var(--red)", fontSize: 13, marginLeft: 4 }}>*</span>
             </p>
-            <div style={{ position: "relative" }}>
-              <CatalogAutocomplete
-                value={tipoEmergenciaId}
-                onChange={(id) => {
-                  setTipoEmergenciaId(id);
-                  setErrors((prev) => ({ ...prev, tipoEmergenciaId: false }));
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              <input
+                list="tiposEmergenciaList"
+                value={tipoEmergenciaTexto}
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  setTipoEmergenciaTexto(valor);
+                  const coincidencia = catalogos.tiposEmergencia.find(
+                    (t) => t.nombre.toLowerCase() === valor.trim().toLowerCase()
+                  );
+                  if (coincidencia) {
+                    setTipoEmergenciaId(String(coincidencia.id));
+                    setErrors((prev) => ({ ...prev, tipoEmergenciaId: false }));
+                  } else {
+                    setTipoEmergenciaId("");
+                  }
                 }}
-                items={catalogos.tiposEmergencia}
-                error={errors.tipoEmergenciaId}
-                placeholder="Seleccionar tipo de emergencia…"
-                searchPlaceholder="Buscar o crear tipo…"
-                emptyText="No hay tipos de emergencia registrados"
-                onCreate={async (nombre) => {
-                  const nuevo = await emergenciaService.crearTipoEmergencia(nombre);
-                  await cargarCatalogos();
-                  return nuevo;
+                onBlur={() => {
+                  const valor = tipoEmergenciaTexto.trim();
+                  if (valor) void confirmarTipoEmergencia(valor);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const valor = tipoEmergenciaTexto.trim();
+                    if (valor) void confirmarTipoEmergencia(valor);
+                  }
+                }}
+                placeholder="Escriba o seleccione el tipo de emergencia..."
+                style={{ ...inputBase, ...errorField(errors.tipoEmergenciaId) }}
               />
+              <button
+                type="button"
+                onClick={() => {
+                  const valor = tipoEmergenciaTexto.trim();
+                  if (valor) void confirmarTipoEmergencia(valor);
+                }}
+                disabled={!tipoEmergenciaTexto.trim()}
+                style={{
+                  flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "0 14px",
+                  borderRadius: 8,
+                  border: "1px solid var(--brand-500)",
+                  background: "var(--brand-50)",
+                  color: "var(--brand-600)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  opacity: tipoEmergenciaTexto.trim() ? 1 : 0.5,
+                }}
+              >
+                + Agregar
+              </button>
             </div>
+            <datalist id="tiposEmergenciaList">
+              {catalogos.tiposEmergencia.map((t) => (
+                <option key={t.id} value={t.nombre} />
+              ))}
+            </datalist>
           </section>
 
           {/* 4. Tiempos de Atención */}

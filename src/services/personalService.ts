@@ -18,6 +18,7 @@ export interface CrearPersonalDto {
   dpi: string;
   fechaNacimiento?: string | null;
   rangoId: number | null;
+  codigoBombero?: string;
   fechaIngreso: string;
   telefono: string;
   estado: boolean;
@@ -34,6 +35,7 @@ export interface ActualizarPersonalDto {
   dpi?: string;
   fechaNacimiento?: string | null;
   rangoId?: number | null;
+  codigoBombero?: string;
   fechaIngreso?: string;
   telefono?: string;
   estado?: boolean;

@@ -264,15 +264,17 @@ public partial class PersonalService : IPersonalService
                 passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.AccesoSistema.Password);
             }
 
-            string codigoBombero;
-            if (string.IsNullOrWhiteSpace(dto.CodigoBombero))
+            string? codigoBombero = string.IsNullOrWhiteSpace(dto.CodigoBombero)
+                ? null
+                : dto.CodigoBombero.Trim().ToUpper();
+
+            if (codigoBombero is not null)
             {
-                var correlativo = await _context.Personal.CountAsync(ct) + 1;
-                codigoBombero = $"BOM-{correlativo:D4}";
-            }
-            else
-            {
-                codigoBombero = dto.CodigoBombero.Trim().ToUpper();
+                var codigoExiste = await _context.Personal.AnyAsync(p => p.CodigoBombero == codigoBombero, ct);
+                if (codigoExiste)
+                {
+                    return ServiceResult<PersonalResponseDto>.Conflict("El código de bombero ya existe.");
+                }
             }
 
             using var transaction = await _context.Database.BeginTransactionAsync(ct);

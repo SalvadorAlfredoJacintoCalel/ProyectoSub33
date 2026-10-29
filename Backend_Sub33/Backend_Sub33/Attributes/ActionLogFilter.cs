@@ -19,22 +19,6 @@ public class ActionLogFilter : IAsyncActionFilter
         "POST", "PUT", "PATCH", "DELETE"
     };
 
-    private static readonly Dictionary<string, string> NombresModulo = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["personal"] = "Personal",
-        ["emergencias"] = "Emergencias",
-        ["inventario"] = "Inventario",
-        ["vehiculos"] = "Vehículos",
-        ["cupones"] = "Vehículos",
-        ["finanzas"] = "Finanzas",
-        ["donaciones"] = "Donaciones",
-        ["seguridad"] = "Configuración",
-        ["configuracion"] = "Configuración",
-        ["reportes"] = "Reportes",
-        ["dashboard"] = "Dashboard",
-        ["roles"] = "Configuración",
-    };
-
     private readonly AppDbContext _context;
     private readonly ILogger<ActionLogFilter> _logger;
 
@@ -84,15 +68,12 @@ public class ActionLogFilter : IAsyncActionFilter
         var segmentos = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var modulo = segmentos.Length > 1 ? segmentos[1].ToLowerInvariant() : "general";
 
-        NombresModulo.TryGetValue(modulo, out var nombreModulo);
-        nombreModulo ??= modulo;
-
-        var verb = method.ToUpperInvariant() switch
+        var accion = method.ToUpperInvariant() switch
         {
-            "POST" => "Crear",
-            "PUT" => "Actualizar",
-            "PATCH" => "Modificar",
-            "DELETE" => "Eliminar",
+            "POST" => "Ingresó",
+            "PUT" => "Actualizó",
+            "PATCH" => "Modificó",
+            "DELETE" => "Eliminó",
             _ => method.ToUpperInvariant()
         };
 
@@ -105,7 +86,7 @@ public class ActionLogFilter : IAsyncActionFilter
                 Metodo = method.ToUpperInvariant(),
                 Ruta = path,
                 Modulo = modulo,
-                Accion = $"{verb} en {nombreModulo}",
+                Accion = accion,
                 FechaHora = DateTime.UtcNow
             });
 

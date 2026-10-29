@@ -50,6 +50,13 @@ const MODULOS_AUDITORIA: { value: string; label: string }[] = [
   { value: "reportes", label: "Reportes" },
 ];
 
+const METODOS_AUDITORIA: { value: string; label: string }[] = [
+  { value: "POST", label: "Ingresó" },
+  { value: "PUT", label: "Actualizó" },
+  { value: "PATCH", label: "Modificó" },
+  { value: "DELETE", label: "Eliminó" },
+];
+
 type UserRole = "admin" | "voluntario" | "secretario";
 type Tab = "estacion" | "catalogos" | "usuarios" | "permisos" | "auditoria";
 type AlertType = "success" | "warning" | "error";
@@ -1143,8 +1150,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
               { key: "fecha", header: "Fecha", cell: (a) => <span style={{ color: "var(--text-2)", fontSize: 12 }}>{new Date(a.fechaHora).toLocaleString("es-GT")}</span> },
               { key: "usuario", header: "Usuario", cell: (a) => <span className="font-semibold" style={{ color: "var(--text-1)" }}>{a.usuarioNombre || "—"}</span> },
               { key: "accion", header: "Acción", cell: (a) => <span style={{ color: "var(--text-1)" }}>{a.accion}</span> },
+              { key: "modulo", header: "Módulo", cell: (a) => <span style={{ color: "var(--text-2)" }}>{MODULOS_AUDITORIA.find((m) => m.value === a.modulo)?.label ?? a.modulo}</span> },
               { key: "ruta", header: "Ruta", cell: (a) => <span className="font-mono" style={{ color: "var(--text-3)", fontSize: 12 }}>{a.ruta}</span> },
-              { key: "metodo", header: "Método", cell: (a) => <span style={{ background: "var(--bg-hover)", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>{a.metodo}</span> },
             ]}
             data={auditoria}
             getRowKey={(a) => a.accionId}
@@ -1167,9 +1174,9 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                   ))}
                 </select>
                 <select value={audMetodo} onChange={(e) => setAudMetodo(e.target.value)} style={{ ...inputStyle(), width: 150 }}>
-                  <option value="">Todos los métodos</option>
-                  {["POST", "PUT", "PATCH", "DELETE"].map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                  <option value="">Todas las acciones</option>
+                  {METODOS_AUDITORIA.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
                 <input type="date" value={audDesde} onChange={(e) => setAudDesde(e.target.value)} style={{ ...inputStyle(), width: 150 }} />
