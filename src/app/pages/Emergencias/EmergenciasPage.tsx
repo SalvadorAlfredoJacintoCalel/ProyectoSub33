@@ -166,7 +166,7 @@ const pf = {
     display: "inline-block",
     width,
     borderBottom: "1px solid #000",
-    fontSize: "10px",
+    fontSize: "12px",
     verticalAlign: "bottom",
     marginRight: "6px",
     paddingLeft: "2px",
@@ -178,13 +178,13 @@ const pf = {
 function ULine({ value, width, label }: { value: string; width: string | number; label?: string }) {
   return (
     <>
-      {label && <span style={{ fontSize: "10px" }}>{label}: </span>}
+      {label && <span style={{ fontSize: "12px" }}>{label}: </span>}
       <span
         style={{
           display: "inline-block",
           width,
           borderBottom: "1px solid #000",
-          fontSize: "10px",
+          fontSize: "12px",
           verticalAlign: "bottom",
           marginRight: "6px",
           paddingLeft: "2px",
@@ -202,13 +202,13 @@ function Chk({ checked }: { checked: boolean }) {
     <span
       style={{
         display: "inline-block",
-        width: "11px",
-        height: "11px",
+        width: "14px",
+        height: "14px",
         border: "1px solid #000",
         verticalAlign: "middle",
         textAlign: "center",
-        lineHeight: "11px",
-        fontSize: "8px",
+        lineHeight: "14px",
+        fontSize: "10px",
         marginLeft: "2px",
         marginRight: "4px",
       }}
@@ -227,7 +227,7 @@ function UnitBox({ label, checked }: { label: string; checked: boolean }) {
         border: "1px solid #000",
         padding: "1px 5px",
         marginRight: "6px",
-        fontSize: "10px",
+        fontSize: "12px",
         gap: "3px",
       }}
     >
@@ -235,12 +235,12 @@ function UnitBox({ label, checked }: { label: string; checked: boolean }) {
       <span
         style={{
           display: "inline-block",
-          width: "10px",
-          height: "10px",
+          width: "13px",
+          height: "13px",
           border: "1px solid #000",
           textAlign: "center",
-          lineHeight: "10px",
-          fontSize: "8px",
+          lineHeight: "13px",
+          fontSize: "10px",
         }}
       >
         {checked ? "✓" : ""}
@@ -293,7 +293,7 @@ function PrintForm({ service }: { service: Service }) {
 
   const baseFont: React.CSSProperties = {
     fontFamily: "Times New Roman, Times, serif",
-    fontSize: "11px",
+    fontSize: "13px",
     color: "#000",
     lineHeight: "1.35",
   };
@@ -308,7 +308,7 @@ function PrintForm({ service }: { service: Service }) {
 
   const sectionHead: React.CSSProperties = {
     fontWeight: "bold",
-    fontSize: "11px",
+    fontSize: "13px",
     marginTop: "9px",
     marginBottom: "4px",
     display: "block",
@@ -324,33 +324,33 @@ function PrintForm({ service }: { service: Service }) {
           style={{ position: "absolute", top: "0", right: "0", width: "64px", height: "64px", objectFit: "contain" }}
         />
 
-        <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "13px", lineHeight: "1.3", paddingRight: "72px" }}>
+        <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "16px", lineHeight: "1.3", paddingRight: "72px" }}>
           SUB ESTACION 33 CIA, DE BOMBEROS VOLUNTARIOS<br />
           SAN LUCAS TOLIMAN, SOLOLÁ.
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "8px" }}>
-          <span style={{ fontWeight: "bold", fontSize: "11px", textDecoration: "underline" }}>"REPORTES DE SERVICIOS"</span>
-          <span style={{ fontSize: "11px", marginLeft: "auto", marginRight: "80px", display: "flex", alignItems: "center", gap: "6px" }}>
+          <span style={{ fontWeight: "bold", fontSize: "13px", textDecoration: "underline" }}>"REPORTES DE SERVICIOS"</span>
+          <span style={{ fontSize: "13px", marginLeft: "auto", marginRight: "80px", display: "flex", alignItems: "center", gap: "6px" }}>
             No.
-            <span style={{ display: "inline-block", border: "1px solid #000", padding: "1px 10px", minWidth: "80px", fontSize: "10px", textAlign: "center" }}>
+            <span style={{ display: "inline-block", border: "1px solid #000", padding: "1px 10px", minWidth: "80px", fontSize: "12px", textAlign: "center" }}>
               {service.id}
             </span>
           </span>
         </div>
 
         <div style={{ ...row, marginTop: "6px" }}>
-          <span style={{ fontSize: "11px", marginRight: "4px" }}>Solicitud:</span>
-          <span style={{ fontSize: "11px", marginRight: "2px" }}>vía telefónica</span>
+          <span style={{ fontSize: "13px", marginRight: "4px" }}>Solicitud:</span>
+          <span style={{ fontSize: "13px", marginRight: "2px" }}>vía telefónica</span>
           <Chk checked={service.solicitud === "Vía Telefónica"} />
-          <span style={{ fontSize: "11px", marginLeft: "10px", marginRight: "2px" }}>personal</span>
+          <span style={{ fontSize: "13px", marginLeft: "10px", marginRight: "2px" }}>personal</span>
           <Chk checked={service.solicitud === "Personal"} />
         </div>
 
         <div style={{ ...row }}>
-          <span style={{ fontSize: "11px", marginRight: "4px" }}>Hora de salida en la estación</span>
+          <span style={{ fontSize: "13px", marginRight: "4px" }}>Hora de salida en la estación</span>
           <ULine value={service.horaSalida} width="70px" />
-          <span style={{ fontSize: "11px", marginRight: "4px", marginLeft: "16px" }}>Hora de entrada en la estación</span>
+          <span style={{ fontSize: "13px", marginRight: "4px", marginLeft: "16px" }}>Hora de entrada en la estación</span>
           <ULine value={service.horaEntrada} width="70px" />
         </div>
       </div>
@@ -360,29 +360,29 @@ function PrintForm({ service }: { service: Service }) {
         <span style={sectionHead}>DATOS DEL PACIENTE</span>
 
         <div style={row}>
-          <span style={{ fontSize: "11px", marginRight: "4px", whiteSpace: "nowrap" }}>Nombre de Solicitante:</span>
+          <span style={{ fontSize: "13px", marginRight: "4px", whiteSpace: "nowrap" }}>Nombre de Solicitante:</span>
           <ULine value={service.solicitante} width="calc(100% - 160px)" />
         </div>
 
         <div style={row}>
-          <span style={{ fontSize: "11px", marginRight: "4px", whiteSpace: "nowrap" }}>Nombre (s) de Paciente (s):</span>
+          <span style={{ fontSize: "13px", marginRight: "4px", whiteSpace: "nowrap" }}>Nombre (s) de Paciente (s):</span>
           <ULine value={service.paciente} width="calc(100% - 190px)" />
         </div>
 
         <div style={row}>
-          <span style={{ fontSize: "11px", marginRight: "4px", whiteSpace: "nowrap" }}>Acompañante</span>
+          <span style={{ fontSize: "13px", marginRight: "4px", whiteSpace: "nowrap" }}>Acompañante</span>
           <ULine value={service.acompanante} width="calc(100% - 105px)" />
         </div>
 
         <div style={row}>
-          <span style={{ fontSize: "11px", marginRight: "4px", whiteSpace: "nowrap" }}>Domicilio:</span>
+          <span style={{ fontSize: "13px", marginRight: "4px", whiteSpace: "nowrap" }}>Domicilio:</span>
           <ULine value={service.domicilio} width="260px" />
-          <span style={{ fontSize: "11px", marginRight: "4px" }}>Edad:</span>
+          <span style={{ fontSize: "13px", marginRight: "4px" }}>Edad:</span>
           <ULine value={service.edad} width="45px" />
-          <span style={{ fontSize: "11px", marginRight: "2px" }}>Falleció:</span>
-          <span style={{ fontSize: "11px", marginRight: "2px" }}>SI</span>
+          <span style={{ fontSize: "13px", marginRight: "2px" }}>Falleció:</span>
+          <span style={{ fontSize: "13px", marginRight: "2px" }}>SI</span>
           <Chk checked={service.fallecio} />
-          <span style={{ fontSize: "11px", marginRight: "2px" }}>NO</span>
+          <span style={{ fontSize: "13px", marginRight: "2px" }}>NO</span>
           <Chk checked={!service.fallecio} />
         </div>
       </div>
@@ -392,22 +392,22 @@ function PrintForm({ service }: { service: Service }) {
         <span style={sectionHead}>ASISTENCIA</span>
 
         <div style={{ ...row, flexWrap: "nowrap" }}>
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Servicio por Maternidad:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Servicio por Maternidad:</span>
           <ULine value={isMaternidad ? "✓" : ""} width="55px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Accidente de tránsito:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Accidente de tránsito:</span>
           <ULine value={isAccidenteTransito ? "✓" : ""} width="60px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Accidente de trabajo:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Accidente de trabajo:</span>
           <ULine value={isAccidenteTrabajo ? "✓" : ""} width="55px" />
         </div>
 
         <div style={{ ...row, flexWrap: "nowrap" }}>
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Servicio Social</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Servicio Social</span>
           <ULine value={isServicioSocial ? "✓" : ""} width="45px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Prevención</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Prevención</span>
           <ULine value={isPrevención ? "✓" : ""} width="45px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Capacitación</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Capacitación</span>
           <ULine value={isCapacitación ? "✓" : ""} width="45px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Otros Especifique</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Otros Especifique</span>
           <ULine value={isOtros ? (otrosText || "✓") : ""} width="80px" />
         </div>
       </div>
@@ -417,27 +417,27 @@ function PrintForm({ service }: { service: Service }) {
         <span style={sectionHead}>LUGAR DE TRASLADO</span>
 
         <div style={{ ...row, flexWrap: "nowrap", marginBottom: "4px" }}>
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Hospitalito HOSMG:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Hospitalito HOSMG:</span>
           <ULine value={hosmg ? "✓" : ""} width="40px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>C.A.P</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>C.A.P</span>
           <ULine value={cap ? "✓" : ""} width="40px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Clínica de especialidades Vida:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Clínica de especialidades Vida:</span>
           <ULine value={vida ? "✓" : ""} width="40px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Hospital Nacional de Sololá:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Hospital Nacional de Sololá:</span>
           <ULine value={nacional ? "✓" : ""} width="40px" />
         </div>
 
         <div style={{ ...row, flexWrap: "nowrap", marginBottom: "4px" }}>
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Tecniscan Escuintla:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Tecniscan Escuintla:</span>
           <ULine value={tecniscan ? "✓" : ""} width="55px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>Hospital Roosevelt:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>Hospital Roosevelt:</span>
           <ULine value={roosevelt ? "✓" : ""} width="55px" />
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "2px" }}>H. N. San Juan De Dios Guatemala:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "2px" }}>H. N. San Juan De Dios Guatemala:</span>
           <ULine value={juanDeDios ? "✓" : ""} width="50px" />
         </div>
 
         <div style={row}>
-          <span style={{ fontSize: "11px", whiteSpace: "nowrap", marginRight: "4px" }}>Otros:</span>
+          <span style={{ fontSize: "13px", whiteSpace: "nowrap", marginRight: "4px" }}>Otros:</span>
           <ULine value={otrosLugar} width="calc(100% - 50px)" />
         </div>
       </div>
@@ -447,13 +447,13 @@ function PrintForm({ service }: { service: Service }) {
         <span style={sectionHead}>UNIDAD (ES) DESTACADA (S):</span>
 
         <div style={{ ...row, alignItems: "center" }}>
-          <span style={{ fontSize: "11px", marginRight: "8px" }}>Descripción:</span>
+          <span style={{ fontSize: "13px", marginRight: "8px" }}>Descripción:</span>
           <UnitBox label="96" checked={service.unidades.some((u) => u.includes("96"))} />
           <UnitBox label="240" checked={service.unidades.some((u) => u.includes("240") || u === "BD-01")} />
           <UnitBox label="1419" checked={service.unidades.some((u) => u.includes("1419") || u === "AD-02")} />
           <UnitBox label="Acuática" checked={service.unidades.some((u) => u.includes("Acuá") || u.includes("V-33"))} />
           <UnitBox label="854 incendios" checked={false} />
-          <span style={{ fontSize: "10px", marginLeft: "8px", color: "#444" }}>{service.unidades.join(", ")}</span>
+          <span style={{ fontSize: "12px", marginLeft: "8px", color: "#444" }}>{service.unidades.join(", ")}</span>
         </div>
       </div>
 
@@ -462,12 +462,12 @@ function PrintForm({ service }: { service: Service }) {
         <span style={sectionHead}>PERSONALES DESTACADOS</span>
 
         <div style={row}>
-          <span style={{ fontSize: "11px", marginRight: "4px", whiteSpace: "nowrap" }}>Piloto (s):</span>
+          <span style={{ fontSize: "13px", marginRight: "4px", whiteSpace: "nowrap" }}>Piloto (s):</span>
           <ULine value={service.pilotos.join(", ")} width="calc(100% - 72px)" />
         </div>
 
         <div style={row}>
-          <span style={{ fontSize: "11px", marginRight: "4px", whiteSpace: "nowrap" }}>Camillero (s):</span>
+          <span style={{ fontSize: "13px", marginRight: "4px", whiteSpace: "nowrap" }}>Camillero (s):</span>
           <ULine value={service.camilleros.join(", ")} width="calc(100% - 84px)" />
         </div>
       </div>
@@ -478,37 +478,37 @@ function PrintForm({ service }: { service: Service }) {
 
         <div style={{ ...row, justifyContent: "space-between" }}>
           <span style={{ display: "flex", alignItems: "flex-end", gap: "4px", flex: 1 }}>
-            <span style={{ fontSize: "11px", whiteSpace: "nowrap" }}>Formulado por:</span>
+            <span style={{ fontSize: "13px", whiteSpace: "nowrap" }}>Formulado por:</span>
             <ULine value={service.formuladoPor} width="calc(100% - 110px)" />
           </span>
           <span style={{ display: "flex", alignItems: "flex-end", gap: "4px", marginLeft: "12px" }}>
-            <span style={{ fontSize: "11px" }}>f.</span>
+            <span style={{ fontSize: "13px" }}>f.</span>
             <ULine value="" width="110px" />
           </span>
         </div>
 
         <div style={{ textAlign: "center", marginTop: "10px" }}>
           <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: "0" }}>
-            <span style={{ fontSize: "11px", display: "flex", alignItems: "flex-end", gap: "4px" }}>
+            <span style={{ fontSize: "13px", display: "flex", alignItems: "flex-end", gap: "4px" }}>
               Vo. Bo.
               <span style={{ display: "inline-block", width: "140px", borderBottom: "1px solid #000" }} />
             </span>
-            <span style={{ fontSize: "10px", marginTop: "1px" }}>Jefatura</span>
+            <span style={{ fontSize: "12px", marginTop: "1px" }}>Jefatura</span>
           </div>
         </div>
 
-        <div style={{ textAlign: "center", marginTop: "8px", fontSize: "11px" }}>
+        <div style={{ textAlign: "center", marginTop: "8px", fontSize: "13px" }}>
           San Lucas Toliman, Sololá,{" "}
-          <span style={{ display: "inline-block", width: "60px", borderBottom: "1px solid #000", fontSize: "10px", textAlign: "center" }}>{day}</span>
+          <span style={{ display: "inline-block", width: "60px", borderBottom: "1px solid #000", fontSize: "12px", textAlign: "center" }}>{day}</span>
           {" "}de{" "}
-          <span style={{ display: "inline-block", width: "90px", borderBottom: "1px solid #000", fontSize: "10px", textAlign: "center" }}>{month}</span>
+          <span style={{ display: "inline-block", width: "90px", borderBottom: "1px solid #000", fontSize: "12px", textAlign: "center" }}>{month}</span>
           {" "}de {service.anio}.
         </div>
       </div>
 
       {/* ── 8. RESUMEN ── */}
       <div className="srm-pf-section" style={{ marginTop: "10px" }}>
-        <div style={{ border: "1px solid #000", borderRadius: "10px", padding: "8px 10px", minHeight: "90px", fontSize: "10px", lineHeight: "1.5" }}>
+        <div style={{ border: "1px solid #000", borderRadius: "10px", padding: "8px 10px", minHeight: "90px", fontSize: "12px", lineHeight: "1.5" }}>
           <span style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>RESUMEN:</span>
           {service.resumen ?? ""}
         </div>
