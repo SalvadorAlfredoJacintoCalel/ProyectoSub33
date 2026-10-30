@@ -7,6 +7,7 @@ import { Button } from "@/app/components/ui/button";
 import { Drawer } from "@/app/components/ui/drawer";
 import { Tabs, type TabItem } from "@/app/components/ui/tabs";
 import { useInventario } from "@/hooks/useInventario";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { emergenciaService } from "@/services/emergenciaService";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { formatFechaCorta } from "@/app/pages/Inventario/components/format";
@@ -48,6 +49,14 @@ export function ServicioInsumosPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [servicioFilter, loadServicioInsumos]);
+
+  useDataChanged(["inventario", "emergencias"], () => {
+    void loadServicioInsumos(servicioFilter ? Number(servicioFilter) : undefined);
+    emergenciaService
+      .getEmergencias({ pagina: 1, tamanoPagina: 100 })
+      .then((res) => setServicios(res.items))
+      .catch(() => undefined);
+  });
 
   useEffect(() => {
     emergenciaService

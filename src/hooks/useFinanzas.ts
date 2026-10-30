@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { finanzasService } from "@/services/finanzasService";
+import { emitDataChanged } from "@/services/refresh/dataRefresh";
 import type {
   Transaccion,
   TransaccionCreate,
@@ -44,9 +45,8 @@ export function useFinanzas(): UseFinanzasReturn {
       setTransacciones(resultado.items);
       setPaginacion(resultado);
     } catch (err) {
+      // Conservar los datos previos: un fallo de red no debe vaciar la tabla.
       setError(err instanceof Error ? err.message : "Error al cargar transacciones");
-      setTransacciones([]);
-      setPaginacion(null);
     } finally {
       setLoading(false);
     }
@@ -57,20 +57,25 @@ export function useFinanzas(): UseFinanzasReturn {
       const resultado = await finanzasService.getResumen(desde, hasta);
       setResumen(resultado);
     } catch {
-      setResumen(null);
+      // Mantener el último resumen válido si el servidor no responde.
     }
   }, []);
 
   const createTransaccion = useCallback(async (dto: TransaccionCreate): Promise<Transaccion> => {
-    return finanzasService.createTransaccion(dto);
+    const creada = await finanzasService.createTransaccion(dto);
+    emitDataChanged("finanzas", "dashboard");
+    return creada;
   }, []);
 
   const updateTransaccion = useCallback(async (id: number, dto: TransaccionUpdate): Promise<Transaccion> => {
-    return finanzasService.updateTransaccion(id, dto);
+    const actualizada = await finanzasService.updateTransaccion(id, dto);
+    emitDataChanged("finanzas", "dashboard");
+    return actualizada;
   }, []);
 
   const deleteTransaccion = useCallback(async (id: number): Promise<void> => {
-    return finanzasService.deleteTransaccion(id);
+    await finanzasService.deleteTransaccion(id);
+    emitDataChanged("finanzas", "dashboard");
   }, []);
 
   return {

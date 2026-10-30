@@ -21,6 +21,7 @@ import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { useAuth } from "@/context/AuthContext";
 import { usePermisos } from "@/hooks/usePermisos";
 import { donacionService } from "@/services/donacionService";
@@ -187,6 +188,10 @@ function ItemKardex({ itemId }: { itemId: number }) {
     };
   }, [itemId, loadMovimientos]);
 
+  useDataChanged("inventario", () => {
+    void loadMovimientos({ itemId, pagina: 1, tamanio: 50 });
+  });
+
   if (!cargado) {
     return (
       <div className="flex flex-col gap-2">
@@ -253,6 +258,10 @@ function ItemUbicaciones({ itemId }: { itemId: number }) {
       active = false;
     };
   }, [itemId, loadEquipoUnidades, loadServicioInsumos, loadCatalogos]);
+
+  useDataChanged("inventario", () => {
+    void Promise.all([loadEquipoUnidades(), loadServicioInsumos(), loadCatalogos()]);
+  });
 
   if (!cargado) {
     return (
@@ -561,6 +570,10 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
     }, 300);
     return () => clearTimeout(timer);
   }, [search, categoriaFilter, estadoFilter, page, stockFilter, loadItems]);
+
+  useDataChanged("inventario", () => {
+    reloadActual();
+  });
 
   const totalPages = Math.max(1, paginacion?.totalPaginas ?? 1);
   const total = paginacion?.total ?? 0;
@@ -1354,6 +1367,10 @@ function ResumenHeader({ onNavigate }: { onNavigate: (tab: TopTab, stockFilter?:
     loadResumen();
   }, [loadResumen]);
 
+  useDataChanged("inventario", () => {
+    void loadResumen();
+  });
+
   if (loadingResumen && !resumen) {
     return (
       <div className="mb-5 grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
@@ -1397,6 +1414,10 @@ function ValorizadoTab() {
         setDireccion("");
       });
   }, [loadItems]);
+
+  useDataChanged("inventario", () => {
+    void loadItems({ pagina: 1, tamanio: 100 });
+  });
 
   const grupos = useMemo(() => {
     const map = new Map<string, { categoria: string; items: InventarioItem[]; subtotal: number }>();

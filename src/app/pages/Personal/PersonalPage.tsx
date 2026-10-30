@@ -37,6 +37,8 @@ import { PrintSheetHost } from "@/app/components/print/PrintSheetHost";
 import { usePrintList } from "@/app/components/print/usePrintList";
 import { PrintDetailHost } from "@/app/components/print/PrintDetailHost";
 import { usePrintDetail } from "@/app/components/print/usePrintDetail";
+import { emitDataChanged } from "@/services/refresh/dataRefresh";
+import { useDataChanged } from "@/hooks/useDataChanged";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const BRAND = "var(--brand-600)";
@@ -241,9 +243,7 @@ export function PersonalPage() {
     } catch (error) {
       if ((error as Error)?.name === "AbortError") return;
       console.error("Error fetching personal:", error);
-      setMembers([]);
-      setTotalItems(0);
-      setTotalPages(1);
+      // Conservar la lista previa ante fallos de red.
     } finally {
       if (!controller.signal.aborted) {
         setIsLoadingMembers(false);
@@ -315,7 +315,10 @@ export function PersonalPage() {
     };
   }, [fetchPersonal, fetchEstadisticas]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  useDataChanged("personal", () => {
+    fetchPersonal();
+    fetchEstadisticas();
+  });
 
   const fetchCatalogos = useCallback(async () => {
     try {
@@ -580,6 +583,7 @@ export function PersonalPage() {
       closeModal();
       await Promise.all([fetchPersonal(), fetchEstadisticas()]);
       window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
+      emitDataChanged("personal", "seguridad", "dashboard");
     } catch (error) {
       console.error("Error registrando personal:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";
@@ -600,6 +604,7 @@ export function PersonalPage() {
       setDeleteId(null);
       await Promise.all([fetchPersonal(), fetchEstadisticas()]);
       toast.success("Miembro desactivado correctamente.");
+      emitDataChanged("personal", "seguridad", "dashboard");
     } catch (error) {
       console.error("Error eliminando personal:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";
@@ -625,6 +630,7 @@ export function PersonalPage() {
       setNuevoRangoNombre("");
       setNuevoRangoOpen(false);
       toast.success("Rango agregado correctamente.");
+      emitDataChanged("personal", "seguridad");
     } catch (error) {
       console.error("Error creando rango:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";
@@ -650,6 +656,7 @@ export function PersonalPage() {
       setNuevoRolNombre("");
       setNuevoRolOpen(false);
       toast.success("Rol agregado correctamente.");
+      emitDataChanged("personal", "seguridad");
     } catch (error) {
       console.error("Error creando rol:", error);
       const msg = error instanceof Error ? error.message : "Error desconocido";

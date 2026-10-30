@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { Printer, Trash2, Truck, Wrench } from "lucide-react";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
@@ -78,7 +79,7 @@ export function MantenimientoTab({
     try {
       setMantenimientos(await cargarMantenimientos(Number(vehiculoId)));
     } catch {
-      setMantenimientos([]);
+      // Conservar los mantenimientos previos ante fallos de red.
     } finally {
       setLoading(false);
     }
@@ -87,6 +88,10 @@ export function MantenimientoTab({
   useEffect(() => {
     void recargarLista();
   }, [recargarLista]);
+
+  useDataChanged("vehiculos", () => {
+    void recargarLista();
+  });
 
   const totalCosto = mantenimientos.reduce((s, m) => s + Number(m.costo || 0), 0);
   const ultimo = mantenimientos[0] ?? null;

@@ -35,6 +35,8 @@ import {
   type AuditoriaAccion,
 } from "@/services/seguridadService";
 import { actualizarAccesoSistema } from "../../../services/personalService";
+import { emitDataChanged } from "@/services/refresh/dataRefresh";
+import { useDataChanged } from "@/hooks/useDataChanged";
 
 const RED = "var(--red)";
 
@@ -341,7 +343,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       setCatalogoItems(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error loading catalogo:", error);
-      setCatalogoItems([]);
+      // Conservar los datos previos ante fallos de red.
     } finally {
       setLoadingCatalogos(false);
     }
@@ -451,6 +453,12 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     }
   }, [activeTab, cargarAuditoria]);
 
+  useDataChanged("seguridad", () => {
+    cargarParametros();
+    cargarUsuariosYRoles();
+    cargarCatalogo(catalogoTipo);
+  });
+
   if (userRole !== "admin") return <AccessDenied />;
 
   // ── Handlers: Parámetros ─────────────────────────────────────────────────────
@@ -477,6 +485,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     try {
       await guardarParametros(parametros);
       toast.success("Los cambios se han guardado correctamente.");
+      emitDataChanged("seguridad", "dashboard");
       await cargarParametros();
     } catch (error) {
       toast.error("Error al guardar los parámetros.");
@@ -542,6 +551,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       }
       setModalCatalogo(false);
       toast.success("Los cambios se han guardado correctamente.");
+      emitDataChanged("seguridad", "personal", "emergencias", "vehiculos", "inventario");
       await cargarCatalogo(catalogoTipo);
     } catch (error) {
       toast.error("Error al guardar el catálogo.");
@@ -567,6 +577,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       }
       setModalHospital(false);
       toast.success("Los cambios se han guardado correctamente.");
+      emitDataChanged("seguridad", "personal", "emergencias", "vehiculos", "inventario");
       await cargarCatalogo(catalogoTipo);
     } catch (error) {
       toast.error("Error al guardar el hospital.");
@@ -579,6 +590,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       await eliminarCatalogo(catalogoTipo, modalEliminar.id);
       setModalEliminar(null);
       toast.success("Los cambios se han guardado correctamente.");
+      emitDataChanged("seguridad", "personal", "emergencias", "vehiculos", "inventario");
       await cargarCatalogo(catalogoTipo);
     } catch (error) {
       toast.error("Error al eliminar el catálogo.");
@@ -591,6 +603,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
       await cambiarEstadoUsuario(u.usuarioId, estado);
       setUsuarios((prev) => prev.map((x) => (x.usuarioId === u.usuarioId ? { ...x, estado } : x)));
       window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
+      emitDataChanged("seguridad", "personal", "dashboard");
       toast.success("Los cambios se han guardado correctamente.");
     } catch (error) {
       toast.error("Error al cambiar el estado del usuario.");
@@ -606,6 +619,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         prev.map((x) => (x.usuarioId === u.usuarioId ? { ...x, rolId, rolNombre: rol?.nombre ?? "" } : x))
       );
       window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
+      emitDataChanged("seguridad", "personal", "dashboard");
       toast.success("Los cambios se han guardado correctamente.");
     } catch (error) {
       toast.error("Error al cambiar el rol del usuario.");
@@ -641,6 +655,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         prev.map((x) => (x.usuarioId === modalUsername.usuarioId ? { ...x, username } : x))
       );
       window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
+      emitDataChanged("seguridad", "personal", "dashboard");
       toast.success("Nombre de usuario actualizado correctamente.");
       setModalUsername(null);
       setNuevoUsername("");
@@ -663,6 +678,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
     try {
       await actualizarAccesoSistema(modalPassword.personalId, { username: "", password: nuevaPassword, rolId: 0 });
       window.dispatchEvent(new CustomEvent("usuarios-actualizados"));
+      emitDataChanged("seguridad", "personal", "dashboard");
       toast.success("Contraseña actualizada correctamente.");
       setModalPassword(null);
       setNuevaPassword("");
@@ -683,6 +699,7 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
         return;
       }
       toast.success("Permisos actualizados");
+      emitDataChanged("seguridad");
     } catch (error) {
       console.error("Error guardando permisos:", error);
       toast.error("Error guardando permisos");

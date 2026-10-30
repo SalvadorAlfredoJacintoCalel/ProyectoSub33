@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { emergenciaService } from "@/services/emergenciaService";
+import { emitDataChanged } from "@/services/refresh/dataRefresh";
 import type {
   Emergencia,
   EmergenciaListItem,
@@ -76,10 +77,9 @@ export function useEmergencias(): UseEmergenciasReturn {
       setEmergencias(resultado.items);
       setPaginacion(resultado);
     } catch (err) {
+      // Conservar los datos previos: un fallo de red no debe vaciar la tabla.
       const mensaje = err instanceof Error ? err.message : "Error desconocido";
       setError(mensaje);
-      setEmergencias([]);
-      setPaginacion(null);
     } finally {
       setLoading(false);
     }
@@ -133,7 +133,9 @@ export function useEmergencias(): UseEmergenciasReturn {
       setLoading(true);
       setError(null);
       try {
-        return await emergenciaService.registrarEmergencia(data);
+        const creada = await emergenciaService.registrarEmergencia(data);
+        emitDataChanged("emergencias", "vehiculos", "dashboard");
+        return creada;
       } catch (err) {
         const mensaje = err instanceof Error ? err.message : "Error al crear emergencia";
         setError(mensaje);
@@ -150,7 +152,9 @@ export function useEmergencias(): UseEmergenciasReturn {
       setLoading(true);
       setError(null);
       try {
-        return await emergenciaService.actualizarEmergencia(id, data);
+        const actualizada = await emergenciaService.actualizarEmergencia(id, data);
+        emitDataChanged("emergencias", "vehiculos", "dashboard");
+        return actualizada;
       } catch (err) {
         const mensaje = err instanceof Error ? err.message : "Error al actualizar emergencia";
         setError(mensaje);
@@ -168,6 +172,7 @@ export function useEmergencias(): UseEmergenciasReturn {
       setError(null);
       try {
         await emergenciaService.cambiarEstado(id, estado);
+        emitDataChanged("emergencias", "vehiculos", "dashboard");
         return true;
       } catch (err) {
         const mensaje = err instanceof Error ? err.message : "Error al cambiar estado";

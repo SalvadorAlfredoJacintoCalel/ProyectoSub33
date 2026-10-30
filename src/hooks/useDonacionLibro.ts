@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { donacionLibroService } from "@/services/donacionLibroService";
+import { emitDataChanged } from "@/services/refresh/dataRefresh";
 import type {
   DonacionLibro,
   DonacionMovimientoCreate,
@@ -20,8 +21,8 @@ export function useDonacionLibro() {
     try {
       setLibro(await donacionLibroService.getLibro(a, m));
     } catch (e) {
+      // Conservar el libro previo ante fallos de red.
       setError(e instanceof Error ? e.message : "No se pudo cargar el libro de donaciones");
-      setLibro(null);
     } finally {
       setLoading(false);
     }
@@ -37,6 +38,7 @@ export function useDonacionLibro() {
     async (data: DonacionMovimientoCreate) => {
       const creado = await donacionLibroService.createMovimiento(data);
       await recargar();
+      emitDataChanged("donaciones", "finanzas", "inventario", "dashboard");
       return creado;
     },
     [recargar],
@@ -46,6 +48,7 @@ export function useDonacionLibro() {
     async (id: number, data: DonacionMovimientoUpdate) => {
       const actualizado = await donacionLibroService.updateMovimiento(id, data);
       await recargar();
+      emitDataChanged("donaciones", "finanzas", "inventario", "dashboard");
       return actualizado;
     },
     [recargar],
@@ -55,6 +58,7 @@ export function useDonacionLibro() {
     async (id: number) => {
       await donacionLibroService.deleteMovimiento(id);
       await recargar();
+      emitDataChanged("donaciones", "finanzas", "inventario", "dashboard");
     },
     [recargar],
   );

@@ -15,6 +15,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { usePermisos } from "@/hooks/usePermisos";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
@@ -124,6 +125,11 @@ export function EquipoUnidadesPage() {
     loadItems({ pagina: 1, tamanio: 100 });
     loadEquipoUnidades();
   }, [loadCatalogos, loadItems, loadEquipoUnidades]);
+
+  useDataChanged("inventario", () => {
+    void loadEquipoUnidades();
+    void loadItems({ pagina: 1, tamanio: 100 });
+  });
 
   const unidadNombrePorId = useMemo(() => {
     const map = new Map<number, string>();

@@ -6,6 +6,7 @@ import { Button } from "@/app/components/ui/button";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { Drawer } from "@/app/components/ui/drawer";
 import { useFinanzas } from "@/hooks/useFinanzas";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { usePermisos } from "@/hooks/usePermisos";
 import { finanzasService } from "@/services/finanzasService";
 import { useAuth } from "@/context/AuthContext";
@@ -146,6 +147,10 @@ export function FinanzasPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [page, filtros, loadTransacciones, loadResumen]);
+
+  useDataChanged("finanzas", () => {
+    recargar();
+  });
 
   const totalItems = paginacion?.totalItems ?? 0;
   const totalPages = Math.max(1, paginacion?.totalPaginas ?? 1);

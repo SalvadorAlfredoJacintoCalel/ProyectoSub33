@@ -12,6 +12,7 @@ import { Badge, type BadgeVariant } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { useInventario } from "@/hooks/useInventario";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { useAuth } from "@/context/AuthContext";
 import { usePermisos } from "@/hooks/usePermisos";
 import { InfoField } from "@/app/pages/Inventario/components/InfoField";
@@ -129,6 +130,10 @@ export function MovimientosPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [itemFilter, tipoFilter, desde, hasta, page, loadMovimientos]);
+
+  useDataChanged("inventario", () => {
+    recargar();
+  });
 
   const hayFiltros = !!(itemFilter || tipoFilter || desde || hasta);
   const total = paginacionMovimientos?.total ?? 0;

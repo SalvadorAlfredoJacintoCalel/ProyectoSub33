@@ -24,6 +24,7 @@ import { useAlert } from "@/app/components/ui/AlertSystem";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { formatMoneda } from "@/app/pages/Inventario/components/format";
 import { useVehiculos } from "@/hooks/useVehiculos";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { consumeDraftOpenRequest, subscribeOpenDraft, requestOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { usePermisos } from "@/hooks/usePermisos";
 import { useAuth } from "@/context/AuthContext";
@@ -155,13 +156,18 @@ export function VehiculosPage() {
       const lista = await vehiculosService.getVehiculos({ pagina: 1, tamanio: 500 });
       setStats(lista.items);
     } catch {
-      setStats([]);
+      // Conservar las estadísticas previas ante fallos de red.
     }
   }, []);
 
   useEffect(() => {
     void cargarStats();
   }, [cargarStats]);
+
+  useDataChanged(["vehiculos", "emergencias"], () => {
+    void recargar();
+    void cargarStats();
+  });
 
   const resumen = useMemo(() => {
     const activos = stats.filter((v) => v.estado === "Activo");

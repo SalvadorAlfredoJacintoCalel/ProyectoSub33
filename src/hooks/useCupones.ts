@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { vehiculosService } from "@/services/vehiculosService";
+import { emitDataChanged } from "@/services/refresh/dataRefresh";
 import type {
   CuponCreate,
   CuponPeriodo,
@@ -29,8 +30,8 @@ export function useCupones() {
     try {
       setPeriodo(await vehiculosService.getPeriodo(a, m));
     } catch (e) {
+      // Conservar el período previo si el servidor no responde.
       setError(e instanceof Error ? e.message : "No se pudo cargar el período de cupones");
-      setPeriodo(null);
     } finally {
       setLoading(false);
     }
@@ -51,6 +52,7 @@ export function useCupones() {
     async (data: CuponPeriodoCreate) => {
       const guardado = await vehiculosService.savePeriodo(data);
       setPeriodo(guardado);
+      emitDataChanged("vehiculos", "dashboard");
       return guardado;
     },
     [],
@@ -60,6 +62,7 @@ export function useCupones() {
     async (data: CuponCreate) => {
       const creado = await vehiculosService.createCupon(data);
       await recargar();
+      emitDataChanged("vehiculos", "dashboard");
       return creado;
     },
     [recargar],
@@ -69,6 +72,7 @@ export function useCupones() {
     async (id: number, data: CuponUpdate) => {
       const actualizado = await vehiculosService.updateCupon(id, data);
       await recargar();
+      emitDataChanged("vehiculos", "dashboard");
       return actualizado;
     },
     [recargar],
@@ -78,6 +82,7 @@ export function useCupones() {
     async (id: number) => {
       await vehiculosService.deleteCupon(id);
       await recargar();
+      emitDataChanged("vehiculos", "dashboard");
     },
     [recargar],
   );
@@ -86,6 +91,7 @@ export function useCupones() {
     async (id: number) => {
       await vehiculosService.desactivarCupon(id);
       await recargar();
+      emitDataChanged("vehiculos", "dashboard");
     },
     [recargar],
   );
@@ -94,6 +100,7 @@ export function useCupones() {
     async (id: number) => {
       await vehiculosService.reactivarCupon(id);
       await recargar();
+      emitDataChanged("vehiculos", "dashboard");
     },
     [recargar],
   );
@@ -102,6 +109,7 @@ export function useCupones() {
     async (id: number) => {
       await vehiculosService.purgeCupon(id);
       await recargar();
+      emitDataChanged("vehiculos", "dashboard");
     },
     [recargar],
   );

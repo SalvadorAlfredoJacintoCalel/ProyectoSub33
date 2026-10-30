@@ -15,6 +15,7 @@ import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/d
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
 import { useDonacionLibro } from "@/hooks/useDonacionLibro";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { usePermisos } from "@/hooks/usePermisos";
 import { useAuth } from "@/context/AuthContext";
 import { getCatalogo, type CatalogoItem } from "@/services/configuracionService";
@@ -47,6 +48,7 @@ export function LibroDonacionesTab() {
     crearMovimiento,
     actualizarMovimiento,
     eliminarMovimiento,
+    recargar,
   } = useDonacionLibro();
 
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([]);
@@ -58,6 +60,10 @@ export function LibroDonacionesTab() {
       .then(setTiposDocumento)
       .catch(() => setTiposDocumento([]));
   }, []);
+
+  useDataChanged("donaciones", () => {
+    void recargar();
+  });
 
   const movimientos = libro?.movimientos ?? [];
 

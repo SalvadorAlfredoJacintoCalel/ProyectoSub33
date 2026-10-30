@@ -17,6 +17,7 @@ import { Button } from "@/app/components/ui/button";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { useEmergencias } from "@/hooks/useEmergencias";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { useAuth } from "@/context/AuthContext";
 import { usePermisos } from "@/hooks/usePermisos";
 import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/draftOpenRequest";
@@ -932,6 +933,11 @@ export function EmergenciasPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [query, unidad, tipo, piloto, desde, hasta, page, pageSize, cargarEmergencias]);
+
+  useDataChanged(["emergencias", "vehiculos", "inventario"], () => {
+    recargarLista();
+    cargarCatalogos();
+  });
 
   function applyPreset(p: Preset) {
     if (p === preset) { setPreset(null); setDesde(""); setHasta(""); return; }

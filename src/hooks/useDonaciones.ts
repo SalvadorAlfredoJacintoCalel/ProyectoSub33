@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { donacionService } from "@/services/donacionService";
+import { emitDataChanged } from "@/services/refresh/dataRefresh";
 import type {
   Donacion,
   DonacionCreate,
@@ -42,9 +43,8 @@ export function useDonaciones(): UseDonacionesReturn {
       setDonaciones(resultado.items);
       setPaginacion(resultado);
     } catch (err) {
+      // Conservar los datos previos ante fallos de red/servidor.
       setError(err instanceof Error ? err.message : "Error al cargar donaciones");
-      setDonaciones([]);
-      setPaginacion(null);
     } finally {
       setLoading(false);
     }
@@ -61,19 +61,25 @@ export function useDonaciones(): UseDonacionesReturn {
   }, []);
 
   const createDonacion = useCallback(async (dto: DonacionCreate): Promise<Donacion> => {
-    return donacionService.createDonacion(dto);
+    const creada = await donacionService.createDonacion(dto);
+    emitDataChanged("donaciones", "finanzas", "inventario", "dashboard");
+    return creada;
   }, []);
 
   const updateDonacion = useCallback(async (id: number, dto: DonacionUpdate): Promise<Donacion> => {
-    return donacionService.updateDonacion(id, dto);
+    const actualizada = await donacionService.updateDonacion(id, dto);
+    emitDataChanged("donaciones", "finanzas", "inventario", "dashboard");
+    return actualizada;
   }, []);
 
   const changeEstado = useCallback(async (id: number, estado: string): Promise<void> => {
-    return donacionService.changeEstado(id, estado);
+    await donacionService.changeEstado(id, estado);
+    emitDataChanged("donaciones", "finanzas", "inventario", "dashboard");
   }, []);
 
   const deleteDonacion = useCallback(async (id: number): Promise<void> => {
-    return donacionService.deleteDonacion(id);
+    await donacionService.deleteDonacion(id);
+    emitDataChanged("donaciones", "finanzas", "inventario", "dashboard");
   }, []);
 
   return {

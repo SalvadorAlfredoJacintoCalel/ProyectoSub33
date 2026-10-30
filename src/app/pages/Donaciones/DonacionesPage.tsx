@@ -35,6 +35,7 @@ import { NumberInput } from "@/app/components/ui/NumberInput";
 import { EmptyState } from "@/app/components/ui/empty-state";
 import { DataTable, type DataTableColumn } from "@/app/components/ui/data-table";
 import { useDonaciones } from "@/hooks/useDonaciones";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { usePermisos } from "@/hooks/usePermisos";
 import { finanzasService } from "@/services/finanzasService";
 import { donacionService } from "@/services/donacionService";
@@ -743,6 +744,15 @@ export function DonacionesPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search, activeTab, page, loadDonaciones]);
+
+  useDataChanged("donaciones", () => {
+    loadDonaciones({
+      pagina: page,
+      tamanio: PAGE_SIZE,
+      busqueda: search || undefined,
+      categoria: activeTab === "Todos" ? undefined : activeTab,
+    });
+  });
 
   const totalItems = paginacion?.totalItems ?? 0;
   const totalPages = Math.max(1, paginacion?.totalPaginas ?? 1);

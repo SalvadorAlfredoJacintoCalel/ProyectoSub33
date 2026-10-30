@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { vehiculosService } from "@/services/vehiculosService";
+import { emitDataChanged } from "@/services/refresh/dataRefresh";
 import type {
   CatalogoItem,
   PaginacionVehiculos,
@@ -101,6 +102,7 @@ export function useVehiculos() {
     async (data: VehiculoCreate) => {
       const creado = await vehiculosService.createVehiculo(data);
       await recargar();
+      emitDataChanged("vehiculos", "emergencias", "dashboard");
       return creado;
     },
     [recargar],
@@ -110,6 +112,7 @@ export function useVehiculos() {
     async (id: number, data: VehiculoUpdate) => {
       const actualizado = await vehiculosService.updateVehiculo(id, data);
       await recargar();
+      emitDataChanged("vehiculos", "emergencias", "dashboard");
       return actualizado;
     },
     [recargar],
@@ -119,6 +122,7 @@ export function useVehiculos() {
     async (id: number, estado: "Activo" | "Inactivo") => {
       const actualizado = await vehiculosService.changeEstado(id, estado);
       await recargar();
+      emitDataChanged("vehiculos", "emergencias", "dashboard");
       return actualizado;
     },
     [recargar],
@@ -128,6 +132,7 @@ export function useVehiculos() {
     async (id: number) => {
       await vehiculosService.deleteVehiculo(id);
       await recargar();
+      emitDataChanged("vehiculos", "emergencias", "dashboard");
     },
     [recargar],
   );
@@ -142,6 +147,7 @@ export function useVehiculos() {
     async (vehiculoId: number, data: VehiculoMantenimientoCreate) => {
       const creado = await vehiculosService.createMantenimiento(vehiculoId, data);
       await recargar();
+      emitDataChanged("vehiculos", "emergencias", "dashboard");
       return creado;
     },
     [recargar],
@@ -151,6 +157,7 @@ export function useVehiculos() {
     async (id: number, data: VehiculoMantenimientoCreate) => {
       const actualizado = await vehiculosService.updateMantenimiento(id, data);
       await recargar();
+      emitDataChanged("vehiculos", "emergencias", "dashboard");
       return actualizado;
     },
     [recargar],
@@ -160,6 +167,7 @@ export function useVehiculos() {
     async (id: number) => {
       await vehiculosService.deleteMantenimiento(id);
       await recargar();
+      emitDataChanged("vehiculos", "emergencias", "dashboard");
     },
     [recargar],
   );

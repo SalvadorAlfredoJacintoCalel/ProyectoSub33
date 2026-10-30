@@ -16,6 +16,7 @@ import { readDraftValue } from "@/services/drafts/draftRegistry";
 import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/draftOpenRequest";
 import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { useCupones } from "@/hooks/useCupones";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { usePermisos } from "@/hooks/usePermisos";
 import { useAuth } from "@/context/AuthContext";
 import { vehiculosService } from "@/services/vehiculosService";
@@ -108,6 +109,10 @@ export function CuponesTab() {
       })
       .catch(() => undefined);
   }, []);
+
+  useDataChanged("vehiculos", () => {
+    void recargar();
+  });
 
   const filas = useMemo(() => {
     const todos = periodo?.cupones ?? [];

@@ -42,6 +42,7 @@ import {
 } from "@/services/notifications/alerts";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { useIdleLogout } from "@/hooks/useIdleLogout";
+import { useDataChanged } from "@/hooks/useDataChanged";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
 import { subirFoto } from "@/services/authService";
 import { dashboardService } from "@/services/dashboardService";
@@ -301,6 +302,20 @@ function AppContent() {
       .finally(() => { if (!cancelled) setDashboardLoading(false); });
     return () => { cancelled = true; };
   }, [activeNav]);
+
+  useDataChanged(
+    ["emergencias", "vehiculos", "donaciones", "finanzas", "inventario", "personal"],
+    () => {
+      if (activeNav !== "analytics") return;
+      let cancelled = false;
+      setDashboardLoading(true);
+      dashboardService
+        .getResumen()
+        .then((res) => { if (!cancelled) setDashboard(res); })
+        .catch(() => { if (!cancelled) setDashboard(null); })
+        .finally(() => { if (!cancelled) setDashboardLoading(false); });
+    },
+  );
 
   function handleAvatarBase64(base64: string) {
     setAvatarUrl(base64);

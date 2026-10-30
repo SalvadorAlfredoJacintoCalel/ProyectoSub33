@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { inventarioService } from "@/services/inventarioService";
+import { emitDataChanged } from "@/services/refresh/dataRefresh";
 import type {
   InventarioItem,
   InventarioItemCreate,
@@ -92,9 +93,8 @@ export function useInventario(): UseInventarioReturn {
       setItems(resultado.items);
       setPaginacion(resultado);
     } catch (err) {
+      // Conservar los datos previos ante fallos de red/servidor.
       setError(err instanceof Error ? err.message : "Error al cargar items");
-      setItems([]);
-      setPaginacion(null);
     } finally {
       setLoading(false);
     }
@@ -109,9 +109,8 @@ export function useInventario(): UseInventarioReturn {
       setMovimientos(items);
       setPaginacionMovimientos(items.length > 0 || Array.isArray(resultado?.items) ? resultado : null);
     } catch (err) {
+      // Conservar los datos previos ante fallos de red/servidor.
       setError(err instanceof Error ? err.message : "Error al cargar movimientos");
-      setMovimientos([]);
-      setPaginacionMovimientos(null);
     } finally {
       setLoading(false);
     }
@@ -124,8 +123,8 @@ export function useInventario(): UseInventarioReturn {
       const resultado = await inventarioService.getEquipoUnidades(unidadId ? { unidadId } : undefined);
       setEquipoUnidades(resultado);
     } catch (err) {
+      // Conservar los datos previos ante fallos de red/servidor.
       setError(err instanceof Error ? err.message : "Error al cargar equipo");
-      setEquipoUnidades([]);
     } finally {
       setLoading(false);
     }
@@ -138,8 +137,8 @@ export function useInventario(): UseInventarioReturn {
       const resultado = await inventarioService.getServicioInsumos(servicioId ? { servicioId } : undefined);
       setServicioInsumos(resultado);
     } catch (err) {
+      // Conservar los datos previos ante fallos de red/servidor.
       setError(err instanceof Error ? err.message : "Error al cargar insumos");
-      setServicioInsumos([]);
     } finally {
       setLoading(false);
     }
@@ -182,27 +181,36 @@ export function useInventario(): UseInventarioReturn {
   }, []);
 
   const createItem = useCallback(async (dto: InventarioItemCreate): Promise<InventarioItem> => {
-    return inventarioService.createItem(dto);
+    const creado = await inventarioService.createItem(dto);
+    emitDataChanged("inventario", "donaciones", "dashboard");
+    return creado;
   }, []);
 
   const updateItem = useCallback(async (id: number, dto: InventarioItemUpdate): Promise<InventarioItem> => {
-    return inventarioService.updateItem(id, dto);
+    const actualizado = await inventarioService.updateItem(id, dto);
+    emitDataChanged("inventario", "donaciones", "dashboard");
+    return actualizado;
   }, []);
 
   const deleteItem = useCallback(async (id: number): Promise<void> => {
-    return inventarioService.deleteItem(id);
+    await inventarioService.deleteItem(id);
+    emitDataChanged("inventario", "donaciones", "dashboard");
   }, []);
 
   const darDeBajaItem = useCallback(async (id: number, responsableId?: string | null): Promise<void> => {
-    return inventarioService.darDeBajaItem(id, responsableId);
+    await inventarioService.darDeBajaItem(id, responsableId);
+    emitDataChanged("inventario", "donaciones", "dashboard");
   }, []);
 
   const createMovimiento = useCallback(async (dto: InventarioMovimientoCreate): Promise<InventarioMovimiento> => {
-    return inventarioService.createMovimiento(dto);
+    const creado = await inventarioService.createMovimiento(dto);
+    emitDataChanged("inventario", "donaciones", "dashboard");
+    return creado;
   }, []);
 
   const asignarEquipo = useCallback(async (dto: EquipoUnidadCreate): Promise<void> => {
-    return inventarioService.asignarEquipo(dto);
+    await inventarioService.asignarEquipo(dto);
+    emitDataChanged("inventario", "donaciones", "dashboard");
   }, []);
 
   return {
