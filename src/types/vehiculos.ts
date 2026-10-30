@@ -7,7 +7,7 @@ export interface ApiEnvelope<T> {
 export type EstadoOperativo = "Operativa" | "En Servicio" | "Mantenimiento" | "Fuera de Servicio";
 export type OrigenVehiculo = "Compra Propia" | "Donado";
 export type EstadoRegistro = "Activo" | "Inactivo";
-export type TipoMantenimiento = "Preventivo" | "Correctivo";
+export type TipoMantenimiento = string;
 export type EstadoMantenimiento = "En proceso" | "Finalizado";
 
 export interface VehiculoMantenimiento {

@@ -19,13 +19,11 @@ import { useCupones } from "@/hooks/useCupones";
 import { usePermisos } from "@/hooks/usePermisos";
 import { useAuth } from "@/context/AuthContext";
 import { vehiculosService } from "@/services/vehiculosService";
-import { crearCatalogo } from "@/services/configuracionService";
-import { GasolineraAutocomplete } from "@/app/pages/Vehiculos/components/GasolineraAutocomplete";
+import { CatalogAutocomplete } from "@/app/components/ui/CatalogAutocomplete";
 import { DetalleCuponModal } from "@/app/pages/Vehiculos/components/DetalleCuponModal";
 import { descargarCsv, formatFechaCorta, formatMoneda, toCsv } from "@/app/pages/Inventario/components/format";
 import { ReporteCuponesPrintSheet } from "@/app/pages/Vehiculos/components/ReporteCuponesPrintModal";
 import type {
-  CatalogoItem,
   CuponCreate,
   CuponPeriodo,
   CuponPeriodoCreate,
@@ -89,7 +87,6 @@ export function CuponesTab() {
   } = useCupones();
 
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
-  const [gasolineras, setGasolineras] = useState<CatalogoItem[]>([]);
   const [showPeriodo, setShowPeriodo] = useState(false);
   const [showCupon, setShowCupon] = useState(false);
   const [cuponEdit, setCuponEdit] = useState<VehiculoCupon | null>(null);
@@ -104,13 +101,10 @@ export function CuponesTab() {
   const { isAdmin } = usePermisos();
 
   useEffect(() => {
-    void Promise.all([
-      vehiculosService.getVehiculos({ pagina: 1, tamanio: 200, estado: "Activo" }),
-      vehiculosService.getGasolineras(),
-    ])
-      .then(([lista, gas]) => {
+    void vehiculosService
+      .getVehiculos({ pagina: 1, tamanio: 200, estado: "Activo" })
+      .then((lista) => {
         setVehiculos(lista.items);
-        setGasolineras(gas);
       })
       .catch(() => undefined);
   }, []);
@@ -634,7 +628,6 @@ export function CuponesTab() {
         mes={mes}
         periodo={periodo}
         vehiculos={vehiculos}
-        gasolineras={gasolineras}
         cupon={cuponEdit}
         onSave={handleGuardarCupon}
       />
@@ -965,7 +958,6 @@ function CuponModal({
   mes,
   periodo,
   vehiculos,
-  gasolineras,
   cupon,
   onSave,
 }: {
@@ -975,7 +967,6 @@ function CuponModal({
   mes: number;
   periodo: CuponPeriodo | null;
   vehiculos: Vehiculo[];
-  gasolineras: CatalogoItem[];
   cupon: VehiculoCupon | null;
   onSave: (data: CuponCreate, id?: number) => Promise<void>;
 }) {
@@ -1211,15 +1202,10 @@ function CuponModal({
           <Campo label="Galonaje">
             <NumberInput allowDecimal value={galonaje} onChange={(v) => handleChange(setGalonaje, "galonaje", v)} />
           </Campo>
-          <GasolineraAutocomplete
+          <CatalogAutocomplete
+            tipo="gasolineras"
             value={gasolineraId}
             onChange={(v) => handleChange(setGasolineraId, "gasolineraId", v)}
-            gasolineras={gasolineras}
-            onCreate={async (nombre) => {
-              const nueva = await crearCatalogo("gasolineras", nombre);
-              setGasolineras((prev) => [...prev, nueva]);
-              return nueva;
-            }}
             required
             error={errors.gasolineraId}
           />

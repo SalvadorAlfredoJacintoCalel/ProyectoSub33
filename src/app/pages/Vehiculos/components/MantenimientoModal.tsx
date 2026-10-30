@@ -2,8 +2,8 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Modal } from "@/app/components/ui/modal";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import { SelectField } from "@/app/pages/Inventario/components/SelectField";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { CatalogAutocomplete } from "@/app/components/ui/CatalogAutocomplete";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { readDraftValue } from "@/services/drafts/draftRegistry";
 import { useAuth } from "@/context/AuthContext";
@@ -406,15 +406,13 @@ export function MantenimientoModal({
                 onChange={(e) => set("fechaRetorno", e.target.value)}
               />
             </div>
-            <SelectField
+            <CatalogAutocomplete
+              tipo="tipos-mantenimiento"
               label="Tipo de mantenimiento"
+              valueIsName
               value={form.tipo}
-              onChange={(v) => set("tipo", v as TipoMantenimiento)}
-              options={[
-                { value: "Preventivo", label: "Preventivo" },
-                { value: "Correctivo", label: "Correctivo" },
-              ]}
-              placeholder="Selecciona tipo"
+              onChange={(v) => set("tipo", v)}
+              placeholder="Selecciona o crea tipo"
             />
             <Input
               label="Taller"

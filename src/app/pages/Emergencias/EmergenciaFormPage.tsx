@@ -1258,32 +1258,13 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
                 <label style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500, display: "block", marginBottom: 4 }}>
                   Estado al Entregar en Hospital
                 </label>
-                <div style={{ position: "relative" }}>
-                  <select
-                    value={estadoEntrega}
-                    onChange={(e) => setEstadoEntrega(e.target.value)}
-                    style={{ ...selectBase, paddingRight: 32 }}
-                  >
-                    <option value="">Seleccionar estado…</option>
-                    {catalogos.estadosEntrega.map((e) => (
-                      <option key={e.id} value={e.nombre}>
-                        {e.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    style={{
-                      position: "absolute",
-                      right: 10,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      width: 14,
-                      height: 14,
-                      color: "var(--text-3)",
-                      pointerEvents: "none",
-                    }}
-                  />
-                </div>
+                <CatalogAutocomplete
+                  tipo="estados-entrega"
+                  valueIsName
+                  value={estadoEntrega}
+                  onChange={(nombre) => setEstadoEntrega(nombre)}
+                  placeholder="Seleccionar o crear estado..."
+                />
               </div>
             </div>
           </section>

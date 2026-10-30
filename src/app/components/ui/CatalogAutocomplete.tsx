@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { Check, Plus, ChevronDown, X, Loader2 } from "lucide-react";
+import { useAlert } from "@/app/components/ui/AlertSystem";
 import {
   getCatalogo,
   crearCatalogo,
@@ -11,13 +12,14 @@ import {
 interface CatalogAutocompleteProps {
   tipo: CatalogoTipo;
   value: string;
-  onChange: (id: string) => void;
+  onChange: (value: string) => void;
   label?: string;
   placeholder?: string;
   required?: boolean;
   error?: string;
   items?: CatalogoItem[];
   disabled?: boolean;
+  valueIsName?: boolean;
 }
 
 export function CatalogAutocomplete({
@@ -30,7 +32,9 @@ export function CatalogAutocomplete({
   error,
   items,
   disabled = false,
+  valueIsName = false,
 }: CatalogAutocompleteProps) {
+  const { toast } = useAlert();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
@@ -69,8 +73,8 @@ export function CatalogAutocomplete({
   }, []);
 
   const selected = useMemo(
-    () => options.find((o) => String(o.id) === value),
-    [options, value],
+    () => options.find((o) => (valueIsName ? o.nombre === value : String(o.id) === value)),
+    [options, value, valueIsName],
   );
 
   const filtered = useMemo(() => {
@@ -91,7 +95,7 @@ export function CatalogAutocomplete({
     try {
       const nuevo = await crearCatalogo(tipo, nombre);
       setOptions((prev) => [...prev, nuevo]);
-      onChange(String(nuevo.id));
+      onChange(valueIsName ? (nuevo.nombre ?? nombre) : String(nuevo.id));
       setQuery("");
       setOpen(false);
     } catch (err) {
@@ -99,9 +103,11 @@ export function CatalogAutocomplete({
         const lista = await getCatalogo(tipo).catch(() => options);
         setOptions(lista);
         const existente = lista.find((o) => (o.nombre ?? "").toLowerCase() === nombre.toLowerCase());
-        if (existente) onChange(String(existente.id));
+        if (existente) onChange(valueIsName ? (existente.nombre ?? nombre) : String(existente.id));
         setQuery("");
         setOpen(false);
+      } else {
+        toast.error(err instanceof Error ? err.message : "No se pudo crear la opción.");
       }
     } finally {
       setCreating(false);
@@ -180,7 +186,7 @@ export function CatalogAutocomplete({
                 key={o.id}
                 type="button"
                 onClick={() => {
-                  onChange(String(o.id));
+                  onChange(valueIsName ? o.nombre : String(o.id));
                   setQuery("");
                   setOpen(false);
                 }}
@@ -189,7 +195,7 @@ export function CatalogAutocomplete({
                 onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)"}
                 onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = ""}
               >
-                {String(o.id) === value && <Check size={14} style={{ color: "var(--brand-600)" }} />}
+                {(valueIsName ? o.nombre === value : String(o.id) === value) && <Check size={14} style={{ color: "var(--brand-600)" }} />}
                 <span>{o.nombre}</span>
               </button>
             ))}

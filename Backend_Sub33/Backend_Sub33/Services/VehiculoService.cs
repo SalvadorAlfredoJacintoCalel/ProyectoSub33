@@ -25,11 +25,6 @@ public class VehiculoService : IVehiculoService
         "Activo", "Inactivo"
     };
 
-    private static readonly HashSet<string> TiposMantenimiento = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Preventivo", "Correctivo"
-    };
-
     private static readonly HashSet<string> EstadosMantenimiento = new(StringComparer.OrdinalIgnoreCase)
     {
         "En proceso", "Finalizado"
@@ -1003,7 +998,7 @@ public class VehiculoService : IVehiculoService
     private static string? ValidarMantenimiento(VehiculoMantenimientoCreateDto dto)
     {
         if (dto.FechaIngreso == default) return "La fecha de ingreso es obligatoria.";
-        if (!TiposMantenimiento.Contains(dto.Tipo)) return "El tipo de mantenimiento no es válido.";
+        if (string.IsNullOrWhiteSpace(dto.Tipo)) return "El tipo de mantenimiento es obligatorio.";
         if (!EstadosMantenimiento.Contains(dto.Estado)) return "El estado del mantenimiento no es válido.";
         if (dto.Costo < 0) return "El costo no puede ser negativo.";
         return null;
