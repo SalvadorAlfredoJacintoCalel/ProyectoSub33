@@ -49,7 +49,7 @@ function IconInput({
       </div>
       <input
         {...props}
-        className="flex-1 px-4 py-[14px] text-[14px] text-[#1b1b1c] outline-none bg-white placeholder:text-[var(--text-3)]"
+        className="flex-1 min-w-0 px-4 py-[14px] text-[14px] text-[#1b1b1c] outline-none bg-white placeholder:text-[var(--text-3)]"
         style={{ fontFamily: "Inter, sans-serif" }}
       />
       {rightSlot}
@@ -337,7 +337,7 @@ function VerifyStep({ onVerify, onBack, onResend, verifying, resending }: { onVe
             value={val}
             onChange={e => handleChange(i, e.target.value)}
             onKeyDown={e => handleKeyDown(i, e)}
-            className="w-10 sm:w-12 h-14 text-center text-[20px] font-bold text-[#1b1b1c] bg-white rounded-xl outline-none transition-all"
+            className="flex-1 min-w-0 max-w-12 h-14 text-center text-[20px] font-bold text-[#1b1b1c] bg-white rounded-xl outline-none transition-all"
             style={{
               border: val ? "2px solid #c11d1d" : "1.5px solid #d4d4d8",
               fontFamily: "Manrope, sans-serif",

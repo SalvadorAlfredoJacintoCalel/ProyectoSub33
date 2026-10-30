@@ -1242,7 +1242,7 @@ export function EmergenciasPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 shrink-0 w-full lg:w-[240px]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0 w-full lg:w-[240px]">
                 <div className="flex flex-col gap-1.5">
                   <label className="font-['Inter:Bold',sans-serif] font-bold text-[10px] tracking-[1px] uppercase text-[var(--neutral-500)]">Desde</label>
                   <input type="date" value={desde} onChange={(e) => { setDesde(e.target.value); setPreset(null); setPage(1); }}

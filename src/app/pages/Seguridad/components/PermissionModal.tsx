@@ -79,7 +79,7 @@ export function PermissionModal({ rolId, rolNombre, onClose, onSaved }: Permissi
           <Loader2 className="size-6 animate-spin" style={{ color: "var(--brand-600)" }} />
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {modulos.map((m) => (
             <label
               key={m.moduloId}

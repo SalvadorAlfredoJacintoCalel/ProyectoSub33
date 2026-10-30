@@ -476,7 +476,7 @@ function AppContent() {
           </button>
 
           {/* Bell */}
-          <div ref={notifRef} className="relative hidden sm:block">
+          <div ref={notifRef} className="relative">
             <button onClick={() => setNotifOpen(o => !o)}
               className="relative flex items-center justify-center p-2 rounded-xl mr-1 transition-colors"
               style={{ background: notifOpen ? C.redLight : undefined }}

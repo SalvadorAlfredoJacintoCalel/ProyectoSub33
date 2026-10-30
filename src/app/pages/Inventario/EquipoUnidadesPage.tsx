@@ -428,7 +428,7 @@ export function EquipoUnidadesPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative w-72">
+        <div className="relative w-full max-w-full sm:w-72">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
           <input
             className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"

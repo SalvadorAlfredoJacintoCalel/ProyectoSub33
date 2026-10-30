@@ -538,7 +538,7 @@ function DonacionModal({
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Donante *" placeholder="Nombre o razón social" value={form.donante} onChange={(e) => setField("donante", e.target.value)} error={errors.donante} />
             <Input label="DPI / NIT *" placeholder="DPI o NIT del donante" value={form.dpiNit} onChange={(e) => setField("dpiNit", e.target.value)} error={errors.dpiNit} />
             <Input label="Teléfono *" placeholder="xxxx-xxxx" value={form.telefono} onChange={(e) => setField("telefono", e.target.value)} error={errors.telefono} />
@@ -559,7 +559,7 @@ function DonacionModal({
       {step === 1 && (
         <div className="flex flex-col gap-4">
           {form.tipo === "Monetaria" ? (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <NumberInput allowDecimal label="Monto (Q) *" placeholder="0.00" value={form.monto} onChange={(v) => setField("monto", v)} error={errors.monto} />
               <div>
                 <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Método de Pago</label>
@@ -594,7 +594,7 @@ function DonacionModal({
                 </div>
                 <div className="flex flex-col gap-2">
                   {form.materiales.map((m, i) => (
-                    <div key={i} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 80px 120px 32px" }}>
+                    <div key={i} className="flex flex-col gap-2 sm:grid sm:items-center sm:gap-2 sm:grid-cols-[1fr_80px_120px_32px]">
                       <Input placeholder="Descripción del artículo" value={m.descripcion} onChange={(e) => setMaterialField(i, "descripcion", e.target.value)} />
                       <NumberInput placeholder="Cant." value={m.cantidad} onChange={(v) => setMaterialField(i, "cantidad", Number(v))} />
                       <NumberInput allowDecimal placeholder="Valor est. (Q)" value={m.valorEstimado || ""} onChange={(v) => setMaterialField(i, "valorEstimado", Number(v))} />

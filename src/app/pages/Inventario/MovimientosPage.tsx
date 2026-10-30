@@ -330,7 +330,7 @@ export function MovimientosPage() {
             error={errors.itemId}
             placeholder="Seleccionar…"
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Tipo de Movimiento"
               value="Ajuste de Inventario"
@@ -345,7 +345,7 @@ export function MovimientosPage() {
               error={errors.responsable}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               type="number"
               label="Diferencia de Stock *"

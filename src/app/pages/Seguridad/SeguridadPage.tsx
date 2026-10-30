@@ -814,8 +814,8 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
                     <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", margin: "0 0 10px" }}>Otros parámetros</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {parametrosExtra.map((p) => (
-                        <div key={p.clave} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <span style={{ fontSize: 12, color: "var(--text-3)", minWidth: 160, fontFamily: "monospace" }}>{p.clave}</span>
+                        <div key={p.clave} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 12, color: "var(--text-3)", minWidth: 120, fontFamily: "monospace" }}>{p.clave}</span>
                           <input
                             type="text"
                             value={p.valor}
@@ -1161,26 +1161,26 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
             emptyDescription="Las acciones de los usuarios del sistema aparecerán aquí."
             toolbar={
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <select value={audUsuarioId} onChange={(e) => setAudUsuarioId(e.target.value)} style={{ ...inputStyle(), width: 220 }}>
+                <select value={audUsuarioId} onChange={(e) => setAudUsuarioId(e.target.value)} style={{ ...inputStyle(), width: 220, maxWidth: "100%" }}>
                   <option value="">Todos los usuarios</option>
                   {usuarios.map((u) => (
                     <option key={u.usuarioId} value={u.usuarioId}>{u.nombreCompleto} (@{u.username})</option>
                   ))}
                 </select>
-                <select value={audModulo} onChange={(e) => setAudModulo(e.target.value)} style={{ ...inputStyle(), width: 170 }}>
+                <select value={audModulo} onChange={(e) => setAudModulo(e.target.value)} style={{ ...inputStyle(), width: 170, maxWidth: "100%" }}>
                   <option value="">Todos los módulos</option>
                   {MODULOS_AUDITORIA.map((m) => (
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
-                <select value={audMetodo} onChange={(e) => setAudMetodo(e.target.value)} style={{ ...inputStyle(), width: 150 }}>
+                <select value={audMetodo} onChange={(e) => setAudMetodo(e.target.value)} style={{ ...inputStyle(), width: 150, maxWidth: "100%" }}>
                   <option value="">Todas las acciones</option>
                   {METODOS_AUDITORIA.map((m) => (
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
-                <input type="date" value={audDesde} onChange={(e) => setAudDesde(e.target.value)} style={{ ...inputStyle(), width: 150 }} />
-                <input type="date" value={audHasta} onChange={(e) => setAudHasta(e.target.value)} style={{ ...inputStyle(), width: 150 }} />
+                <input type="date" value={audDesde} onChange={(e) => setAudDesde(e.target.value)} style={{ ...inputStyle(), width: 150, maxWidth: "100%" }} />
+                <input type="date" value={audHasta} onChange={(e) => setAudHasta(e.target.value)} style={{ ...inputStyle(), width: 150, maxWidth: "100%" }} />
               </div>
             }
           />

@@ -39,7 +39,7 @@ export function VehiculoCard({ vehiculo: v, onSelect }: Props) {
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-xs" style={{ color: "var(--text-2)" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" style={{ color: "var(--text-2)" }}>
         <span>Placa: <strong style={{ color: "var(--text-1)" }}>{v.placa || "—"}</strong></span>
         <span>Kilometraje: <strong style={{ color: "var(--text-1)" }}>{v.kilometraje.toLocaleString("es-GT")} km</strong></span>
         <span>Chasis: <strong style={{ color: "var(--text-1)" }}>{v.chasis || "—"}</strong></span>

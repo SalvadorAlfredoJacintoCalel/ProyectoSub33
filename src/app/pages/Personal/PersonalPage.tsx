@@ -862,7 +862,7 @@ export function PersonalPage() {
         }}
         toolbar={
           <>
-            <div className="min-w-[240px] flex-1">
+            <div className="min-w-[240px] flex-1 max-w-full">
               <Input
                 startIcon={<Search size={15} />}
                 placeholder="Buscar por nombre, código, DPI o teléfono..."

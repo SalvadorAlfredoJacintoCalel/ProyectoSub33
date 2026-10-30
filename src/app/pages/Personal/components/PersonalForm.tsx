@@ -274,7 +274,7 @@ export function PersonalForm({
 
       {/* ── Datos Personales ── */}
       <CollapsibleSection label="Datos Personales" icon={User}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Primer Nombre *"
             placeholder="Ej. Carlos"
@@ -323,7 +323,7 @@ export function PersonalForm({
 
       {/* ── Información de Bombero ── */}
       <CollapsibleSection label="Información de Bombero" icon={Award}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Código de Bombero *"
             placeholder="Ej. VOL-001"
@@ -352,7 +352,7 @@ export function PersonalForm({
 
       {/* ── Contacto de Emergencia ── */}
       <CollapsibleSection label="Contacto de Emergencia" icon={Phone}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Nombre del Contacto *"
             placeholder="Nombre completo"
@@ -415,7 +415,7 @@ export function PersonalForm({
               animation: "slide-up 200ms var(--spring-gentle) both",
             }}
           >
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 type="text"
                 label="Usuario *"

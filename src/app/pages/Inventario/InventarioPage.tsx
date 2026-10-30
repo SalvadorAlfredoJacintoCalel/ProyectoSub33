@@ -911,7 +911,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         toolbar={
           <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="relative w-72">
+              <div className="relative w-full max-w-full sm:w-72">
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
                 <input
                   className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"
@@ -993,7 +993,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         <div className="mb-4"><DraftBanner draft={draft} online={online} onDiscard={clear} /></div>
 
         <CollapsibleSection label="Datos" icon={User}>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Nombre *"
               placeholder="Nombre del insumo o equipo"
@@ -1059,7 +1059,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
         </CollapsibleSection>
 
         <CollapsibleSection label="Stock y Valor" icon={Boxes}>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {editModal?.mode === "add" && (
               <Input
                 type="number"
@@ -1130,7 +1130,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
                   options={donacionesMaterial.map((d) => ({ value: String(d.donacionId), label: `${d.noRecibo} — ${d.donante}` }))}
                   placeholder="Sin vincular"
                 />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
                     label="Donante"
                     placeholder="Nombre del donante"
@@ -1230,7 +1230,7 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
             value={donacionForm.donante}
             onChange={(e) => setDonacionForm((p) => ({ ...p, donante: e.target.value }))}
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="DPI / NIT *"
               placeholder="DPI/NIT"

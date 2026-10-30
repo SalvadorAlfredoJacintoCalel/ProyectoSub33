@@ -354,7 +354,7 @@ export function VehiculosPage() {
       content: (
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-end gap-2">
-            <div className="relative min-w-[220px] flex-1">
+            <div className="relative min-w-[220px] flex-1 max-w-full">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-3)" }} />
               <input
                 className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none"
