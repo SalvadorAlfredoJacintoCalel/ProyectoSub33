@@ -111,6 +111,9 @@ export function CuponesTab() {
 
   const filas = useMemo(() => {
     const todos = periodo?.cupones ?? [];
+    if (mostrarEliminados) return todos;
+    return todos.filter((c) => c.activo !== false);
+  }, [periodo, mostrarEliminados]);
 
   const openDraftRef = useRef<(key: string) => void>(() => {});
   openDraftRef.current = (key) => {
@@ -125,7 +128,7 @@ export function CuponesTab() {
     }
     if (key.startsWith("cupon.edit.")) {
       const id = Number(key.slice("cupon.edit.".length));
-      const c = todos.find((x) => x.registroId === id);
+      const c = (periodo?.cupones ?? []).find((x) => x.registroId === id);
       if (c) {
         setCuponEdit(c);
         setShowCupon(true);
@@ -140,9 +143,6 @@ export function CuponesTab() {
       if (module === "vehiculos-cupones") openDraftRef.current(key);
     });
   }, []);
-    if (mostrarEliminados) return todos;
-    return todos.filter((c) => c.activo !== false);
-  }, [periodo, mostrarEliminados]);
   const totalRecibidos = periodo?.totalRecibidos ?? 0;
   const valorDefault = periodo?.valorCuponDefault ?? 100;
 
