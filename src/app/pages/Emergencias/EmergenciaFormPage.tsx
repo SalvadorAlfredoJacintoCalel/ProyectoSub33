@@ -14,6 +14,7 @@ import { inventarioService } from "@/services/inventarioService";
 import { vehiculosService } from "@/services/vehiculosService";
 import { emergenciaService } from "@/services/emergenciaService";
 import { HospitalAutocomplete } from "./components/HospitalAutocomplete";
+import { CatalogAutocomplete } from "@/app/components/ui/CatalogAutocomplete";
 import type { PersonalAsignado } from "@/types/emergencia";
 import type { InventarioItem } from "@/types/inventario";
 import type { Vehiculo } from "@/types/vehiculos";
@@ -1398,30 +1399,12 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
                           {p.nombreCompleto}
                         </button>
                         {selected && (
-                          <div style={{ position: "relative" }}>
-                            <select
-                              value={personalSeleccionado.find((s) => s.personalId === p.personalId)?.rolServicioId ?? ""}
-                              onChange={(e) => setRolPersonal(p.personalId, e.target.value ? Number(e.target.value) : null)}
-                              style={{ ...selectBase, width: 160, padding: "4px 28px 4px 8px", fontSize: 12 }}
-                            >
-                              <option value="">Rol…</option>
-                              {catalogos.rolesServicio.map((r) => (
-                                <option key={r.id} value={r.id}>
-                                  {r.nombre}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown
-                              style={{
-                                position: "absolute",
-                                right: 8,
-                                top: "50%",
-                                transform: "translateY(-50%)",
-                                width: 14,
-                                height: 14,
-                                color: "var(--text-3)",
-                                pointerEvents: "none",
-                              }}
+                          <div style={{ position: "relative", width: 160 }}>
+                            <CatalogAutocomplete
+                              tipo="roles-servicio"
+                              value={personalSeleccionado.find((s) => s.personalId === p.personalId)?.rolServicioId ? String(personalSeleccionado.find((s) => s.personalId === p.personalId)?.rolServicioId) : ""}
+                              onChange={(id) => setRolPersonal(p.personalId, id ? Number(id) : null)}
+                              placeholder="Rol…"
                             />
                           </div>
                         )}

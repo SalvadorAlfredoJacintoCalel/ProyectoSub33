@@ -1148,10 +1148,10 @@ export function SeguridadPage({ userRole }: { userRole: UserRole }) {
           <DataTable<AuditoriaAccion>
             columns={[
               { key: "fecha", header: "Fecha", cell: (a) => <span style={{ color: "var(--text-2)", fontSize: 12 }}>{new Date(a.fechaHora).toLocaleString("es-GT")}</span> },
-              { key: "usuario", header: "Usuario", cell: (a) => <span className="font-semibold" style={{ color: "var(--text-1)" }}>{a.usuarioNombre || "—"}</span> },
+              { key: "nombre", header: "Nombre", cell: (a) => <span className="font-semibold" style={{ color: "var(--text-1)" }}>{a.nombreCompleto || a.usuarioNombre || "—"}</span> },
+              { key: "usuario", header: "Usuario", cell: (a) => <span style={{ color: "var(--text-2)" }}>{a.usuarioNombre || "—"}</span> },
               { key: "accion", header: "Acción", cell: (a) => <span style={{ color: "var(--text-1)" }}>{a.accion}</span> },
               { key: "modulo", header: "Módulo", cell: (a) => <span style={{ color: "var(--text-2)" }}>{MODULOS_AUDITORIA.find((m) => m.value === a.modulo)?.label ?? a.modulo}</span> },
-              { key: "ruta", header: "Ruta", cell: (a) => <span className="font-mono" style={{ color: "var(--text-3)", fontSize: 12 }}>{a.ruta}</span> },
             ]}
             data={auditoria}
             getRowKey={(a) => a.accionId}

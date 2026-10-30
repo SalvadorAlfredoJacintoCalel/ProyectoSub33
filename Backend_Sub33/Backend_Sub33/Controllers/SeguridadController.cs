@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Dapper;
+using System.Data;
 using Backend_Sub33.Attributes;
 using Backend_Sub33.Data;
 using Backend_Sub33.DTOs.Seguridad;
@@ -451,51 +453,55 @@ public class SeguridadController : ControllerBase
             pagina = Math.Max(1, pagina);
             tamanio = Math.Clamp(tamanio, 1, 200);
 
-            var query = _context.BitacoraAcciones.AsNoTracking().AsQueryable();
+            using var connection = _context.Database.GetDbConnection();
+            connection.Open();
+
+            var where = new List<string>();
+            var parameters = new DynamicParameters();
 
             if (usuarioId.HasValue)
             {
-                query = query.Where(a => a.UsuarioId == usuarioId.Value);
+                where.Add("a.usuario_id = @UsuarioId");
+                parameters.Add("UsuarioId", usuarioId.Value);
             }
-
             if (!string.IsNullOrWhiteSpace(modulo))
             {
-                query = query.Where(a => a.Modulo == modulo.Trim().ToLowerInvariant());
+                where.Add("a.modulo = @Modulo");
+                parameters.Add("Modulo", modulo.Trim().ToLowerInvariant());
             }
-
             if (!string.IsNullOrWhiteSpace(metodo))
             {
-                query = query.Where(a => a.Metodo == metodo.Trim().ToUpperInvariant());
+                where.Add("a.metodo = @Metodo");
+                parameters.Add("Metodo", metodo.Trim().ToUpperInvariant());
             }
-
             if (desde.HasValue)
             {
-                query = query.Where(a => a.FechaHora >= desde.Value);
+                where.Add("a.fecha_hora >= @Desde");
+                parameters.Add("Desde", desde.Value);
             }
-
             if (hasta.HasValue)
             {
-                query = query.Where(a => a.FechaHora <= hasta.Value);
+                where.Add("a.fecha_hora <= @Hasta");
+                parameters.Add("Hasta", hasta.Value);
             }
 
-            var total = await query.CountAsync();
+            var whereSql = where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "";
 
-            var items = await query
-                .OrderByDescending(a => a.FechaHora)
-                .Skip((pagina - 1) * tamanio)
-                .Take(tamanio)
-                .Select(a => new
-                {
-                    accionId = a.AccionId,
-                    usuarioId = a.UsuarioId,
-                    usuarioNombre = a.UsuarioNombre,
-                    metodo = a.Metodo,
-                    ruta = a.Ruta,
-                    modulo = a.Modulo,
-                    accion = a.Accion,
-                    fechaHora = a.FechaHora
-                })
-                .ToListAsync();
+            var total = await connection.ExecuteScalarAsync<int>(
+                $"SELECT COUNT(*) FROM bitacora_acciones a {whereSql}", parameters);
+
+            parameters.Add("Tamanio", tamanio);
+            parameters.Add("Offset", (pagina - 1) * tamanio);
+
+            var items = (await connection.QueryAsync<AuditoriaRow>(
+                $@"SELECT a.accion_id, a.usuario_id, a.usuario_nombre, a.metodo, a.modulo, a.accion, a.fecha_hora,
+                          COALESCE(NULLIF(TRIM(CONCAT(p.primer_nombre, ' ', p.segundo_nombre, ' ', p.primer_apellido, ' ', p.segundo_apellido)), ''), a.usuario_nombre) AS nombre_completo
+                   FROM bitacora_acciones a
+                   LEFT JOIN usuarios u ON u.usuario_id = a.usuario_id
+                   LEFT JOIN personal p ON p.personal_id = u.personal_id
+                   {whereSql}
+                   ORDER BY a.fecha_hora DESC
+                   LIMIT @Tamanio OFFSET @Offset", parameters)).ToList();
 
             return Ok(new { items, total, pagina, tamanio });
         }
@@ -504,5 +510,17 @@ public class SeguridadController : ControllerBase
             _logger.LogError(ex, "Error al obtener la auditoría");
             return StatusCode(500, new { mensaje = "Error al obtener la auditoría", detalle = ex.Message });
         }
+    }
+
+    private sealed class AuditoriaRow
+    {
+        public long AccionId { get; set; }
+        public Guid? UsuarioId { get; set; }
+        public string? UsuarioNombre { get; set; }
+        public string Metodo { get; set; } = string.Empty;
+        public string Modulo { get; set; } = string.Empty;
+        public string Accion { get; set; } = string.Empty;
+        public DateTime FechaHora { get; set; }
+        public string? NombreCompleto { get; set; }
     }
 }

@@ -8,6 +8,7 @@ import { Modal } from "@/app/components/ui/modal";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { CatalogAutocomplete } from "@/app/components/ui/CatalogAutocomplete";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { readDraftValue } from "@/services/drafts/draftRegistry";
 import { consumeDraftOpenRequest, subscribeOpenDraft } from "@/services/drafts/draftOpenRequest";
@@ -617,12 +618,11 @@ function MovimientoModal({
             <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
           </Campo>
           <Campo label="Tipo de documento">
-            <SelectField
-              label=""
+            <CatalogAutocomplete
+              tipo="tipos-documento"
               placeholder="Selecciona tipo"
               value={tipoDocumentoId}
               onChange={setTipoDocumentoId}
-              options={tiposDocumento.map((t) => ({ value: String(t.id), label: t.nombre }))}
             />
           </Campo>
           <Campo label="No. de documento">

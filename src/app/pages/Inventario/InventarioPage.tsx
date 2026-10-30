@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useAlert } from "@/app/components/ui/AlertSystem";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { CatalogAutocomplete } from "@/app/components/ui/CatalogAutocomplete";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { readDraftValue } from "@/services/drafts/draftRegistry";
 import { consumeDraftOpenRequest, subscribeOpenDraft, requestOpenDraft } from "@/services/drafts/draftOpenRequest";
@@ -1001,14 +1002,14 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
               onChange={(e) => setField("nombre", e.target.value)}
               error={errors.nombre}
             />
-            <SelectField
+            <CatalogAutocomplete
+              tipo="categorias-inventario"
               label="Categoría"
               required
               value={form.categoriaInvId}
               onChange={(v) => setField("categoriaInvId", v)}
-              options={catalogos.categorias.map((c) => ({ value: String(c.id), label: c.nombre }))}
               error={errors.categoriaInvId}
-              placeholder="Seleccionar…"
+              placeholder="Seleccionar o crear categoría..."
             />
             <Input
               label="Código / Código de Barras"
@@ -1091,12 +1092,12 @@ function ItemsTab({ stockFilter, onClearStockFilter }: { stockFilter: StockFilte
 
         {form.origen !== "Donado" && (
           <CollapsibleSection label="Proveedor" icon={Truck}>
-            <SelectField
+            <CatalogAutocomplete
+              tipo="proveedores"
               label="Proveedor"
               value={form.proveedorId}
               onChange={(v) => setField("proveedorId", v)}
-              options={catalogos.proveedores.map((p) => ({ value: String(p.id), label: p.nombre }))}
-              placeholder="Sin proveedor"
+              placeholder="Seleccionar o crear proveedor..."
             />
           </CollapsibleSection>
         )}

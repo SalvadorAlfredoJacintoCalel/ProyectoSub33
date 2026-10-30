@@ -79,8 +79,8 @@ export interface AuditoriaAccion {
   accionId: number;
   usuarioId: string | null;
   usuarioNombre: string | null;
+  nombreCompleto?: string | null;
   metodo: string;
-  ruta: string;
   modulo: string;
   accion: string;
   fechaHora: string;

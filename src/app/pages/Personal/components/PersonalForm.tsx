@@ -7,6 +7,7 @@ import { Input } from "@/app/components/ui/input";
 import { PasswordField } from "@/app/components/ui/PasswordField";
 import { Button } from "@/app/components/ui/button";
 import { DraftBanner } from "@/app/components/ui/DraftBanner";
+import { CatalogAutocomplete } from "@/app/components/ui/CatalogAutocomplete";
 
 interface FormProps {
   open: boolean;
@@ -331,13 +332,15 @@ export function PersonalForm({
             onChange={(e) => setField("codigoBombero", e.target.value)}
             error={errors.codigoBombero}
           />
-          <SelectField
+          <CatalogAutocomplete
+            tipo="rangos"
             label="Rango"
-            value={form.rangoId}
-            onChange={(v) => setField("rangoId", v)}
-            options={rangos}
+            required
+            value={form.rangoId ? String(form.rangoId) : ""}
+            onChange={(id) => setField("rangoId", id ? Number(id) : 0)}
+            items={rangos}
             error={errors.rangoId}
-            placeholder="Seleccionar rango..."
+            placeholder="Seleccionar o crear rango..."
           />
           <Input
             type="text"
