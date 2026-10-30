@@ -543,7 +543,7 @@ function DonacionModal({
             <Input label="DPI / NIT *" placeholder="DPI o NIT del donante" value={form.dpiNit} onChange={(e) => setField("dpiNit", e.target.value)} error={errors.dpiNit} />
             <Input label="Teléfono *" placeholder="xxxx-xxxx" value={form.telefono} onChange={(e) => setField("telefono", e.target.value)} error={errors.telefono} />
             <Input type="date" label="Fecha *" value={form.fecha} onChange={(e) => setField("fecha", e.target.value)} error={errors.fecha} />
-            <Input label="No. Recibo" value={form.noRecibo} readOnly />
+            <Input label="No. Recibo" value={form.noRecibo} onChange={(e) => setField("noRecibo", e.target.value)} />
             <div>
               <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--text-2)" }}>Estado</label>
               <select value={form.estado} onChange={(e) => setField("estado", e.target.value as EstadoDonacion)}

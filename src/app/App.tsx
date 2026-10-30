@@ -24,7 +24,6 @@ import { SeguridadPage } from "@/app/pages/Seguridad/SeguridadPage";
 import {
   X, ChevronLeft, ChevronRight, Zap, Truck, Package,
   Bell, LogOut, ChevronDown, Home, BarChart2,
-  Users, AlertTriangle, Wrench, Quote,
   Camera, UserCircle, Moon, Sun, Menu,
 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -100,13 +99,6 @@ const INCIDENT_DATA: Record<Period, { label: string; value: number; color: strin
   annual: [{ label:"INCENDIOS",value:0,color:"#a6000c"},{ label:"ACCIDENTES",value:0,color:"#854d0e"},{ label:"MÉDICOS",value:0,color:"#1565c0"},{ label:"OTROS",value:0,color:"#71717a"}],
 };
 const WEEKLY_DATA: number[] = [];
-
-const BULLETINS = [
-  { id:1, type:"turno",  title:"Turno Activo en Línea",      body:"4 elementos de guardia — Comandante de turno: Soc. García Ajú",      meta:"08:00 – 16:00 hrs",    color:"#16a34a", Icon: Users },
-  { id:2, type:"aviso",  title:"Simulacro Programado",       body:"Ejercicio de respuesta a incendio estructural — Aldea Xejuyú",         meta:"20 Sep 2026",           color:"#1565c0", Icon: AlertTriangle },
-  { id:3, type:"maint",  title:"Mantenimiento Preventivo",   body:"BD-01 ingresa mañana a Taller González — Verificar unidades alternas", meta:"Mañana 28/08",          color:"#D97706", Icon: Wrench },
-  { id:4, type:"quote",  title:"Frase del Día",              body:"\"El servicio a los demás es el pago por el privilegio de vivir en este mundo.\" — Shirley Chisholm", meta:"Reflexión diaria", color:"#7c3aed", Icon: Quote },
-];
 
 const HISTORIAL = [
   { id:"#001",fecha:"",hora:"",tipo:"",paciente:"",ubicacion:"",unidad:"" },
@@ -657,38 +649,6 @@ function AppContent() {
                   <div className="animate-slide-up-stagger stagger-3"><QuickCard Icon={Truck}   label="Ver Vehículos"         sub="Estado de flota y combustible"   onClick={() => setActiveNav("vehiculos")}   /></div>
                 </div>
               </div>
-
-              {/* Tablón de Avisos — excluye "Frase del Día" */}
-              {(() => {
-                const avisos = BULLETINS.filter(b => b.type !== "quote");
-                return (
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="font-bold text-[11px] tracking-widest uppercase" style={{ fontFamily: "Inter, sans-serif", color: C.textMuted }}>Tablón de Avisos</h2>
-                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{ background: C.redLight, color: C.red, fontFamily: "Inter, sans-serif" }}>
-                        {avisos.length} avisos
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {avisos.map(b => (
-                        <div key={b.id} className="flex items-start gap-4 p-5 rounded-2xl"
-                          style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: C.cardShadow }}>
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${b.color}15` }}>
-                            <b.Icon style={{ width: 18, height: 18, color: b.color }} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-bold text-[13px] leading-tight" style={{ fontFamily: "Manrope, sans-serif", color: C.textPrimary }}>{b.title}</p>
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: `${b.color}18`, color: b.color }}>{b.meta}</span>
-                            </div>
-                            <p className="text-[12px] leading-snug" style={{ fontFamily: "Inter, sans-serif", color: C.textSecond }}>{b.body}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
 
             </div>
 
