@@ -52,7 +52,7 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
 /* ── Print ── */
 .print-area { display: none; }
 @media print {
-  @page { size: A4 portrait; margin: 10mm; }
+  @page { size: Letter portrait; margin: 10mm; }
   html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
   body > *:not(.print-area) { display: none !important; }
   .print-area { display: block !important; width: 100% !important; }

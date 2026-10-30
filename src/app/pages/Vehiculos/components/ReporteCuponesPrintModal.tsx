@@ -54,10 +54,10 @@ const celda = (style?: CSSProperties): CSSProperties => ({
 });
 
 const celdaHeader = (style?: CSSProperties): CSSProperties =>
-  celda({ background: "#bfbfbf", fontWeight: 700, textTransform: "uppercase", fontSize: 10, ...style });
+  celda({ background: "#bfbfbf", fontWeight: 700, textTransform: "uppercase", fontSize: 11.5, ...style });
 
 const celdaSubHeader = (style?: CSSProperties): CSSProperties =>
-  celda({ background: "#d9d9d9", fontWeight: 700, textTransform: "uppercase", fontSize: 10, ...style });
+  celda({ background: "#d9d9d9", fontWeight: 700, textTransform: "uppercase", fontSize: 11.5, ...style });
 
 export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones }) {
   const { encabezado, detalle, totales, firmas } = reporte;
@@ -92,10 +92,10 @@ export function ReporteCuponesPrintSheet({ reporte }: { reporte: ReporteCupones 
   return (
     <>
       <style>{`
-        .excel-table { border-collapse: collapse; width: 100%; font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #000; }
-        .excel-table th, .excel-table td { border: 1px solid #333; padding: 4px 5px; text-align: center; vertical-align: middle; white-space: nowrap; }
+        .excel-table { border-collapse: collapse; width: 100%; font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; }
+        .excel-table th, .excel-table td { border: 1px solid #333; padding: 5px 6px; text-align: center; vertical-align: middle; white-space: nowrap; }
         @media print {
-          @page { size: landscape; margin: 8mm; }
+          @page { size: Letter landscape; margin: 8mm 10mm; }
         }
       `}</style>
 

@@ -128,7 +128,7 @@ describe("ReporteCuponesPrintSheet (formato oficial de impresión)", () => {
 
   it("inyecta el CSS de impresión landscape", () => {
     const html = render(reporte);
-    expect(html).toContain("size: landscape");
+    expect(html).toContain("size: Letter landscape");
     expect(html).toContain("margin: 8mm");
   });
 });
