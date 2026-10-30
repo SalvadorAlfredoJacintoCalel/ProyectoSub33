@@ -614,6 +614,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
         if (resultado && resultado.exito) {
           toast.success(`Incidente ${resultado.numeroIncidente} registrado exitosamente`);
           clear();
+          onSaved?.();
           onClose();
         } else {
           toast.error("No se pudo registrar la emergencia. Intente nuevamente.");

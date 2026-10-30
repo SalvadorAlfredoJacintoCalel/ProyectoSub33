@@ -812,7 +812,7 @@ function ServiceReportModal({ emergencia, tiposEmergencia, onClose, onEdit, onTe
             </Button>
             {emergencia.estado === "En proceso" && onTerminar && (
               <Button variant="brand" onClick={onTerminar}>
-                <CheckCircle2 className="size-4" /> Marcar como Terminado
+                <CheckCircle2 className="size-4" /> Terminar servicio
               </Button>
             )}
             {emergencia.estado === "Terminado" && onDesactivar && (
@@ -1324,7 +1324,7 @@ export function EmergenciasPage() {
       {editingId && createPortal(
         <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setEditingId(null)}>
           <div className="animate-morph-enter rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)", boxShadow: "var(--elevation-brand-3)" }} onClick={(e) => e.stopPropagation()}>
-            <EditServicePage serviceId={editingId} onClose={() => setEditingId(null)} onSaved={() => setEditingId(null)} />
+            <EditServicePage serviceId={editingId} onClose={() => setEditingId(null)} onSaved={() => { setEditingId(null); recargarLista(); }} />
           </div>
         </div>,
         document.body
@@ -1333,7 +1333,7 @@ export function EmergenciasPage() {
       {showRegister && createPortal(
         <div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "radial-gradient(circle at center, rgba(211,47,47,0.12), transparent 70%), rgba(0,0,0,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} onClick={() => setShowRegister(false)}>
           <div className="animate-morph-enter rounded-3xl shadow-2xl w-full overflow-hidden flex flex-col" style={{ maxWidth: 800, maxHeight: "92vh", background: "var(--bg-card)", boxShadow: "var(--elevation-brand-3)" }} onClick={(e) => e.stopPropagation()}>
-            <RegisterServicePage onClose={() => setShowRegister(false)} currentUser={user?.name ?? ""} />
+            <RegisterServicePage onClose={() => setShowRegister(false)} onSaved={() => { setShowRegister(false); recargarLista(); }} currentUser={user?.name ?? ""} />
           </div>
         </div>,
         document.body
