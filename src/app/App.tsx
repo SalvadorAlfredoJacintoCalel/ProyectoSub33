@@ -41,6 +41,7 @@ import {
   type AlertItem,
 } from "@/services/notifications/alerts";
 import { useAlert } from "@/app/components/ui/AlertSystem";
+import { useIdleLogout } from "@/hooks/useIdleLogout";
 import { AlertProvider } from "@/app/components/ui/AlertContext";
 import { subirFoto } from "@/services/authService";
 import { dashboardService } from "@/services/dashboardService";
@@ -190,6 +191,13 @@ function AppContent() {
 
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const { toast } = useAlert();
+
+  const handleIdleLogout = useCallback(() => {
+    toast.warning("Sesión cerrada por inactividad.");
+    logout();
+  }, [toast, logout]);
+
+  useIdleLogout(handleIdleLogout, loggedIn);
 
   const refreshAlerts = useCallback(async () => {
     try {
