@@ -360,8 +360,8 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
           };
 
           setBaselineDraft(serverDraft);
-          const saved = readDraftValue<EmergenciaDraft>(`emergencia.edit.${serviceId}`);
-          applyDraftToState(saved ?? serverDraft);
+          clear();
+          applyDraftToState(serverDraft);
         }
       } else {
         const correlativo = await getSiguienteIncidente();
@@ -378,7 +378,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     return () => {
       mounted = false;
     };
-  }, [isEdit, serviceId, cargarCatalogos, obtenerEmergencia, getSiguienteIncidente, applyDraftToState]);
+  }, [isEdit, serviceId, cargarCatalogos, obtenerEmergencia, getSiguienteIncidente, applyDraftToState, clear]);
 
   useEffect(() => {
     let mounted = true;
