@@ -360,8 +360,9 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
           };
 
           setBaselineDraft(serverDraft);
-          clear();
           applyDraftToState(serverDraft);
+        } else if (mounted) {
+          toast.error("No se pudo cargar la emergencia. Verifica que el registro exista e intente de nuevo.");
         }
       } else {
         const correlativo = await getSiguienteIncidente();
@@ -378,7 +379,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
     return () => {
       mounted = false;
     };
-  }, [isEdit, serviceId, cargarCatalogos, obtenerEmergencia, getSiguienteIncidente, applyDraftToState, clear]);
+  }, [isEdit, serviceId, cargarCatalogos, obtenerEmergencia, getSiguienteIncidente, applyDraftToState]);
 
   useEffect(() => {
     let mounted = true;
