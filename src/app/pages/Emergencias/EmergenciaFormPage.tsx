@@ -313,7 +313,7 @@ export function EmergenciaFormPage({ mode, serviceId, onClose, onSaved }: Props)
           }
 
           const ins = await inventarioService
-            .getServicioInsumos({ servicioId })
+            .getServicioInsumos({ servicioId: serviceId })
             .catch((error) => {
               console.error("Error cargando insumos del servicio:", error);
               return [];
